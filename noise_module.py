@@ -115,7 +115,7 @@ def stats_to_dict(stats,stat_type):
                  '{}_sampling_rate'.format(stat_type):stats['sampling_rate']}
     return stat_dict            
 
-def process_raw(st,downsamp_freq):
+def process_raw(st,downsamp_freq,resp=False,inv=None):
     """
     
     Pre-process month-long stream of data. 
@@ -126,7 +126,8 @@ def process_raw(st,downsamp_freq):
         - Trims data to first and last day of month 
         - phase-shifts data to begin at 00:00:00.0
         - chunks data into 86,400 second traces
-        - removes instrument response (pole-zero)
+        - removes instrument response (pole-zero) as optional (not by default)
+        - uses inventory to remove the instrumental response
     """
 
     day = 86400   # numbe of seconds in a day
@@ -141,8 +142,6 @@ def process_raw(st,downsamp_freq):
     if len(st) == 0:
         raise ValueError('No traces in Stream')
 
-    # for tr in st:
-    #   tr.data = tr.data.astype(np.float)
     st = resample(st,downsamp_freq) 
     st = remove_small_traces(st)
     if len(st) == 0:
@@ -165,7 +164,7 @@ def process_raw(st,downsamp_freq):
             if too_long == len(gaps):
                 only_too_long = True
 
-    st.merge(method=0, fill_value=np.int32(0))
+    st.merge(method=0, fill_value=np.float64(0))
 
     # phase shift data 
     for tr in st:
@@ -173,7 +172,15 @@ def process_raw(st,downsamp_freq):
         if tr.data.dtype != 'float64':
             tr.data = tr.data.astype(np.float64)
     
-    #st.merge(method=1,fille_value=0.)[0]
+    st.merge(method=1,fill_value=0.)[0]
+
+    if resp:
+        if inv:
+            min_freq = 1/st[0].stats.npts*st[0].stats.sampling_rate
+            min_freq = np.max([min_freq,0.005])
+            pre_filt = [min_freq,min_freq*1.5, 0.9*st[0].stats.sampling_rate, 0.95*st[0].stats.sampling_rate]
+            st.attach_response(inv)
+            st.remove_response(output="VEL",pre_filt=pre_filt) 
 
     return st
 
