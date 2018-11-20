@@ -28,14 +28,14 @@ import numpy as np
 ## download parameters
 client = Client('IRIS')                     # client
 NewFreq = 100                               # resampling at X samples per seconds
-direc="./ASDF"   # storage folder  
+direc="./ASDF"                              # storage folder  
 pre_filt = [0.0005, 0.001, 40,50]           # some broadband filtering 
 year = 2013                                 # year of data
 lamin,lomin,lamax,lomax=42,-129,50,-121     # regional box: min lat, min lon, max lat, max lon
 chan='HH*'                                  # channel to download 
 net="*"                                     # network to download
 sta="*"                                     # station to download
-remove_response=True                    # boolean to remove instrumental response
+remove_response=True                        # boolean to remove instrumental response
 
 
 
