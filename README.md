@@ -8,7 +8,7 @@ These libraries of codes are written in Python, format the data in ASDF, process
 - compute all noise correlations (auto and cross), saving all intermediate files
 - stack with various techniques the cross
 - (TBdone) process higher order correlations, pre and post stacks.
-- perform various estimates of dv/v (stretching/MWCS/DTW)
+- perform various estimates of dv/v (stretching/MWCS/DTW, wavelet cross spectrum)
 
 
 Contributing authors are:
