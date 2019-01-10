@@ -2,6 +2,7 @@ import os
 import glob
 import sys
 import obspy
+import time
 import noise_module
 import numpy as np
 import pandas as pd
@@ -10,11 +11,17 @@ import pyasdf
 from mpi4py import MPI
 
 #----------some common variables here----------
-CCFDIR = '/n/flashlfs/mdenolle/KANTO/DATA/CCF_deconv'
+#CCFDIR = '/n/flashlfs/mdenolle/KANTO/DATA/CCF_deconv'
 #CCFDIR = '/n/regal/denolle_lab/cjiang/CCF'
-STACKDIR = '/n/flashlfs/mdenolle/KANTO/DATA/STACK_deconv'
+#STACKDIR = '/n/flashlfs/mdenolle/KANTO/DATA/STACK_deconv'
 #STACKDIR = '/n/regal/denolle_lab/cjiang/STACK'
-locations = '/n/home13/chengxin/cases/KANTO/locations.txt'
+#locations = '/n/home13/chengxin/cases/KANTO/locations.txt'
+
+t0=time.time()
+
+CCFDIR = '/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/CCF1'
+STACKDIR = '/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/STACK1'
+locations = '/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/locations_small.txt'
 
 #---------filter paramters------
 freqmin=0.05
@@ -84,7 +91,7 @@ for ii in range(rank,splits+size-extra,size):
             dt = ds.auxiliary_data[dtype][path_list[0]].parameters['dt']
             tcorr = np.arange(-maxlag,maxlag+dt,dt)
             ncorr = np.zeros(tcorr.shape)
-            pcorr = np.zeros(tcorr.shape)
+            #pcorr = np.zeros(tcorr.shape)
 
             #-------loop III: ccfs at different days--------
             for tt in range(len(path_list)):
@@ -100,23 +107,26 @@ for ii in range(rank,splits+size-extra,size):
                 ncorr = ncorr + y
 
                 #-------pws stacking--------
-                y2 = noise_module.pws(np.array(tdata),2,1/dt,5.)
+                #y2 = noise_module.pws(np.array(tdata),2,1/dt,5.)
                 #y4 = noise_module.butter_pass(y2,freqmin,freqmax,dt,2)
-                pcorr = pcorr + y2
+                #pcorr = pcorr + y2
  
             #------------------save two stacked traces into SAC files-----------------
             filename1 = os.path.join(STACKDIR,source,path_list[0][0:len(tpath)-11]+'_ls.SAC')
-            filename2 = os.path.join(STACKDIR,source,path_list[0][0:len(tpath)-11]+'_pws.SAC')
+            #filename2 = os.path.join(STACKDIR,source,path_list[0][0:len(tpath)-11]+'_pws.SAC')
             sac1 = SACTrace(nzyear=2000,nzjday=1,nzhour=0,nzmin=0,nzsec=0,nzmsec=0,b=-maxlag,
                             delta=dt,stla=rlat,stlo=rlon,evla=slat,evlo=slon,data=ncorr)
-            sac2 = SACTrace(nzyear=2000,nzjday=1,nzhour=0,nzmin=0,nzsec=0,nzmsec=0,b=-maxlag,
-                            delta=dt,stla=rlat,stlo=rlon,evla=slat,evlo=slon,data=pcorr)
+            #sac2 = SACTrace(nzyear=2000,nzjday=1,nzhour=0,nzmin=0,nzsec=0,nzmsec=0,b=-maxlag,
+            #                delta=dt,stla=rlat,stlo=rlon,evla=slat,evlo=slon,data=pcorr)
             sac1.write(filename1,byteorder='big')
-            sac2.write(filename2,byteorder='big')
+            #sac2.write(filename2,byteorder='big')
             
-            del sac1,sac2,ncorr,pcorr
+            del sac1,ncorr
 
         del ds
+
+t1=time.time()
+print('s3 takes '+str(t1-t0)+' s')
 
 comm.barrier()
 if rank == 0:

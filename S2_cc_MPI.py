@@ -25,14 +25,15 @@ computes the cross-correlations between each station-pair at an overlapping time
 this version is implemented with MPI (Nov.09.2018)
 '''
 
+t0=time.time()
 
 #------some useful absolute paths-------
-FFTDIR = '/n/flashlfs/mdenolle/KANTO/DATA/FFT/no_norm'
-CCFDIR = '/n/flashlfs/mdenolle/KANTO/DATA/CCF_deconv'
+#FFTDIR = '/n/flashlfs/mdenolle/KANTO/DATA/FFT/no_norm'
+#CCFDIR = '/n/flashlfs/mdenolle/KANTO/DATA/CCF_deconv'
 #CCFDIR = '/n/regal/denolle_lab/cjiang/CCF'
 
-#FFTDIR = '/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/FFT1'
-#CCFDIR = '/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/CCF3'
+FFTDIR = '/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/FFT'
+CCFDIR = '/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/CCF1'
 tcomp  = ['EHZ','EHE','EHN','HNU','HNE','HNN']
 
 
@@ -101,13 +102,13 @@ for ii in range(rank,splits+size-extra,size):
 
             paths = path_list_s[jj]
             compS = fft_ds_s.auxiliary_data[data_type][paths].parameters['component']
-
-            #-----------get the parameter of Nfft-----------
-            Nfft = len(np.array(fft_ds_s.auxiliary_data[data_type][path_list_s[0]].data[0,:]))
+            
+            Nfft = fft_ds_s.auxiliary_data[data_type][paths].parameters['nfft']
+            Nseg = fft_ds_s.auxiliary_data[data_type][paths].parameters['nseg']
+            
             dataS_t = []
-                
-            fft1= np.add(np.array(fft_ds_s.auxiliary_data[data_type][paths].data[:,:Nfft//2-1]) \
-                    , 1j* np.array(fft_ds_s.auxiliary_data[data_type][paths].data[:,Nfft//2:Nfft-1]))
+            fft1 = np.zeros(shape=(Nseg,Nfft//2-1),dtype=np.complex64)
+            fft1= fft_ds_s.auxiliary_data[data_type][paths].data[:,:Nfft//2-1]
             source_std = fft_ds_s.auxiliary_data[data_type][paths].parameters['std']
             date =fft_ds_s.auxiliary_data[data_type][paths].parameters['starttime'] 
             dataS_t=np.array(pd.to_datetime([datetime.utcfromtimestamp(s) for s in date]))
@@ -126,8 +127,8 @@ for ii in range(rank,splits+size-extra,size):
                     print(str(pathr))
                     dataR_t = []
                                 
-                    fft2=np.add(np.array(fft_ds_r.auxiliary_data[data_type][pathr].data[:,:Nfft//2-1]) \
-                            , 1j* np.array(fft_ds_r.auxiliary_data[data_type][pathr].data[:,Nfft//2:Nfft-1]))
+                    fft2 = np.zeros(shape=(Nseg,Nfft//2-1),dtype=np.complex64)           
+                    fft2= fft_ds_r.auxiliary_data[data_type][pathr].data[:,:Nfft//2-1]
                     sampling_rate = fft_ds_r.auxiliary_data[data_type][pathr].parameters['sampling_rate']
                     receiver_std = fft_ds_r.auxiliary_data[data_type][pathr].parameters['std']
                     receiver_mad = fft_ds_r.auxiliary_data[data_type][pathr].parameters['mad']
@@ -137,8 +138,8 @@ for ii in range(rank,splits+size-extra,size):
 
 
                     #---------- check the existence of earthquakes ----------
-                    rec_ind = np.where(receiver_std < 20)[0]
-                    sou_ind = np.where(source_std < 20)[0]
+                    rec_ind = np.where(receiver_std < 10)[0]
+                    sou_ind = np.where(source_std < 10)[0]
 
                     #-----note that Hi-net and Mesonet have different starting times-----
                     #bb,indx1,indx2=np.intersect1d(dataS_t[sou_ind],dataR_t[rec_ind],return_indices=True)
@@ -187,6 +188,9 @@ for ii in range(rank,splits+size-extra,size):
 
 
         del fft_ds_s, fft_ds_r, path_list_r, path_list_s, fft1, dataS_t, source_std
+
+t1=time.time()
+print('step 2 takes '+str(t1-t0))
 
 comm.barrier()
 if rank == 0:
