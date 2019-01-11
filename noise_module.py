@@ -620,6 +620,9 @@ def correlate(fft1,fft2, maxlag,dt, Nfft=None, method='cross-correlation'):
         corr[ind]  /= smooth(np.abs(fft1[ind]),half_win=5)
         ind = np.where(np.abs(fft2)>0 )
         corr[ind]  /= smooth(np.abs(fft2[ind]),half_win=5)
+    elif method == 'raw':
+	ind = np.where(np.abs(fft1)>0)
+	
     corr[:,-(Nfft // 2):] = corr[:,:(Nfft // 2)].conjugate()[::-1] # fill in the complex conjugate
     corr = np.real(np.fft.ifftshift(scipy.fftpack.ifft(corr, Nfft,axis=axis))) 
  
