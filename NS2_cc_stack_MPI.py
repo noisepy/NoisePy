@@ -196,11 +196,11 @@ for ii in range(rank,splits+size-extra,size):
                         if not os.path.isfile(fft_h5):
                             with pyasdf.ASDFDataSet(fft_h5,mpi=False) as ds:
                                 pass 
-                        else:
-                            print([netS+"."+staS+"."+netR+"."+staR+'.h5', 'Already exists',obspy.UTCDateTime()])
+                        #else:
+                        #    print([netS+"."+staS+"."+netR+"."+staR+'.h5', 'Already exists',obspy.UTCDateTime()])
 
                         with pyasdf.ASDFDataSet(fft_h5,mpi=False) as ccf_ds:
-                            parameters = {'dt':dt, 'maxlag':maxlag, 'starttime':str(dataR_t[rec_ind]), 'method':str(method)}
+                            parameters = {'dt':dt, 'maxlag':maxlag, 'method':str(method)}
 
                             #------save the time domain cross-correlation functions-----
                             path = '_'.join(['ccfs',str(method),netS,staS,netR,staR,compS,compR,tday])
