@@ -26,8 +26,6 @@ computes the cross-correlations between each station-pair at an overlapping time
 this version is implemented with MPI (Nov.09.2018)
 '''
 
-t0=time.time()
-
 #------some useful absolute paths-------
 #FFTDIR = '/n/flashlfs/mdenolle/KANTO/DATA/FFT'
 #STACKDIR = '/n/flashlfs/mdenolle/KANTO/DATA/STACK_deconv'
@@ -35,13 +33,15 @@ t0=time.time()
 #CCFDIR = '/n/regal/denolle_lab/cjiang/CCF'
 
 FFTDIR = '/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/FFT'
-STACKDIR = '/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/CCF'
+CCFDIR = '/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/CCF'
+STACKDIR = '/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/STACK'
 locations = '/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/locations.txt'
 tcomp  = ['EHZ','EHE','EHN','HNU','HNE','HNN']
 
 
 #-----some control parameters------
 data_type = 'FFT'
+save_day = True
 downsamp_freq=20
 dt=1/downsamp_freq
 freqmin=0.05
@@ -113,8 +113,7 @@ for ii in range(rank,splits+size-extra,size):
         indx = np.zeros(shape=(len(tcomp),len(tcomp)),dtype=np.int16)       # indx contains the comp information for each station pair
         tlen = int((2*maxlag)/dt+1)
         ncorr = np.zeros(shape=(indx.size,tlen),dtype=np.float32)
-        #pcorr = np.zeros(shape=(indx.size,tlen),dtype=np.float32)
-
+        
         #---------loop through each component of the source------
         for jj in range(len(path_list_s)):
 
@@ -122,7 +121,6 @@ for ii in range(rank,splits+size-extra,size):
             compS = fft_ds_s.auxiliary_data[data_type][paths].parameters['component']
 
             #-----------get the parameter of Nfft-----------
-            #t0=time.time()
             Nfft = fft_ds_s.auxiliary_data[data_type][paths].parameters['nfft']
             Nseg = fft_ds_s.auxiliary_data[data_type][paths].parameters['nseg']
             
@@ -131,12 +129,6 @@ for ii in range(rank,splits+size-extra,size):
             fft1= fft_ds_s.auxiliary_data[data_type][paths].data[:,:Nfft//2-1]
             
             source_std = fft_ds_s.auxiliary_data[data_type][paths].parameters['std']
-            #date =fft_ds_s.auxiliary_data[data_type][paths].parameters['starttime'] 
-            #dataS_t=np.array(pd.to_datetime([datetime.utcfromtimestamp(s) for s in date]))
-            #del date
-
-            #t1=time.time()
-            #print('reading source takes '+str(t1-t0)+' s')
 
             #-------day information------
             tday  = paths[-10:]
@@ -172,12 +164,9 @@ for ii in range(rank,splits+size-extra,size):
                     if (len(indx1)==0) | (len(indx2)==0):
                         continue
 
-                    #t0=time.time()
                     #-----------do daily cross-correlations now-----------
                     corr,tcorr=noise_module.correlate(fft1[indx1,:Nfft//2-1],fft2[indx2,:Nfft//2-1], \
                             np.round(maxlag),dt,Nfft,method)
-                    #t1=time.time()
-                    #print('cross correlations take '+str(t1-t0)+' s')
 
                     #--------find the index to store data--------
                     indx[tcomp.index(compS)][tcomp.index(compR)]=1
@@ -195,10 +184,37 @@ for ii in range(rank,splits+size-extra,size):
 
                     #-------pws stacking--------
                     #y2 = noise_module.pws(np.array(corr),2,1/dt,5.)
-                    #y4 = noise_module.butter_pass(y2,freqmin,freqmax,dt,2)
-                    #pcorr[nindx][:] = pcorr[nindx][:] + y2
- 
+                    
+                    if save_day:
+                        #---------------keep the daily cross-correlation into a hdf5 file--------------
+                        tsource = os.path.join(CCFDIR,netS+"."+staS)
+                        if os.path.exists(tsource)==False:
+                            os.mkdir(tsource)
+                        
+                        fft_h5 = os.path.join(tsource,netS +"." + staS + "." + netR + "." + staR + '.h5')
+                        crap   = np.zeros(corr.shape)
+                        if not os.path.isfile(fft_h5):
+                            with pyasdf.ASDFDataSet(fft_h5,mpi=False) as ds:
+                                pass 
+                        else:
+                            print([netS+"."+staS+"."+netR+"."+staR+'.h5', 'Already exists',obspy.UTCDateTime()])
 
+                        with pyasdf.ASDFDataSet(fft_h5,mpi=False) as ccf_ds:
+                            parameters = {'dt':dt, 'maxlag':maxlag, 'starttime':str(dataR_t[rec_ind]), 'method':str(method)}
+
+                            #------save the time domain cross-correlation functions-----
+                            path = '_'.join(['ccfs',str(method),netS,staS,netR,staR,compS,compR,tday])
+                            new_data_type = compS+compR
+                            crap = np.squeeze(corr)
+                            ccf_ds.add_auxiliary_data(data=crap, data_type=new_data_type, path=path, parameters=parameters)
+
+                            #------save the freq domain cross-correlation functions for future C3-----
+                            #path = '_'.join(['ccfs.f',str(method),netS,staS,netR,staR,compS,compR,tday])
+                            #crap = np.squeeze(scorr)
+                            #ccf_ds.add_auxiliary_data(data=crap, data_type=new_data_type, path=path, parameters=parameters)
+
+                        del ccf_ds, crap, parameters, path, corr,tcorr
+ 
         #-------ready to write into files---------
         indx_array = np.where(indx==1)
 
@@ -216,21 +232,14 @@ for ii in range(rank,splits+size-extra,size):
 
             #--------save two stacked traces as SAC files---------
             filename1 = os.path.join(STACKDIR,dir1,dir2+'_ls.SAC')
-            #filename2 = os.path.join(STACKDIR,dir1,dir2+'_pws.SAC')
 
             sac1 = SACTrace(nzyear=2000,nzjday=1,nzhour=0,nzmin=0,nzsec=0,nzmsec=0,b=-maxlag,
                             delta=dt,stla=rlat,stlo=rlon,evla=slat,evlo=slon,data=ncorr[nindx][:])
-            #sac2 = SACTrace(nzyear=2000,nzjday=1,nzhour=0,nzmin=0,nzsec=0,nzmsec=0,b=-maxlag,
-            #                delta=dt,stla=rlat,stlo=rlon,evla=slat,evlo=slon,data=pcorr[nindx][:])
 
             sac1.write(filename1,byteorder='big')
-            #sac2.write(filename2,byteorder='big')
 
         #del pcorr
         del fft_ds_s, fft_ds_r, path_list_r, path_list_s, fft1, fft2, dataS_t, dataR_t, source_std, receiver_std, ncorr
-
-t1=time.time()
-print('step2 takes '+str(t1-t0)+' s')
 
 comm.barrier()
 if rank == 0:
