@@ -632,6 +632,7 @@ def correlate(fft1,fft2, maxlag,dt, Nfft=None, method='cross-correlation'):
         corr = corr[:,ind]
     else:
         corr = corr[ind]
+    
     tcorr=tcorr[ind]
     return corr,tcorr
 
