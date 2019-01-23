@@ -3,11 +3,13 @@ import glob
 import itertools
 from datetime import datetime
 import copy
+import time
+#import dsp_fortran
+import matplotlib.pyplot as plt
 
 import numpy as np
 import scipy
 from scipy.fftpack import fft,ifft,next_fast_len
-# from scipy.fftpack.helper import next_fast_len
 from scipy.signal import butter, lfilter, tukey, hilbert, wiener
 from scipy.linalg import svd
 from scipy.ndimage import map_coordinates
@@ -96,38 +98,20 @@ def stats2inv(stats,resp=None,filexml=None):
     if filexml is not None:
         inv.write(filexml, format="stationxml", validate=True)
 
-    return inv
+    return inv        
 
-def stats_to_dict(stats,stat_type):
-    """
-
-    Converts obspy.core.trace.Stats object to dict
-
-    :type stats: `~obspy.core.trace.Stats` object.
-    :type source: str
-    :param source: 'source' or 'receiver'
-    """
-    stat_dict = {'{}_network'.format(stat_type):stats['network'],
-                 '{}_station'.format(stat_type):stats['station'],
-                 '{}_channel'.format(stat_type):stats['channel'],
-                 '{}_delta'.format(stat_type):stats['delta'],
-                 '{}_npts'.format(stat_type):stats['npts'],
-                 '{}_sampling_rate'.format(stat_type):stats['sampling_rate']}
-    return stat_dict            
-
-def process_raw(st,downsamp_freq,resp=False,inv=None):
+def process_raw(st,downsamp_freq):
     """
     
     Pre-process month-long stream of data. 
     Checks:
         - sample rate is matching 
-        - resamples data 
+        - downsamples data 
         - checks for gaps in data 
         - Trims data to first and last day of month 
         - phase-shifts data to begin at 00:00:00.0
         - chunks data into 86,400 second traces
-        - removes instrument response (pole-zero) as optional (not by default)
-        - uses inventory to remove the instrumental response
+        - removes instrument response (pole-zero)
     """
 
     day = 86400   # numbe of seconds in a day
@@ -142,7 +126,9 @@ def process_raw(st,downsamp_freq,resp=False,inv=None):
     if len(st) == 0:
         raise ValueError('No traces in Stream')
 
-    st = resample(st,downsamp_freq) 
+    # for tr in st:
+    #   tr.data = tr.data.astype(np.float)
+    st = downsample(st,downsamp_freq) 
     st = remove_small_traces(st)
     if len(st) == 0:
         raise ValueError('No traces in Stream')
@@ -164,7 +150,7 @@ def process_raw(st,downsamp_freq,resp=False,inv=None):
             if too_long == len(gaps):
                 only_too_long = True
 
-    st.merge(method=0, fill_value=np.float64(0))
+    st.merge(method=0, fill_value=np.int32(0))
 
     # phase shift data 
     for tr in st:
@@ -172,15 +158,7 @@ def process_raw(st,downsamp_freq,resp=False,inv=None):
         if tr.data.dtype != 'float64':
             tr.data = tr.data.astype(np.float64)
     
-    st.merge(method=1,fill_value=0.)[0]
-
-    if resp:
-        if inv:
-            min_freq = 1/st[0].stats.npts*st[0].stats.sampling_rate
-            min_freq = np.max([min_freq,0.005])
-            pre_filt = [min_freq,min_freq*1.5, 0.9*st[0].stats.sampling_rate, 0.95*st[0].stats.sampling_rate]
-            st.attach_response(inv)
-            st.remove_response(output="VEL",pre_filt=pre_filt) 
+    #st.merge(method=1,fille_value=0.)[0]
 
     return st
 
@@ -428,8 +406,8 @@ def whiten(data, delta, freqmin, freqmax,Nfft=None):
     left = J[0]
     right = J[-1]
     high = J[-1] + Napod
-    if high > Nfft / 2:
-        high = int(Nfft // 2)
+    if high > Nfft/2:
+        high = int(Nfft//2)
 
     FFTRawSign = scipy.fftpack.fft(data, Nfft,axis=axis)
     # Left tapering:
@@ -444,10 +422,10 @@ def whiten(data, delta, freqmin, freqmax,Nfft=None):
         FFTRawSign[:,right:high] = np.cos(
             np.linspace(0., np.pi / 2., high - right)) ** 2 * np.exp(
             1j * np.angle(FFTRawSign[:,right:high]))
-        FFTRawSign[:,high:Nfft + 1] *= 0
+        FFTRawSign[:,high:Nfft//2] *= 0
 
         # Hermitian symmetry (because the input is real)
-        FFTRawSign[:,-(Nfft // 2) + 1:] = FFTRawSign[:,1:(Nfft // 2)].conjugate()[::-1]
+        FFTRawSign[:,-(Nfft//2)+1:] = FFTRawSign[:,1:(Nfft//2)].conjugate()[::-1]
     else:
         FFTRawSign[0:low] *= 0
         FFTRawSign[low:left] = np.cos(
@@ -459,10 +437,10 @@ def whiten(data, delta, freqmin, freqmax,Nfft=None):
         FFTRawSign[right:high] = np.cos(
             np.linspace(0., np.pi / 2., high - right)) ** 2 * np.exp(
             1j * np.angle(FFTRawSign[right:high]))
-        FFTRawSign[high:Nfft + 1] *= 0
+        FFTRawSign[high:Nfft//2] *= 0
 
         # Hermitian symmetry (because the input is real)
-        FFTRawSign[-(Nfft // 2) + 1:] = FFTRawSign[1:(Nfft // 2)].conjugate()[::-1]
+        FFTRawSign[-(Nfft//2)+1:] = FFTRawSign[1:(Nfft//2)].conjugate()[::-1]
  
 
     return FFTRawSign
@@ -584,7 +562,56 @@ def stats_to_dict(stats,stat_type):
                  '{}_sampling_rate'.format(stat_type):stats['sampling_rate']}
     return stat_dict            
 
-def correlate(fft1,fft2, maxlag,dt, Nfft=None, method='cross-correlation'):
+def fcorrelate(fft1, fft2, maxlag, dt, Nfft, method="cross-correlation"):
+    if fft1.ndim == 1:
+        axis = 0
+        nwin=1
+    elif fft1.ndim == 2:
+        axis = 1
+        nwin= int(fft1.shape[0])
+
+    t0=time.time()
+    corr=np.zeros(shape=(nwin,Nfft//2-1),dtype=np.complex64)
+    corr[:,:Nfft//2-1]  = np.conj(fft1) * fft2
+    #corr=dsp_fortran.correlate_decon(fft1,fft2,nwin,Nfft//2-1)
+
+    if method == 'deconv':
+        ind = np.where(np.abs(fft1)>0 )
+        smt = np.zeros(shape=(len(ind[0]),),dtype=np.float32)
+        smt=dsp_fortran.smooth_abs_mean(np.abs(fft1[ind]),int(len(ind[0])))
+        corr[ind] /= smt**2
+        #corr[ind] /= smooth(np.abs(fft1[ind]),half_win=10) ** 2
+        #corr[ind] /= running_abs_mean(np.abs(fft1[ind]),10) ** 2
+        t1=time.time()
+    elif method == 'coherence':
+        ind = np.where(np.abs(fft1)>0 )
+        #corr[ind]  /= smooth(np.abs(fft1[ind]),half_win=5)
+        corr[ind] /= running_abs_mean(np.abs(fft1[ind]),5)
+        ind = np.where(np.abs(fft2)>0 )
+        #corr[ind]  /= smooth(np.abs(fft2[ind]),half_win=5)
+        corr[ind] /= running_abs_mean(np.abs(fft2[ind]),5)
+    elif method == 'raw':
+        ind = 1
+    
+
+    corr[:,-(Nfft // 2):] = corr[:,:(Nfft // 2)].conjugate()[::-1] # fill in the complex conjugate
+    corr = np.real(np.fft.ifftshift(scipy.fftpack.ifft(corr, Nfft, axis=axis)))
+    t2=time.time()
+
+    tcorr = np.arange(-Nfft//2 + 1, Nfft//2)*dt
+    ind = np.where(np.abs(tcorr) <= maxlag)[0]
+    if axis == 1:
+        corr = corr[:,ind]
+    else:
+        corr = corr[ind]
+    tcorr=tcorr[ind]
+    t3=time.time()
+
+    print('it takes '+str(t1-t0)+' s '+str(t2-t1)+' s '+str(t3-t2)+' s')
+    return corr,tcorr    
+
+
+def correlate(fft1,fft2, maxlag,dt, Nfft, method="cross-correlation"):
     """This function takes ndimensional *data* array, computes the cross-correlation in the frequency domain
     and returns the cross-correlation function between [-*maxlag*:*maxlag*].
 
@@ -605,24 +632,31 @@ def correlate(fft1,fft2, maxlag,dt, Nfft=None, method='cross-correlation'):
         axis = 1
         nwin= int(fft1.shape[0])
 
-    if Nfft is None:
-        Nfft = 2*(int(fft1.shape[axis]))+1
-
-
-    maxlag = np.round(maxlag)
-    corr=np.zeros(shape=(nwin,Nfft),dtype=np.complex_)
+    #maxlag = np.round(maxlag)
+    corr=np.zeros(shape=(nwin,Nfft),dtype=np.complex64)
     corr[:,:Nfft//2-1]  = np.conj(fft1) * fft2
+
     if method == 'deconv':
         ind = np.where(np.abs(fft1)>0 )
-        corr[ind] /= smooth(np.abs(fft1[ind]),half_win=10) ** 2
+        #corr[ind] /= smooth(np.abs(fft1[ind]),half_win=10) ** 2
+        corr[ind] /= running_abs_mean(np.abs(fft1[ind]),10) ** 2
     elif method == 'coherence':
         ind = np.where(np.abs(fft1)>0 )
-        corr[ind]  /= smooth(np.abs(fft1[ind]),half_win=5)
+        #corr[ind]  /= smooth(np.abs(fft1[ind]),half_win=5)
+        corr[ind] /= running_abs_mean(np.abs(fft1[ind]),5)
         ind = np.where(np.abs(fft2)>0 )
-        corr[ind]  /= smooth(np.abs(fft2[ind]),half_win=5)
-    corr[:,-(Nfft // 2):] = corr[:,:(Nfft // 2)].conjugate()[::-1] # fill in the complex conjugate
-    corr = np.real(np.fft.ifftshift(scipy.fftpack.ifft(corr, Nfft,axis=axis))) 
- 
+        #corr[ind]  /= smooth(np.abs(fft2[ind]),half_win=5)
+        corr[ind] /= running_abs_mean(np.abs(fft2[ind]),5)
+    elif method == 'raw':
+        ind = 1
+
+    #--------------------problems: [::-1] only flips along axis=0 direction------------------------
+    #corr[:,-(Nfft // 2):] = corr[:,:(Nfft // 2)].conjugate()[::-1] # fill in the complex conjugate
+    #----------------------------------------------------------------------------------------------
+
+    corr[:,-(Nfft//2)+1:]=np.flip(np.conj(corr[:,1:(Nfft // 2)]),axis=axis)
+    corr = np.real(np.fft.ifftshift(scipy.fftpack.ifft(corr, Nfft, axis=axis)))
+
     tcorr = np.arange(-Nfft//2 + 1, Nfft//2)*dt
     ind = np.where(np.abs(tcorr) <= maxlag)[0]
     if axis == 1:
@@ -630,6 +664,7 @@ def correlate(fft1,fft2, maxlag,dt, Nfft=None, method='cross-correlation'):
     else:
         corr = corr[ind]
     tcorr=tcorr[ind]
+
     return corr,tcorr
 
 
@@ -697,7 +732,6 @@ def snr(data,sampling_rate):
     sigma = smooth(sigma,half_win=int(sampling_rate*5))
     s = smooth(s,half_win=int(sampling_rate*5))
 
-
     return np.real(s/sigma)
 
 
@@ -706,6 +740,7 @@ def smooth(x, window='boxcar', half_win=3):
     window_len = 2*half_win+1
     # extending the data at beginning and at the end
     # to apply the window at the borders
+
     if window == "boxcar":
         w = scipy.signal.boxcar(window_len).astype(x.dtype)
     else:
@@ -1140,15 +1175,15 @@ def check_length(stream):
     return stream				
 
 
-def resample(stream,freq):
+def downsample(stream,freq):
     """ 
-    Resamples stream to specified samplerate.
+    Downsamples stream to specified samplerate.
 
     Uses Obspy.core.trace.decimate if mod(sampling_rate) == 0. 
     :type stream:`~obspy.core.trace.Stream` or `~obspy.core.trace.Trace` object.
     :type freq: float
-    :param freq: Frequency to which waveforms in stream are Resampled
-    :return: Resampled trace or stream object
+    :param freq: Frequency to which waveforms in stream are downsampled
+    :return: Downsampled trace or stream object
     :rtype: `~obspy.core.trace.Trace` or `~obspy.core.trace.Trace` object.
     """
     
@@ -1380,7 +1415,7 @@ def cross_corr_parameters(source,receiver,num_corr,locs,maxlag):
     return parameters
 
 
-def fft_parameters(dt,cc_len,source,source_times, source_params,locs,component):
+def fft_parameters(dt,cc_len,source,source_times, source_params,locs,component,Nfft,Nt):
     """ 
     Creates parameter dict for cross-correlations and header info to ASDF.
 
@@ -1424,7 +1459,9 @@ def fft_parameters(dt,cc_len,source,source_times, source_params,locs,component):
              'elevation_in_m':el,
              'component':component,
              'starttime':starttime,
-             'endtime':endtime}
+             'endtime':endtime,
+             'nfft':Nfft,
+             'nseg':Nt}
     parameters.update(source)
     return parameters   
 
