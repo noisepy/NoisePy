@@ -4,8 +4,8 @@ import itertools
 from datetime import datetime
 import copy
 import time
+#import dsp_fortran
 import matplotlib.pyplot as plt
-from numba import jit,float32,int16 
 
 import numpy as np
 import scipy
@@ -24,7 +24,7 @@ from obspy.core.inventory import Inventory, Network, Station, Channel, Site
 from obspy.clients.nrl import NRL
 
 
-def stats2inv(stats,resp=None,filexml=None):
+def stats2inv(stats,resp=None,filexml=None,locs=None):
    
 
     # We'll first create all the various objects. These strongly follow the
@@ -35,38 +35,77 @@ def stats2inv(stats,resp=None,filexml=None):
         # The source should be the id whoever create the file.
         source="japan_from_resp")
 
-    net = Network(
-        # This is the network code according to the SEED standard.
-        code=stats.network,
-        # A list of stations. We'll add one later.
-        stations=[],
-        description="Marine created from SAC and resp files",
-        # Start-and end dates are optional.
-        start_date=stats.starttime)
+    if locs is None:
+        net = Network(
+            # This is the network code according to the SEED standard.
+            code=stats.network,
+            # A list of stations. We'll add one later.
+            stations=[],
+            description="Marine created from SAC and resp files",
+            # Start-and end dates are optional.
+            start_date=stats.starttime)
 
-    sta = Station(
-        # This is the station code according to the SEED standard.
-        code=stats.station,
-        latitude=stats.sac["stla"],
-        longitude=stats.sac["stlo"],
-        elevation=stats.sac["stel"],
-        creation_date=stats.starttime,
-        site=Site(name="First station"))
+        sta = Station(
+            # This is the station code according to the SEED standard.
+            code=stats.station,
+            latitude=stats.sac["stla"],
+            longitude=stats.sac["stlo"],
+            elevation=stats.sac["stel"],
+            creation_date=stats.starttime,
+            site=Site(name="First station"))
 
-    cha = Channel(
-        # This is the channel code according to the SEED standard.
-        code=stats.channel,
-        # This is the location code according to the SEED standard.
-        location_code=stats.location,
-        # Note that these coordinates can differ from the station coordinates.
-        latitude=stats.sac["stla"],
-        longitude=stats.sac["stlo"],
-        elevation=stats.sac["stel"],
-        depth=-stats.sac["stel"],
-        azimuth=stats.sac["cmpaz"],
-        dip=stats.sac["cmpinc"],
-        sample_rate=stats.sampling_rate)
-    
+        cha = Channel(
+            # This is the channel code according to the SEED standard.
+            code=stats.channel,
+            # This is the location code according to the SEED standard.
+            location_code=stats.location,
+            # Note that these coordinates can differ from the station coordinates.
+            latitude=stats.sac["stla"],
+            longitude=stats.sac["stlo"],
+            elevation=stats.sac["stel"],
+            depth=-stats.sac["stel"],
+            azimuth=stats.sac["cmpaz"],
+            dip=stats.sac["cmpinc"],
+            sample_rate=stats.sampling_rate)
+
+    else:
+        ista=locs[locs['station']==stats.station].index.values.astype('int64')[0]
+            
+        net = Network(
+            # This is the network code according to the SEED standard.
+            code=locs.iloc[ista]["network"],
+            # A list of stations. We'll add one later.
+            stations=[],
+            description="Marine created from SAC and resp files",
+            # Start-and end dates are optional.
+            start_date=stats.starttime)
+
+        sta = Station(
+            # This is the station code according to the SEED standard.
+            code=locs.iloc[ista]["station"],
+            latitude=locs.iloc[ista]["latitude"],
+            longitude=locs.iloc[ista]["longitude"],
+            elevation=locs.iloc[ista]["elevation"],
+            creation_date=stats.starttime,
+            site=Site(name="First station"))
+        cha = Channel(
+            # This is the channel code according to the SEED standard.
+            code=stats.channel,
+            # This is the location code according to the SEED standard.
+            location_code=stats.location,
+            # Note that these coordinates can differ from the station coordinates.
+            latitude=locs.iloc[ista]["latitude"],
+            longitude=locs.iloc[ista]["longitude"],
+            elevation=locs.iloc[ista]["elevation"],
+            depth=-locs.iloc[ista]["elevation"],
+            azimuth=0,
+            dip=0,
+            sample_rate=stats.sampling_rate)
+
+        
+
+
+        
     response = obspy.core.inventory.response.Response()
     if resp is not None:
         print('i dont have the response')
@@ -114,18 +153,17 @@ def process_raw(st,downsamp_freq):
         - removes instrument response (pole-zero)
     """
 
-    day = 86400   # numbe of seconds in a day
+    #day = 86400   # numbe of seconds in a day
     if len(st) > 100:
         raise ValueError('Too many traces in Stream')
     st = check_sample(st)
 
     # check for traces with only zeros
     for tr in st:
-        if tr.data.max() == 0:
+        if all(data == 0 for data in tr.data):
             st.remove(tr)
     if len(st) == 0:
         raise ValueError('No traces in Stream')
-
     # for tr in st:
     #   tr.data = tr.data.astype(np.float)
     st = downsample(st,downsamp_freq) 
@@ -175,6 +213,66 @@ def clean_up(corr,sampling_rate,freqmin,freqmax):
     corr *= taper
     corr = bandpass(corr,freqmin,freqmax,sampling_rate,zerophase=True)
     return corr
+
+def process_cc(stream,freqmin,freqmax,percent=0.05,max_len=20.,time_norm=True,norm_type='running_mean',Nfft=None):
+    """
+
+    Pre-process for cross-correlation. 
+
+    Checks ambient noise for earthquakesa and data gaps. 
+    Performs one-bit normalization and spectral whitening.
+    """
+    N = len(stream)
+    trace_mad = np.zeros(N)
+    trace_std = np.zeros(N)
+    nonzero = np.zeros(N)
+    stream.detrend(type='constant')
+    stream.detrend(type='linear')
+    stream.taper(max_percentage=percent,max_length=max_len)
+    stream.filter('bandpass',freqmin=freqmin,freqmax=freqmax,zerophase=True)
+    stream.detrend(type='constant')
+    scopy = stream.copy()
+    scopy = scopy.merge(method=1)[0]
+    all_mad = mad(scopy.data)
+    all_std = np.std(scopy.data)
+    del scopy 
+    npts = []
+    for ii,trace in enumerate(stream):
+        # check for earthquakes and spurious amplitudes
+        trace_mad[ii] = np.max(np.abs(trace.data))/all_mad
+        trace_std[ii] = np.max(np.abs(trace.data))/all_std
+
+        # check if data has zeros/gaps
+        nonzero[ii] = np.count_nonzero(trace.data)/trace.stats.npts
+        npts.append(trace.stats.npts)
+
+    # mask high amplitude phases, then whiten data
+    Nt = np.max(npts)
+    data = np.zeros([N,Nt])
+    for ii,trace in enumerate(stream):
+        data[ii,0:npts[ii]] = trace.data
+    
+    if data.ndim == 1:
+        axis = 0
+    elif data.ndim == 2:
+        axis = 1
+
+    FFTWhite = whiten(data,trace.stats.delta,freqmin,freqmax)
+
+    if time_norm:
+        if Nfft is None:
+            Nfft = next_fast_len(int(FFTWhite.shape[axis]))
+        white = np.real(scipy.fftpack.ifft(FFTWhite, Nfft,axis=axis)) / Nt
+        Nt = FFTWhite.shape[axis]
+        white = np.concatenate((white[:,-(Nt // 2) + 1:], white[:,:(Nt // 2) + 1]),axis=axis)
+        if norm_type == 'one_bit': 
+            white = np.sign(white)
+        elif norm_type == 'running_mean':
+            white = running_abs_mean(white,int(1 / freqmin / 2))
+        FFTWhite = scipy.fftpack.fft(white, Nfft,axis=axis)
+        FFTWhite[:,-(Nfft // 2) + 1:] = FFTWhite[:,1:(Nfft // 2)].conjugate()[::-1]
+
+    return FFTWhite,np.vstack([trace_mad,trace_std,nonzero]).T
 
 def mseed_data(mseed_dir,starttime = None,endtime = None):
     """
@@ -257,6 +355,54 @@ def sac_data(sac_dir,starttime = None,endtime = None):
         mseed,start,end = mseed[ind],start[ind],end[ind]
     return mseed,start,end 
 
+def myCorr(fft1,fft2, maxlag, Nfft=None):
+    """This function takes ndimensional *data* array, computes the cross-correlation in the frequency domain
+    and returns the cross-correlation function between [-*maxlag*:*maxlag*].
+
+    :type fft1: :class:`numpy.ndarray`
+    :param fft1: This array contains the fft of each timeseries to be cross-correlated.
+    :type maxlag: int
+    :param maxlag: This number defines the number of samples (N=2*maxlag + 1) of the CCF that will be returned.
+
+    :rtype: :class:`numpy.ndarray`
+    :returns: The cross-correlation function between [-maxlag:maxlag]
+    """
+    # Speed up FFT by padding to optimal size for FFTPACK
+
+    if fft1.ndim == 1:
+        axis = 0
+    elif fft1.ndim == 2:
+        axis = 1
+
+    if Nfft is None:
+        Nfft = next_fast_len(int(fft1.shape[axis]))
+
+    normalized = False
+    allCpl = False
+
+    maxlag = np.round(maxlag)
+
+    Nt = fft1.shape[axis]
+
+    corr = np.conj(fft1) * fft2
+    corr = np.real(scipy.fftpack.ifft(corr, Nfft,axis=axis)) / Nt
+    corr = np.concatenate((corr[:,-Nt + 1:], corr[:,:Nt + 1]),axis=axis)
+
+    if normalized:
+        data_iff0 = scipy.fftpack.ifft(fft1, n=Nfft, axis=axis) ** 2
+        data_iff1 = scipy.fftpack.ifft(fft2, n=Nfft, axis=axis) ** 2
+        data = np.vstack([data_iff0,data_iff1])
+        E = np.prod(np.real(np.sqrt(np.mean(data, axis=axis))))
+
+        corr /= np.real(E)
+
+    if maxlag != Nt:
+        tcorr = np.arange(-Nt + 1, Nt)
+        dN = np.where(np.abs(tcorr) <= maxlag)[0]
+        corr = corr[:,dN]
+
+    return corr
+
 def whiten(data, delta, freqmin, freqmax,Nfft=None):
     """This function takes 1-dimensional *data* timeseries array,
     goes to frequency domain using fft, whitens the amplitude of the spectrum
@@ -317,11 +463,7 @@ def whiten(data, delta, freqmin, freqmax,Nfft=None):
         FFTRawSign[:,high:Nfft//2] *= 0
 
         # Hermitian symmetry (because the input is real)
-        FFTRawSign[:,-(Nfft//2)+1:] = np.flip(np.conj(FFTRawSign[:,1:(Nfft//2)]),axis=axis)
-
-        #--------same problems as cc: [::-1] only flips along axis=0 direction--------
-        #FFTRawSign[:,-(Nfft//2)+1:] = FFTRawSign[:,1:(Nfft//2)].conjugate()[::-1]
-        #-----------------------------------------------------------------------------
+        FFTRawSign[:,-(Nfft//2)+1:] = FFTRawSign[:,1:(Nfft//2)].conjugate()[::-1]
     else:
         FFTRawSign[0:low] *= 0
         FFTRawSign[low:left] = np.cos(
@@ -458,79 +600,54 @@ def stats_to_dict(stats,stat_type):
                  '{}_sampling_rate'.format(stat_type):stats['sampling_rate']}
     return stat_dict            
 
-def optimized_correlate1(fft1_smoothed_abs,fft2,maxlag,dt,Nfft,nwin,method="cross-correlation"):
-    '''
-    Optimized version of the correlation functions: put the smoothed 
-    source spectrum amplitude out of the inner for loop. 
-    It also takes advantage of the linear relationship of ifft, so that
-    stacking in spectrum first to reduce the total number of times for ifft,
-    which is the most time consuming steps in the previous correlate function  
-    '''
-
-    #------convert all 2D arrays into 1D to speed up--------
-    corr = np.zeros(nwin*(Nfft//2),dtype=np.complex64)
-    corr = fft1_smoothed_abs.reshape(fft1_smoothed_abs.size,) * fft2.reshape(fft2.size,)
-
-    if method == "coherence":
-        temp = moving_ave(np.abs(fft2.reshape(fft2.size,)),10)
-        corr /= temp
-
-    corr  = corr.reshape(nwin,Nfft//2)
-    ncorr = np.zeros(shape=Nfft,dtype=np.complex64)
-    ncorr[:Nfft//2] = np.mean(corr,axis=0)
-    ncorr[-(Nfft//2)+1:]=np.flip(np.conj(ncorr[1:(Nfft//2)]),axis=0)
-    ncorr[0]=complex(0,0)
-    ncorr = np.real(np.fft.ifftshift(scipy.fftpack.ifft(ncorr, Nfft, axis=0)))
-
-    tcorr = np.arange(-Nfft//2 + 1, Nfft//2)*dt
-    ind   = np.where(np.abs(tcorr) <= maxlag)[0]
-    ncorr = ncorr[ind]
-    
-    return ncorr
-
-def optimized_correlate(fft1,fft2,fft1_smoothed_abs,maxlag,dt,Nfft,method="cross-correlation"):
-    '''
-    Optimized version of the correlation functions: put the smoothed 
-    source spectrum amplitude out of the inner for loop. 
-    It also takes advantage of the linear relationship of ifft, so that
-    stacking in spectrum first to reduce the total number of times for ifft,
-    which is the most time consuming steps in the previous correlate function  
-    '''
- 
+def fcorrelate(fft1, fft2, maxlag, dt, Nfft, method="cross-correlation"):
     if fft1.ndim == 1:
+        axis = 0
         nwin=1
     elif fft1.ndim == 2:
+        axis = 1
         nwin= int(fft1.shape[0])
 
-    #------convert all 2D arrays into 1D to speed up--------
-    corr = np.zeros(nwin*(Nfft//2),dtype=np.complex64)
-    corr = np.conj(fft1.reshape(fft1.size,)) * fft2.reshape(fft2.size,)
-    fft1_smoothed_abs = fft1_smoothed_abs.reshape(fft1_smoothed_abs.size,)
+    t0=time.time()
+    corr=np.zeros(shape=(nwin,Nfft//2-1),dtype=np.complex64)
+    corr[:,:Nfft//2-1]  = np.conj(fft1) * fft2
+    #corr=dsp_fortran.correlate_decon(fft1,fft2,nwin,Nfft//2-1)
 
     if method == 'deconv':
-        #ind = np.where(fft1_smoothed_abs>0)
-        #corr[ind] /= moving_ave(np.abs(tmp[ind]),10)**2
-        corr /= fft1_smoothed_abs**2
+        ind = np.where(np.abs(fft1)>0 )
+        smt = np.zeros(shape=(len(ind[0]),),dtype=np.float32)
+        smt=dsp_fortran.smooth_abs_mean(np.abs(fft1[ind]),int(len(ind[0])))
+        corr[ind] /= smt**2
+        #corr[ind] /= smooth(np.abs(fft1[ind]),half_win=10) ** 2
+        #corr[ind] /= running_abs_mean(np.abs(fft1[ind]),10) ** 2
+        t1=time.time()
     elif method == 'coherence':
-        corr /= fft1_smoothed_abs
-        fft2_smoothed_abs = moving_ave(np.abs(fft2),10)
-        corr /= fft2_smoothed_abs
+        ind = np.where(np.abs(fft1)>0 )
+        #corr[ind]  /= smooth(np.abs(fft1[ind]),half_win=5)
+        corr[ind] /= running_abs_mean(np.abs(fft1[ind]),5)
+        ind = np.where(np.abs(fft2)>0 )
+        #corr[ind]  /= smooth(np.abs(fft2[ind]),half_win=5)
+        corr[ind] /= running_abs_mean(np.abs(fft2[ind]),5)
     elif method == 'raw':
         ind = 1
+    
 
-    corr = corr.reshape(nwin,Nfft//2)
-    ncorr = np.zeros(shape=Nfft,dtype=np.complex64)
-    ncorr[:Nfft//2] = np.mean(corr,axis=0)
-    ncorr[-(Nfft//2)+1:]=np.flip(np.conj(ncorr[1:(Nfft//2)]),axis=0)
-    ncorr[0]=complex(0,0)
-    ncorr = np.real(np.fft.ifftshift(scipy.fftpack.ifft(ncorr, Nfft, axis=0)))
+    corr[:,-(Nfft // 2):] = corr[:,:(Nfft // 2)].conjugate()[::-1] # fill in the complex conjugate
+    corr = np.real(np.fft.ifftshift(scipy.fftpack.ifft(corr, Nfft, axis=axis)))
+    t2=time.time()
 
     tcorr = np.arange(-Nfft//2 + 1, Nfft//2)*dt
-    ind   = np.where(np.abs(tcorr) <= maxlag)[0]
-    ncorr = ncorr[ind]
-    tcorr = tcorr[ind]
-    
-    return ncorr,tcorr
+    ind = np.where(np.abs(tcorr) <= maxlag)[0]
+    if axis == 1:
+        corr = corr[:,ind]
+    else:
+        corr = corr[ind]
+    tcorr=tcorr[ind]
+    t3=time.time()
+
+    print('it takes '+str(t1-t0)+' s '+str(t2-t1)+' s '+str(t3-t2)+' s')
+    return corr,tcorr    
+
 
 def correlate(fft1,fft2, maxlag,dt, Nfft, method="cross-correlation"):
     """This function takes ndimensional *data* array, computes the cross-correlation in the frequency domain
@@ -545,7 +662,7 @@ def correlate(fft1,fft2, maxlag,dt, Nfft, method="cross-correlation"):
     :returns: The cross-correlation function between [-maxlag:maxlag]
     """
     # Speed up FFT by padding to optimal size for FFTPACK
-    t0=time.time()
+
     if fft1.ndim == 1:
         axis = 0
         nwin=1
@@ -553,17 +670,20 @@ def correlate(fft1,fft2, maxlag,dt, Nfft, method="cross-correlation"):
         axis = 1
         nwin= int(fft1.shape[0])
 
+    #maxlag = np.round(maxlag)
     corr=np.zeros(shape=(nwin,Nfft),dtype=np.complex64)
-    corr[:,:Nfft//2]  = np.conj(fft1) * fft2
+    corr[:,:Nfft//2-1]  = np.conj(fft1) * fft2
 
     if method == 'deconv':
-        ind = np.where(np.abs(fft1)>0)
-        corr[ind] /= moving_ave(np.abs(fft1[ind]),10)**2
-        #corr[ind] /= running_abs_mean(np.abs(fft1[ind]),10) ** 2
+        ind = np.where(np.abs(fft1)>0 )
+        #corr[ind] /= smooth(np.abs(fft1[ind]),half_win=10) ** 2
+        corr[ind] /= running_abs_mean(np.abs(fft1[ind]),10) ** 2
     elif method == 'coherence':
-        ind = np.where(np.abs(fft1)>0)
+        ind = np.where(np.abs(fft1)>0 )
+        #corr[ind]  /= smooth(np.abs(fft1[ind]),half_win=5)
         corr[ind] /= running_abs_mean(np.abs(fft1[ind]),5)
-        ind = np.where(np.abs(fft2)>0)
+        ind = np.where(np.abs(fft2)>0 )
+        #corr[ind]  /= smooth(np.abs(fft2[ind]),half_win=5)
         corr[ind] /= running_abs_mean(np.abs(fft2[ind]),5)
     elif method == 'raw':
         ind = 1
@@ -571,8 +691,8 @@ def correlate(fft1,fft2, maxlag,dt, Nfft, method="cross-correlation"):
     #--------------------problems: [::-1] only flips along axis=0 direction------------------------
     #corr[:,-(Nfft // 2):] = corr[:,:(Nfft // 2)].conjugate()[::-1] # fill in the complex conjugate
     #----------------------------------------------------------------------------------------------
-    corr[:,0] = complex(0,0)
-    corr[:,-(Nfft//2)+1:]=np.flip(np.conj(corr[:,1:(Nfft//2)]),axis=axis)
+
+    corr[:,-(Nfft//2)+1:]=np.flip(np.conj(corr[:,1:(Nfft // 2)]),axis=axis)
     corr = np.real(np.fft.ifftshift(scipy.fftpack.ifft(corr, Nfft, axis=axis)))
 
     tcorr = np.arange(-Nfft//2 + 1, Nfft//2)*dt
@@ -583,33 +703,8 @@ def correlate(fft1,fft2, maxlag,dt, Nfft, method="cross-correlation"):
         corr = corr[ind]
     tcorr=tcorr[ind]
 
-    t1=time.time()
-    print('original takes '+str(t1-t0))
     return corr,tcorr
 
-
-@jit('float32[:](float32[:],int16)')
-def moving_ave(A,N):
-    '''
-    Numba compiled function to do running smooth average.
-    N is the the half window length to smooth
-    A and B are both 1-D arrays (which runs faster compared to 2-D operations)
-    '''
-    A = np.r_[A[:N],A,A[-N:]]
-    B = np.zeros(A.shape,A.dtype)
-    
-    tmp=0.
-    for pos in range(N,A.size-N):
-        # do summing only once
-        if pos==N:
-            for i in range(-N,N+1):
-                tmp+=A[pos+i]
-        else:
-            tmp=tmp-A[pos-N-1]+A[pos+N]
-        B[pos]=tmp/(2*N+1)
-        if B[pos]==0:
-            B[pos]=1
-    return B[N:-N]
 
 def station_list(station):
     """
@@ -737,17 +832,17 @@ def running_abs_mean(x, N):
     :type x:`~numpy.ndarray` 
     :type N: int
     :param N: Number of points to smooth over 
-    :returns: Array x, smoothed by running absolute mean of N pointsx
+    :returns: Array x, smoothed by running absolute mean of N points
     
     """
     ndim = x.ndim 
     if ndim == 1:
-        x = np.convolve(x, np.ones(N, ) / N)[(N - 1):]
-        #x = x / weights 
+        weights = np.convolve(np.abs(x), np.ones((N, )) / N)[(N - 1):]
+        x = x / weights 
     elif ndim == 2:
         for ii in range(x.shape[0]):
-            x[ii, :] = np.convolve(np.abs(x[ii, :]), np.ones((N, )) / N)[(N - 1):]
-            #x[ii, :] = x[ii, :] / weights
+            weights = np.convolve(np.abs(x[ii, :]), np.ones((N, )) / N)[(N - 1):]
+            x[ii, :] = x[ii, :] / weights
     return x
 
 def abs_max(arr):
@@ -1537,6 +1632,7 @@ def spect(tr,fmin = 0.1,fmax = None,wlen=10,title=None):
     plt.show()
 
 
+
 def NCF_denoising(img_to_denoise,Mdate,Ntau,NSV):
 
 	if img_to_denoise.ndim ==2:
@@ -1563,48 +1659,6 @@ def NCF_denoising(img_to_denoise,Mdate,Ntau,NSV):
 	return denoised_img
 
 
-def fortran_correlate(fft1, fft2, maxlag, dt, Nfft, method="cross-correlation"):
-    if fft1.ndim == 1:
-        axis = 0
-        nwin=1
-    elif fft1.ndim == 2:
-        axis = 1
-        nwin= int(fft1.shape[0])
-
-    t0=time.time()
-    corr=np.zeros(shape=(nwin,Nfft//2-1),dtype=np.complex64)
-    corr[:,:Nfft//2-1]  = np.conj(fft1) * fft2
-    #corr=dsp_fortran.correlate_decon(fft1,fft2,nwin,Nfft//2-1)
-
-    if method == 'deconv':
-        ind = np.where(np.abs(fft1)>0 )
-        smt = np.zeros(shape=(len(ind[0]),),dtype=np.float32)
-        smt=dsp_fortran.smooth_abs_mean(np.abs(fft1[ind]),int(len(ind[0])))
-        corr[ind] /= smt**2
-        t1=time.time()
-    elif method == 'coherence':
-        ind = np.where(np.abs(fft1)>0 )
-        corr[ind] /= running_abs_mean(np.abs(fft1[ind]),5)
-        ind = np.where(np.abs(fft2)>0 )
-        corr[ind] /= running_abs_mean(np.abs(fft2[ind]),5)
-    elif method == 'raw':
-        ind = 1
-    
-    corr[:,-(Nfft // 2)+1:] = np.flip(np.conj(corr[:,1:(Nfft//2)]),axis=axis) # fill in the complex conjugate
-    corr = np.real(np.fft.ifftshift(scipy.fftpack.ifft(corr, Nfft, axis=axis)))
-    t2=time.time()
-
-    tcorr = np.arange(-Nfft//2 + 1, Nfft//2)*dt
-    ind = np.where(np.abs(tcorr) <= maxlag)[0]
-    if axis == 1:
-        corr = corr[:,ind]
-    else:
-        corr = corr[ind]
-    tcorr=tcorr[ind]
-    t3=time.time()
-
-    print('it takes '+str(t1-t0)+' s '+str(t2-t1)+' s '+str(t3-t2)+' s')
-    return corr,tcorr    
 
 if __name__ == "__main__":
     pass
