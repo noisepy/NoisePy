@@ -42,6 +42,7 @@ prepro=False    # do you need to reprocess the data?
 to_whiten=False   # do you want to whiten the spectrum?
 time_norm=False
 rm_resp=True
+ftype='mseed'   # file data type
 down_sample=False
 pre_filt=[0.04,0.05,4,6]
 downsamp_freq=20
@@ -108,7 +109,7 @@ for ista in range (rank,splits+size-extra,size):
                 del sta
 
                 #---------make an inventory---------
-                inv1=noise_module.stats2inv(source1[0].stats)
+                inv1=noise_module.stats2inv(source1[0].stats,locs=locs)
 
                 #------------Pre-Processing-----------
                 source = obspy.Stream()
