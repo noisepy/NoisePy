@@ -93,7 +93,7 @@ for ista in range (rank,splits+size-extra,size):
             station = locs.iloc[ista]['station']
             network = locs.iloc[ista]['network']
             
-            tfiles = glob.glob(os.path.join(tdir[jj],'*'+station+'*.sac'))
+            tfiles = glob.glob(os.path.join(tdir[jj],'*'+station+'*.'+ftype))
             if len(tfiles)==0:
                 print(str(station)+' does not have sac file at '+str(tdir[jj]))
                 continue
