@@ -133,7 +133,7 @@ for ii in range(rank,splits+size-extra,size):
                             print('read S %6.4fs, smooth %6.4fs' % ((t2-t1), (t3-t2)))
 
                         #-----------now loop III of each receiver B----------
-                        for ireceiver in range(isource+1,len(sfiles)):
+                        for ireceiver in range(isource,len(sfiles)):
                             receiver = sfiles[ireceiver]
                             staR = receiver.split('/')[-1].split('.')[1]
                             netR = receiver.split('/')[-1].split('.')[0]
