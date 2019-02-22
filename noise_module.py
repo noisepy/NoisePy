@@ -1,7 +1,7 @@
 import os
 import glob
 import itertools
-from datetime import datetime
+import datetime as datetime
 import copy
 import time
 #import dsp_fortran
@@ -158,9 +158,39 @@ def process_raw(st,downsamp_freq):
         if tr.data.dtype != 'float64':
             tr.data = tr.data.astype(np.float64)
     
-    #st.merge(method=1,fille_value=0.)[0]
+    st = clean_timerange2day(st)
 
     return st
+
+def clean_timerange2day(tr):
+    """
+    Cut all data to fit the start and end time\n
+    If there is no common time range an exception is raised.\n  
+    Fill with zeros to match start and end times.\n
+    Data is merged into a single trace. \n
+
+    .. rubric:: Basic Usage
+    >>>  st_sliced = clean_timerange(st)
+    
+    :rtype: :class: `~obspy.core.stream`
+    :returns: stream merged and cleaned    
+    """
+    
+    starttime=obspy.UTCDateTime(tr[0].stats.starttime.year,tr[0].stats.starttime.month,tr[0].stats.starttime.day,0,0,0)    
+    tr.merge(method=1, fill_value='interpolate')
+    tr.trim(starttime=starttime,endtime=starttime+datetime.timedelta(days=1))
+    Npts=int(86400./tr[0].stats.delta)
+    for st in tr:
+        #print(st.stats.starttime)
+        Istart =int( (st.stats.starttime-starttime)/st.stats.delta) # data starts after midnight
+        Iend   =Npts-int( ((starttime+datetime.timedelta(days=1))-st.stats.endtime)/st.stats.delta) # data ends before midnight.
+        D=np.zeros(Npts)
+        D[Istart-1:Iend]=st.data
+        st.data=np.zeros(len(D))
+        st.data=D
+        st.stats.starttime=starttime
+    return tr
+
 
 def clean_up(corr,sampling_rate,freqmin,freqmax):
     if corr.ndim == 2:
