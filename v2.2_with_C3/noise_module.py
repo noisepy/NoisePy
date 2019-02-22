@@ -322,8 +322,8 @@ def get_station_pairs(sta):
     works same way as the function of itertools
     '''
     pairs=[]
-    for ii in range(len(sta)-1):
-        for jj in range(ii+1,len(sta)):
+    for ii in range(len(sta)):
+        for jj in range(ii,len(sta)):
             pairs.append((sta[ii],sta[jj]))
     return pairs
 
