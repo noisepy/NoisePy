@@ -1,6 +1,0 @@
-obspy
-scipy
-numpy
-pyasdf
-pandas
-mpi4py

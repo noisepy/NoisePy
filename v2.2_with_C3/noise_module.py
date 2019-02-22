@@ -1,7 +1,7 @@
 import os
 import glob
 import math
-from datetime import datetime
+import datetime
 import copy
 import time
 import matplotlib.pyplot as plt
@@ -196,6 +196,39 @@ def process_raw(st,downsamp_freq):
 
     return st
 
+def make_stationlist_CSV(inv,path):
+    '''
+    subfunction to output the station list into a CSV file
+    inv: inventory information passed from IRIS server
+    '''
+    #----to hold all variables-----
+    netlist = []
+    stalist = []
+    lonlist = []
+    latlist = []
+    elvlist = []
+
+    #-----silly inventory structures----
+    nnet = len(inv)
+    for ii in range(nnet):
+        net = inv[ii]
+        nsta = len(net)
+        for jj in range(nsta):
+            sta = net[jj]
+            netlist.append(net.code)
+            stalist.append(sta.code)
+            lonlist.append(sta.longitude)
+            latlist.append(sta.latitude)
+            elvlist.append(sta.elevation)
+
+    #------------dictionary for a pandas frame------------
+    dict = {'network':netlist,'station':stalist,'latitude':latlist,'longitude':lonlist,'elevation':elvlist}
+    locs = pd.DataFrame(dict)
+
+    #----------write into a csv file---------------            
+    locs.to_csv(os.path.join(path,'locations.txt'),index=False)
+
+
 def resp_spectrum(source,resp_dir,downsamp_freq,sta):
     '''
     remove the instrument response with response spectrum from evalresp.
@@ -231,13 +264,39 @@ def resp_spectrum(source,resp_dir,downsamp_freq,sta):
 
 def get_event_list(str1,str2):
     '''
+    return the event list in the formate of 2010_01_01 by taking
+    advantage of the datetime modules
+    
+    str1: string of starting date -> 2010_01_01
+    str2: string of ending date -> 2010_10_11
+    '''
+    event = []
+    date1=str1.split('_')
+    date2=str2.split('_')
+    y1=int(date1[0])
+    m1=int(date1[1])
+    d1=int(date1[2])
+    y2=int(date2[0])
+    m2=int(date2[1])
+    d2=int(date2[2])
+    
+    d1=datetime.datetime(y1,m1,d1)
+    d2=datetime.datetime(y2,m2,d2)
+    dt=datetime.timedelta(days=1)
+
+    while(d1<=d2):
+        event.append(d1.strftime('%Y_%m_%d'))
+        d1+=dt
+    
+    return event
+
+def get_event_list_silly_version(str1,str2):
+    '''
     return the event list in the formate of 2010_01_01, as used
     in the path variables of the ASDF files for each station
     
-    y1: integer, the starting year
-    m1: integer, the starting month
-    y2: integer, the ending year
-    m2; integer, the ending month
+    str1: string of starting date -> 2010_01_01
+    str2: string of ending date -> 2010_10_11
     '''
 
     event = []
@@ -281,7 +340,7 @@ def get_event_list(str1,str2):
                 else:
                     b1,b2=1,days
                 
-                for iday in range(b1,b2):
+                for iday in range(b1,b2+1):
                     temp = str('%04d_%02d_%02d' % (year,month,iday))
                     event.append(temp)
     else:
@@ -322,8 +381,8 @@ def get_station_pairs(sta):
     works same way as the function of itertools
     '''
     pairs=[]
-    for ii in range(len(sta)):
-        for jj in range(ii,len(sta)):
+    for ii in range(len(sta)-1):
+        for jj in range(ii+1,len(sta)):
             pairs.append((sta[ii],sta[jj]))
     return pairs
 

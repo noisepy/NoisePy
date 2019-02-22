@@ -4,8 +4,11 @@ and save the data into ASDF data format.
 
 author: Marine Denolle (mdenolle@fas.harvard.edu) - 11/16/18
 
-modified by Chengxin Jiang on Feb.2019 to make it flexiable for downloading 
-data in a range of days instead of a whole year
+modified by Chengxin Jiang on Feb.18.2019 to make it flexiable for downloading 
+data in a range of days instead of a whole year.
+
+add a subfunction to output the station list to a CSV file and indicate the
+provenance of the downloaded ASDF files. (Feb.22.2019)
 """
 
 ## download modules
@@ -27,25 +30,47 @@ pre_filt = [0.0005, 0.001, 40,50]               # some broadband filtering      
 lamin,lomin,lamax,lomax=42,-122,50,-120         # regional box: min lat, min lon, max lat, max lon
 chan='BHZ'                                      # channel to download 
 net="TA"                                        # network to download
-sta="F05D"                                      # station to download
-remove_response=True                            # boolean to remove instrumental response
+sta="*"                                         # station to download
 start_date = '2012_01_01'
 end_date   = '2012_01_10'
-flag = False
+
+pre_processing=True
+remove_response=True                            # boolean to remove instrumental response
+output_CSV=True                                 # output station.list to a CSV file to be used in later stacking steps
+flag = False                                    # print progress when running the script
+
+#---provence of the data in ASDF files--
+if remove_response and pre_processing:
+    tags = 'preprocessed_responses_removed'
+elif remove_response:
+    tags = 'responses_removed'
+elif pre_processing:
+    tags = 'preprocessed'
+else:
+    tags = 'raw-recordings'
 
 #----check whether folder exists------
 if not os.path.isdir(direc):
     os.mkdir(direc)
 
-# initialize
+#-------initialize time information------
 starttime=obspy.UTCDateTime(int(start_date[:4]),int(start_date[5:7]),int(start_date[8:]))       
-endtime=obspy.UTCDateTime(int(end_date[:4]),int(end_date[5:7]),int(end_date[8:]))            
-inv = client.get_stations(network=net, station=sta, channel=chan, location='*', \
-    starttime = starttime, endtime=endtime,minlatitude=lamin, maxlatitude=lamax, \
-    minlongitude=lomin, maxlongitude=lomax,level="response")
-    
+endtime=obspy.UTCDateTime(int(end_date[:4]),int(end_date[5:7]),int(end_date[8:]))
+
+#-----in case there are no data here------
+try:
+    inv = client.get_stations(network=net, station=sta, channel=chan, location='*', \
+        starttime = starttime, endtime=endtime,minlatitude=lamin, maxlatitude=lamax, \
+        minlongitude=lomin, maxlongitude=lomax,level="response")
+except Exception as e:
+    print('Abort! '+type(e))
+    exit()
+
 if flag:
     print(inv)
+
+if output_CSV:
+    noise_module.make_stationlist_CSV(inv,direc)
 
 # loop through networks
 for K in inv:
@@ -96,11 +121,12 @@ for K in inv:
                     continue
                     
                 # clean up data
-                tr = noise_module.process_raw(tr, NewFreq)
+                if pre_processing:
+                    tr = noise_module.process_raw(tr, NewFreq)
 
                 # add data to H5 file
                 tr[0].data = tr[0].data.astype(np.float32)
-                ds.add_waveforms(tr,tag="raw_recordings")
+                ds.add_waveforms(tr,tag=tags)
 
                 if flag:
                     print(ds) # sanity check

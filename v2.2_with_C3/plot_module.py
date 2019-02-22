@@ -1,6 +1,9 @@
+import os
+import glob
 import pyasdf
 import numpy as np
 import matplotlib.pyplot as plt
+from obspy.signal.filter import bandpass
 
 '''
 the main purpose of this module is to assemble short functions
@@ -67,3 +70,49 @@ def plot_c1_waveform(sfile,sta1,sta2,comp1,comp2):
     this script plots the cross-correlation functions for the station pair of sta1-sta2
     and component 1 and component 2
     '''
+
+
+import pandas as pd
+
+
+freqmin=0.15
+freqmax=0.5
+maxlag = 180
+c2_maxlag = 1800
+dt = 0.02
+locations = '/mnt/data1/JAKARTA/locations.txt'
+locs = pd.read_csv(locations)
+sta  = list(locs.iloc[:]['station'])
+
+#-------time axis-------
+tt = np.arange(-maxlag/dt, maxlag/dt+1)*dt
+tt_c2 = np.arange(-c2_maxlag/dt, c2_maxlag/dt+1)*dt
+ind   = np.where(abs(tt_c2)<=-tt[0])[0]
+c3_waveform = np.zeros(tt.shape,dtype=np.float32)
+c2_waveform = np.zeros(tt_c2.shape,dtype=np.float32)
+
+CCFDIR = '/mnt/data1/JAKARTA/CCF'
+Cfiles = sorted(glob.glob(os.path.join(CCFDIR,'*.h5')))
+for c2file in Cfiles:
+    print(c2file)
+    ds_c2 = pyasdf.ASDFDataSet(c2file,mode='r')
+    data_type_c2 = ds_c2.auxiliary_data.list()
+    print(ds_c2)
+    for ii in range(len(data_type_c2)):
+        path_c2 = ds_c2.auxiliary_data[data_type_c2[ii]].list()
+        for jj in range(len(path_c2)):
+            sta1 = data_type_c2[ii].split('s')[1]
+            sta2 = path_c2[jj].split('s')[1]
+            cmp1 = data_type_c2[ii].split('s')[2]
+            cmp2 = path_c2[jj].split('s')[2]
+            print(sta1,sta2,cmp1,cmp2)
+            c2_waveform = bandpass(ds_c2.auxiliary_data[data_type_c2[ii]][path_c2[jj]].data[:],freqmin,freqmax,1/dt, corners=4, zerophase=True)[ind]
+            dist=ds_c2.auxiliary_data[data_type_c2[ii]][path_c2[jj]].parameters['dist']
+            #c1_waveform = c2_waveform[ind]
+            #plt.subplot(211)
+            #plt.plot(c3_waveform)
+            #plt.subplot(212)
+            plt.plot(tt,c2_waveform/np.max(np.abs(c2_waveform))+dist)
+            plt.title(sta1+" "+cmp1)
+            plt.legend(sta2,loc='upper right')
+        plt.show()
