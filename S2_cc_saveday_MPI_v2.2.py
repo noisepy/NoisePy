@@ -13,19 +13,19 @@ from mpi4py import MPI
 
 
 '''
-this script uses the day as the outmost loop and then computes the cross-correlations between each station-pair at 
-that day for overlapping time window.
+this script loop through the days by using MPI and compute cross-correlation functions for each station-pair at that
+day when there are overlapping time windows. (Nov.09.2018)
 
-implemented with MPI (Nov.09.2018)
+optimized to run ~5 times faster by 1) making smoothed spectrum of the source outside of the receiver loop; 2) taking 
+advantage of the linearality of ifft to average the spectrum first before doing ifft in cross-correlaiton functions, 
+and 3) sacrifice storage (by 1.5 times) to improve the I/O speed (by 4 times). 
+Thanks to Zhitu Ma for thoughtful discussions.  (Jan,28,2019)
 
-this optimized version runs 5 times faster than the previous one by 1) pulling the prcess of making smoothed spectrum
-of the source outside of the receiver loop, 2) take advantage the linear relationship of ifft to average the spectrum
-first before doing ifft in cross-correlaiton functions and 3) sacrifice the disk memory (by 1.5 times) to improve the 
-I/O speed (by 4 times)  (Jan,28,2019)
+new updates include 1) remove the need of input station.lst by listing available HDF5 files, 2) make use of the inventory
+for lon, lat information, 3) add new parameters to HDF5 files needed for later CC steps and 4) make data_types and paths
+in the same format (Feb.15.2019). 
 
-updates include 1) remove the input file of station list by looping through all stations according to H5 file list, 
-2) make use of the inventory information for lon,lat instead of from the station list, 3) add new parameters to the 
-output H5 files for later CC steps and 4) make same type of data_types and paths list (Feb,15,2019)
+add the functionality of auto-correlations (Feb.22.2019). Note that the auto-cc is normalizing each station to its Z comp.
 '''
 
 ttt0=time.time()
@@ -35,11 +35,13 @@ ttt0=time.time()
 #STACKDIR = '/n/flashlfs/mdenolle/KANTO/DATA/STACK'
 #locations = '/n/home13/chengxin/cases/KANTO/locations_small.txt'
 
-FFTDIR = '/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/FFT'
-CCFDIR = '/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/check_again/CCF'
+rootpath = '/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO'
+FFTDIR = os.path.join(rootpath,'FFT')
+CCFDIR = os.path.join(rootpath,'check_again/CCF')
 
 #-----some control parameters------
 flag=False              #output intermediate variables and computing times
+auto_corr=True
 smooth_N=10             #window length for smoothing the spectrum amplitude
 downsamp_freq=20
 dt=1/downsamp_freq
@@ -50,12 +52,14 @@ method='deconv'
 start_date = '2010_01_01'
 end_date   = '2010_01_01'
 
+if auto_corr and method=='coherence':
+    raise ValueError('Please set method to decon: coherence cannot be applied when auto_corr is wanted!')
+
 #---------MPI-----------
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
 #-----------------------
-
 
 #-------form a station pair to loop through-------
 if rank ==0:
@@ -98,6 +102,10 @@ for ii in range(rank,splits+size-extra,size):
                 #----loop II of each component for source A------
                 data_types_s = fft_ds_s.auxiliary_data.list()
                 
+                #---assume Z component lists the last in data_types of [E,N,Z/U]-----
+                if auto_corr:
+                    auto_source = data_types_s[-1]
+                
                 for icompS in range(len(data_types_s)):
                     if flag:
                         print("reading source %s for day %s" % (staS,icompS))
@@ -119,11 +127,27 @@ for ii in range(rank,splits+size-extra,size):
                         t2=time.time()
                         #-----------get the smoothed source spectrum for decon later----------
                         if method == 'deconv':
-                            temp = noise_module.moving_ave(np.abs(fft1.reshape(fft1.size,)),smooth_N)
-                            sfft1 = np.conj(fft1.reshape(fft1.size,))/temp**2
+
+                            #-----normalize single-station cc to z component-----
+                            if auto_corr:
+                                fft_temp = fft_ds_s.auxiliary_data[auto_source][paths].data[:,:Nfft//2]
+                                temp     = noise_module.moving_ave(np.abs(fft_temp.reshape(fft_temp.size,)),smooth_N)
+                            else:
+                                temp = noise_module.moving_ave(np.abs(fft1.reshape(fft1.size,)),smooth_N)
+
+                            #--------think about how to avoid temp==0-----------
+                            try:
+                                sfft1 = np.conj(fft1.reshape(fft1.size,))/temp**2
+                            except Exception as e:
+                                print(type(e))
+
                         elif method == 'coherence':
                             temp = noise_module.moving_ave(np.abs(fft1.reshape(fft1.size,)),smooth_N)
-                            sfft1 = np.conj(fft1.reshape(fft1.size,))/temp
+                            try:
+                                sfft1 = np.conj(fft1.reshape(fft1.size,))/temp
+                            except Exception as e:
+                                print(type(e))
+
                         elif method == 'raw':
                             sfft1 = fft1
                         sfft1 = sfft1.reshape(Nseg,Nfft//2)
@@ -132,8 +156,8 @@ for ii in range(rank,splits+size-extra,size):
                         if flag:
                             print('read S %6.4fs, smooth %6.4fs' % ((t2-t1), (t3-t2)))
 
-                        #-----------now loop III of each receiver B----------
-                        for ireceiver in range(isource+1,len(sfiles)):
+                        #-----------now loop III for each receiver B----------
+                        for ireceiver in range(isource,len(sfiles)):
                             receiver = sfiles[ireceiver]
                             staR = receiver.split('/')[-1].split('.')[1]
                             netR = receiver.split('/')[-1].split('.')[0]
