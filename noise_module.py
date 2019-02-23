@@ -135,7 +135,7 @@ def stats2inv(stats,resp=None,filexml=None,locs=None):
 
     return inv        
 
-def process_raw(st,downsamp_freq):
+def process_raw(st,starttime,downsamp_freq):
     """
     Pre-process month-long stream of data. 
     Checks:
@@ -191,14 +191,14 @@ def process_raw(st,downsamp_freq):
         if tr.data.dtype != 'float64':
             tr.data = tr.data.astype(np.float64)
 
-    st = clean_timerange2day(st)
+    st = clean_timerange2day(st,starttime)
     #st.merge(method=1,fille_value=0.)[0]
 
     return st
 
-def clean_timerange2day(tr):
+def clean_timerange2day(tr,starttime):
     """
-    Cut all data to fit the start and end time. 
+    Cut all data to fit exactly start time + 1 day.
     If there is no common time range an exception is raised. 
     Fill with zeros to match start and end times.
     Data is merged into a single trace.
@@ -207,7 +207,7 @@ def clean_timerange2day(tr):
     :returns: stream merged and cleaned    
     """
 
-    starttime=obspy.UTCDateTime(tr[0].stats.starttime.year,tr[0].stats.starttime.month,tr[0].stats.starttime.day,0,0,0)    
+    #starttime=obspy.UTCDateTime(tr[0].stats.starttime.year,tr[0].stats.starttime.month,tr[0].stats.starttime.day,0,0,0)    
     tr.merge(method=1, fill_value='interpolate')
     tr.trim(starttime=starttime,endtime=starttime+datetime.timedelta(days=1))
     Npts=int(86400./tr[0].stats.delta)
