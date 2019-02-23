@@ -114,8 +114,8 @@ for K in inv:
                 try:
                     # get data
                     tr = client.get_waveforms(network=K.code, station=sta.code, channel=chan.code, location='*', \
-                        starttime = t1, endtime=t2, attach_response=True)
-
+                        starttime = t1-180, endtime=t2+180, attach_response=True)
+                    # comment from Marine: request data with extra time series to cut edges effects during pre processing
                 except Exception as e:
                     print(e)
                     continue
