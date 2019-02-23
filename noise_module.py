@@ -191,6 +191,7 @@ def process_raw(st,downsamp_freq):
         if tr.data.dtype != 'float64':
             tr.data = tr.data.astype(np.float64)
 
+    st = clean_timerange2day(st)
     #st.merge(method=1,fille_value=0.)[0]
 
     return st
