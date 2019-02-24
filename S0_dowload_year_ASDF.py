@@ -122,7 +122,7 @@ for K in inv:
                     
                 # clean up data
                 if pre_processing:
-                    tr = noise_module.process_raw(tr, NewFreq)
+                    tr = noise_module.process_raw(tr,starttime=t1, NewFreq)
 
                 # add data to H5 file
                 tr[0].data = tr[0].data.astype(np.float32)
