@@ -21,7 +21,7 @@ import pyasdf
 import numpy as np
 
 
-direc="/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/data_download"
+direc="/Users/chengxin/Documents/Harvard/code_develop/data_download"
 
 ## download parameters
 client = Client('IRIS')                         # client
@@ -29,22 +29,24 @@ NewFreq = 10                                    # resampling at X samples per se
 pre_filt = [0.0005, 0.001, 40,50]               # some broadband filtering                                    # year of data
 lamin,lomin,lamax,lomax=42,-122,50,-120         # regional box: min lat, min lon, max lat, max lon
 chan='BHZ'                                      # channel to download 
-net="TA"                                        # network to download
-sta="*"                                         # station to download
-start_date = '2012_01_01'
-end_date   = '2012_01_10'
+net="XD"                                        # network to download
+sta="MD12"                                         # station to download
+start_date = '2016_07_14'
+end_date   = '2016_07_15'
 
-pre_processing=True
-remove_response=True                            # boolean to remove instrumental response
+prepro  = True
+checkt  = True
+resp    = True                                  # boolean to remove instrumental response
+resp_type = "spectrum"
 output_CSV=True                                 # output station.list to a CSV file to be used in later stacking steps
 flag = False                                    # print progress when running the script
 
 #---provence of the data in ASDF files--
-if remove_response and pre_processing:
-    tags = 'preprocessed_responses_removed'
-elif remove_response:
-    tags = 'responses_removed'
-elif pre_processing:
+if resp and prepro:
+    tags = 'prepro_resp'
+elif resp:
+    tags = 'resp_removed'
+elif prepro:
     tags = 'preprocessed'
 else:
     tags = 'raw-recordings'
@@ -114,20 +116,23 @@ for K in inv:
                 try:
                     # get data
                     tr = client.get_waveforms(network=K.code, station=sta.code, channel=chan.code, location='*', \
-                        starttime = t1-180, endtime=t2+180, attach_response=True)
-                    # comment from Marine: request data with extra time series to cut edges effects during pre processing
+                        starttime = t1, endtime=t2, attach_response=True)
+
                 except Exception as e:
                     print(e)
                     continue
                     
-                # clean up data
-                if pre_processing:
-                    tr = noise_module.process_raw(tr,starttime=t1, NewFreq)
+                if len(tr):
+                    # clean up data
+                    tr = noise_module.process_raw_v1(tr,NewFreq,prepro,checkt,resp,resp_type)
 
-                # add data to H5 file
-                tr[0].data = tr[0].data.astype(np.float32)
-                ds.add_waveforms(tr,tag=tags)
+                    # only keep the one with good data after processing
+                    if len(tr):
 
-                if flag:
-                    print(ds) # sanity check
+                        # add data to H5 file
+                        tr[0].data = tr[0].data.astype(np.float32)
+                        ds.add_waveforms(tr,tag=tags)
+
+                    if flag:
+                        print(ds) # sanity check
 
