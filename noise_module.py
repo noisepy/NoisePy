@@ -135,7 +135,7 @@ def stats2inv(stats,resp=None,filexml=None,locs=None):
 
     return inv        
 
-def process_raw(st,starttime,downsamp_freq):
+def process_raw(st,starttime=None,downsamp_freq):
     """
     Pre-process month-long stream of data. 
     Checks:
@@ -191,8 +191,8 @@ def process_raw(st,starttime,downsamp_freq):
         if tr.data.dtype != 'float64':
             tr.data = tr.data.astype(np.float64)
 
-    st = clean_timerange2day(st,starttime)
-    #st.merge(method=1,fille_value=0.)[0]
+    if starttime is not None:
+    	st = clean_timerange2day(st,starttime)
 
     return st
 
