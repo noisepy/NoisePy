@@ -14,7 +14,7 @@ from scipy.fftpack import fft,ifft,next_fast_len
 from scipy.signal import butter, lfilter, tukey, hilbert, wiener
 from scipy.linalg import svd
 from scipy.ndimage import map_coordinates
-from obspy.signal.filter import bandpass
+from obspy.signal.filter import bandpass,lowpass
 import obspy
 from obspy import read_inventory
 from obspy.core import AttribDict
@@ -192,71 +192,133 @@ def process_raw(st,downsamp_freq):
 
     return st
 
-def process_raw_v1(st,downsamp_freq,prepro=True,clean_time=True,resp=False,resp_option='inv'):
+def portion_gaps(stream):
     '''
-    pre-process daily stream of data from IRIS server.
-    think about how to merge with the function to pre-process existing SAC/miniseed data
+    get the accumulated gaps (npts) by taking advantage of the stream function 
+    of get_gaps. remove it if gap length is more than 50% of the trace size 
+    '''
+    pgaps=0
+    npts = (stream[-1].stats.endtime-stream[0].stats.starttime)*stream[0].stats.sampling_rate
 
-    pre-processing steps include:
+    #----gaps_info contain all gap information----
+    gaps_info = stream.get_gaps()
+
+    if len(gaps_info)==0:
+        return pgaps
+    else:
+        for ii in range(len(gaps_info)):
+            pgaps += int(gaps_info[ii][-1])
+
+    return pgaps/npts
+
+def preprocess_raw(st,downsamp_freq,clean_time=True,pre_filt=None,resp=None,respdir=None):
+    '''
+    pre-process daily stream of data from IRIS server, including:
+
         - check sample rate is matching (from original process_raw)
-        - Trims data to first and last day of month, so it equals to 86400 seconds long
-        - interpolate the data and make it start at 00:00:00.000
-        - check for gaps in data and remove the ones when gaps > 30% of total length 
-        - downsamples data        (from original process_raw)
-    removes instrument response (several options: a-from inverntory,b-spectrum,c-using
-        full RESP files,d-pole zeros
+        - remove small traces (from original process_raw)
+        - remove trend and mean of each trace
+        - interpolated to ensure all samples are at interger times of the sampling rate
+        - low pass and downsample the data  (from original process_raw)
+        - remove instrument response according to the option of resp_option. 
+            "inv" -> using inventory information and obspy function of remove_response;
+            "spectrum" -> use downloaded response spectrum and interpolate if necessary
+            "polezeros" -> use the pole zeros for a crude correction of response
+        - trim data to a day-long sequence and interpolate it to ensure starting at 00:00:00.000
     '''
-    
-    if prepro:
 
-        #----remove the ones with too many segments------
-        if len(st) > 50:
-            print('Too many traces in Stream: Continue!')
-            st=[]
-            return st
+    #----remove the ones with too many segments and gaps------
+    if len(st) > 100 or portion_gaps(st) > 0.5:
+        print('Too many traces or gaps in Stream: Continue!')
+        st=[]
+        return st
 
-        #----check sampling rate, trace length and make downsampling----
-        st = check_sample(st)
-        st = remove_small_traces(st)
-        st = downsample(st,downsamp_freq)
-                
-        if len(st) == 0:
-            print('No traces in Stream: Continue!')
-            return st
+    #----check sampling rate and trace length----
+    st = check_sample(st)
+            
+    if len(st) == 0:
+        print('No traces in Stream: Continue!')
+        return st
 
-        #-----remove mean and trend for each trace------
-        for tst in st:
-            tst.detrend(type="constant")
-            tst.detrend(type="linear") 
+    #-----remove mean and trend for each trace before merge------
+    for tst in st:
+        tst.detrend(type="constant")
+        tst.detrend(type="linear")
+
+        #-------when starttimes are between sampling points-------
+        delta= tst.stats.delta
+        fric = (tst.stats.starttime.microsecond/1E6)
+        fric = fric%delta
+        if fric:
+            tst.data = segment_interpolate(np.float32(tst.data),float(fric/delta))
+            #--reset the time to remove the discrepancy---
+            tst.stats.starttime-=fric
+
+    ##############################################################
+    #---interpolate is dangerous here for traces with long-gaps---
+    ##############################################################
+    st.merge(method=1,fill_value='interpolate')
+    sps = st[0].stats.sampling_rate
+
+    if abs(downsamp_freq-sps) > 1E-4:
+        #-----low pass filter with corner frequency = 0.9*Nyquist frequency----
+        #st[0].data = lowpass(st[0].data,freq=0.4*sps,df=sps,corners=4,zerophase=True)
+        st[0].data = bandpass(st[0].data,fmin=0.01,fmax=0.4*sps,df=sps,corners=4,zerophase=True)
+
+        #----make downsampling------
+        st.interpolate(downsamp_freq,method='weighted_average_slopes')
+
+    station = st[0].stats.station
+    #-----check whether file folder exists-------
+    if resp is not None:
+        if resp != 'inv':
+            if (respdir is None) or (not os.path.isdir(respdir)):
+                raise ValueError('response file folder not found! abort!')
+
+        if resp == 'inv':
+            #----check whether inventory is attached----
+            inv = resp
+            if not inv:
+                raise ValueError('no response found in the inventory! abort!')
+            else:
+                st.remove_response(output="VEL",pre_filt=pre_filt,water_level=60)
+
+        elif resp == 'spectrum':
+            print('remove using spectrum')
+            specfile = glob.glob(os.path.join(respdir,'*'+station+'*'))
+            st = resp_spectrum(st[0],specfile,downsamp_freq)
+
+        elif resp == 'RESP_files':
+            print('using RESP files')
+            seedresp = glob.glob(os.path.join(respdir,'RESP.'+station+'*'))
+            st.simulate(paz_remove=None,pre_filt=pre_filt,seedresp=seedresp)
+
+        elif resp == 'polozeros':
+            print('using polos and zeros')
+            paz_sts = glob.glob(os.path.join(respdir,'*'+station+'*'))
+            st.simulate(paz_remove=paz_sts,pre_filt=pre_filt)
+
+        else:
+            raise ValueError('no such option of resp in preprocess_raw! please double check!')
 
     #-----fill gaps, trim data and interpolate to ensure all starts at 00:00:00.0------
     if clean_time:
-        nst = clean_daily_segment(st)
+        st = clean_daily_segments(st)
 
-    if resp:
+    return st
 
-        #-----using inventory information------
-        if resp_option == 'inv':
-            nst[0].data=remove_resp(source[0].data,source.stats)
 
-        #------based on instrument spectrum------
-        elif resp_option == 'spectrum':
-            if not os.path.isdir(resp_dir):
-                raise IOError ('repsonse spectrum folder %s not exist' % resp_dir)
-
-            if nst[0].stats.npts!=downsamp_freq*24*cc_len:
-                print('Next! Extraced response file not match SAC file length')
-                continue
-
-            nst = resp_spectrum(nst[0],resp_dir,downsamp_freq)
-
-    return nst
-
-@jit('float32[:](float64[:],float32)')
+@jit('float32[:](float32[:],float32)')
 def segment_interpolate(sig1,nfric):
     '''
-    interpolate the data according to fric to ensure all points stand on interger times
-    of sampling rate (e.g., starttime = 00:00:00.015, delta = 0.05.)
+    a sub-function of clean_daily_segments:
+
+    interpolate the data according to fric to ensure all points located on interger times of the
+    sampling rate (e.g., starttime = 00:00:00.015, delta = 0.05.)
+
+    input parameters:
+    sig1: float64 -> seismic recordings in a 1D array
+    nfric: float32 -> the amount of time difference between the point and the adjacent assumed samples
     '''
     npts = len(sig1)
     sig2 = np.zeros(npts,dtype=np.float32)
@@ -268,92 +330,47 @@ def segment_interpolate(sig1,nfric):
 
     return sig2
 
-def clean_daily_segment(tr):
+def clean_daily_segments(tr):
     '''
-    subfunction to clean the daily recordings: 1) filling the gaps by
-    constructing a zeros array from 00:00:00.0 to 24:00:00.0, 2) removing
-    the ones with gaps >30% of the trace, 3) interpolate the segment to
-    ensure all samples are are interger times of sampling rate.
+    subfunction to clean the tr recordings. only the traces with at least 0.5-day long
+    sequence (respect to 00:00:00.0 of the day) is kept. note that the trace here could
+    be of several days recordings, so this function helps to break continuous chunck 
+    into a day-long segment from 00:00:00.0 to 24:00:00.0.
 
     tr: obspy stream object
     '''
-    #-----universal starting-ending time--------
+    #-----all potential-useful time information-----
     stream_time = tr[0].stats.starttime
-    starttime=obspy.UTCDateTime(stream_time.year,stream_time.month,stream_time.day,0,0,0)
-    
-    #-----construct a new array to store day-long data----
-    delta = tr[0].stats.delta
-    npts  = int(86400/delta)
-    tdata = np.zeros(npts,dtype=np.float32)
-    tindx = 0
-    ngaps = 0
+    time0 = obspy.UTCDateTime(stream_time.year,stream_time.month,stream_time.day,0,0,0)
+    time1 = obspy.UTCDateTime(stream_time.year,stream_time.month,stream_time.day,12,0,0)
+    time2 = time1+datetime.timedelta(hours=12)
 
-    #----go through each segment-----
-    for itr in tr:
+    #--only keep days with > 0.5-day recordings-
+    if stream_time <= time1:
+        starttime=time0
+    else:
+        starttime=time2
 
-        tnpts = itr.stats.npts
-        
-        #-----when first point is at a friction of the sampling rate-----
-        fric = (itr.stats.starttime.microsecond/1E6)
-        fric = fric%delta
-        if fric:
-            sdata = segment_interpolate(itr.data,fric/delta)
-        
-            #----reset the time by removing the sample-time discrepancy-----
-            itr.stats.starttime.microsecond-=int(fric*1E6)
-        else:
-            sdata = itr.data
-        
-        #--------find the index to be copied in tdata----------
-        indx1 = int((itr.stats.starttime-starttime)/delta)
-        indx2 = indx1+tnpts
-        ngaps += (indx1-tindx)
-        tdata[indx1:indx2]=sdata[:]
-        tindx = indx2
-    ngaps += (npts-indx2)
-
-    #----copy the data and status to a new stream-----
-    if ngaps < 0.3*npts:
-        ntr = obspy.Stream()
-        ntr.append(obspy.Trace())
-        ntr[0].stats = tr[0].stats
-        ntr[0].data  = tdata
-        ntr[0].stats.starttime = starttime
+    #-----ndays represents how many days from starttime to endtime----
+    ndays = round((tr[0].stats.endtime-starttime)/(time2-time0))
+    if ndays==0:
+        tr=[]
+        return tr
 
     else:
-        ntr=[]
-        print('more than 30 percentage gaps: all traces removed!')
+        #-----make a new stream------
+        ntr = obspy.Stream()
+        ttr = tr[0].copy()
+        #----trim a continous segment into day-long sequences----
+        for ii in range(ndays):    
+            tr[0] = ttr.copy()
+            endtime = starttime+datetime.timedelta(days=1)
+            tr[0].trim(starttime=starttime,endtime=endtime,pad=True,fill_value=0)
+
+            ntr.append(tr[0])
+            starttime = endtime
 
     return ntr
-
-def clean_timerange2day(tr):
-    """
-    Cut all data to fit the start and end time. 
-    If there is no common time range an exception is raised. 
-    Fill with zeros to match start and end times.
-    Data is merged into a single trace.
-    
-    :rtype: :class: `~obspy.core.stream`
-    :returns: stream merged and cleaned    
-    """
-    stream_time = tr[0].stats.starttime
-    starttime=obspy.UTCDateTime(stream_time.year,stream_time.month,stream_time.day,0,0,0)    
-    tr.merge(method=1, fill_value='interpolate')
-    tr.trim(starttime=starttime,endtime=starttime+datetime.timedelta(days=1))
-    Npts=int(86400./tr[0].stats.delta)
-    for st in tr:
-        #print(st.stats.starttime)
-        #-------this is only a crude correction----------
-        Istart =int( (st.stats.starttime-starttime)/st.stats.delta) # data starts after midnight
-        Iend   =Npts-int( ((starttime+datetime.timedelta(days=1))-st.stats.endtime)/st.stats.delta) # data ends before midnight.
-        D=np.zeros(Npts,dtype=np.float32)
-        D[Istart-1:Iend]=st.data
-        st.data=np.zeros(len(D))
-        st.data=D
-        st.stats.starttime=starttime
-        st.stats.npts=len(D)
-    
-    return tr
 
 def make_stationlist_CSV(inv,path):
     '''
@@ -388,37 +405,39 @@ def make_stationlist_CSV(inv,path):
     locs.to_csv(os.path.join(path,'locations.txt'),index=False)
 
 
-def resp_spectrum(source,resp_dir,downsamp_freq,sta):
+def resp_spectrum(source,resp_dir,downsamp_freq):
     '''
     remove the instrument response with response spectrum from evalresp.
     the response spectrum is evaluated based on RESP/PZ files and then 
     inverted using obspy function of invert_spectrum. they are stored as
     nyc file in directory of resp_dir. 
     '''
+    #--------get the station name------------
+    sta = source[2:4]
+
     #---------do the downsampling here--------
     if downsamp_freq != source.stats.sampling_rate:
         source = downsample(source,downsamp_freq)
     
     dt=1/source.stats.sampling_rate
 
-    #-----load the instrument response nyc file-----
+    #-----load the instrument response stored as resp.station.nyc in resp_dir-----
     resp_file = os.path.join(resp_dir,'resp.'+sta+'.npy')
     if not os.path.isfile(resp_file):
         print("no instrument response for "+sta)
         return
 
     respz = np.load(resp_file)
+    #----do interpolation if necessary-----
 
     #----------do fft now----------
     nfft = _npts2nfft(source.stats.npts)
     source_spect = np.fft.rfft(source.data,n=nfft)
 
-    fy = 1 / (dt * 2.0)
-    freq = np.linspace(0, fy, nfft // 2 + 1)
-
-    #-----apply a cosine taper to target freq-----
+    #-----respz is inversed (water-leveled) spectrum-----
     source_spect *=respz
     source.data = np.fft.irfft(source_spect)[0:source.stats.npts]
+
     return source
 
 def get_event_list(str1,str2):
