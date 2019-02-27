@@ -192,25 +192,6 @@ def process_raw(st,downsamp_freq):
 
     return st
 
-def portion_gaps(stream):
-    '''
-    get the accumulated gaps (npts) by taking advantage of the stream function 
-    of get_gaps. remove it if gap length is more than 50% of the trace size 
-    '''
-    pgaps=0
-    npts = (stream[-1].stats.endtime-stream[0].stats.starttime)*stream[0].stats.sampling_rate
-
-    #----gaps_info contain all gap information----
-    gaps_info = stream.get_gaps()
-
-    if len(gaps_info)==0:
-        return pgaps
-    else:
-        for ii in range(len(gaps_info)):
-            pgaps += int(gaps_info[ii][-1])
-
-    return pgaps/npts
-
 def preprocess_raw(st,downsamp_freq,clean_time=True,pre_filt=None,resp=None,respdir=None):
     '''
     pre-process daily stream of data from IRIS server, including:
@@ -228,7 +209,7 @@ def preprocess_raw(st,downsamp_freq,clean_time=True,pre_filt=None,resp=None,resp
     '''
 
     #----remove the ones with too many segments and gaps------
-    if len(st) > 100 or portion_gaps(st) > 0.5:
+    if len(st) > 100 or portion_gaps(st) > 0.3:
         print('Too many traces or gaps in Stream: Continue!')
         st=[]
         return st
@@ -240,35 +221,33 @@ def preprocess_raw(st,downsamp_freq,clean_time=True,pre_filt=None,resp=None,resp
         print('No traces in Stream: Continue!')
         return st
 
+    delta = st[0].stats.delta
     #-----remove mean and trend for each trace before merge------
-    for tst in st:
-        tst.detrend(type="constant")
-        tst.detrend(type="linear")
+    for ii in range(len(st)):
+        st[ii].data = scipy.signal.detrend(st[ii].data,type='constant')
+        st[ii].data = scipy.signal.detrend(st[ii].data,type='linear')
 
         #-------when starttimes are between sampling points-------
-        delta= tst.stats.delta
-        fric = (tst.stats.starttime.microsecond/1E6)
+        fric = (st[ii].stats.starttime.microsecond/1E6)
         fric = fric%delta
         if fric:
-            tst.data = segment_interpolate(np.float32(tst.data),float(fric/delta))
+            st[ii].data = segment_interpolate(np.float32(st[ii].data),float(fric/delta))
             #--reset the time to remove the discrepancy---
-            tst.stats.starttime-=fric
+            st[ii].stats.starttime-=fric
 
-    ##############################################################
-    #---interpolate is dangerous here for traces with long-gaps---
-    ##############################################################
-    st.merge(method=1,fill_value='interpolate')
+    st.merge(method=1,fill_value=0)
     sps = st[0].stats.sampling_rate
 
     if abs(downsamp_freq-sps) > 1E-4:
         #-----low pass filter with corner frequency = 0.9*Nyquist frequency----
-        #st[0].data = lowpass(st[0].data,freq=0.4*sps,df=sps,corners=4,zerophase=True)
-        st[0].data = bandpass(st[0].data,fmin=0.01,fmax=0.4*sps,df=sps,corners=4,zerophase=True)
+        st[0].data = lowpass(st[0].data,freq=0.4*downsamp_freq,df=sps,corners=4,zerophase=True)
+        #st[0].data = bandpass(st[0].data,fmin=0.01,fmax=0.4*downsamp_freq,df=sps,corners=4,zerophase=True)
 
         #----make downsampling------
         st.interpolate(downsamp_freq,method='weighted_average_slopes')
 
     station = st[0].stats.station
+
     #-----check whether file folder exists-------
     if resp is not None:
         if resp != 'inv':
@@ -277,25 +256,31 @@ def preprocess_raw(st,downsamp_freq,clean_time=True,pre_filt=None,resp=None,resp
 
         if resp == 'inv':
             #----check whether inventory is attached----
-            inv = resp
-            if not inv:
+            if not st[0].stats.response:
                 raise ValueError('no response found in the inventory! abort!')
             else:
+                print('removing response using inv')
                 st.remove_response(output="VEL",pre_filt=pre_filt,water_level=60)
 
         elif resp == 'spectrum':
-            print('remove using spectrum')
+            print('remove response using spectrum')
             specfile = glob.glob(os.path.join(respdir,'*'+station+'*'))
+            if len(specfile)==0:
+                raise ValueError('no response sepctrum found for %s' % station)
             st = resp_spectrum(st[0],specfile,downsamp_freq)
 
         elif resp == 'RESP_files':
             print('using RESP files')
             seedresp = glob.glob(os.path.join(respdir,'RESP.'+station+'*'))
+            if len(seedresp)==0:
+                raise ValueError('no RESP files found for %s' % station)
             st.simulate(paz_remove=None,pre_filt=pre_filt,seedresp=seedresp)
 
         elif resp == 'polozeros':
             print('using polos and zeros')
             paz_sts = glob.glob(os.path.join(respdir,'*'+station+'*'))
+            if len(paz_sts)==0:
+                raise ValueError('no polozeros found for %s' % station)
             st.simulate(paz_remove=paz_sts,pre_filt=pre_filt)
 
         else:
@@ -307,6 +292,26 @@ def preprocess_raw(st,downsamp_freq,clean_time=True,pre_filt=None,resp=None,resp
 
     return st
 
+def portion_gaps(stream):
+    '''
+    get the accumulated gaps (npts) by looking at the accumulated difference between starttime and endtime,
+    instead of using the get_gaps function of obspy object of stream. remove the trace if gap length is 
+    more than 30% of the trace size. remove the ones with sampling rate not consistent with max(freq) 
+    '''
+    #-----check the consistency of sampling rate----
+
+    pgaps=0
+    npts = (stream[-1].stats.endtime-stream[0].stats.starttime)*stream[0].stats.sampling_rate
+
+    if len(stream)==0:
+        return pgaps
+    else:
+
+        #----loop through all trace to find gaps----
+        for ii in range(len(stream)-1):
+            pgaps += (stream[ii+1].stats.starttime-stream[ii].stats.endtime)*stream[ii].stats.sampling_rate
+
+    return pgaps/npts
 
 @jit('float32[:](float32[:],float32)')
 def segment_interpolate(sig1,nfric):
@@ -317,18 +322,56 @@ def segment_interpolate(sig1,nfric):
     sampling rate (e.g., starttime = 00:00:00.015, delta = 0.05.)
 
     input parameters:
-    sig1: float64 -> seismic recordings in a 1D array
+    sig1:  float32 -> seismic recordings in a 1D array
     nfric: float32 -> the amount of time difference between the point and the adjacent assumed samples
     '''
     npts = len(sig1)
     sig2 = np.zeros(npts,dtype=np.float32)
 
     #----instead of shifting, do a interpolation------
-    for ii in range(npts-1):
-        sig2[ii]=sig1[ii]+nfric*(sig1[ii]-sig1[ii+1])
-    sig2[npts-1]=sig1[npts-1]
+    for ii in range(npts):
+
+        #----deal with edges-----
+        if ii==0 or ii==npts:
+            sig2[ii]=sig1[ii]
+        else:
+            #------interpolate using a hat function------
+            sig2[ii]=(1-nfric)*sig1[ii+1]+nfric*sig1[ii]
 
     return sig2
+
+
+def resp_spectrum(source,resp_file,downsamp_freq):
+    '''
+    remove the instrument response with response spectrum from evalresp.
+    the response spectrum is evaluated based on RESP/PZ files and then 
+    inverted using obspy function of invert_spectrum. 
+    '''
+    #--------resp_file is the inverted spectrum response---------
+    respz = np.load(resp_file)
+    nrespz= respz[0][:]
+    spec_freq = np.max(respz[0])
+
+    #-------on current trace----------
+    nfft = _npts2nfft(source.stats.npts)
+    sps  = source.stats.sample_rate
+
+    #---------do the interpolation if needed--------
+    if spec_freq < 0.5*sps:
+        raise ValueError('spectrum file has peak freq smaller than the data, abort!')
+    else:
+        indx = np.where(respz[0]<=0.5*sps)
+        nfreq = np.linspace(0,0.5*sps,nfft)
+        nrespz= np.interp(nfreq,respz[0][indx],respz[1][indx])
+        
+    #----do interpolation if necessary-----
+    source_spect = np.fft.rfft(source.data,n=nfft)
+
+    #-----nrespz is inversed (water-leveled) spectrum-----
+    source_spect *= nrespz
+    source.data = np.fft.irfft(source_spect)[0:source.stats.npts]
+
+    return source
 
 def clean_daily_segments(tr):
     '''
@@ -403,42 +446,6 @@ def make_stationlist_CSV(inv,path):
 
     #----------write into a csv file---------------            
     locs.to_csv(os.path.join(path,'locations.txt'),index=False)
-
-
-def resp_spectrum(source,resp_dir,downsamp_freq):
-    '''
-    remove the instrument response with response spectrum from evalresp.
-    the response spectrum is evaluated based on RESP/PZ files and then 
-    inverted using obspy function of invert_spectrum. they are stored as
-    nyc file in directory of resp_dir. 
-    '''
-    #--------get the station name------------
-    sta = source[2:4]
-
-    #---------do the downsampling here--------
-    if downsamp_freq != source.stats.sampling_rate:
-        source = downsample(source,downsamp_freq)
-    
-    dt=1/source.stats.sampling_rate
-
-    #-----load the instrument response stored as resp.station.nyc in resp_dir-----
-    resp_file = os.path.join(resp_dir,'resp.'+sta+'.npy')
-    if not os.path.isfile(resp_file):
-        print("no instrument response for "+sta)
-        return
-
-    respz = np.load(resp_file)
-    #----do interpolation if necessary-----
-
-    #----------do fft now----------
-    nfft = _npts2nfft(source.stats.npts)
-    source_spect = np.fft.rfft(source.data,n=nfft)
-
-    #-----respz is inversed (water-leveled) spectrum-----
-    source_spect *=respz
-    source.data = np.fft.irfft(source_spect)[0:source.stats.npts]
-
-    return source
 
 def get_event_list(str1,str2):
     '''

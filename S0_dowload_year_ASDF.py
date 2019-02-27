@@ -21,7 +21,7 @@ import pyasdf
 import numpy as np
 
 
-direc="/Users/chengxin/Documents/Harvard/code_develop/data_download"
+direc="/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/data_download"
 
 ## download parameters
 client = Client('IRIS')                         # client
@@ -31,23 +31,21 @@ lamin,lomin,lamax,lomax=42,-122,50,-120         # regional box: min lat, min lon
 chan='BHZ'                                      # channel to download 
 net="XD"                                        # network to download
 sta="MD12"                                         # station to download
-start_date = '2016_07_14'
+start_date = '2016_07_12'
 end_date   = '2016_07_15'
 
-prepro  = True
-checkt  = True
-resp    = True                                  # boolean to remove instrumental response
-resp_type = "spectrum"
+checkt  = True                                  # check for traces with points bewtween sample intervals
+resp    = 'inv'                                  # boolean to remove instrumental response
+respdir = 'resp_10hz'
+pre_filt = [0.04,0.05,4,5]
 output_CSV=True                                 # output station.list to a CSV file to be used in later stacking steps
-flag = False                                    # print progress when running the script
+flag = True                                    # print progress when running the script
 
 #---provence of the data in ASDF files--
-if resp and prepro:
-    tags = 'prepro_resp'
+if resp and checkt:
+    tags = 'time_resp'
 elif resp:
     tags = 'resp_removed'
-elif prepro:
-    tags = 'preprocessed'
 else:
     tags = 'raw-recordings'
 
@@ -96,43 +94,46 @@ for K in inv:
             all_days = noise_module.get_event_list(start_date,end_date)
 
             #---------loop through the days--------
-            for ii in range(len(all_days)-1):
-                day1  = all_days[ii]
-                day2  = all_days[ii+1]
-                year1 = int(day1[:4])
-                year2 = int(day2[:4])
-                mon1  = int(day1[5:7])
-                mon2  = int(day2[5:7])
-                iday1 = int(day1[8:]) 
-                iday2 = int(day2[8:])
+            #for ii in range(len(all_days)-1):
+            #day1  = all_days[ii]
+            #day2  = all_days[ii+1]
+            day1  = start_date
+            day2  = end_date
+            year1 = int(day1[:4])
+            year2 = int(day2[:4])
+            mon1  = int(day1[5:7])
+            mon2  = int(day2[5:7])
+            iday1 = int(day1[8:]) 
+            iday2 = int(day2[8:])
 
-                t1=obspy.UTCDateTime(year1,mon1,iday1)
-                t2=obspy.UTCDateTime(year2,mon2,iday2)
-                        
-                # sanity checks
-                if flag:
-                    print(K.code + "." + sta.code + "." + chan.code+' at '+str(t1)+'.'+str(t2))
-                
-                try:
-                    # get data
-                    tr = client.get_waveforms(network=K.code, station=sta.code, channel=chan.code, location='*', \
-                        starttime = t1, endtime=t2, attach_response=True)
-
-                except Exception as e:
-                    print(e)
-                    continue
+            t1=obspy.UTCDateTime(year1,mon1,iday1)
+            t2=obspy.UTCDateTime(year2,mon2,iday2)
                     
-                if len(tr):
-                    # clean up data
-                    tr = noise_module.process_raw_v1(tr,NewFreq,prepro,checkt,resp,resp_type)
+            # sanity checks
+            if flag:
+                print(K.code + "." + sta.code + "." + chan.code+' at '+str(t1)+'.'+str(t2))
+            
+            try:
+                # get data
+                tr = client.get_waveforms(network=K.code, station=sta.code, channel=chan.code, location='*', \
+                    starttime = t1, endtime=t2, attach_response=True)
 
-                    # only keep the one with good data after processing
-                    if len(tr):
+            except Exception as e:
+                print(e)
+                continue
+                
+            if len(tr):
+                # clean up data
+                tr = noise_module.preprocess_raw(tr,NewFreq,checkt,pre_filt,resp,respdir)
 
-                        # add data to H5 file
-                        tr[0].data = tr[0].data.astype(np.float32)
+                # only keep the one with good data after processing
+                if len(tr)>0:
+                    if len(tr)==1:
                         ds.add_waveforms(tr,tag=tags)
+                    else:
+                        for ii in range(len(tr)):
+                            ds.add_waveforms(tr[ii],tag=tags)
 
-                    if flag:
-                        print(ds) # sanity check
+                if flag:
+                    print(ds) # sanity check
 
