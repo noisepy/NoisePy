@@ -1,6 +1,7 @@
 import os
 import sys
 import glob
+from datetime import datetime
 import numpy as np
 import scipy
 from scipy.fftpack.helper import next_fast_len
@@ -15,41 +16,35 @@ from mpi4py import MPI
 
 '''
 this script pre-processs the noise data for each single station using the parameters given below 
-and stored the whitened and nomalized fft trace for each station in a HDF5 file as *.h5.
+and stored the whitened and nomalized fft trace for each station in ASDF format. 
+- C.Jiang, T.Clements, M.Denolle (Nov.09.2018)
 
-implemented with MPI (Nov.09.2018)
-by C.Jiang, T.Clements, M.Denolle
-
-updates to handle SAC, MiniSeed and ASDF formate inputs (Feb.20.2019). 
+updated to handle SAC, MiniSeed and ASDF formate inputs (Feb.20.2019). 
 '''
 
 t00=time.time()
-#------form the absolute paths-------
-#locations = '/n/home13/chengxin/cases/KANTO/locations.txt'
-#FFTDIR = '/n/flashlfs/mdenolle/KANTO/DATA/FFT/'
-#FFTDIR = '/n/regal/denolle_lab/cjiang/FFT'
-#event = '/n/flashlfs/mdenolle/KANTO/DATA/????/Event_????_???'
-#resp_dir = '/n/flashlfs/mdenolle/KANTO/DATA/resp'
 
-rootpath  = '/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO'
-FFTDIR = os.path.join(rootpath,'FFT/test')
-event = os.path.join(rootpath,'data_download/*.h5')
+#------absolute path parameters-------
+rootpath  = '/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/data_download'
+FFTDIR = os.path.join(rootpath,'FFT')
+event = os.path.join(rootpath,'*.h5')
+resp_dir = os.path.join(rootpath,'DATA/resp')
 
 #------input file types: make sure it is asdf--------
 asdf  = True
-tag   = 'raw_recordings'
 
 #-----some control parameters------
 prepro=False                #preprocess the data?
 to_whiten=False             #whiten the spectrum?
 time_norm=False             #normalize in time?
-flag=False                  #print intermediate variables and computing time
+flag=True                  #print intermediate variables and computing time
 
 #-----assume response has been removed in downloading process-----
-rm_resp_spectrum=False       #remove response using spectrum?
-rm_resp_inv=False           #remove response using inventory
+checkt  = True                                  # check for traces with points bewtween sample intervals
+resp    = 'inv'                                 # boolean to remove instrumental response
+respdir = 'resp_10hz'
 
-pre_filt=[0.04,0.05,4,6]
+pre_filt=[0.04,0.05,4,5]
 downsamp_freq=20
 dt=1/downsamp_freq
 cc_len=3600
@@ -70,8 +65,15 @@ if not asdf:
     raise ValueError('make sure the input files are in ASDF format!')
 
 if rank == 0:
+    #-----check whether dir exist----
+    if not os.path.isdir(FFTDIR):
+        os.mkdir(FFTDIR)
+
     #----define common variables----
     tdir = sorted(glob.glob(event))
+    if len(tdir)==0:
+        raise IOError('no available files for doing FFT')
+
     splits = len(tdir)
 else:
     splits,tdir = [None for _ in range(2)]
@@ -100,7 +102,6 @@ for ista in range (rank,splits+size-extra,size):
                     print("working on station %s " % station)
 
                 #------get traces and station inventory------
-                tfiles = ds.waveforms[temp[0]][tag]
                 inv1 = ds.waveforms[temp[0]]['StationXML']
                 if (not inv1[0][0].latitude) or (not inv1[0][0].longitude):
                     raise ValueError('no station information in inventory! double check!')
@@ -108,48 +109,33 @@ for ista in range (rank,splits+size-extra,size):
                 #---------construct a pd structure for fft_parameter functions later----------
                 locs = pd.DataFrame([[inv1[0][0].latitude,inv1[0][0].longitude,inv1[0][0].elevation]],\
                     columns=['latitude','longitude','elevation'])
+                
+                all_tags = ds.waveforms[temp[0]].get_waveform_tags()
 
-                #----loop through each channel----
-                for source in tfiles:
-                    comp = source.stats.channel
-                    
+                #----loop through each stream----
+                for itag in range(len(all_tags)):
+                                        
                     if flag:
-                        print("working on trace %s" % source)
+                        print("working on trace " + all_tags[itag])
+
+                    source = ds.waveforms[temp[0]][all_tags[itag]]
+                    comp = source[0].stats.channel
                     
                     if prepro:
+                        if all_tags[itag].split('_')[0] != 'raw':
+                            raise ValueError('it appears pre-processing has been performed!')
+
                         t0=time.time()
-                        source = noise_module.process_raw(source, downsamp_freq)
+                        source = noise_module.preprocess_raw(source,downsamp_freq,checkt,pre_filt,resp,respdir)
                         t1=time.time()
                         if flag:
                             print("prepro takes %f s" % (t1-t0))
                     
-                    #----remove instrument response using extracted files-----
-                    if rm_resp_spectrum:
-                        t0=time.time()
-                        if not os.path.isdir(resp_dir):
-                            raise IOError ('repsonse spectrum folder %s not exist' % resp_dir)
-
-                        if source.stats.npts!=downsamp_freq*24*cc_len:
-                            print('Next! Extraced response file not match SAC file length')
-                            continue
-
-                        source = noise_module.resp_spectrum(source,resp_dir,downsamp_freq,station)
-                        if not source:
-                            continue
-                        source.data=bandpass(source.data,freqmin,freqmax,downsamp_freq,corners=4,zerophase=False)
-                        t1=time.time()
-                        if flag:
-                            print("remove instrument takes %f s" % (t1-t0))
-                    
-                    #-----using inventory------
-                    elif rm_resp_inv:
-                        source.data=noise_module.remove_resp(source.data,source.stats,inv1)
-
                     #----------variables to define days with earthquakes----------
-                    all_madS = noise_module.mad(source.data)
-                    all_stdS = np.std(source.data)
+                    all_madS = noise_module.mad(source[0].data)
+                    all_stdS = np.std(source[0].data)
                     if all_madS==0 or all_stdS==0:
-                        print("continue! madS or stdS equeals to 0 for %s" %tfile)
+                        print("continue! madS or stdS equeals to 0 for %s" % source)
                         continue
 
                     trace_madS = []
@@ -160,7 +146,7 @@ for ista in range (rank,splits+size-extra,size):
 
                     #--------break a continous recording into pieces----------
                     t0=time.time()
-                    for ii,win in enumerate(source.slide(window_length=cc_len, step=step)):
+                    for ii,win in enumerate(source[0].slide(window_length=cc_len, step=step)):
                         win.detrend(type="constant")
                         win.detrend(type="linear")
                         trace_madS.append(np.max(np.abs(win.data))/all_madS)
@@ -170,6 +156,7 @@ for ista in range (rank,splits+size-extra,size):
                         win.taper(max_percentage=0.05,max_length=20)
                         source_slice.append(win)
                     del source
+                    
                     t1=time.time()
                     if flag:
                         print("breaking records takes %f s"%(t1-t0))
@@ -192,7 +179,6 @@ for ista in range (rank,splits+size-extra,size):
                         dataS[ii,0:nptsS[ii]] = trace.data
                         if ii==0:
                             dataS_stats=trace.stats
-
 
                     #------check the dimension of the dataS-------
                     if dataS.ndim == 1:
@@ -220,7 +206,7 @@ for ista in range (rank,splits+size-extra,size):
                         if norm_type == 'one_bit': 
                             white = np.sign(white)
                         elif norm_type == 'running_mean':
-                            white = noise_module.running_abs_mean(white,int(1 / freqmin / 2))
+                            white = noise_module.moving_ave(white,int(1 / freqmin / 2))
                         source_white = scipy.fftpack.fft(white, Nfft, axis=axis)
                         del white
                         t1=time.time()
@@ -230,10 +216,9 @@ for ista in range (rank,splits+size-extra,size):
                     #-------------save FFTs as HDF5 files-----------------
                     crap=np.zeros(shape=(N,Nfft//2),dtype=np.complex64)
                     fft_h5 = os.path.join(FFTDIR,network+'.'+station+'.h5')
-                    print(fft_h5,FFTDIR)
 
                     if not os.path.isfile(fft_h5):
-                        with pyasdf.ASDFDataSet(fft_h5,mpi=False,compression=None) as ds:
+                        with pyasdf.ASDFDataSet(fft_h5,mpi=False,compression=None) as fft_ds:
                             pass # create pyasdf file 
             
                     with pyasdf.ASDFDataSet(fft_h5,mpi=False,compression=None) as fft_ds:
@@ -245,13 +230,13 @@ for ista in range (rank,splits+size-extra,size):
                         path = savedate
 
                         data_type = str(comp)
-                        fft_ds.add_stationxml(inv1)
+                        if itag==0:
+                            fft_ds.add_stationxml(inv1)
                         crap[:,:Nfft//2]=source_white[:,:Nfft//2]
                         fft_ds.add_auxiliary_data(data=crap, data_type=data_type, path=path, parameters=parameters)
 
                     del fft_ds, crap, parameters, source_slice, source_white, dataS, dataS_stats, dataS_t, source_params            
 
-                del tfiles
         t11=time.time()
         print('it takes '+str(t11-t10)+' s to process one station in step 1')
 

@@ -16,23 +16,15 @@ from scipy.linalg import svd
 from scipy.ndimage import map_coordinates
 from obspy.signal.filter import bandpass,lowpass
 import obspy
-from obspy import read_inventory
-from obspy.core import AttribDict
 from obspy.signal.util import _npts2nfft
-from obspy.signal.invsim import cosine_taper
 from obspy.core.inventory import Inventory, Network, Station, Channel, Site
-from obspy.clients.nrl import NRL
 
 
 def stats2inv(stats,resp=None,filexml=None,locs=None):
 
     # We'll first create all the various objects. These strongly follow the
     # hierarchy of StationXML files.
-    inv = Inventory(
-        # We'll add networks later.
-        networks=[],
-        # The source should be the id whoever create the file.
-        source="japan_from_resp")
+    inv = Inventory(networks=[],source="japan_from_resp")
 
     if locs is None:
         net = Network(
@@ -104,10 +96,9 @@ def stats2inv(stats,resp=None,filexml=None,locs=None):
     response = obspy.core.inventory.response.Response()
     if resp is not None:
         print('i dont have the response')
-        # here we will find a way to read the 
     # By default this accesses the NRL online. Offline copies of the NRL can
     # also be used instead
-    #nrl = NRL()
+    # nrl = NRL()
     # The contents of the NRL can be explored interactively in a Python prompt,
     # see API documentation of NRL submodule:
     # http://docs.obspy.org/packages/obspy.clients.nrl.html
@@ -134,65 +125,7 @@ def stats2inv(stats,resp=None,filexml=None,locs=None):
 
     return inv        
 
-def process_raw(st,downsamp_freq):
-    """
-    Pre-process month-long stream of data. 
-    Checks:
-        - sample rate is matching 
-        - downsamples data 
-        - checks for gaps in data 
-        - Trims data to first and last day of month 
-        - phase-shifts data to begin at 00:00:00.0
-        - chunks data into 86,400 second traces
-        - removes instrument response (pole-zero)
-    """
-
-    #day = 86400   # numbe of seconds in a day
-    if len(st) > 100 or len(st) == 0:
-        raise ValueError('Too many or no traces in Stream')
-    st = check_sample(st)
-
-    # check for traces with only zeros
-    for tr in st:
-        if all(data == 0 for data in tr.data):
-            st.remove(tr)
-
-    # downsampling the trace
-    st = downsample(st,downsamp_freq) 
-    st = remove_small_traces(st)
-    if len(st) == 0:
-        raise ValueError('No traces in Stream')
-
-    # check gaps
-    if len(getGaps(st)) > 0:
-        max_gap = 10
-        only_too_long=False
-        while getGaps(st) and not only_too_long:
-            too_long = 0
-            gaps = getGaps(st)
-            for gap in gaps:
-                if int(gap[-1]) <= max_gap:
-                    st[gap[0]] = st[gap[0]].__add__(st[gap[1]], method=0, fill_value="interpolate")
-                    st.remove(st[gap[1]])
-                    break
-                else:
-                    too_long += 1
-            if too_long == len(gaps):
-                only_too_long = True
-
-    st.merge(method=0, fill_value=np.int32(0))
-
-    # phase shift data 
-    for tr in st:
-        tr = check_and_phase_shift(tr)    
-        if tr.data.dtype != 'float64':
-            tr.data = tr.data.astype(np.float64)
-
-    #st.merge(method=1,fille_value=0.)[0]
-
-    return st
-
-def preprocess_raw(st,downsamp_freq,clean_time=True,pre_filt=None,resp=None,respdir=None):
+def preprocess_raw(st,downsamp_freq,clean_time=True,pre_filt=None,resp=False,respdir=None):
     '''
     pre-process daily stream of data from IRIS server, including:
 
@@ -240,8 +173,8 @@ def preprocess_raw(st,downsamp_freq,clean_time=True,pre_filt=None,resp=None,resp
 
     if abs(downsamp_freq-sps) > 1E-4:
         #-----low pass filter with corner frequency = 0.9*Nyquist frequency----
-        st[0].data = lowpass(st[0].data,freq=0.4*downsamp_freq,df=sps,corners=4,zerophase=True)
-        #st[0].data = bandpass(st[0].data,fmin=0.01,fmax=0.4*downsamp_freq,df=sps,corners=4,zerophase=True)
+        #st[0].data = lowpass(st[0].data,freq=0.4*downsamp_freq,df=sps,corners=4,zerophase=True)
+        st[0].data = bandpass(st[0].data,0.005,0.4*downsamp_freq,df=sps,corners=4,zerophase=True)
 
         #----make downsampling------
         st.interpolate(downsamp_freq,method='weighted_average_slopes')
@@ -249,7 +182,7 @@ def preprocess_raw(st,downsamp_freq,clean_time=True,pre_filt=None,resp=None,resp
     station = st[0].stats.station
 
     #-----check whether file folder exists-------
-    if resp is not None:
+    if resp is not False:
         if resp != 'inv':
             if (respdir is None) or (not os.path.isdir(respdir)):
                 raise ValueError('response file folder not found! abort!')
@@ -267,7 +200,7 @@ def preprocess_raw(st,downsamp_freq,clean_time=True,pre_filt=None,resp=None,resp
             specfile = glob.glob(os.path.join(respdir,'*'+station+'*'))
             if len(specfile)==0:
                 raise ValueError('no response sepctrum found for %s' % station)
-            st = resp_spectrum(st[0],specfile,downsamp_freq)
+            st = resp_spectrum(st[0],specfile[0],downsamp_freq)
 
         elif resp == 'RESP_files':
             print('using RESP files')
@@ -340,7 +273,6 @@ def segment_interpolate(sig1,nfric):
 
     return sig2
 
-
 def resp_spectrum(source,resp_file,downsamp_freq):
     '''
     remove the instrument response with response spectrum from evalresp.
@@ -349,8 +281,8 @@ def resp_spectrum(source,resp_file,downsamp_freq):
     '''
     #--------resp_file is the inverted spectrum response---------
     respz = np.load(resp_file)
-    nrespz= respz[0][:]
-    spec_freq = np.max(respz[0])
+    nrespz= respz[1][:]
+    spec_freq = max(respz[0])
 
     #-------on current trace----------
     nfft = _npts2nfft(source.stats.npts)
@@ -447,7 +379,8 @@ def make_stationlist_CSV(inv,path):
     #----------write into a csv file---------------            
     locs.to_csv(os.path.join(path,'locations.txt'),index=False)
 
-def get_event_list(str1,str2):
+
+def get_event_list(str1,str2,inc_days):
     '''
     return the event list in the formate of 2010_01_01 by taking
     advantage of the datetime modules
@@ -467,97 +400,14 @@ def get_event_list(str1,str2):
     
     d1=datetime.datetime(y1,m1,d1)
     d2=datetime.datetime(y2,m2,d2)
-    dt=datetime.timedelta(days=1)
+    dt=datetime.timedelta(days=inc_days)
 
     while(d1<=d2):
         event.append(d1.strftime('%Y_%m_%d'))
         d1+=dt
+    if d1!=d2:
+        event.append(d2.strftime('%Y_%m_%d'))
     
-    return event
-
-def get_event_list_silly_version(str1,str2):
-    '''
-    return the event list in the formate of 2010_01_01, as used
-    in the path variables of the ASDF files for each station
-    
-    str1: string of starting date -> 2010_01_01
-    str2: string of ending date -> 2010_10_11
-    '''
-
-    event = []
-    date1=str1.split('_')
-    date2=str2.split('_')
-    y1=int(date1[0])
-    m1=int(date1[1])
-    d1=int(date1[2])
-    y2=int(date2[0])
-    m2=int(date2[1])
-    d2=int(date2[2])
-
-    #----same year----
-    if y1==y2:
-        year=y1
-        #---same month----
-        if m1==m2:
-            month=m1
-            for iday in range(d1,d2+1):
-                temp = str('%04d_%02d_%02d' % (year,month,iday))
-                event.append(temp)
-        #----different months-----
-        else:
-            for jj in range(m1,m2+1):
-                month = jj
-
-                if jj==1 or jj==3 or jj==5 or jj==7 or jj==9 or jj==10 or jj==12:
-                    days = 31
-                elif jj==2:
-                    if (year == 4*(year//4)):
-                        days=29
-                    else:
-                        days = 28
-                else:
-                    days = 30
-                
-                if jj==m1:
-                    b1,b2=d1,days
-                elif jj==m2:
-                    b1,b2=1,d2
-                else:
-                    b1,b2=1,days
-                
-                for iday in range(b1,b2+1):
-                    temp = str('%04d_%02d_%02d' % (year,month,iday))
-                    event.append(temp)
-    else:
-        for year in range(y1,y2+1):
-            
-            #----define the bounds for months----
-            if year==y1:
-                b1=m1
-                b2=13
-            elif year==y2:
-                b1=1
-                b2=m2+1
-            else:
-                b1=1
-                b2=13
-
-            for jj in range(b1,b2):
-                month = jj
-
-                if jj==1 or jj==3 or jj==5 or jj==7 or jj==9 or jj==10 or jj==12:
-                    days = 31
-                elif jj==2:
-                    if (year == 4*(year//4)):
-                        days=29
-                    else:
-                        days = 28
-                else:
-                    days = 30
-                
-                for iday in range(1,days+1):
-                    temp = str('%04d_%02d_%02d' % (year,month,iday))
-                    event.append(temp)
     return event
 
 def get_station_pairs(sta):
@@ -616,101 +466,6 @@ def get_coda_window(dist,vmin,maxlag,dt,wcoda):
     ind = [ind2[0],ind1[0],ind1[1],ind2[1]]
 
     return ind    
-
-def clean_up(corr,sampling_rate,freqmin,freqmax):
-    if corr.ndim == 2:
-        axis = 1
-    else:
-        axis = 0
-    corr = scipy.signal.detrend(corr,axis=axis,type='constant')
-    corr = scipy.signal.detrend(corr,axis=axis,type='linear')
-    percent = sampling_rate * 20 / corr.shape[axis]
-    #taper = scipy.signal.tukey(corr.shape[axis],percent)
-    taper = tukey(corr.shape[axis],percent)
-    corr *= taper
-    corr = bandpass(corr,freqmin,freqmax,sampling_rate,zerophase=True)
-    return corr
-
-def mseed_data(mseed_dir,starttime = None,endtime = None):
-    """
-    
-    Return sorted list of all available mseed files in dir.
-
-    :type mseed_dir: `str` 
-    :param mseed_dir: mseed in chan.loc.start.end.mseed format
-                      e.g. BHZ.00.20170113T000000Z.20170114T000000Z.mseed
-    :type starttime: `~obspy.core.utcdatetime.UTCDateTime` object.
-    :param starttime: Start time of data to cross-correlate
-    :type endtime: `~obspy.core.utcdatetime.UTCDateTime` object.
-    :param endtime: End time of data to cross-correlate
-
-    """
-    mseed = glob.glob(os.path.join(mseed_dir,'*.mseed'))
-    file_list = [os.path.basename(m) for m in mseed]
-    msplit = np.array([(f.split('.')) for f in file_list])
-    chan = msplit[:,0]
-    loc = msplit[:,1]
-    start = msplit[:,2]
-    end = msplit[:,3]
-    ind = np.argsort(start)
-    start = start[ind]
-    end = end[ind]
-    mseed = np.array(mseed)[ind]
-    start = np.array([obspy.UTCDateTime(t) for t in start])
-    end = np.array([obspy.UTCDateTime(t) for t in end])
-    if starttime is not None and endtime is not None:
-        ind = np.where((start >= starttime) & (end <= endtime))[0]
-        mseed,start,end = mseed[ind],start[ind],end[ind]
-    elif starttime is not None:
-        ind = np.where(start >= starttime)[0]
-        mseed,start,end = mseed[ind],start[ind],end[ind]
-    elif endtime is not None:
-        ind = np.where(end <= endtime)[0]
-        mseed,start,end = mseed[ind],start[ind],end[ind]
-    return mseed,start,end 
-
-
-def sac_data(sac_dir,starttime = None,endtime = None):
-    """
-    
-    Return sorted list of all available mseed files in dir.
-
-    :type sac_dir: `str` 
-    :param sac_dir: sac in year/Event_year_jday/net.sta.chan.sac format
-                      e.g. net.sta.chan.sac
-    :type starttime: `~obspy.core.utcdatetime.UTCDateTime` object.
-    :param starttime: Start time of data to cross-correlate
-    :type endtime: `~obspy.core.utcdatetime.UTCDateTime` object.
-    :param endtime: End time of data to cross-correlate
-
-    """
-    sac = glob.glob(os.path.join(sac_dir,'/*/Event*/*.sac'))
-    file_list = [os.path.basename(m) for m in sac]
-    dir_list  = [os.path.dirname(m) for m in sac]
-    msplit = np.array([(f.split('.')) for f in file_list])
-    net = msplit[:,0]
-    loc = msplit[:,1]
-    chan = msplit[:,3]
-    msplit = np.array([(f.split('/')) for f in dir_list]).T
-    crap=np.array(str(msplit[-1]).split('_')).reshape(3,3)
-    start = msplit[:,2]
-    end = msplit[:,3]
-    ind = np.argsort(start)
-    start = start[ind]
-    end = end[ind]
-    mseed = np.array(sac)[ind]
-    start = np.array([obspy.UTCDateTime(t) for t in start])
-    end = np.array([obspy.UTCDateTime(t) for t in end])
-    if starttime is not None and endtime is not None:
-        ind = np.where((start >= starttime) & (end <= endtime))[0]
-        mseed,start,end = mseed[ind],start[ind],end[ind]
-    elif starttime is not None:
-        ind = np.where(start >= starttime)[0]
-        mseed,start,end = mseed[ind],start[ind],end[ind]
-    elif endtime is not None:
-        ind = np.where(end <= endtime)[0]
-        mseed,start,end = mseed[ind],start[ind],end[ind]
-    return mseed,start,end 
 
 def whiten(data, delta, freqmin, freqmax,Nfft=None):
     """This function takes 1-dimensional *data* timeseries array,
@@ -773,10 +528,6 @@ def whiten(data, delta, freqmin, freqmax,Nfft=None):
 
         # Hermitian symmetry (because the input is real)
         FFTRawSign[:,-(Nfft//2)+1:] = np.flip(np.conj(FFTRawSign[:,1:(Nfft//2)]),axis=axis)
-
-        #--------same problems as cc: [::-1] only flips along axis=0 direction--------
-        #FFTRawSign[:,-(Nfft//2)+1:] = FFTRawSign[:,1:(Nfft//2)].conjugate()[::-1]
-        #-----------------------------------------------------------------------------
     else:
         FFTRawSign[0:low] *= 0
         FFTRawSign[low:left] = np.cos(
@@ -795,24 +546,6 @@ def whiten(data, delta, freqmin, freqmax,Nfft=None):
  
 
     return FFTRawSign
-
-def filter_dist(pairs,locs,min_dist,max_dist):
-    """
-
-    Filter station pairs by distance
-
-    """
-    new_pairs = []
-    for pair in pairs:
-        netsta1 = '.'.join(pair[0].split('/')[-3:-1])
-        netsta2 = '.'.join(pair[1].split('/')[-3:-1])
-
-        dist,azi,baz = calc_distance(locs.loc[netsta1],locs.loc[netsta2])
-
-        if (dist > min_dist) and (dist < max_dist):
-            new_pairs.append(pair)
-
-    return new_pairs
 
 
 def cross_corr_parameters(source, receiver, start_end_t, source_params,
@@ -1028,82 +761,6 @@ def moving_ave(A,N):
             B[pos]=1
     return B[N:-N]
 
-def xyz_to_zne(st):
-    """
-
-    Convert channels in obspy stream from XYZ to ZNE.
-    """
-    for tr in st:
-        chan = tr.stats.channel
-        if chan[-1] == 'X':
-            tr.stats.channel = chan[:-1] + 'E'
-        elif chan[-1] == 'Y':
-            tr.stats.channel = chan[:-1] + 'N'
-    return st
-
-def butter_pass(x,f1,f2,dt,order):
-    
-   # """
-
-    #apply a butterworth bandpass filter.
-    #""""
-    nyq = 0.5 // dt
-    low = f1 / nyq
-    high = f2 / nyq
-    b, a = butter(order, [low, high], btype='band')
-    x = lfilter(b, a, x)
-    return x
-
-
-def snr(data,sampling_rate):
-    """
-    Signal to noise ratio of N cross-correlations.
-
-    Follows method of Clarke et. al, 2011. Measures SNR at each point.
-
-    """	
-    data = np.array(data)
-    N,t = data.shape
-    data_mean = np.mean(data,axis=0)
-
-    # calculate noise and envelope functions
-    sigma = np.mean(data**2,axis=0) - (data_mean)**2
-    sigma = np.sqrt(sigma/(N-1.))
-    s = np.abs(data_mean + 1j*scipy.signal.hilbert(data_mean))
-
-    # smooth with 10 second sliding cosine window 
-    # half window length is 5s, i.e. 5 * sampling rate
-    sigma = smooth(sigma,half_win=int(sampling_rate*5))
-    s = smooth(s,half_win=int(sampling_rate*5))
-
-    return np.real(s/sigma)
-
-
-def smooth(x, window='boxcar', half_win=3):
-    """ some window smoothing from MSnoise MWCS """
-    window_len = 2*half_win+1
-    # extending the data at beginning and at the end
-    # to apply the window at the borders
-
-    if window == "boxcar":
-        w = scipy.signal.boxcar(window_len).astype(x.dtype)
-    else:
-        w = scipy.signal.hanning(window_len).astype(x.dtype)
-
-
-    if x.ndim ==1:
-        s = np.r_[x[window_len-1:0:-1], x, x[-1:-window_len:-1]]
-        y = np.convolve(w/w.sum(), s, mode='valid')
-        y = y[half_win:len(y)-half_win]
-    elif x.ndim == 2:
-        y = np.zeros(x.shape,x.dtype)
-        for ii,row in enumerate(x):
-            s = np.r_[row[window_len-1:0:-1], row, row[-1:-window_len:-1]]
-            tmp = np.convolve(w/w.sum(), s, mode='valid')
-            y[ii,:] = tmp[half_win:len(tmp)-half_win]
-    return y
-
-
 def nextpow2(x):
     """
     Returns the next power of 2 of x.
@@ -1114,42 +771,6 @@ def nextpow2(x):
     """
 
     return np.ceil(np.log2(np.abs(x))) 	
-
-
-def runningMean(x, N):
-    """
-    Returns array x smoothed by running mean of N points.
-
-    :type x:`~numpy.ndarray` 
-    :type N: int
-    :param N: Number of points to smooth over 
-    :returns: Array x, smoothed by running mean of N points
-    
-    """
-    return np.convolve(x, np.ones((N,))/N)[(N-1):]	
-
-
-def running_abs_mean(x, N):
-    """
-    Returns array x smoothed by absolute running mean of N points.
-
-    From Bensen et al., 2007
-
-    :type x:`~numpy.ndarray` 
-    :type N: int
-    :param N: Number of points to smooth over 
-    :returns: Array x, smoothed by running absolute mean of N pointsx
-    
-    """
-    ndim = x.ndim 
-    if ndim == 1:
-        x = np.convolve(x, np.ones(N, ) / N)[(N - 1):]
-        #x = x / weights 
-    elif ndim == 2:
-        for ii in range(x.shape[0]):
-            x[ii, :] = np.convolve(np.abs(x[ii, :]), np.ones((N, )) / N)[(N - 1):]
-            #x[ii, :] = x[ii, :] / weights
-    return x
 
 def abs_max(arr):
     """
@@ -1371,26 +992,9 @@ def pole_zero(inv):
             elif type(stage) == obspy.core.inventory.response.CoefficientsTypeResponseStage:
                 new_stages.append(stage)
 
-
         inv[0][0][ii].response.response_stages = new_stages
 
     return inv
-
-
-def remove_small_traces(stream,min_length = 100.):
-    """
-    Removes small traces from stream
-    min_length = 20 s
-
-    """	
-    if len(stream.get_gaps()) == 0:
-        return stream
-
-    for tr in stream:
-        if tr.stats.npts < 4 * min_length*tr.stats.sampling_rate:
-            stream.remove(tr)
-    return stream	
-
 
 def check_and_phase_shift(trace):
     # print trace
@@ -1425,36 +1029,6 @@ def check_and_phase_shift(trace):
     else:
         return trace
 
-
-def match_trace(trace,stream):
-    """
-    Matches trace in stream that begin at the same time UTC. 
-
-    Removes matched trace from stream for faster matching.
-    
-    :type trace:`~obspy.core.trace.Trace` object. 
-    :param trace: Day-long trace 
-    :type stream:`~obspy.core.stream.Stream` object. 
-    :param stream: Stream containing one or more day-long trace 
-    :Returns: trace from stream object that has same starting time 
-    :rtype:`~obspy.core.trace.Trace` object. 
-     """
-    
-    # max time difference between starting sample 0 minutes
-    max_time = trace.stats.delta 
-
-    matched_trace = False
-
-    for ii,tr in enumerate(stream):
-        if np.abs(tr.stats.starttime - trace.stats.starttime) <= max_time and \
-        len(tr.data) == len(trace.data):
-            matched_trace = tr
-            stream.pop(ii)
-            break
-
-    return matched_trace,stream		
-    
-
 def check_sample(stream):
     """
     Returns sampling rate of traces in stream.
@@ -1464,47 +1038,19 @@ def check_sample(stream):
     :return: List of sampling rates in stream
 
     """
-    if type(stream) == obspy.core.trace.Trace:
+    if len(stream)==0:
         return stream
     else:
         freqs = []	
         for tr in stream:
             freqs.append(tr.stats.sampling_rate)
 
-    freq = max(set(freqs),key=freqs.count)
+    freq = max(freqs)
     for tr in stream:
         if tr.stats.sampling_rate != freq:
             stream.remove(tr)
 
-    return stream	
-
-
-def check_length(stream):
-    """
-    Forces all traces to have same number of samples.
-
-    Traces must be one day long.
-    :type stream:`~obspy.core.stream.Stream` object. 
-    :param stream: Stream containing one or more day-long trace 
-    :return: Stream of similar length traces 
-
-    """
-    pts = 24*3600*stream[0].stats.sampling_rate
-    npts = []
-    for trace in stream:
-        npts.append(trace.stats.npts)
-    npts = np.array(npts)
-    if len(npts) == 0:
-        return stream	
-    index = np.where(npts != pts)
-    index = list(index[0])[::-1]
-
-    # remove short traces
-    for trace in index:
-        stream.pop(trace)
-
     return stream				
-
 
 def downsample(stream,freq):
     """ 
@@ -1573,24 +1119,6 @@ def remove_resp(arr,stats,inv):
     else:
         data = st[0].data
     return data			
-
-
-def preprocess(trace,percent=0.01,max_len=20.):   
-    """
-    Removes linear trend and mean, normalizes and tapers Obspy trace. 
-    
-    :type trace:`~obspy.core.trace.Trace` object.   
-    :type: percent: float, optional
-    :param percent: percent window on each end of trace to taper
-    :return: Processed trace 
-    """
-    trace.detrend(type='constant')
-    trace.detrend(type='simple')
-    percent = trace.stats.sampling_rate * 20 / trace.stats.npts
-    trace.taper(max_percentage=percent,max_length=max_len) 	
-
-    return trace
-
 
 def mad(arr):
     """ 
@@ -1680,24 +1208,6 @@ def getGaps(stream, min_gap=None, max_gap=None):
     stream.traces = copied_traces
     return gap_list		
 
-
-def stats_to_dict(stats,stat_type):
-    """
-
-    Converts obspy.core.trace.Stats object to dict
-
-    :type stats: `~obspy.core.trace.Stats` object.
-    :type source: str
-    :param source: 'source' or 'receiver'
-    """
-    stat_dict = {'{}_network'.format(stat_type):stats['network'],
-                 '{}_station'.format(stat_type):stats['station'],
-                 '{}_channel'.format(stat_type):stats['channel'],
-                 '{}_delta'.format(stat_type):stats['delta'],
-                 '{}_npts'.format(stat_type):stats['npts'],
-                 '{}_sampling_rate'.format(stat_type):stats['sampling_rate']}
-    return stat_dict 
-
 def fft_parameters(dt,cc_len,source,source_times, source_params,locs,component,Nfft,Nt):
     """ 
     Creates parameter dict for cross-correlations and header info to ASDF.
@@ -1723,15 +1233,9 @@ def fft_parameters(dt,cc_len,source,source_times, source_params,locs,component,N
     source_mad,source_std,source_nonzero = source_params[:,0],\
                          source_params[:,1],source_params[:,2]
     lon,lat,el=locs["longitude"],locs["latitude"],locs["elevation"]
-    #starttime = start_end_t[0]- obspy.UTCDateTime(1970,1,1)
-    #print(source.starttime)
     starttime = source_times[:,0]
-    #starttime = starttime.astype('float')
     endtime = source_times[:,1]
-    #endtime = endtime.astype('float')
     source = stats_to_dict(source,'source')
-    #receiver = stats_to_dict(receiver,'receiver')
-    # fill Correlation attribDict 
     parameters = {'sampling_rate':dt,
              'twin':cc_len,
              'mad':source_mad,
@@ -1748,6 +1252,20 @@ def fft_parameters(dt,cc_len,source,source_times, source_params,locs,component,N
     parameters.update(source)
     return parameters   
 
+def stats_to_dict(stats,stat_type):
+    """
+    Converts obspy.core.trace.Stats object to dict
+    :type stats: `~obspy.core.trace.Stats` object.
+    :type source: str
+    :param source: 'source' or 'receiver'
+    """
+    stat_dict = {'{}_network'.format(stat_type):stats['network'],
+                 '{}_station'.format(stat_type):stats['station'],
+                 '{}_channel'.format(stat_type):stats['channel'],
+                 '{}_delta'.format(stat_type):stats['delta'],
+                 '{}_npts'.format(stat_type):stats['npts'],
+                 '{}_sampling_rate'.format(stat_type):stats['sampling_rate']}
+    return stat_dict 
 
 def stack_parameters(params):
     """
@@ -1771,60 +1289,6 @@ def stack_parameters(params):
     month['end_microsecond'].append(day['end_microsecond'])
     return month
 
-
-def load_corr(corr_h5,comp):
-    """
-    Load correlations into numpy array. Prepares for input into MWCS.
-
-    :type h5: str 
-    :param h5: path/filename (/Volumes/.../../~.h5) to save cross-correlations as ASDF data set. Must end in .h5
-    :param comp: Components used in cross-correlation, e.g. 'ZZ', 'RT', 'TT'
-    """
-    
-    # query dataset 
-    net_sta = os.path.basename(corr_h5).replace('.h5','')
-    
-    with pyasdf.ASDFDataSet(corr_h5,mpi=False) as ds:
-        corrs = ds.auxiliary_data.CrossCorrelation[net_sta][comp].list()
-
-        # data to return 
-        all_param = []
-        all_data = []
-
-        for corr in corrs:
-            data = ds.auxiliary_data.CrossCorrelation[net_sta][comp][corr].data
-            param = ds.auxiliary_data.CrossCorrelation[net_sta][comp][corr].parameters
-            all_data.append(np.array(data))
-            all_param.append(param)
-        all_data = np.array(all_data)
-        all_data = np.vstack(all_data)
-        days = [c[-10:].replace('_','/') for c in corrs]
-
-    return all_data, all_param, days, net_sta 	
-
-
-def load_ref(ref_h5,comp):
-    """
-    Load references  into numpy array. Prepares for input into MWCS.
-
-    :type h5: str 
-    :param h5: path/filename (/Volumes/.../../~.h5) to save cross-correlations as ASDF data set. Must end in .h5
-    :param comp: Components used in cross-correlation, e.g. 'ZZ', 'RT', 'TT'
-    """
-
-    # query dataset 
-    net_sta = os.path.basename(ref_h5).replace('.h5','')
-    
-    with pyasdf.ASDFDataSet(ref_h5,mpi=False) as ds:
-        ref_list = ds.auxiliary_data.Reference[net_sta][comp].list()
-        ref = [r for r in ref_list if 'ALL' in r][0]
-        data = ds.auxiliary_data.Reference[net_sta][comp][ref].data
-        param = ds.auxiliary_data.Reference[net_sta][comp][ref].parameters
-        ref = np.array(data)
-
-    return ref,param
-
-
 def vcorrcoef(X,y):
     """
     Vectorized Cross-correlation coefficient in the time domain
@@ -1844,38 +1308,6 @@ def vcorrcoef(X,y):
     cc_den = np.sqrt(np.sum((X-Xm)**2,axis=1)*np.sum((y-ym)**2))
     cc = cc_num/cc_den
     return cc
-
-
-def spect(tr,fmin = 0.1,fmax = None,wlen=10,title=None):
-    import matplotlib as plt
-    if fmax is None:
-        fmax = tr.stats.sampling_rate/2
-    fig = plt.figure()
-    ax1 = fig.add_axes([0.1, 0.75, 0.7, 0.2]) #[left bottom width height]
-    ax2 = fig.add_axes([0.1, 0.1, 0.7, 0.60], sharex=ax1)
-    ax3 = fig.add_axes([0.83, 0.1, 0.03, 0.6])
-
-    #make time vector
-    t = np.arange(tr.stats.npts) / tr.stats.sampling_rate
-
-    #plot waveform (top subfigure)    
-    ax1.plot(t, tr.data, 'k')
-
-    #plot spectrogram (bottom subfigure)
-    tr2 = tr.copy()
-    fig = tr2.spectrogram(per_lap=0.9,wlen=wlen,show=False, axes=ax2)
-    mappable = ax2.images[0]
-    plt.colorbar(mappable=mappable, cax=ax3)
-    ax2.set_ylim(fmin, fmax)
-    ax2.set_xlabel('Time [s]')
-    ax2.set_ylabel('Frequency [Hz]')
-    if title:
-        plt.suptitle(title)
-    else:
-        plt.suptitle('{}.{}.{} {}'.format(tr.stats.network,tr.stats.station,
-                  tr.stats.channel,tr.stats.starttime))
-    plt.show()
-
 
 def NCF_denoising(img_to_denoise,Mdate,Ntau,NSV):
 
