@@ -142,7 +142,7 @@ def preprocess_raw(st,downsamp_freq,clean_time=True,pre_filt=None,resp=False,res
     '''
 
     #----remove the ones with too many segments and gaps------
-    if len(st) > 100 or portion_gaps(st) > 0.3:
+    if len(st) > 100 or portion_gaps(st) > 0.5:
         print('Too many traces or gaps in Stream: Continue!')
         st=[]
         return st
@@ -157,16 +157,9 @@ def preprocess_raw(st,downsamp_freq,clean_time=True,pre_filt=None,resp=False,res
     delta = st[0].stats.delta
     #-----remove mean and trend for each trace before merge------
     for ii in range(len(st)):
+        st[ii].data = np.float32(st[ii].data)
         st[ii].data = scipy.signal.detrend(st[ii].data,type='constant')
         st[ii].data = scipy.signal.detrend(st[ii].data,type='linear')
-
-        #-------when starttimes are between sampling points-------
-        fric = (st[ii].stats.starttime.microsecond/1E6)
-        fric = fric%delta
-        if fric:
-            st[ii].data = segment_interpolate(np.float32(st[ii].data),float(fric/delta))
-            #--reset the time to remove the discrepancy---
-            st[ii].stats.starttime-=fric
 
     st.merge(method=1,fill_value=0)
     sps = st[0].stats.sampling_rate
@@ -174,10 +167,18 @@ def preprocess_raw(st,downsamp_freq,clean_time=True,pre_filt=None,resp=False,res
     if abs(downsamp_freq-sps) > 1E-4:
         #-----low pass filter with corner frequency = 0.9*Nyquist frequency----
         #st[0].data = lowpass(st[0].data,freq=0.4*downsamp_freq,df=sps,corners=4,zerophase=True)
-        st[0].data = bandpass(st[0].data,0.005,0.4*downsamp_freq,df=sps,corners=4,zerophase=True)
+        st[0].data = bandpass(st[0].data,0.01,0.4*downsamp_freq,df=sps,corners=4,zerophase=True)
 
         #----make downsampling------
         st.interpolate(downsamp_freq,method='weighted_average_slopes')
+
+        delta = st[0].stats.delta
+        #-------when starttimes are between sampling points-------
+        fric = st[0].stats.starttime.microsecond%(delta*1E6)
+        if fric>1E-4:
+            st[0].data = segment_interpolate(np.float32(st[0].data),float(fric/delta*1E6))
+            #--reset the time to remove the discrepancy---
+            st[0].stats.starttime-=(fric*1E-6)
 
     station = st[0].stats.station
 
