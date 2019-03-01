@@ -287,14 +287,14 @@ def resp_spectrum(source,resp_file,downsamp_freq):
 
     #-------on current trace----------
     nfft = _npts2nfft(source.stats.npts)
-    sps  = source.stats.sample_rate
+    sps  = source.stats.sampling_rate
 
     #---------do the interpolation if needed--------
     if spec_freq < 0.5*sps:
         raise ValueError('spectrum file has peak freq smaller than the data, abort!')
     else:
         indx = np.where(respz[0]<=0.5*sps)
-        nfreq = np.linspace(0,0.5*sps,nfft)
+        nfreq = np.linspace(0,0.5*sps,nfft//2+1)
         nrespz= np.interp(nfreq,respz[0][indx],respz[1][indx])
         
     #----do interpolation if necessary-----
