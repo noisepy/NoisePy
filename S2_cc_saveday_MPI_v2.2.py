@@ -29,19 +29,14 @@ add the functionality of auto-correlations (Feb.22.2019). Note that the auto-cc 
 '''
 
 ttt0=time.time()
-#------some useful absolute paths-------
-#FFTDIR = '/n/flashlfs/mdenolle/KANTO/DATA/FFT_v2'
-#CCFDIR = '/n/flashlfs/mdenolle/KANTO/DATA/CCF_v2'
-#STACKDIR = '/n/flashlfs/mdenolle/KANTO/DATA/STACK'
-#locations = '/n/home13/chengxin/cases/KANTO/locations_small.txt'
 
-rootpath = '/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO'
+rootpath = '/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW'
 FFTDIR = os.path.join(rootpath,'FFT')
-CCFDIR = os.path.join(rootpath,'check_again/CCF')
+CCFDIR = os.path.join(rootpath,'CCF/test')
 
 #-----some control parameters------
 flag=False              #output intermediate variables and computing times
-auto_corr=True
+auto_corr=False         #include single-station auto-correlations or not
 smooth_N=10             #window length for smoothing the spectrum amplitude
 downsamp_freq=20
 dt=1/downsamp_freq
@@ -49,8 +44,9 @@ cc_len=3600
 step=1800
 maxlag=1800
 method='deconv'
-start_date = '2010_01_01'
-end_date   = '2010_01_01'
+start_date = '2010_12_16'
+end_date   = '2010_12_17'
+inc_days   = 1
 
 if auto_corr and method=='coherence':
     raise ValueError('Please set method to decon: coherence cannot be applied when auto_corr is wanted!')
@@ -63,8 +59,11 @@ size = comm.Get_size()
 
 #-------form a station pair to loop through-------
 if rank ==0:
+    if not os.path.isdir(CCFDIR):
+        os.mkdir(CCFDIR)
+
     sfiles = sorted(glob.glob(os.path.join(FFTDIR,'*.h5')))
-    day = noise_module.get_event_list(start_date,end_date)
+    day = noise_module.get_event_list(start_date,end_date,inc_days)
     splits = len(day)
 else:
     splits,sfiles,day = [None for _ in range(3)]
@@ -138,15 +137,15 @@ for ii in range(rank,splits+size-extra,size):
                             #--------think about how to avoid temp==0-----------
                             try:
                                 sfft1 = np.conj(fft1.reshape(fft1.size,))/temp**2
-                            except Exception as e:
-                                print(type(e))
+                            except ValueError:
+                                raise ValueError('smoothed spectrum has zero values')
 
                         elif method == 'coherence':
                             temp = noise_module.moving_ave(np.abs(fft1.reshape(fft1.size,)),smooth_N)
                             try:
                                 sfft1 = np.conj(fft1.reshape(fft1.size,))/temp
-                            except Exception as e:
-                                print(type(e))
+                            except ValueError:
+                                raise ValueError('smoothed spectrum has zero values')
 
                         elif method == 'raw':
                             sfft1 = fft1
@@ -157,7 +156,12 @@ for ii in range(rank,splits+size-extra,size):
                             print('read S %6.4fs, smooth %6.4fs' % ((t2-t1), (t3-t2)))
 
                         #-----------now loop III for each receiver B----------
-                        for ireceiver in range(isource,len(sfiles)):
+                        if auto_corr:
+                            tindex = isource
+                        else:
+                            tindex = isource+1
+
+                        for ireceiver in range(tindex,len(sfiles)):
                             receiver = sfiles[ireceiver]
                             staR = receiver.split('/')[-1].split('.')[1]
                             netR = receiver.split('/')[-1].split('.')[0]
@@ -195,15 +199,13 @@ for ii in range(rank,splits+size-extra,size):
                                         sou_ind = np.where(source_std < 10)[0]
 
                                         #-----note that Hi-net has a few mi-secs differences to Mesonet in terms starting time-----
-                                        bb,indx1,indx2=np.intersect1d(sou_ind,rec_ind,return_indices=True)
-                                        indx1=sou_ind[indx1]
-                                        indx2=rec_ind[indx2]
-                                        if (len(indx1)==0) | (len(indx2)==0):
+                                        bb=np.intersect1d(sou_ind,rec_ind)
+                                        if len(bb)==0:
                                             continue
 
                                         t6=time.time()
-                                        corr=noise_module.optimized_correlate1(sfft1[indx1,:],fft2[indx2,:],\
-                                                np.round(maxlag),dt,Nfft,len(indx1),method)
+                                        corr=noise_module.optimized_correlate1(sfft1[bb,:],fft2[bb,:],\
+                                                np.round(maxlag),dt,Nfft,len(bb),method)
                                         t7=time.time()
 
                                         #---------------keep daily cross-correlation into a hdf5 file--------------
@@ -211,7 +213,7 @@ for ii in range(rank,splits+size-extra,size):
                                         crap   = np.zeros(corr.shape)
 
                                         if not os.path.isfile(cc_aday_h5):
-                                            with pyasdf.ASDFDataSet(cc_aday_h5,mpi=False) as ds:
+                                            with pyasdf.ASDFDataSet(cc_aday_h5,mpi=False) as ccf_ds:
                                                 pass 
 
                                         with pyasdf.ASDFDataSet(cc_aday_h5,mpi=False) as ccf_ds:

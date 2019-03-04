@@ -142,7 +142,7 @@ def preprocess_raw(st,downsamp_freq,clean_time=True,pre_filt=None,resp=False,res
     '''
 
     #----remove the ones with too many segments and gaps------
-    if len(st) > 100 or portion_gaps(st) > 0.5:
+    if len(st) > 100 or portion_gaps(st) > 0.2:
         print('Too many traces or gaps in Stream: Continue!')
         st=[]
         return st
@@ -154,15 +154,16 @@ def preprocess_raw(st,downsamp_freq,clean_time=True,pre_filt=None,resp=False,res
         print('No traces in Stream: Continue!')
         return st
 
-    delta = st[0].stats.delta
+    sps = int(st[0].stats.sampling_rate)
     #-----remove mean and trend for each trace before merge------
     for ii in range(len(st)):
+        if st[ii].stats.sampling_rate != sps:
+            st[ii].stats.sampling_rate = sps
         st[ii].data = np.float32(st[ii].data)
         st[ii].data = scipy.signal.detrend(st[ii].data,type='constant')
         st[ii].data = scipy.signal.detrend(st[ii].data,type='linear')
 
     st.merge(method=1,fill_value=0)
-    sps = st[0].stats.sampling_rate
 
     if abs(downsamp_freq-sps) > 1E-4:
         #-----low pass filter with corner frequency = 0.9*Nyquist frequency----
@@ -201,21 +202,21 @@ def preprocess_raw(st,downsamp_freq,clean_time=True,pre_filt=None,resp=False,res
             specfile = glob.glob(os.path.join(respdir,'*'+station+'*'))
             if len(specfile)==0:
                 raise ValueError('no response sepctrum found for %s' % station)
-            st = resp_spectrum(st[0],specfile[0],downsamp_freq)
+            st = resp_spectrum(st,specfile[0],downsamp_freq,pre_filt)
 
         elif resp == 'RESP_files':
             print('using RESP files')
             seedresp = glob.glob(os.path.join(respdir,'RESP.'+station+'*'))
             if len(seedresp)==0:
                 raise ValueError('no RESP files found for %s' % station)
-            st.simulate(paz_remove=None,pre_filt=pre_filt,seedresp=seedresp)
+            st.simulate(paz_remove=None,pre_filt=pre_filt,seedresp=seedresp[0])
 
         elif resp == 'polozeros':
             print('using polos and zeros')
             paz_sts = glob.glob(os.path.join(respdir,'*'+station+'*'))
             if len(paz_sts)==0:
                 raise ValueError('no polozeros found for %s' % station)
-            st.simulate(paz_remove=paz_sts,pre_filt=pre_filt)
+            st.simulate(paz_remove=paz_sts[0],pre_filt=pre_filt)
 
         else:
             raise ValueError('no such option of resp in preprocess_raw! please double check!')
@@ -235,12 +236,12 @@ def portion_gaps(stream):
     #-----check the consistency of sampling rate----
 
     pgaps=0
-    npts = (stream[-1].stats.endtime-stream[0].stats.starttime)*stream[0].stats.sampling_rate
 
     if len(stream)==0:
         return pgaps
+        
     else:
-
+        npts = (stream[-1].stats.endtime-stream[0].stats.starttime)*stream[0].stats.sampling_rate
         #----loop through all trace to find gaps----
         for ii in range(len(stream)-1):
             pgaps += (stream[ii+1].stats.starttime-stream[ii].stats.endtime)*stream[ii].stats.sampling_rate
@@ -274,7 +275,7 @@ def segment_interpolate(sig1,nfric):
 
     return sig2
 
-def resp_spectrum(source,resp_file,downsamp_freq):
+def resp_spectrum(source,resp_file,downsamp_freq,pre_filt=None):
     '''
     remove the instrument response with response spectrum from evalresp.
     the response spectrum is evaluated based on RESP/PZ files and then 
@@ -286,23 +287,26 @@ def resp_spectrum(source,resp_file,downsamp_freq):
     spec_freq = max(respz[0])
 
     #-------on current trace----------
-    nfft = _npts2nfft(source.stats.npts)
-    sps  = source.stats.sample_rate
+    nfft = _npts2nfft(source[0].stats.npts)
+    sps  = int(source[0].stats.sampling_rate)
 
     #---------do the interpolation if needed--------
     if spec_freq < 0.5*sps:
         raise ValueError('spectrum file has peak freq smaller than the data, abort!')
     else:
         indx = np.where(respz[0]<=0.5*sps)
-        nfreq = np.linspace(0,0.5*sps,nfft)
-        nrespz= np.interp(nfreq,respz[0][indx],respz[1][indx])
+        nfreq = np.linspace(0,0.5*sps,nfft//2+1)
+        nrespz= np.interp(nfreq,np.real(respz[0][indx]),respz[1][indx])
         
     #----do interpolation if necessary-----
-    source_spect = np.fft.rfft(source.data,n=nfft)
+    source_spect = np.fft.rfft(source[0].data,n=nfft)
 
     #-----nrespz is inversed (water-leveled) spectrum-----
     source_spect *= nrespz
-    source.data = np.fft.irfft(source_spect)[0:source.stats.npts]
+    source[0].data = np.fft.irfft(source_spect)[0:source[0].stats.npts]
+
+    if pre_filt is not None:
+        source[0].data = bandpass(source[0].data,pre_filt[0],pre_filt[-1],df=sps,corners=4,zerophase=True)
 
     return source
 
@@ -403,11 +407,10 @@ def get_event_list(str1,str2,inc_days):
     d2=datetime.datetime(y2,m2,d2)
     dt=datetime.timedelta(days=inc_days)
 
-    while(d1<=d2):
+    while(d1<d2):
         event.append(d1.strftime('%Y_%m_%d'))
         d1+=dt
-    if d1!=d2:
-        event.append(d2.strftime('%Y_%m_%d'))
+    event.append(d2.strftime('%Y_%m_%d'))
     
     return event
 
@@ -820,7 +823,7 @@ def pws(arr,power=2.,sampling_rate=20.,pws_timegate = 5.):
 
     # smoothing 
     timegate_samples = int(pws_timegate * sampling_rate)
-    phase_stack = runningMean(phase_stack,timegate_samples)
+    phase_stack = moving_ave(phase_stack,timegate_samples)
     weighted = np.multiply(arr,phase_stack)
     return np.mean(weighted,axis=0)/N
 
@@ -1044,39 +1047,14 @@ def check_sample(stream):
     else:
         freqs = []	
         for tr in stream:
-            freqs.append(tr.stats.sampling_rate)
+            freqs.append(int(tr.stats.sampling_rate))
 
     freq = max(freqs)
     for tr in stream:
-        if tr.stats.sampling_rate != freq:
+        if int(tr.stats.sampling_rate) != freq:
             stream.remove(tr)
 
     return stream				
-
-def downsample(stream,freq):
-    """ 
-    Downsamples stream to specified samplerate.
-
-    Uses Obspy.core.trace.decimate if mod(sampling_rate) == 0. 
-    :type stream:`~obspy.core.trace.Stream` or `~obspy.core.trace.Trace` object.
-    :type freq: float
-    :param freq: Frequency to which waveforms in stream are downsampled
-    :return: Downsampled trace or stream object
-    :rtype: `~obspy.core.trace.Trace` or `~obspy.core.trace.Trace` object.
-    """
-    
-    # get sampling rate 
-    if type(stream) == obspy.core.stream.Stream:
-        sampling_rate = stream[0].stats.sampling_rate
-    elif type(stream) == obspy.core.trace.Trace:
-        sampling_rate = stream.stats.sampling_rate
-
-    if sampling_rate == freq:
-        pass
-    else:
-        stream.interpolate(freq,method="weighted_average_slopes")	
-
-    return stream
 
 
 def remove_resp(arr,stats,inv):
@@ -1162,52 +1140,6 @@ def calc_distance(sta1,sta2):
     dist /= 1000.
     return dist,azi,baz
 
-
-def getGaps(stream, min_gap=None, max_gap=None):
-    # Create shallow copy of the traces to be able to sort them later on.
-    copied_traces = copy.copy(stream.traces)
-    stream.sort()
-    gap_list = []
-    for _i in range(len(stream.traces) - 1):
-        # skip traces with different network, station, location or channel
-        if stream.traces[_i].id != stream.traces[_i + 1].id:
-            continue
-        # different sampling rates should always result in a gap or overlap
-        if stream.traces[_i].stats.delta == stream.traces[_i + 1].stats.delta:
-            flag = True
-        else:
-            flag = False
-        stats = stream.traces[_i].stats
-        stime = stats['endtime']
-        etime = stream.traces[_i + 1].stats['starttime']
-        delta = etime.timestamp - stime.timestamp
-        # Check that any overlap is not larger than the trace coverage
-        if delta < 0:
-            temp = stream.traces[_i + 1].stats['endtime'].timestamp - \
-                etime.timestamp
-            if (delta * -1) > temp:
-                delta = -1 * temp
-        # Check gap/overlap criteria
-        if min_gap and delta < min_gap:
-            continue
-        if max_gap and delta > max_gap:
-            continue
-        # Number of missing samples
-        nsamples = int(round(np.abs(delta) * stats['sampling_rate']))
-        # skip if is equal to delta (1 / sampling rate)
-        if flag and nsamples == 1:
-            continue
-        elif delta > 0:
-            nsamples -= 1
-        else:
-            nsamples += 1
-        gap_list.append([_i, _i+1,
-                        stats['network'], stats['station'],
-                        stats['location'], stats['channel'],
-                        stime, etime, delta, nsamples])
-    # Set the original traces to not alter the stream object.
-    stream.traces = copied_traces
-    return gap_list		
 
 def fft_parameters(dt,cc_len,source,source_times, source_params,locs,component,Nfft,Nt):
     """ 
