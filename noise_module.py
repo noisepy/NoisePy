@@ -141,6 +141,11 @@ def preprocess_raw(st,downsamp_freq,clean_time=True,pre_filt=None,resp=False,res
         - trim data to a day-long sequence and interpolate it to ensure starting at 00:00:00.000
     '''
 
+
+    if len(st)==1&st[0].stats.starttime.microsecond==0&\
+        int(86400*downsamp_freq)+1==st[0].stats.npts:
+            print("processing was already done")
+            return st
     #----remove the ones with too many segments and gaps------
     if len(st) > 100 or portion_gaps(st) > 0.2:
         print('Too many traces or gaps in Stream: Continue!')
