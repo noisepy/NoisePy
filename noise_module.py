@@ -1,6 +1,5 @@
 import os
 import glob
-import math
 import datetime
 import copy
 import time
@@ -141,11 +140,6 @@ def preprocess_raw(st,downsamp_freq,clean_time=True,pre_filt=None,resp=False,res
         - trim data to a day-long sequence and interpolate it to ensure starting at 00:00:00.000
     '''
 
-
-    if len(st)==1&st[0].stats.starttime.microsecond==0&\
-        int(86400*downsamp_freq)+1==st[0].stats.npts:
-            print("processing was already done")
-            return st
     #----remove the ones with too many segments and gaps------
     if len(st) > 100 or portion_gaps(st) > 0.2:
         print('Too many traces or gaps in Stream: Continue!')
@@ -446,8 +440,8 @@ def get_distance(lon1,lat1,lon2,lat2):
     dphi    = (lat2 - lat1)*pi/180
     dlambda = (lon2 - lon1)*pi/180
     
-    a = math.sin(dphi/2)**2+math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2
-    return 2*R*math.atan2(math.sqrt(a), math.sqrt(1 - a))/1000
+    a = np.sin(dphi/2)**2+np.cos(phi1)*np.cos(phi2)*np.sin(dlambda/2)**2
+    return 2*R*np.atan2(np.sqrt(a), np.sqrt(1 - a))/1000
 
 def get_coda_window(dist,vmin,maxlag,dt,wcoda):
     '''
@@ -654,10 +648,17 @@ def optimized_cc_parameters(dt,maxlag,method,lonS,latS,lonR,latR):
     '''
     provide the parameters for computting CC later
     '''
-    dist = get_distance(lonS,latS,lonR,latR)
+    #dist = get_distance(lonS,latS,lonR,latR)
+    dist,azi,baz = obspy.geodetics.base.gps2dist_azimuth(latS,lonS,latR,lonR)
     parameters = {'dt':dt,
-        'dist':dist,
-        'lag':maxlag,
+        'lag':int(maxlag),
+        'dist':np.float32(dist/1000),
+        'azi':np.float32(azi),
+        'baz':np.float32(baz),
+        'lonS':np.float32(lonS),
+        'latS':np.float32(latS),
+        'lonR':np.float32(lonR),
+        'latR':np.float32(latR),
         'method':method}
     return parameters
 
@@ -691,62 +692,6 @@ def optimized_correlate1(fft1_smoothed_abs,fft2,maxlag,dt,Nfft,nwin,method="cros
     
     return ncorr
 
-def correlate(fft1,fft2, maxlag,dt, Nfft, method="cross-correlation"):
-    """This function takes ndimensional *data* array, computes the cross-correlation in the frequency domain
-    and returns the cross-correlation function between [-*maxlag*:*maxlag*].
-
-    :type fft1: :class:`numpy.ndarray`
-    :param fft1: This array contains the fft of each timeseries to be cross-correlated.
-    :type maxlag: int
-    :param maxlag: This number defines the number of samples (N=2*maxlag + 1) of the CCF that will be returned.
-
-    :rtype: :class:`numpy.ndarray`
-    :returns: The cross-correlation function between [-maxlag:maxlag]
-    """
-    # Speed up FFT by padding to optimal size for FFTPACK
-    t0=time.time()
-    if fft1.ndim == 1:
-        axis = 0
-        nwin=1
-    elif fft1.ndim == 2:
-        axis = 1
-        nwin= int(fft1.shape[0])
-
-    corr=np.zeros(shape=(nwin,Nfft),dtype=np.complex64)
-    corr[:,:Nfft//2]  = np.conj(fft1) * fft2
-
-    if method == 'deconv':
-        ind = np.where(np.abs(fft1)>0)
-        corr[ind] /= moving_ave(np.abs(fft1[ind]),10)**2
-        #corr[ind] /= running_abs_mean(np.abs(fft1[ind]),10) ** 2
-    elif method == 'coherence':
-        ind = np.where(np.abs(fft1)>0)
-        corr[ind] /= running_abs_mean(np.abs(fft1[ind]),5)
-        ind = np.where(np.abs(fft2)>0)
-        corr[ind] /= running_abs_mean(np.abs(fft2[ind]),5)
-    elif method == 'raw':
-        ind = 1
-
-    #--------------------problems: [::-1] only flips along axis=0 direction------------------------
-    #corr[:,-(Nfft // 2):] = corr[:,:(Nfft // 2)].conjugate()[::-1] # fill in the complex conjugate
-    #----------------------------------------------------------------------------------------------
-    corr[:,0] = complex(0,0)
-    corr[:,-(Nfft//2)+1:]=np.flip(np.conj(corr[:,1:(Nfft//2)]),axis=axis)
-    corr = np.real(np.fft.ifftshift(scipy.fftpack.ifft(corr, Nfft, axis=axis)))
-
-    tcorr = np.arange(-Nfft//2 + 1, Nfft//2)*dt
-    ind = np.where(np.abs(tcorr) <= maxlag)[0]
-    if axis == 1:
-        corr = corr[:,ind]
-    else:
-        corr = corr[ind]
-    tcorr=tcorr[ind]
-
-    t1=time.time()
-    print('original takes '+str(t1-t0))
-    return corr,tcorr
-
-
 @jit('float32[:](float32[:],int16)')
 def moving_ave(A,N):
     '''
@@ -769,6 +714,82 @@ def moving_ave(A,N):
         if B[pos]==0:
             B[pos]=1
     return B[N:-N]
+
+
+def get_SNR(corr,snr_parameters,parameters):
+    '''
+    estimate the SNR for the cross-correlation functions. the signal is defined
+    as the maxinum in the time window of [dist/max_vel,dist/min_vel]. the noise
+    is defined as the std of the trailing 100 s window. flag is to indicate to 
+    estimate both lags of the cross-correlation funciton of just the positive
+
+    corr: the noise cross-correlation functions
+    snr_parameters: dictionary for some parameters to estimate S-N
+    parameters: dictionary for parameters about the ccfs
+    '''
+    #---------common variables----------
+    sampling_rate = int(1/parameters['dt'])
+    npts = int(2*sampling_rate*parameters['lag'])
+    indx = npts//2
+    dist = parameters['dist']
+    minvel = snr_parameters['minvel']
+    maxvel = snr_parameters['maxvel']
+
+    #-----index to window the signal part------
+    indx_sig1 = int(dist/maxvel)*sampling_rate
+    indx_sig2 = int(dist/minvel)*sampling_rate
+    if maxvel > 5:
+        indx_sig1 = 0
+
+    #-------index to window the noise part---------
+    indx_noise1 = indx_sig2
+    indx_noise2 = indx_noise1+snr_parameters['noisewin']*sampling_rate
+
+    #----prepare the filters----
+    fb = snr_parameters['freqmin']
+    fe = snr_parameters['freqmax']
+    ns = snr_parameters['steps']
+    freq = np.zeros(ns,dtype=np.float32)
+    psnr = np.zeros(ns,dtype=np.float32)
+    nsnr = np.zeros(ns,dtype=np.float32)
+    ssnr = np.zeros(ns,dtype=np.float32)
+
+    #--------prepare frequency info----------
+    step = (np.log(fb)-np.log(fe))/(ns-1)
+    for ii in range(ns):
+        freq[ii]=np.exp(np.log(fe)+ii*step)
+
+    for ii in range(1,ns-1):
+        f2 = freq[ii-1]
+        f1 = freq[ii+1]
+        ncorr = bandpass(corr,f1,f2,sampling_rate,corners=4,zerophase=True)
+        psignal = max(ncorr[indx+indx_sig1:indx+indx_sig2])
+        nsignal = max(ncorr[indx-indx_sig2:indx-indx_sig1])
+        ssignal = max((ncorr[indx+indx_sig1:indx+indx_sig2]+np.flip(ncorr[indx-indx_sig2:indx-indx_sig1]))/2)
+        pnoise  = np.std(ncorr[indx+indx_noise1:indx+indx_noise2])
+        nnoise  = np.std(ncorr[indx-indx_noise2:indx-indx_noise1])
+        snoise  = np.std((ncorr[indx+indx_noise1:indx+indx_noise2]+np.flip(ncorr[indx-indx_noise2:indx-indx_noise1]))/2)
+        psnr[ii] = psignal/pnoise
+        nsnr[ii] = nsignal/nnoise
+        ssnr[ii] = ssignal/snoise
+
+        #------plot the signals-------
+        '''
+        plt.figure(figsize=(16,3))
+        indx0 = 100*sampling_rate
+        tt = np.arange(-100*sampling_rate,100*sampling_rate+1)/sampling_rate
+        plt.plot(tt,ncorr[indx-indx0:indx+indx0+1],'k-',linewidth=0.6)
+        plt.title('psnr %4.1f nsnr %4.1f ssnr %4.1f' % (psnr[ii],nsnr[ii],ssnr[ii]))
+        plt.grid(True)
+        plt.show()
+        '''
+
+    parameters['psnr'] = psnr[1:-1]
+    parameters['nsnr'] = nsnr[1:-1]
+    parameters['ssnr'] = nsnr[1:-1]
+    parameters['freq'] = freq[1:-1]
+
+    return parameters
 
 def nextpow2(x):
     """
