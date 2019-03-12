@@ -10,7 +10,7 @@ from mpi4py import MPI
 
 '''
 this script stacks the cross-correlation functions according to the parameter of stack_days, 
-which allows to 
+which allows to explore the stability of the stacked ccfs for monitoring
 '''
 
 t0=time.time()
@@ -32,7 +32,7 @@ angles   = list(locs.iloc[:]['angle'])
 flag = False
 do_rotation   = True
 one_component = False
-stack_days = 1
+stack_days = 5
 
 maxlag = 800
 downsamp_freq=20
@@ -85,7 +85,7 @@ if rank == 0:
 
     #-------make station pairs based on list--------        
     pairs= noise_module.get_station_pairs(sta)
-    ccfs = sorted(glob.glob(os.path.join(CCFDIR,'2010_12_0*.h5')))
+    ccfs = sorted(glob.glob(os.path.join(CCFDIR,'*.h5')))
     splits = len(pairs)
 else:
     pairs,ccfs,splits=[None for _ in range(3)]
@@ -97,7 +97,7 @@ splits = comm.bcast(splits,root=0)
 extra  = splits % size
 
 
-#-----loop I: source stations------
+#-----loop I: source station------
 for ii in range(rank,splits+size-extra,size):
     
     if ii<splits:
@@ -152,20 +152,18 @@ for ii in range(rank,splits+size-extra,size):
                         print('found the station-pair at %dth day' % iday)
 
                     #----------------copy the parameter information---------------
-                    parameters  = ds.auxiliary_data[data_type][paths[0]].parameters
-                    for path in paths:
+                    parameters  = ds.auxiliary_data[data_type][rlist[0]].parameters
+                    for path in rlist:
 
                         #--------cross component-------
                         ccomp = data_type[-1]+path[-1]
 
                         #------put into a 2D matrix----------
                         tindx  = enz_components.index(ccomp)
-                        corr[tindx,:] += ds.auxiliary_data[data_type][path].data[:]
-                        ncorr[tindx,:]+= ds.auxiliary_data[data_type][path].data[:]
-                        num1[tindx]   += 1
-                        num2[tindx]   += 1
-                        if iday==0:
-                            print(data_type,path)
+                        corr[tindx] += ds.auxiliary_data[data_type][path].data[:]
+                        ncorr[tindx]+= ds.auxiliary_data[data_type][path].data[:]
+                        num1[tindx] += 1
+                        num2[tindx] += 1
 
             #------stack every n(10) day or whatever is left-------
             if (iday+1)%stack_days==0:
@@ -194,9 +192,9 @@ for ii in range(rank,splits+size-extra,size):
 
                         #------do average-----
                         if num1[ii]==0:
-                            print('station-pair %s_%s no data in %d days for components %s: filling zero' % (source,receiver,stack_days,icomp))
+                            print('station-pair %s_%s no data in %d days for component of %s: filling zero' % (source,receiver,stack_days,icomp))
                         else:
-                            corr[ii,:] = corr[ii,:]/num1[ii]
+                            corr[ii] = corr[ii]/num1[ii]
 
                         if flag:
                             print('estimate the SNR of component %s for %s_%s in E-N-Z system' % (enz_components[ii],source,receiver))
@@ -206,13 +204,13 @@ for ii in range(rank,splits+size-extra,size):
                         #------save the time domain cross-correlation functions-----
                         data_type = 'F'+date_s+'T'+date_e
                         path = icomp
-                        crap = corr[ii,:]
+                        crap = corr[ii]
                         stack_ds.add_auxiliary_data(data=crap, data_type=data_type, path=path, parameters=new_parameters)
 
                         if not do_rotation:
                             #----reset----
-                            corr[ii,:] = 0
-                            num1[ii]   = 0
+                            corr[ii] = 0
+                            num1[ii] = 0
 
                     #-------do rotation here if needed---------
                     if do_rotation:
@@ -267,8 +265,8 @@ for ii in range(rank,splits+size-extra,size):
                             stack_ds.add_auxiliary_data(data=crap, data_type=data_type, path=path, parameters=new_parameters)
 
                         #----reset----
-                        corr[ii,:] = 0
-                        num1[ii]   = 0
+                        corr[ii] = 0
+                        num1[ii] = 0
 
                 if iday != len(ccfs)-1:        
                     date_s = ccfs[iday+1].split('/')[-1].split('.')[0]
@@ -283,7 +281,7 @@ for ii in range(rank,splits+size-extra,size):
                 if num2[ii]==0:
                     print('station-pair %s_%s no data in at all for components %s: filling zero' % (source,receiver,icomp))
                 else:
-                    ncorr[ii,:] = ncorr[ii,:]/num2[ii]
+                    ncorr[ii] = ncorr[ii]/num2[ii]
                 
                 #--------evaluate the SNR of the signal at target period range-------
                 new_parameters = noise_module.get_SNR(ncorr[ii],snr_parameters,parameters)
@@ -291,7 +289,7 @@ for ii in range(rank,splits+size-extra,size):
                 #------save the time domain cross-correlation functions-----
                 data_type = 'Allstacked'
                 path = icomp
-                crap = ncorr[ii,:]
+                crap = ncorr[ii]
                 stack_ds.add_auxiliary_data(data=crap, data_type=data_type, path=path, parameters=new_parameters)
 
             #----do rotation-----
