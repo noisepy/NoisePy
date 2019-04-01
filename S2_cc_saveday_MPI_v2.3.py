@@ -219,7 +219,7 @@ for ii in range(rank,splits+size-extra,size):
                                                 pass 
 
                                         with pyasdf.ASDFDataSet(cc_aday_h5,mpi=False) as ccf_ds:
-                                            parameters = noise_module.optimized_cc_parameters(dt,maxlag,str(method),lonS,latS,lonR,latR)
+                                            parameters = noise_module.optimized_cc_parameters(dt,maxlag,str(method),len(bb),lonS,latS,lonR,latR)
 
                                             #-----------make a universal change to component-----------
                                             if data_type_r[-1]=='U' or data_type_r[-1]=='Z':

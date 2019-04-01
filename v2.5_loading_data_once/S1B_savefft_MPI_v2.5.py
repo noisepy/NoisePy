@@ -5,7 +5,6 @@ from datetime import datetime
 import numpy as np
 import scipy
 from scipy.fftpack.helper import next_fast_len
-from obspy.signal.filter import bandpass
 import obspy
 import matplotlib.pyplot as plt
 import noise_module
@@ -31,30 +30,30 @@ t00=time.time()
 rootpath  = '/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW'
 FFTDIR = os.path.join(rootpath,'FFT')
 locations = os.path.join(rootpath,'station.lst')
-event = os.path.join(rootpath,'noise_data/Event_2010_*')
+event = os.path.join(rootpath,'noise_data/Event_2011_*')
 #--------think about how to simplify this----------
-respdir = os.path.join(rootpath,'instrument/resp_all/resp_spectrum_20Hz')
+respdir = '/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/instrument/resp_4types/resp_spect_20Hz'
 
 #-----boolen parameters------
 prepro   =True              #preprocess the data?
-to_whiten=False             #whiten the spectrum?
-time_norm=False             #normalize in time?
-asdf     =False
-hdf5     =True
+to_whiten=False              #whiten the spectrum?
+time_norm=False              #normalize in time?
+asdf     =True
+hdf5     =False
 flag     =False             #print intermediate variables and computing time
 
 checkt  = True              #check for traces with points bewtween sample intervals
-resp    = False    
+resp    = False             #other options include ('inv','spectrum','resp','polezeros')
 
 #----more common variables---
-pre_filt=[0.04,0.05,4,6]
+pre_filt=[0.04,0.05,6,8]
 downsamp_freq=20
 dt=1/downsamp_freq
 cc_len=3600
 step=1800
 freqmin=0.05  
-freqmax=4
-norm_type='running_mean'
+freqmax=6
+norm_type='one_bit'
 
 
 #---------MPI-----------
@@ -98,7 +97,7 @@ for ista in range (rank,splits+size-extra,size):
             if flag:
                 print("working on station %s " % station)
             
-            #---------think about reading mini-seed files here---------
+            #-----------SAC and MiniSeed both works here-----------
             tfiles = glob.glob(os.path.join(tdir[jj],'*'+station+'*'))
             if len(tfiles)==0:
                 print(str(station)+' does not have sac file at '+str(tdir[jj]))
@@ -127,6 +126,8 @@ for ista in range (rank,splits+size-extra,size):
                 if prepro:
                     t0=time.time()
                     source = noise_module.preprocess_raw(source,downsamp_freq,checkt,pre_filt,resp,respdir)
+                    if len(source)==0:
+                        continue
                     t1=time.time()
                     if flag:
                         print("prepro takes %f s" % (t1-t0))
@@ -172,18 +173,12 @@ for ista in range (rank,splits+size-extra,size):
                 dataS_t= np.zeros(shape=(N,2))
                 dataS = np.zeros(shape=(N,NtS),dtype=np.float32)
                 for ii,trace in enumerate(source_slice):
-                    dataS_t[ii,0]= source_slice[ii].stats.starttime-obspy.UTCDateTime(1970,1,1)# convert to dataframe
-                    dataS_t[ii,1]= source_slice[ii].stats.endtime -obspy.UTCDateTime(1970,1,1)# convert to dataframe
                     dataS[ii,0:nptsS[ii]] = trace.data
                     if ii==0:
                         dataS_stats=trace.stats
 
-                #------check the dimension of the dataS-------
-                if dataS.ndim == 1:
-                    axis = 0
-                elif dataS.ndim == 2:
-                    axis = 1
-
+                #---2 parameters----
+                axis = dataS.ndim-1
                 Nfft = int(next_fast_len(int(dataS.shape[axis])))
 
                 #-----to whiten or not------
@@ -211,7 +206,7 @@ for ista in range (rank,splits+size-extra,size):
                     if flag:
                         print("temporal normalization takes %f s"%(t1-t0))
 
-                #-------------save FFTs as HDF5 files-----------------
+                #-------------save FFTs as ASDF files-----------------
                 crap=np.zeros(shape=(N,Nfft//2),dtype=np.complex64)
                 fft_h5 = os.path.join(FFTDIR,network+'.'+station+'.h5')
 
@@ -221,7 +216,7 @@ for ista in range (rank,splits+size-extra,size):
                             pass # create pyasdf file 
             
                     with pyasdf.ASDFDataSet(fft_h5,mpi=False,compression=None) as fft_ds:
-                        parameters = noise_module.fft_parameters(dt,cc_len,dataS_stats,dataS_t,source_params, \
+                        parameters = noise_module.fft_parameters(dt,cc_len,source_params, \
                             locs.iloc[ista],comp,Nfft,N)
                         
                         savedate = '{0:04d}_{1:02d}_{2:02d}'.format(dataS_stats.starttime.year,\
@@ -233,15 +228,16 @@ for ista in range (rank,splits+size-extra,size):
                         crap[:,:Nfft//2]=source_white[:,:Nfft//2]
                         fft_ds.add_auxiliary_data(data=crap, data_type=data_type, path=path, parameters=parameters)
 
-                    del fft_ds, crap, parameters, source_slice, source_white, dataS, dataS_stats, dataS_t, source_params   
+                    del fft_ds, crap, parameters, source_slice, source_white, dataS, dataS_stats, source_params   
                         
+                #-------------save FFTs as HDF5 files-----------------
                 elif hdf5:
                     if not os.path.isfile(fft_h5):
                         with h5py.File(fft_h5,"w") as fft_ds:
                             pass # create pyasdf file 
             
                     with h5py.File(fft_h5,"a") as fft_ds:
-                        parameters = noise_module.fft_parameters(dt,cc_len,dataS_stats,dataS_t,source_params, \
+                        parameters = noise_module.fft_parameters(dt,cc_len,source_params, \
                             locs.iloc[ista],comp,Nfft,N)
                         
                         savedate = '{0:04d}_{1:02d}_{2:02d}'.format(dataS_stats.starttime.year,\
@@ -255,7 +251,7 @@ for ista in range (rank,splits+size-extra,size):
                             #print("key",key,":",parameters[key])
                         tmp=fft_ds.create_dataset(path+".imag",data=np.imag(crap),shape=np.shape(crap),dtype=np.float32)
 
-                    del fft_ds, crap, parameters, source_slice, source_white, dataS, dataS_stats, dataS_t, source_params                 
+                    del fft_ds, crap, parameters, source_slice, source_white, dataS, dataS_stats, source_params                 
 
         t11=time.time()
         print('it takes '+str(t11-t10)+' s to process %s in step 1' % station)
