@@ -1455,13 +1455,20 @@ def mwcs_dvv(ref, cur, moving_window_length, slide_step, delta, window, fmin, fm
     indx = np.intersect1d(indx1,indx2)
     indx = np.intersect1d(indx,indx3)
 
-    #----estimate weight for regression----
-    w = 1/delta_err[indx]
-    w[~np.isfinite(w)] = 1.0
 
-    #---------do linear regression-----------
-    #m, a, em, ea = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=False)
-    m0, em0 = linear_regression(time_axis[indx], delta_t[indx], w,intercept_origin=True)
+    if len(indx) >2:
+
+        #----estimate weight for regression----
+        w = 1/delta_err[indx]
+        w[~np.isfinite(w)] = 1.0
+
+        #---------do linear regression-----------
+        #m, a, em, ea = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=False)
+        m0, em0 = linear_regression(time_axis[indx], delta_t[indx], w,intercept_origin=True)
+    
+    else:
+        print('not enough points to estimate dv/v')
+        m0=0;em0=0
 
     return np.array([-m0*100,em0*100]).T
 
