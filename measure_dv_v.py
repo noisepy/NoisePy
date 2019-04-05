@@ -2,6 +2,7 @@ from obspy.signal.filter import bandpass
 import matplotlib.pyplot as plt
 import noise_module
 import numpy as np 
+import matplotlib
 import pyasdf
 import scipy
 import glob
@@ -20,6 +21,9 @@ if not sys.warnoptions:
     import warnings
     warnings.simplefilter("ignore")
 
+font = {'family':'normal','weight':'bold','size':10}
+matplotlib.rc('font', **font)
+
 #----the path for the data---
 rootpath = '/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW'
 STACKDIR = os.path.join(rootpath,'STACK1')
@@ -33,12 +37,13 @@ tmax = 90
 fmin = 0.3
 fmax = 1
 comp = 'ZZ'
-maxlag = 100                # maximum window to measure dv/v
-stretch = True              # flag for stretching method
-mwcs    = True              # flag for MWCS method
+maxlag = 100                 # maximum window to measure dv/v
+stretch = True               # flag for the stretching method
+mwcs    = True              # flag for the MWCS method
 allstation = False           # make measurement to all stacked data or not
-wfilter    = True            # make measurement to the cleaned waveforms or not
-start_date = '2010_01_01'   # assume a continuous recording from start to end date with increment of stack-days
+wfilter    = True            # make measurement to the clean waveforms from wiener filter
+onelag     = False           # make measurement based on both lags data
+start_date = '2010_01_01'    # assume a continuous recording from start to end date with increment of stack-days
 end_date   = '2011_01_01'
 stack_days = 1
 
@@ -131,10 +136,17 @@ for ista in range(nsta):
 
             #--------parameters to store dv/v and cc--------
             if stretch:
-                dv1 = np.zeros(nstacks,dtype=np.float32)
-                cc = np.zeros(nstacks,dtype=np.float32)
-                cdp = np.zeros(nstacks,dtype=np.float32)
-                error1 = np.zeros(nstacks,dtype=np.float32)
+                
+                if onelag:
+                    dv1 = np.zeros(nstacks,dtype=np.float32)
+                    cc = np.zeros(nstacks,dtype=np.float32)
+                    cdp = np.zeros(nstacks,dtype=np.float32)
+                    error1 = np.zeros(nstacks,dtype=np.float32)
+                else:
+                    dv1 = np.zeros((nstacks,3),dtype=np.float32)
+                    cc = np.zeros((nstacks,3),dtype=np.float32)
+                    cdp = np.zeros((nstacks,3),dtype=np.float32)
+                    error1 = np.zeros((nstacks,3),dtype=np.float32)
             
             if mwcs:
                 dv2 = np.zeros(nstacks,dtype=np.float32)
@@ -158,7 +170,18 @@ for ista in range(nsta):
 
                 #----plug in the stretching function-------
                     if stretch:
-                        [dv1[ii], cc[ii], cdp[ii], error1[ii]] = noise_module.Stretching_current(ref, cur, tvec, -epsilon, epsilon, nbtrial, window, fmin, fmax, tmin, tmax)
+
+                        #----just on one lag----
+                        if onelag:
+                            [dv1[ii], cc[ii], cdp[ii], error1[ii]] = noise_module.Stretching_current\
+                                (ref, cur, tvec, epsilon, nbtrial, window, fmin, fmax, tmin, tmax)
+                        else:
+                            [dv1[ii][0], cc[ii][0], cdp[ii][0], error1[ii][0]] = noise_module.Stretching_current\
+                                (ref, cur, tvec, epsilon, nbtrial, window, fmin, fmax, tmin, tmax)
+                            [dv1[ii][1], cc[ii][1], cdp[ii][1], error1[ii][1]] = noise_module.Stretching_current\
+                                (np.flip(ref), np.flip(cur), tvec, epsilon, nbtrial, window, fmin, fmax, tmin, tmax)
+                            [dv1[ii][2], cc[ii][2], cdp[ii][2], error1[ii][2]] = noise_module.Stretching_current\
+                                (0.5*(ref+np.flip(ref)),0.5*(cur+np.flip(cur)), tvec, epsilon, nbtrial, window, fmin, fmax, tmin, tmax)
                     
                     if mwcs:
                         [dv2[ii], error2[ii]] = noise_module.mwcs_dvv(ref, cur, moving_window_length, slide_step, int(1/delta), window, fmin, fmax, tmin)
@@ -166,42 +189,82 @@ for ista in range(nsta):
                 #------set the segments without data to be nan-------
                 else:
                     if stretch:
-                        dv1[ii]=np.nan;cc[ii]=np.nan;cdp[ii]=np.nan;error1[ii]=np.nan
+                        if onelag:
+                            dv1[ii]=np.nan;cc[ii]=np.nan;cdp[ii]=np.nan;error1[ii]=np.nan
+                        else:
+                            dv1[ii][0]=np.nan;cc[ii][0]=np.nan;cdp[ii][0]=np.nan;error1[ii][0]=np.nan
+                            dv1[ii][1]=np.nan;cc[ii][1]=np.nan;cdp[ii][1]=np.nan;error1[ii][1]=np.nan
+                            dv1[ii][2]=np.nan;cc[ii][2]=np.nan;cdp[ii][2]=np.nan;error1[ii][2]=np.nan
                     if mwcs:
                         dv2[ii]=np.nan;error2[ii]=np.nan
 
             #----plot the results------
-            if stretch & mwcs:
-                plt.subplot(311)
-                plt.title(h5file.split('/')[-1])
-                plt.plot(dv1[1:],'r-');plt.plot(dv2[1:],'b-')
-                plt.ylabel('dv/v [%]')
-                plt.subplot(312)
-                plt.plot(cc[1:],'r-');plt.plot(cdp[1:],'b-')
-                plt.ylabel('cc')
-                plt.subplot(313)
-                plt.plot(error1[1:],'r-');plt.plot(error2[1:],'b-')
-                plt.xlabel('days');plt.ylabel('errors [%]')
-                plt.legend(['stretch','mwcs'],loc='upper right')
-                plt.show()
-            elif stretch:
-                plt.subplot(311)
-                plt.title(h5file.split('/')[-1])
-                plt.plot(dv1[1:],'r-')
-                plt.ylabel('dv/v [%]')
-                plt.subplot(312)
-                plt.plot(cc[1:],'r-');plt.plot(cdp[1:],'b-')
-                plt.ylabel('cc')
-                plt.subplot(313)
-                plt.plot(error1[1:],'r-')
-                plt.xlabel('days');plt.ylabel('errors [%]')
-                plt.show()
-            elif mwcs:
-                plt.subplot(211)
-                plt.title(h5file.split('/')[-1])
-                plt.plot(dv2[1:],'b-')
-                plt.ylabel('dv/v [%]')
-                plt.subplot(212)
-                plt.plot(error2[1:],'b-')
-                plt.xlabel('days');plt.ylabel('errors [%]')
-                plt.show()            
+            if stretch:
+                tt = np.arange(1,nstacks,stack_days)
+                if onelag:
+                    plt.figure()
+                    plt.subplot(211)
+                    plt.title(h5file.split('/')[-1])
+                    plt.plot(tt,dv1[1:]);plt.errorbar(tt,dv1[1:],yerr=error1[1:]*0.2)
+                    plt.ylabel('dv/v [%]')
+                    plt.xlabel('days')
+                    plt.subplot(212)
+                    plt.plot(cc[1:],'r-');plt.plot(cdp[1:],'b-')
+                    plt.ylabel('cc')
+                    plt.xlabel('days')
+                    plt.show()
+                else:
+                    plt.figure()
+                    plt.subplot(311)
+                    plt.title(h5file.split('/')[-1])
+                    plt.plot(tt,dv1[1:,0],'r-')#;plt.errorbar(tt,dv1[1:,0],yerr=error1[1:,0]*0.1)
+                    plt.plot(tt,dv1[1:,1],'g-')#;plt.errorbar(tt,dv1[1:,1],yerr=error1[1:,1]*0.1)
+                    plt.plot(tt,dv1[1:,2],'b-')#;plt.errorbar(tt,dv1[1:,2],yerr=error1[1:,2]*0.1)
+                    plt.ylabel('dv/v [%]')
+                    plt.xlabel('days')
+                    plt.legend(['P Lag','N Lag','Average'],loc='upper right')
+                    plt.subplot(312)
+                    plt.plot(cc[1:,0],'r-')
+                    plt.plot(cc[1:,1],'g-')
+                    plt.plot(cc[1:,2],'b-')
+                    plt.ylabel('cc')
+                    plt.xlabel('days')
+                    plt.subplot(313)
+                    plt.plot(error1[1:,0],'r-')
+                    plt.plot(error1[1:,1],'g-')
+                    plt.plot(error1[1:,2],'b-')
+                    plt.ylabel('error [%]')
+                    plt.xlabel('days')
+
+            if mwcs:
+                if not stretch:
+                    plt.figure()
+                    plt.subplot(211)
+                    plt.title(h5file.split('/')[-1])
+                    plt.plot(dv2[1:],'b-')
+                    plt.ylabel('dv/v [%]')
+                    plt.subplot(212)
+                    plt.plot(error2[1:],'b-')
+                    plt.xlabel('days');plt.ylabel('errors [%]')
+                else:
+                    if onelag:
+                        plt.figure()
+                        plt.subplot(211)
+                        plt.title(h5file.split('/')[-1])
+                        plt.plot(dv2[1:],'b-');plt.plot(dv1[1:],'r-')
+                        plt.ylabel('dv/v [%]')
+                        plt.legend(['mwcs','stretch'],loc='upper right')
+                        plt.subplot(212)
+                        plt.plot(error2[1:],'b-');plt.plot(error1[1:],'r-')
+                        plt.xlabel('days');plt.ylabel('errors [%]')
+                    else:
+                        plt.figure()
+                        plt.subplot(211)
+                        plt.title(h5file.split('/')[-1])
+                        plt.plot(dv2[1:],'b-');plt.plot(dv1[1:,2],'r-')
+                        plt.legend(['mwcs','stretch-ave'],loc='upper right')
+                        plt.ylabel('dv/v [%]')
+                        plt.subplot(212)
+                        plt.plot(error2[1:],'b-');plt.plot(error1[1:,2],'r-')
+                        plt.xlabel('days');plt.ylabel('errors [%]')           
+            plt.show()

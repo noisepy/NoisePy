@@ -1170,7 +1170,7 @@ def NCF_denoising(img_to_denoise,Mdate,Ntau,NSV):
 
 	return denoised_img
 
-def Stretching_current(ref, cur, t, dvmin, dvmax, nbtrial, window, fmin, fmax, tmin, tmax):
+def Stretching_current(ref, cur, t, dv_range, nbtrial, window, fmin, fmax, tmin, tmax):
     """
     Stretching function: 
     This function compares the Reference waveform to stretched/compressed current waveforms to get the relative seismic velocity variation (and associated error).
@@ -1201,6 +1201,8 @@ def Stretching_current(ref, cur, t, dvmin, dvmax, nbtrial, window, fmin, fmax, t
     The code first finds the best correlation coefficient between the Reference waveform and the stretched/compressed current waveform among the "nbtrial" values. 
     A refined analysis is then performed around this value to obtain a more precise dv/v measurement .
     """ 
+    dvmin = -np.abs(dv_range)
+    dvmax = np.abs(dv_range)
     Eps = 1+(np.linspace(dvmin, dvmax, nbtrial))
     cof = np.zeros(Eps.shape,dtype=np.float32)
 
@@ -1559,9 +1561,6 @@ def mwcs_dvv1(ref, cur, moving_window_length, slide_step, delta, window, fmin, f
         del freq_vec
         del index_range
         del w, v, e, s2x2, sx2, m, em
-
-        #----plot the measurements for all the time windows-----
-        xxxx
 
     if maxind > len(cur) + slide_step*delta:
         print("The last window was too small, but was computed")
