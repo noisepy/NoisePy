@@ -148,7 +148,7 @@ for ista in range(nsta):
 
             #------loop through the reference waveforms------
             for ii in range(1,nstacks):
-                if clean_data:
+                if wfilter:
                     cur = new[ii,:]
                 else:
                     cur = data[ii,:]
