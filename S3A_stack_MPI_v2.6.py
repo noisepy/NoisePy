@@ -15,6 +15,7 @@ which afford exploration of the stability of the stacked ccfs for monitoring pur
 modified to make statistic analysis of the daily CCFs (amplitude) in order to select the ones
 with abnormal large amplitude that would dominate the finally stacked waveforms (Apr/01/2019)
 
+this script keeps the days of missing data for some of the components
 '''
 
 t0=time.time()
@@ -249,7 +250,6 @@ for ii in range(rank,splits+size-extra,size):
             with pyasdf.ASDFDataSet(stack_h5,mpi=False) as stack_ds:
 
                 tcorr = np.zeros((ncomp,int(2*maxlag/dt)+1),dtype=np.float32)
-                bad   = 0
                 #-----loop through all E-N-Z components-----
                 for jj in range(ncomp):
                     icomp  = enz_components[jj]
@@ -266,13 +266,7 @@ for ii in range(rank,splits+size-extra,size):
 
                     #-----break if no good data in the stacking-days-----
                     if len(indx)==0:
-                        bad = 1
-
-                        #---remove the tag completely---
-                        if jj:
-                            del ds.auxiliary_data.data_type
-
-                        break
+                        continue
 
                     #------do average-----
                     tcorr[jj] = np.mean(corr[indx],axis=0)
@@ -290,7 +284,7 @@ for ii in range(rank,splits+size-extra,size):
                     stack_ds.add_auxiliary_data(data=crap, data_type=data_type, path=path, parameters=new_parameters)
 
                 #-------do rotation here if needed---------
-                if do_rotation and bad==0:
+                if do_rotation:
                     if flag:
                         print('doing matrix rotation now!')
 
@@ -353,7 +347,6 @@ for ii in range(rank,splits+size-extra,size):
 
         #--------------now stack all of the days---------------
         tcorr = np.zeros((ncomp,int(2*maxlag/dt)+1),dtype=np.float32)
-        bad   = 0
         with pyasdf.ASDFDataSet(stack_h5,mpi=False) as stack_ds:
             for jj in range(ncomp):
                 icomp = enz_components[jj]
@@ -362,13 +355,9 @@ for ii in range(rank,splits+size-extra,size):
                 tindx2 = np.where(nflag[tindx1,jj]>0)[0]
                 indx   = tindx1[tindx2]*ncomp+jj
 
-                #-----break if no good data in the stacking-days-----
+                #-----make nan in the stacking-days-----
                 if len(indx)==0:
-                    bad = 1
-                    
-                    if jj:
-                        del ds.auxiliary_data.data_type
-                    break
+                    continue
 
                 #------do average-----
                 tcorr[jj] = np.mean(corr[indx],axis=0)
