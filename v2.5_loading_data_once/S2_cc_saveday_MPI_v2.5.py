@@ -53,7 +53,7 @@ step=1800
 maxlag=800              #enlarge this number if to do C3
 method='deconv'
 start_date = '2011_03_01'
-end_date   = '2011_03_01'
+end_date   = '2011_03_03'
 inc_days   = 1
 
 #if auto_corr and method=='coherence':
@@ -73,6 +73,9 @@ if rank ==0:
     sfiles = sorted(glob.glob(os.path.join(FFTDIR,'*.h5')))
     day = noise_module.get_event_list(start_date,end_date,inc_days)
     splits = len(day)
+
+    if not sfiles:
+        raise IOError('Abort! No FFT data in %s' % FFTDIR)
 else:
     splits,sfiles,day = [None for _ in range(3)]
 

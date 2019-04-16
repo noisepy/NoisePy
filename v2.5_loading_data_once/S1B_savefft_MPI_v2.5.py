@@ -14,6 +14,10 @@ import h5py
 import pandas as pd
 from mpi4py import MPI
 
+if not sys.warnoptions:
+    import warnings
+    warnings.simplefilter("ignore")
+
 '''
 this script pre-processs the noise data for each single station using the parameters given below 
 and stored the whitened and nomalized fft trace for each station in a HDF5 file as *.h5.
@@ -74,7 +78,7 @@ if rank == 0:
     tdir = sorted(glob.glob(event))
 
     if len(tdir)==0 or nsta==0:
-        raise IOError('no available files for doing FFT')
+        raise IOError('Abort! no available seismic files for doing FFT')
 else:
     splits,locs,tdir = [None for _ in range(3)]
 
