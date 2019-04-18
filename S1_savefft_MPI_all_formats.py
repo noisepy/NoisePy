@@ -170,7 +170,7 @@ for ista in range (rank,splits+size-extra,size):
                     #----------variables to define days with earthquakes----------
                     all_madS = noise_module.mad(source[0].data)
                     all_stdS = np.std(source[0].data)
-                    if all_madS==0 or all_stdS==0 or all_madS=='NaN' or all_stdS=='NaN':
+                    if all_madS==0 or all_stdS==0 or np.isnan(all_madS) or np.isnan(all_stdS):
                         print("continue! madS or stdS equeals to 0 for %s" % source)
                         continue
 
@@ -333,7 +333,7 @@ for ista in range (rank,splits+size-extra,size):
                     
                     if prepro:
                         t0=time.time()
-                        source = noise_module.preprocess_raw(source,downsamp_freq,checkt,pre_filt,resp,respdir)
+                        source = noise_module.preprocess_raw(source,downsamp_freq,checkt,pre_filt,resp,resp_dir)
                         if len(source)==0:
                             continue
                         t1=time.time()
