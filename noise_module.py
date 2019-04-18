@@ -1272,7 +1272,6 @@ def getCoherence(dcs, ds1, ds2):
     return coh
 
 def mwcs_dvv(ref, cur, moving_window_length, slide_step, delta, window, fmin, fmax, tmin, smoothing_half_win=5):
-    #mwcs_dvv(ref, cur, t, dvmin, dvmax, nbtrial, window, fmin, fmax, tmin, tmax):
     """
     modified sub-function from MSNoise package by Thomas Lecocq. download from
     https://github.com/ROBelgium/MSNoise/tree/master/msnoise
@@ -1443,6 +1442,7 @@ def wavg_wstd(data, errors):
     wstd = np.sqrt(np.sum(w * (d - wavg) ** 2) / ((N - 1) * np.sum(w) / N))
     return wavg, wstd
 
+
 def mwcs_dvv1(ref, cur, moving_window_length, slide_step, delta, window, fmin, fmax, tmin, smoothing_half_win=5):
     """
     modified sub-function from MSNoise package by Thomas Lecocq. download from
@@ -1466,113 +1466,133 @@ def mwcs_dvv1(ref, cur, moving_window_length, slide_step, delta, window, fmin, f
         mean coherence for each window.
     """
     
-    ##########################
-    #-----part I: mwcs-------
-    ##########################
-    delta_t = []
-    delta_err = []
+    ##################################################################
+    #-------------------------part I: mwcs----------------------------
+    ##################################################################
+    delta_t    = []
+    delta_err  = []
     delta_mcoh = []
-    time_axis = []
+    time_axis  = []
 
     window_length_samples = np.int(moving_window_length * delta)
-    padd = int(2 ** (nextpow2(window_length_samples) + 2))
-    count = 0
+    padd  = int(2 ** (nextpow2(window_length_samples) + 2))
     tp = cosine_taper(window_length_samples, 0.85)
 
-    #----does minind really start from 0??-----
-    minind = 0
-    maxind = window_length_samples
+    #----make usage of both lags----
+    flip_flag = [0,1]
+    for iflip in flip_flag:
 
-    #-------loop through all sub-windows-------
-    while maxind <= len(cur):
-        cci = cur[minind:maxind]
-        cci = scipy.signal.detrend(cci, type='linear')
-        cci *= tp
+        #----indices of the moving window-----
+        count  = 0
+        minind = 0
+        maxind = window_length_samples
 
-        cri = ref[minind:maxind]
-        cri = scipy.signal.detrend(cri, type='linear')
-        cri *= tp
+        if iflip:
+            cur = np.flip(cur,axis=0)
+            ref = np.flip(ref,axis=0)
 
-        minind += int(slide_step*delta)
-        maxind += int(slide_step*delta)
+        #-------loop through all sub-windows-------
+        while maxind <= len(window):
+            cci = cur[window[minind:maxind]]
+            cci = scipy.signal.detrend(cci, type='linear')
+            cci *= tp
 
-        #-------------get the spectrum-------------
-        fcur = scipy.fftpack.fft(cci, n=padd)[:padd // 2]
-        fref = scipy.fftpack.fft(cri, n=padd)[:padd // 2]
+            cri = ref[window[minind:maxind]]
+            cri = scipy.signal.detrend(cri, type='linear')
+            cri *= tp
 
-        fcur2 = np.real(fcur) ** 2 + np.imag(fcur) ** 2
-        fref2 = np.real(fref) ** 2 + np.imag(fref) ** 2
+            minind += int(slide_step*delta)
+            maxind += int(slide_step*delta)
 
-        # Calculate the cross-spectrum
-        X = fref * (fcur.conj())
-        if smoothing_half_win != 0:
-            dcur = np.sqrt(smooth(fcur2, window='hanning',half_win=smoothing_half_win))
-            dref = np.sqrt(smooth(fref2, window='hanning',half_win=smoothing_half_win))
-            X = smooth(X, window='hanning',half_win=smoothing_half_win)
-        else:
-            dcur = np.sqrt(fcur2)
-            dref = np.sqrt(fref2)
+            #-------------get the spectrum-------------
+            fcur = scipy.fftpack.fft(cci, n=padd)[:padd // 2]
+            fref = scipy.fftpack.fft(cri, n=padd)[:padd // 2]
 
-        dcs = np.abs(X)
+            fcur2 = np.real(fcur) ** 2 + np.imag(fcur) ** 2
+            fref2 = np.real(fref) ** 2 + np.imag(fref) ** 2
 
-        # Find the values the frequency range of interest
-        freq_vec = scipy.fftpack.fftfreq(len(X) * 2, 1. / delta)[:padd // 2]
-        index_range = np.argwhere(np.logical_and(freq_vec >= fmin,freq_vec <= fmax))
+            # Calculate the cross-spectrum
+            X = fref * (fcur.conj())
+            if smoothing_half_win != 0:
+                dcur = np.sqrt(smooth(fcur2, window='hanning',half_win=smoothing_half_win))
+                dref = np.sqrt(smooth(fref2, window='hanning',half_win=smoothing_half_win))
+                X = smooth(X, window='hanning',half_win=smoothing_half_win)
+            else:
+                dcur = np.sqrt(fcur2)
+                dref = np.sqrt(fref2)
 
-        # Get Coherence and its mean value
-        coh  = getCoherence(dcs, dref, dcur)
-        mcoh = np.mean(coh[index_range])
+            dcs = np.abs(X)
 
-        # Get Weights
-        w = 1.0 / (1.0 / (coh[index_range] ** 2) - 1.0)
-        w[coh[index_range] >= 0.99] = 1.0 / (1.0 / 0.9801 - 1.0)
-        w = np.sqrt(w * np.sqrt(dcs[index_range]))
-        w = np.real(w)
+            # Find the values the frequency range of interest
+            freq_vec = scipy.fftpack.fftfreq(len(X) * 2, 1. / delta)[:padd // 2]
+            index_range = np.argwhere(np.logical_and(freq_vec >= fmin,freq_vec <= fmax))
 
-        # Frequency array:
-        v = np.real(freq_vec[index_range]) * 2 * np.pi
+            # Get Coherence and its mean value
+            coh  = getCoherence(dcs, dref, dcur)
+            mcoh = np.mean(coh[index_range])
 
-        # Phase:
-        phi = np.angle(X)
-        phi[0] = 0.
-        phi = np.unwrap(phi)
-        phi = phi[index_range]
+            # Get Weights
+            w = 1.0 / (1.0 / (coh[index_range] ** 2) - 1.0)
+            w[coh[index_range] >= 0.99] = 1.0 / (1.0 / 0.9801 - 1.0)
+            w = np.sqrt(w * np.sqrt(dcs[index_range]))
+            w = np.real(w)
 
-        # Calculate the slope with a weighted least square linear regression
-        # forced through the origin
-        # weights for the WLS must be the variance !
-        m, em = linear_regression(v.flatten(), phi.flatten(), w.flatten())
+            # Frequency array:
+            v = np.real(freq_vec[index_range]) * 2 * np.pi
 
-        delta_t.append(m)
+            # Phase:
+            phi = np.angle(X)
+            phi[0] = 0.
+            phi = np.unwrap(phi)
+            phi = phi[index_range]
 
-        # print phi.shape, v.shape, w.shape
-        e = np.sum((phi - m * v) ** 2) / (np.size(v) - 1)
-        s2x2 = np.sum(v ** 2 * w ** 2)
-        sx2 = np.sum(w * v ** 2)
-        e = np.sqrt(e * s2x2 / sx2 ** 2)
+            # Calculate the slope with a weighted least square linear regression
+            # forced through the origin
+            # weights for the WLS must be the variance !
+            m, em = linear_regression(v.flatten(), phi.flatten(), w.flatten())
 
-        delta_err.append(e)
-        delta_mcoh.append(np.real(mcoh))
-        time_axis.append(tmin+moving_window_length/2.+count*slide_step)
-        count += 1
+            delta_t.append(m)
 
-        del fcur, fref
-        del X
-        del freq_vec
-        del index_range
-        del w, v, e, s2x2, sx2, m, em
+            # print phi.shape, v.shape, w.shape
+            e    = np.sum((phi - m * v) ** 2) / (np.size(v) - 1)
+            s2x2 = np.sum(v ** 2 * w ** 2)
+            sx2  = np.sum(w * v ** 2)
+            e    = np.sqrt(e * s2x2 / sx2 ** 2)
 
-    if maxind > len(cur) + slide_step*delta:
-        print("The last window was too small, but was computed")
+            delta_err.append(e)
+            delta_mcoh.append(np.real(mcoh))
+            if iflip:
+                time_axis.append((tmin+moving_window_length/2.+count*slide_step)*-1)
+            else:
+                time_axis.append(tmin+moving_window_length/2.+count*slide_step)
+            count += 1
 
-    delta_t = np.array(delta_t)
-    delta_err = np.array(delta_err)
+            del fcur, fref
+            del X
+            del freq_vec
+            del index_range
+            del w, v, e, s2x2, sx2, m, em
+
+        if maxind > len(cur) + slide_step*delta:
+            print("The last window was too small, but was computed")
+
+    delta_t    = np.array(delta_t)
+    delta_err  = np.array(delta_err)
     delta_mcoh = np.array(delta_mcoh)
     time_axis  = np.array(time_axis)
 
-    #####################################
-    #-----------part II: dv/v------------
-    #####################################
+    tt = np.arange(0,len(ref))*delta
+    plt.subplot(211)
+    plt.scatter(time_axis,delta_t)
+    plt.subplot(212)
+    plt.plot(tt,ref,'r-');plt.plot(tt,cur,'g-')
+    plt.show()
+
+    ##################################################################
+    #--------------------------part II: dv/v--------------------------
+    ##################################################################
+
+    #-----some default parameters used in MSNoise-------
     delta_mincho = 0.65
     delta_maxerr = 0.1
     delta_maxdt  = 0.1
@@ -1580,10 +1600,11 @@ def mwcs_dvv1(ref, cur, moving_window_length, slide_step, delta, window, fmin, f
     indx2 = np.where(delta_err<delta_maxerr)
     indx3 = np.where(delta_t<delta_maxdt)
 
-    #-----find good dt measurements in the given window-----
+    #-----find good dt measurements-----
     indx = np.intersect1d(indx1,indx2)
     indx = np.intersect1d(indx,indx3)
 
+    #-----at least 3 points for the linear regression------
     if len(indx) >2:
 
         #----estimate weight for regression----
@@ -1596,7 +1617,7 @@ def mwcs_dvv1(ref, cur, moving_window_length, slide_step, delta, window, fmin, f
     
     else:
         print('not enough points to estimate dv/v')
-        m0=0;em0=0
+        m0=np.nan;em0=np.nan
 
     return np.array([-m0*100,em0*100]).T
 
@@ -1640,7 +1661,6 @@ def computeErrorFunction(u1, u0, nSample, lag, norm='L2'):
             if (ii + ll >= 0) & (ii + ll < nSample):
                 err[ii,thisLag] = u1[ii] - u0[ii + ll]
 
-    
     if norm == 'L2':
         err = err**2
     elif norm == 'L1':
