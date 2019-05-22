@@ -107,7 +107,7 @@ def plot_moveout(sfile,freqmin,freqmax,net1=None,sta1=None,comp1=None):
     and component 1 and component 2 filtered at freq bands of freqmin-freqmax. if no 
     station is provided, it plots the move-out for each virtual source
 
-    usage: plot_moveout('2010_12_18.h5',0.1,0.3) or
+    usage: plot_moveout('/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/CCF/2010_12_18.h5',0.1,0.3) or
            plot_moveout('2010_12_18.h5',0.1,0.3,'E','HNOM','HNU')
     '''
     
@@ -207,6 +207,159 @@ def plot_moveout(sfile,freqmin,freqmax,net1=None,sta1=None,comp1=None):
             plt.legend(['E','N','Z'],loc='upper right')
             plt.show()
 
+def plot_moveout_stack(sdir,sta,freqmin,freqmax,ccomp,maxlag=None,tag=None):            
+    '''
+    this script plots the cross-correlation functions for the station pair of sta1-sta2
+    and component 1 and component 2 filtered at freq bands of freqmin-freqmax. if no 
+    station is provided, it plots the move-out for each virtual source
+
+    usage: plot_moveout('/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/STACK','UW.ALKI',0.1,0.3,'ZZ') 
+    '''
+    
+    #---basic parameters----
+    afiles = sorted(glob.glob(os.path.join(sdir,'*/*'+sta+'*.h5')))
+    if not maxlag:
+        maxlag = 100
+    if not tag:
+        tag = 'Allstacked'
+
+    #-----------get all tags-------------
+    with pyasdf.ASDFDataSet(afiles[0],mode='r') as ds:
+        tags = ds.auxiliary_data.list()
+        dt = ds.auxiliary_data['Allstacked']['ZZ'].parameters['dt']
+        tt = np.arange(-maxlag/dt, maxlag/dt+1)*dt
+
+    mdist=0
+    #----all stacked days-----
+    if tag in tags:
+        plt.figure(figsize=(9,6))
+
+        #-------all receivers--------
+        for ii in range(len(afiles)):
+            iflip = 0
+            receiver = afiles[ii].split('_')[-1]
+
+            #-----to flip it-----
+            treceiver = sta+'.h5'
+            if receiver==treceiver:
+                iflip = 1
+                receiver = afiles[ii].split('/')[-1].split('_')[0]
+
+            with pyasdf.ASDFDataSet(afiles[ii],mode='r') as ds:
+                slist = ds.auxiliary_data.list()
+                
+                #----check that day exist---
+                if tag in slist:
+                    
+                    #---------read parameters and copy data-----------
+                    dist = ds.auxiliary_data[tag][ccomp].parameters['dist']
+                    data = ds.auxiliary_data[tag][ccomp].data[:]
+                    data = bandpass(data,freqmin,freqmax,int(1/dt),corners=4, zerophase=True)
+                    data = data/max(data)
+                    npts = len(data)
+                    indx0 = npts//2
+                    tindx = int(maxlag/dt)
+                    if tindx>indx0:
+                        raise ValueError('tindx larger than indx0')
+                        
+                    if iflip:
+                        plt.plot(tt,np.flip(data[indx0-tindx:indx0+tindx+1],axis=0)+dist,'k',linewidth=0.8)
+                    else:
+                        plt.plot(tt,data[indx0-tindx:indx0+tindx+1]+dist,'k',linewidth=0.8)
+                    plt.title('%s %s %s filtered @%4.1f-%4.1f Hz' % (sdir.split('/')[-1],tag,ccomp,freqmin,freqmax))
+                    plt.xlabel('time (s)')
+                    plt.ylabel('offset (km)')
+                    plt.text(maxlag*0.9,dist+0.5,receiver,fontsize=6)
+
+                    #----use to plot o times------
+                    if mdist < dist:
+                        mdist = dist
+        plt.plot([0,0],[0,mdist],'r--',linewidth=1)
+        plt.show()
+
+def plot_moveout_stack_comp(sdir1,sdir2,sdir3,freqmin,freqmax,ccomp,maxlag=None,tag=None):            
+    '''
+    updated version of plot_moveout_stack_comp to compare the cross-crrelation functions from several
+    methods, including decon, coherence, raw cross-correlation with T/F normalization
+
+    usage: plot_moveout_stack_comp('/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/STACK1/E.AYHM',
+    '/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/STACK2/E.AYHM','/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/STACK3/E.AYHM',0.1,0.3,'ZZ') 
+    '''
+    
+    #---basic parameters----
+    afiles = sorted(glob.glob(os.path.join(sdir1,'*.h5')))
+    if not maxlag:
+        maxlag = 100
+    if not tag:
+        tag = 'Allstacked'
+
+    #-----------get all tags-------------
+    with pyasdf.ASDFDataSet(afiles[0],mode='r') as ds:
+        tags = ds.auxiliary_data.list()
+        dt = ds.auxiliary_data['Allstacked']['ZZ'].parameters['dt']
+        tt = np.arange(-maxlag/dt, maxlag/dt+1)*dt
+
+    mdist=0
+    #----all stacked days-----
+    if tag in tags:
+        plt.figure(figsize=(9,6))
+
+        #-------all receivers--------
+        for ii in range(len(afiles)):
+            receiver = afiles[ii].split('_')[-1]
+
+            #------get the station pair-------
+            tfile = afiles[ii].split('/')[-1]
+            tfile1 = os.path.join(sdir2,tfile)
+            tfile2 = os.path.join(sdir3,tfile)
+
+            with pyasdf.ASDFDataSet(afiles[ii],mode='r') as ds:
+                slist = ds.auxiliary_data.list()
+                
+                #----check that day exist---
+                if tag in slist:
+                    
+                    #---------read parameters and copy data-----------
+                    dist = ds.auxiliary_data[tag][ccomp].parameters['dist']
+                    data = ds.auxiliary_data[tag][ccomp].data[:]
+                    data = bandpass(data,freqmin,freqmax,int(1/dt),corners=4, zerophase=True)
+                    data = data/max(data)
+                    npts = len(data)
+                    indx0 = npts//2
+                    tindx = int(maxlag/dt)
+                    if tindx>indx0:
+                        raise ValueError('tindx larger than indx0')
+                    plt.plot(tt,data[indx0-tindx:indx0+tindx+1]+dist,'k',linewidth=0.8)
+                    if os.path.isfile(tfile1):
+                        ds1 = pyasdf.ASDFDataSet(tfile1,mode='r')
+                        try:
+                            data1 = ds1.auxiliary_data[tag][ccomp].data[:]
+                            data1 = bandpass(data1,freqmin,freqmax,int(1/dt),corners=4, zerophase=True)
+                            data1 = data1/max(data1)
+                            plt.plot(tt,data1[indx0-tindx:indx0+tindx+1]+dist,'r',linewidth=0.8)
+                        except Exception:
+                            pass
+                    if os.path.isfile(tfile2):
+                        ds2 = pyasdf.ASDFDataSet(tfile2,mode='r')
+                        try:
+                            data2 = ds2.auxiliary_data[tag][ccomp].data[:]
+                            data2 = bandpass(data2,freqmin,freqmax,int(1/dt),corners=4, zerophase=True)
+                            data2 = data2/max(data2)
+                            plt.plot(tt,data2[indx0-tindx:indx0+tindx+1]+dist,'g--',linewidth=0.8)
+                        except Exception:
+                            pass
+                    plt.title('%s %s %s filtered @%4.1f-%4.1f Hz' % (sdir1.split('/')[-1],tag,ccomp,freqmin,freqmax))
+                    plt.xlabel('time (s)')
+                    plt.ylabel('offset (km)')
+                    plt.legend(['decon','coherence','raw'],loc='lower right')
+                    plt.text(maxlag*0.9,dist+0.5,receiver,fontsize=6)
+
+                    #----use to plot o times------
+                    if mdist < dist:
+                        mdist = dist
+        plt.plot([0,0],[0,mdist],'r--',linewidth=1)
+        plt.show()
+
 
 def plot_cc_2lags(sfile,freqmin,freqmax,net1,sta1,comp1,net2=None,sta2=None,comp2=None):
     '''
@@ -286,8 +439,8 @@ def plot_cc_withtime(ccfdir,freqmin,freqmax,net1,sta1,comp1,net2=None,sta2=None,
     plot the filtered cross-correlation functions between station-pair sta1-sta2
     for all of the available days stored in ccfdir
 
-    example: plot_cc_withtime('Mesonet_BW/CCF','Mesonet_BW/STACK/AYHM',1,5,'E','AYHM','HNU') or 
-    plot_cc_withtime('Mesonet_BW/CCF','Mesonet_BW/STACK/AYHM',1,5,'E','AYHM','HNU','E','BKKM','HNU')
+    example: plot_cc_withtime('/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/CCF',1,5,'E','AYHM','Z') or 
+    plot_cc_withtime('Mesonet_BW/CCF',1,5,'E','AYHM','Z','Mesonet_BW/STACK/AYHM','E','BKKM','Z')
     '''
     #---basic parameters----
     maxlag = 100
@@ -305,10 +458,11 @@ def plot_cc_withtime(ccfdir,freqmin,freqmax,net1,sta1,comp1,net2=None,sta2=None,
         for ii in range(len(afiles)):
             
             #--maximum 50 days one plot----
-            if ii%50==0:
+            if ii%60==0:
                 plt.figure(figsize=(9,6))
 
             with pyasdf.ASDFDataSet(afiles[ii],mode='r') as ds:
+                #print(afiles[ii],source,recever)
                 dist = ds.auxiliary_data[source][recever].parameters['dist']
                 iday = afiles[ii].split('/')[-1].split('.')[0]
                 data = ds.auxiliary_data[source][recever].data[:]
@@ -324,16 +478,17 @@ def plot_cc_withtime(ccfdir,freqmin,freqmax,net1,sta1,comp1,net2=None,sta2=None,
 
         plt.grid(True)
         if stackdir:
+            stackfile = os.path.join(stackdir,net1+'.'+sta1+'_'+net2+'.'+sta2+'.h5')
             #----plot stacked one----
-            sacfile = os.path.join(stackdir,net1+"."+sta1+"_"+net2+"."+sta2+"_"+comp1+"_"+comp2+".SAC")
-            if os.path.isfile(sacfile):
-                tr = obspy.read(sacfile)
-                data = tr[0].data
+            with pyasdf.ASDFDataSet(stackfile,mode='r') as stack_ds:
+                ccomp = comp1[-1]+comp2[-1]
+                tags = 'Allstacked'
+                data = stack_ds.auxiliary_data[tags][ccomp].data[:]
                 data = bandpass(data,freqmin,freqmax,int(1/dt),corners=4, zerophase=True)
                 data = data/max(data)
                 indx0= len(data)//2
-                plt.plot(tt,data[indx0-tindx:indx0+tindx+1]+ii*2,'b-',linewidth=1)
-                plt.plot(tt,data[indx0-tindx:indx0+tindx+1],'b-',linewidth=1)
+                plt.plot(tt,data[indx0-tindx:indx0+tindx+1]+ii*2+2,'b-',linewidth=1)
+                plt.plot(tt,data[indx0-tindx:indx0+tindx+1]-2,'b-',linewidth=1)
         #---------highlight zero time------------
         plt.plot([0,0],[0,ii*2],'r--',linewidth=1.5)
         plt.title('%s_%s_%s_%s dist %6.1f @%4.1f-%4.1f Hz' % (sta1,comp1,sta2,comp2,dist,freqmin,freqmax))
@@ -355,7 +510,7 @@ def plot_cc_withtime(ccfdir,freqmin,freqmax,net1,sta1,comp1,net2=None,sta2=None,
             for ii in range(len(afiles)):
                 
                 #--maximum 50 days one plot----
-                if ii%50==0:
+                if ii%60==0:
                     plt.figure(figsize=(9,6))
 
                 with pyasdf.ASDFDataSet(afiles[ii],mode='r') as ds:
@@ -374,24 +529,86 @@ def plot_cc_withtime(ccfdir,freqmin,freqmax,net1,sta1,comp1,net2=None,sta2=None,
                     plt.text(maxlag*0.9,ii*2,iday,fontsize=6)
 
             if stackdir:
+                stackfile = os.path.join(stackdir,net1+'.'+sta1+'_'+net2+'.'+sta2+'.h5')
                 #----plot stacked one----
-                sacfile = os.path.join(stackdir,net1+"."+sta1+"_"+net2+"."+sta2+"_"+comp1+"_"+comp2+".SAC")
-                if os.path.isfile(sacfile):
-                    tr = obspy.read(sacfile)
-                    data = tr[0].data
+                with pyasdf.ASDFDataSet(stackfile,mode='r') as stack_ds:
+                    ccomp = comp1[-1]+comp2[-1]
+                    tags = 'Allstacked'
+                    data = stack_ds.auxiliary_data[tags][ccomp].data[:]
                     data = bandpass(data,freqmin,freqmax,int(1/dt),corners=4, zerophase=True)
                     data = data/max(data)
                     indx0= len(data)//2
-                    plt.plot(tt,data[indx0-tindx:indx0+tindx+1]+ii*2,'b-',linewidth=1)
-                    plt.plot(tt,data[indx0-tindx:indx0+tindx+1],'b-',linewidth=1)
+                    plt.plot(tt,data[indx0-tindx:indx0+tindx+1]+ii*2+2,'b-',linewidth=1)
+                    plt.plot(tt,data[indx0-tindx:indx0+tindx+1]-2,'b-',linewidth=1)
             #---------highlight zero time------------
             plt.grid(True)
-            plt.plot([0,0],[0,ii*2],'r--',linewidth=1.5)
-            plt.title('%s_%s_%s_%s dist %6.1f @%4.1f-%4.1f Hz' % (sta1,comp1,sta2,comp2,dist,freqmin,freqmax))
+            plt.plot([0,0],[-1,ii*2+3],'r--',linewidth=1.5)
+            plt.title('%s_%s_%s_%s, dist:%6.1fkm @%4.1f-%4.1f Hz' % (sta1,comp1,sta2,comp2,dist,freqmin,freqmax))
             plt.xlabel('time [s]')
             plt.ylabel('days')
             plt.show()
 
+
+def plot_cc_withtime_stack(ccffile,freqmin,freqmax,ccomp,maxlag=None):
+    '''
+    plot the filtered cross-correlation functions between station-pair sta1-sta2
+    for all of the available days stored in ccfdir
+
+    example: plot_cc_withtime('/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/STACK/E.AYHM/E.AYHM_E.ENZM.h5',1,5,'ZZ',50) 
+    '''
+    #---basic parameters----
+    if not maxlag:
+        maxlag = 100
+
+    #-----check whether file exists------
+    if os.path.isfile(ccffile):
+        with pyasdf.ASDFDataSet(ccffile,mode='r') as ds:
+            rlist = ds.auxiliary_data['Allstacked'].list()
+            if not rlist:
+                raise ValueError('no data stacked for %s'%ccffile)
+            dt = ds.auxiliary_data['Allstacked'][rlist[0]].parameters['dt']
+            tt = np.arange(-maxlag/dt, maxlag/dt+1)*dt
+            dist = ds.auxiliary_data['Allstacked'][rlist[0]].parameters['dist']
+
+            #-----loop through each day-----
+            slist = ds.auxiliary_data.list()
+
+            for ii in range(len(slist)-1):
+                if ii%60==0:
+                    plt.figure(figsize=(9,6))
+
+                iday = slist[ii]
+
+                #-----in case there is no data on that day-----
+                try:
+                    data = ds.auxiliary_data[iday][ccomp].data[:]
+                    data = bandpass(data,freqmin,freqmax,int(1/dt),corners=4, zerophase=True)
+                    
+                    #--normalize the data----
+                    data = data/max(data)
+
+                except Exception:
+                    data = np.zeros(tt.shape,dtype=np.float32)
+                
+                npts = len(data)                
+                #----make index----
+                indx0 = npts//2
+                tindx = int(maxlag/dt)
+                if ii==0:
+                    color = 'b-'
+                else:
+                    color = 'k-'
+                plt.plot(tt,data[indx0-tindx:indx0+tindx+1]+ii*2,color,linewidth=0.5)
+                plt.text(maxlag*0.7,ii*2,iday,fontsize=6)
+
+            plt.grid(True)
+
+            #---------highlight zero time------------
+            plt.plot([0,0],[0,ii*2],'r--',linewidth=1.5)
+            plt.title('%s %s, dist:%6.1fkm @%4.1f-%4.1f Hz' % (ccffile.split('/')[-1],ccomp,dist,freqmin,freqmax))
+            plt.xlabel('time [s]')
+            plt.ylabel('days')
+            plt.show()
 
 def plot_ZH_pmotion(sfile,freqmin,freqmax,net1,sta1,net2=None,sta2=None):
     '''
@@ -539,11 +756,9 @@ def plot_ZH_pmotion_stack(sfile,freqmin,freqmax,t0,t1,maxlag,tags=None):
     plot the 4 component of ccfs where Rayleigh wave might dominant, and use the particle
     motion to identify the surface wave component
 
-    example: plot_ZH_pmotion('2010_12_16.h5',0.5,1,-15,-5,50)
+    example: plot_ZH_pmotion('/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/STACK/E.AYHM/E.AYHM_E.BKKM.h5',0.5,1,-15,-5,50)
     '''
     #---basic parameters----
-    #maxlag = 100
-    #dt = 0.05
     chan = ['ZZ','ZR','RZ','RR']
 
     #------set path and type-------------
@@ -595,6 +810,7 @@ def plot_ZH_pmotion_stack(sfile,freqmin,freqmax,t0,t1,maxlag,tags=None):
     data3 = data3/max(data3)
     plt.subplot(427)
     plt.plot(tt,data3[indx0-tindx:indx0+tindx+1],'k-',linewidth=0.5)
+    plt.xlabel('time [s]')
     plt.text(maxlag*0.9,0.8,'RR',fontsize=10)
 
     #---------particle motion---------
@@ -602,26 +818,36 @@ def plot_ZH_pmotion_stack(sfile,freqmin,freqmax,t0,t1,maxlag,tags=None):
     tindx2 = int(t1/dt)
     indx1 = indx0+tindx1
     indx2 = indx0+tindx2+1
+    t = np.linspace(t0,t1,indx2-indx1)
 
     plt.subplot(243)
-    plt.plot(data1[indx1:indx2],data[indx1:indx2],'k-',linewidth=0.5)
+    #plt.plot(data1[indx1:indx2],data[indx1:indx2],'k-',linewidth=0.5)
+    plt.scatter(data1[indx1:indx2],data[indx1:indx2],c=t,s=5,cmap='jet')
     plt.xlabel('ZR');plt.ylabel('ZZ')
 
     plt.subplot(244)
-    plt.plot(data2[indx1:indx2],data[indx1:indx2],'k-',linewidth=0.5)
+    #plt.plot(data2[indx1:indx2],data[indx1:indx2],'k-',linewidth=0.5)
+    plt.scatter(data2[indx1:indx2],data[indx1:indx2],c=t,s=5,cmap='jet')
     plt.xlabel('RZ');plt.ylabel('ZZ')
+    #fig.colorbar(im,ax=ax)
+    plt.colorbar(ticks=range(t0,t1),label='time [s]')
 
     plt.subplot(247)
-    plt.plot(data3[indx1:indx2],data2[indx1:indx2],'k-',linewidth=0.5)
+    #plt.plot(data3[indx1:indx2],data2[indx1:indx2],'k-',linewidth=0.5)
+    plt.scatter(data3[indx1:indx2],data2[indx1:indx2],c=t,s=5,cmap='jet')
     plt.xlabel('RR');plt.ylabel('RZ')
     
     plt.subplot(248)
-    plt.plot(data3[indx1:indx2],data1[indx1:indx2],'k-',linewidth=0.5)
+    #plt.plot(data3[indx1:indx2],data1[indx1:indx2],'k-',linewidth=0.5)
+    plt.scatter(data3[indx1:indx2],data1[indx1:indx2],c=t,s=5,cmap='jet')
     plt.xlabel('RR');plt.ylabel('ZR')
+    #fig.colorbar(im,ax=ax)
+    plt.colorbar(ticks=range(t0,t1),label='time [s]')
+    plt.grid(True)
     plt.show()
 
 
-def plot_multi_freq_daily(sfile,freqmin,freqmax,nfreq,net1,sta1,comp1,net2,sta2,comp2):
+def plot_multi_freq(sfile,freqmin,freqmax,nfreq,net1,sta1,comp1,net2,sta2,comp2):
     '''
     plot the stacked ccfs for sta1-sta2 at multi-frequency bands between freqmin-freqmax. 
     this may be useful to show the dispersive property of the surface waves, which could 
@@ -687,7 +913,7 @@ def plot_multi_freq_stack(sfile,freqmin,freqmax,nfreq,ccomp,tags=None):
     this may be useful to show the dispersive property of the surface waves, which could 
     be used together with plot_ZH_pmotion to identify surface wave components
 
-    example: plot_multi_freq_stack('Mesonet_BW/STACK/E.AYHM/E.AYHM_E.BKKM.h5',0.08,6,15,'RR')
+    example: plot_multi_freq_stack('/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/STACK/E.AYHM/E.AYHM_E.BKKM.h5',0.08,6,15,'RR')
     '''
     #---basic parameters----
     maxlag = 100
@@ -747,8 +973,8 @@ def plot_SNR_stackday(sfile1,sfile2,sfile3,sfile4,sfile5,ccomp,lag):
     extract the paramters of SNR for each stacked trace to get a statistical sense of
     how SNR varies with stacking days for one station-pair
 
-    example: plot_SNR_distance('stack_1day/E.AYHM/E.AYHM_E.ENZM.h5','stack_2day/E.AYHM/E.AYHM_E.ENZM.h5',
-    'stack_3day/E.AYHM/E.AYHM_E.ENZM.h5','stack_5day/E.AYHM/E.AYHM_E.ENZM.h5','stack_10day/E.AYHM/E.AYHM_E.ENZM.h5','ZZ')
+    example: plot_SNR_distance('stack_1day/E.AYHM/E.AYHM_E.ENZM.h5','stack_2day/E.AYHM/E.AYHM_E.ENZM.h5',\
+    'stack_3day/E.AYHM/E.AYHM_E.ENZM.h5','stack_5day/E.AYHM/E.AYHM_E.ENZM.h5','stack_10day/E.AYHM/E.AYHM_E.ENZM.h5','ZZ',-1)
     '''
     ds1 = pyasdf.ASDFDataSet(sfile1,mode='r')
     ds2 = pyasdf.ASDFDataSet(sfile2,mode='r')
@@ -811,8 +1037,8 @@ def plot_SNR_distance(sdir,ccomp,lag):
     show the statistic of how SNR varies with distance for the stacked cross correlations
     '''
     #------all station pairs-------
-    sfiles = glob.glob(sdir,'*.h5')
-    tags = 'Allstacks'
+    sfiles = glob.glob(os.path.join(sdir,'*.h5'))
+    tags = 'Allstacked'
     if lag==0:
         snr_para = 'ssnr'
     elif lag==-1:
@@ -823,13 +1049,46 @@ def plot_SNR_distance(sdir,ccomp,lag):
     #-----read in freq--------
     ds = pyasdf.ASDFDataSet(sfiles[0],mode='r')
     freq = ds.auxiliary_data[tags][ccomp].parameters['freq']
+    print(freq)
     del ds
 
     #---loop through each station-pair----
     for sfile in sfiles:
         with pyasdf.ASDFDataSet(sfile,mode='r') as ds:
             dist = ds.auxiliary_data[tags][ccomp].parameters['dist']
-
+            snr = ds.auxiliary_data[tags][ccomp].parameters[snr_para]
+            plt.subplot(331)
+            plt.scatter(dist,snr[1],marker='o',s=25,c=0)
+            plt.subplot(332)
+            plt.scatter(dist,snr[2],marker='o',s=25,c=0)
+            plt.subplot(333)
+            plt.scatter(dist,snr[4],marker='o',s=25,c=0)
+            plt.subplot(334)
+            plt.scatter(dist,snr[6],marker='o',s=25,c=0)
+            plt.subplot(335)
+            plt.scatter(dist,snr[7],marker='o',s=25,c=0)
+            plt.subplot(336)
+            plt.scatter(dist,snr[8],marker='o',s=25,c=0)
+            plt.subplot(337)
+            plt.scatter(dist,snr[9],marker='o',s=25,c=0)
+            plt.subplot(338)
+            plt.scatter(dist,snr[10],marker='o',s=25,c=0)
+            plt.subplot(339)
+            plt.scatter(dist,snr[11],marker='o',s=25,c=0)
+    plt.subplot(331)
+    plt.ylabel('SNR')
+    plt.subplot(334)
+    plt.ylabel('SNR')
+    plt.subplot(337)
+    plt.ylabel('SNR')
+    plt.xlabel('distance [km]')
+    plt.subplot(338)
+    plt.xlabel('distance [km]')
+    plt.subplot(339)
+    plt.xlabel('distance [km]')
+    plt.subplot(332)
+    plt.title([sdir.split('/')[-1],dist,'km'])
+    plt.show()
 
 
 def compare_c2_c3_waveforms(c2file,c3file,maxlag,c2_maxlag,dt):

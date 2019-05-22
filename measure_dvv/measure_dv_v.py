@@ -32,14 +32,14 @@ sta = glob.glob(os.path.join(STACKDIR,'E.*'))
 #----some common variables-----
 epsilon = 0.01              # limit for the dv/v range (*100 to get range in %)
 nbtrial = 50                # number of increment of dt [-epsilon,epsilon] for the streching method
-tmin = 50
-tmax = 90
+tmin = np.abs(50)           # this is the absolute values meaning both lags are used in MWCS
+tmax = np.abs(90)           # same as tmin as absolute values here
 fmin = 0.3
 fmax = 1
 comp = 'ZZ'
-maxlag = 100                 # maximum window to measure dv/v
+maxlag  = 100                # maximum window to measure dv/v
 stretch = True               # flag for the stretching method
-mwcs    = True              # flag for the MWCS method
+mwcs    = True               # flag for the MWCS method
 allstation = False           # make measurement to all stacked data or not
 wfilter    = True            # make measurement to the clean waveforms from wiener filter
 onelag     = False           # make measurement based on both lags data
@@ -179,12 +179,12 @@ for ista in range(nsta):
                             [dv1[ii][0], cc[ii][0], cdp[ii][0], error1[ii][0]] = noise_module.Stretching_current\
                                 (ref, cur, tvec, epsilon, nbtrial, window, fmin, fmax, tmin, tmax)
                             [dv1[ii][1], cc[ii][1], cdp[ii][1], error1[ii][1]] = noise_module.Stretching_current\
-                                (np.flip(ref), np.flip(cur), tvec, epsilon, nbtrial, window, fmin, fmax, tmin, tmax)
+                                (np.flip(ref,axis=0), np.flip(cur,axis=0), tvec, epsilon, nbtrial, window, fmin, fmax, tmin, tmax)
                             [dv1[ii][2], cc[ii][2], cdp[ii][2], error1[ii][2]] = noise_module.Stretching_current\
-                                (0.5*(ref+np.flip(ref)),0.5*(cur+np.flip(cur)), tvec, epsilon, nbtrial, window, fmin, fmax, tmin, tmax)
+                                (0.5*(ref+np.flip(ref,axis=0)),0.5*(cur+np.flip(cur,axis=0)), tvec, epsilon, nbtrial, window, fmin, fmax, tmin, tmax)
                     
                     if mwcs:
-                        [dv2[ii], error2[ii]] = noise_module.mwcs_dvv(ref, cur, moving_window_length, slide_step, int(1/delta), window, fmin, fmax, tmin)
+                        [dv2[ii], error2[ii]] = noise_module.mwcs_dvv1(ref, cur, moving_window_length, slide_step, int(1/delta), window, fmin, fmax, tmin)
 
                 #------set the segments without data to be nan-------
                 else:
@@ -206,12 +206,10 @@ for ista in range(nsta):
                     plt.subplot(211)
                     plt.title(h5file.split('/')[-1])
                     plt.plot(tt,dv1[1:]);plt.errorbar(tt,dv1[1:],yerr=error1[1:]*0.2)
-                    plt.ylabel('dv/v [%]')
-                    plt.xlabel('days')
+                    plt.ylabel('dv/v [%]');plt.xlabel('days')
                     plt.subplot(212)
                     plt.plot(cc[1:],'r-');plt.plot(cdp[1:],'b-')
-                    plt.ylabel('cc')
-                    plt.xlabel('days')
+                    plt.ylabel('cc');plt.xlabel('days')
                     plt.show()
                 else:
                     plt.figure()
@@ -220,21 +218,18 @@ for ista in range(nsta):
                     plt.plot(tt,dv1[1:,0],'r-')#;plt.errorbar(tt,dv1[1:,0],yerr=error1[1:,0]*0.1)
                     plt.plot(tt,dv1[1:,1],'g-')#;plt.errorbar(tt,dv1[1:,1],yerr=error1[1:,1]*0.1)
                     plt.plot(tt,dv1[1:,2],'b-')#;plt.errorbar(tt,dv1[1:,2],yerr=error1[1:,2]*0.1)
-                    plt.ylabel('dv/v [%]')
-                    plt.xlabel('days')
+                    plt.ylabel('dv/v [%]');plt.xlabel('days')
                     plt.legend(['P Lag','N Lag','Average'],loc='upper right')
                     plt.subplot(312)
                     plt.plot(cc[1:,0],'r-')
                     plt.plot(cc[1:,1],'g-')
                     plt.plot(cc[1:,2],'b-')
-                    plt.ylabel('cc')
-                    plt.xlabel('days')
+                    plt.ylabel('cc');plt.xlabel('days')
                     plt.subplot(313)
                     plt.plot(error1[1:,0],'r-')
                     plt.plot(error1[1:,1],'g-')
                     plt.plot(error1[1:,2],'b-')
-                    plt.ylabel('error [%]')
-                    plt.xlabel('days')
+                    plt.ylabel('error [%]');plt.xlabel('days')
 
             if mwcs:
                 if not stretch:
