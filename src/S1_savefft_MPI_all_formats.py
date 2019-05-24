@@ -31,8 +31,8 @@ is expected to preserve the relative amplitude among them. (May.10.2019)
 t00=time.time()
 
 #------absolute path parameters-------
-rootpath  = '/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW'
-FFTDIR = os.path.join(rootpath,'pre_processing/FFT')
+rootpath  = '/Users/chengxin/Documents/Harvard/code_develop/NoisePy/real_data'
+FFTDIR = os.path.join(rootpath,'FFT')
 event = os.path.join(rootpath,'noise_data/Event_*')
 resp_dir = os.path.join(rootpath,'new_processing')       #needed only when resp is set to something other than 'inv'
 
@@ -48,8 +48,8 @@ if not input_asdf:
 
 #-----some control parameters------
 prepro      = False             #preprocess the data (correct time/downsampling/trim data/response removal)?
-to_whiten   = True              #whiten the spectrum?
-time_norm   = True              #normalize the data in time domain (remove EQ and ambiguity)?
+to_whiten   = False              #whiten the spectrum?
+time_norm   = False              #normalize the data in time domain (remove EQ and ambiguity)?
 flag        = False             #print intermediate variables and computing time for debugging purpose
 
 #-----assume response has been removed in downloading process-----
@@ -58,12 +58,12 @@ resp    = 'inv'                 # boolean to remove instrumental response
 use_resp_dir = False            # whether to use downloaded inventory to remove response
 
 pre_filt=[0.04,0.05,5,8]
-downsamp_freq=20
+downsamp_freq=10
 dt=1/downsamp_freq
 cc_len=3600
 step=1800
 freqmin=0.05  
-freqmax=5
+freqmax=4
 norm_type='running_mean'
 whiten_type='running_mean'
 method='deconv'

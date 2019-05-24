@@ -124,7 +124,7 @@ def stats2inv(stats,resp=None,filexml=None,locs=None):
 
     return inv        
 
-def preprocess_raw(st,downsamp_freq,clean_time=True,pre_filt=None,resp=False,respdir=None):
+def preprocess_raw(st,inv,downsamp_freq,clean_time=True,pre_filt=None,resp=False,respdir=None):
     '''
     pre-process daily stream of data from IRIS server, including:
 
@@ -158,6 +158,15 @@ def preprocess_raw(st,downsamp_freq,clean_time=True,pre_filt=None,resp=False,res
     for ii in range(len(st)):
         if st[ii].stats.sampling_rate != sps:
             st[ii].stats.sampling_rate = sps
+        
+        #-----set nan values to zeros (it does happens!)-----
+        tttindx = np.where(np.isnan(st[ii].data))
+        if len(tttindx) >0:
+            st[ii].data[tttindx]=0
+
+        tttindx = np.where(np.isinf(st[ii].data))
+        if len(tttindx) >0:
+            st[ii].data[tttindx]=0
         st[ii].data = np.float32(st[ii].data)
         st[ii].data = scipy.signal.detrend(st[ii].data,type='constant')
         st[ii].data = scipy.signal.detrend(st[ii].data,type='linear')
@@ -190,11 +199,12 @@ def preprocess_raw(st,downsamp_freq,clean_time=True,pre_filt=None,resp=False,res
 
         if resp == 'inv':
             #----check whether inventory is attached----
-            if not st[0].stats.response:
+            if not inv[0][0][0].response:
                 raise ValueError('no response found in the inventory! abort!')
             else:
-                print('removing response using inv')
-                st.remove_response(output="VEL",pre_filt=pre_filt,water_level=60)
+                print('removing response for %s using inv'%st[0])
+                st[0].attach_response(inv)
+                st[0].remove_response(output="VEL",pre_filt=pre_filt,water_level=60)
 
         elif resp == 'spectrum':
             print('remove response using spectrum')
@@ -441,7 +451,7 @@ def get_distance(lon1,lat1,lon2,lat2):
     dlambda = (lon2 - lon1)*pi/180
     
     a = np.sin(dphi/2)**2+np.cos(phi1)*np.cos(phi2)*np.sin(dlambda/2)**2
-    return 2*R*np.atan2(np.sqrt(a), np.sqrt(1 - a))/1000
+    return 2*R*np.arctan2(np.sqrt(a), np.sqrt(1 - a))/1000
 
 def get_coda_window(dist,vmin,maxlag,dt,wcoda):
     '''
@@ -678,7 +688,10 @@ def optimized_correlate1(fft1_smoothed_abs,fft2,maxlag,dt,Nfft,nwin,method="cros
 
     if method == "coherence":
         temp = moving_ave(np.abs(fft2.reshape(fft2.size,)),10)
-        corr /= temp
+        try:
+            corr /= temp
+        except ValueError:
+            raise ValueError('smoothed spectrum has zero values')
 
     corr  = corr.reshape(nwin,Nfft//2)
     ncorr = np.zeros(shape=Nfft,dtype=np.complex64)
@@ -714,6 +727,72 @@ def moving_ave(A,N):
         if B[pos]==0:
             B[pos]=1
     return B[N:-N]
+
+def whiten_smooth(data,dt,freqmin,freqmax,smooth_N):
+    '''
+    subfunction to make a moving window average on the ampliutde spectrum
+    with a tapering on the lower and higher end of the frequency range
+
+    '''
+    if data.ndim == 1:
+        axis = 0
+    elif data.ndim == 2:
+        axis = 1
+
+    #--------frequency information----------
+    Nfft = int(next_fast_len(int(data.shape[axis])))
+    freqVec = scipy.fftpack.fftfreq(Nfft, d=dt)[:Nfft // 2]
+    J = np.where((freqVec >= freqmin) & (freqVec <= freqmax))[0]
+
+    #------four frequency parameters-------
+    Napod = 100
+    left  = J[0]
+    right = J[-1]
+    low = J[0] - Napod
+    if low < 0:
+        low = 0
+    high = J[-1] + Napod
+    if high > Nfft/2:
+        high = int(Nfft//2)
+
+    spect = scipy.fftpack.fft(data,Nfft,axis=axis)
+
+    #-----smooth the spectrum and do tapering-----
+    if axis:
+        spect[:,0:low] *= 0
+        #----left tapering---
+        spect[:,low:left] = np.cos(
+            np.linspace(np.pi / 2., np.pi, left - low)) ** 2 * np.exp(
+            1j * np.angle(spect[:,low:left]))
+        #-----Pass band-------
+        for ii in range(data.shape[0]):
+            tave = moving_ave(np.abs(spect[ii,left:right]),smooth_N)
+            spect[ii,left:right] = spect[ii,left:right]/tave
+        #----right tapering------
+        spect[:,right:high] = np.cos(
+            np.linspace(0., np.pi / 2., high - right)) ** 2 * np.exp(
+            1j * np.angle(spect[:,right:high]))
+        spect[:,high:Nfft//2+1] *= 0
+
+        spect[:,-(Nfft//2)+1:] = np.flip(np.conj(spect[:,1:(Nfft//2)]),axis=axis)
+    else:
+        spect[0:low] *= 0
+        #----left tapering---
+        spect[low:left] = np.cos(
+            np.linspace(np.pi / 2., np.pi, left - low)) ** 2 * np.exp(
+            1j * np.angle(spect[low:left]))
+        #-----Pass band-------
+        tave = moving_ave(np.abs(spect[left:right]),smooth_N)
+        spect[left:right] = spect[left:right]/tave
+        #----right tapering------
+        spect[right:high] = np.cos(
+            np.linspace(0., np.pi / 2., high - right)) ** 2 * np.exp(
+            1j * np.angle(spect[right:high]))
+        spect[high:Nfft//2] *= 0
+
+        spect[-(Nfft//2)+1:] = np.flip(np.conj(spect[1:(Nfft//2)]),axis=axis)    
+
+    return spect   
 
 
 def get_SNR(corr,snr_parameters,parameters):
@@ -823,9 +902,10 @@ def abs_max(arr):
     return (arr.T / np.abs(arr.max(axis=-1))).T
 
 
-def pws(arr,power=2.,sampling_rate=20.,pws_timegate = 5.):
+def pws(arr,sampling_rate,power=2,pws_timegate=5.):
     """
     Performs phase-weighted stack on array of time series. 
+    Modified on the noise function by Tim Climents.
 
     Follows methods of Schimmel and Paulssen, 1997. 
     If s(t) is time series data (seismogram, or cross-correlation),
@@ -851,79 +931,16 @@ def pws(arr,power=2.,sampling_rate=20.,pws_timegate = 5.):
     if arr.ndim == 1:
         return arr
     N,M = arr.shape
-    analytic = arr + 1j * hilbert(arr,axis=1, N=next_fast_len(M))[:,:M]
+    analytic = hilbert(arr,axis=1, N=next_fast_len(M))[:,:M]
     phase = np.angle(analytic)
-    phase_stack = np.mean(np.exp(1j*phase),axis=0)/N
-    phase_stack = np.abs(phase_stack)**2
+    phase_stack = np.mean(np.exp(1j*phase),axis=0)
+    phase_stack = np.abs(phase_stack)**(power)
 
     # smoothing 
-    timegate_samples = int(pws_timegate * sampling_rate)
-    phase_stack = moving_ave(phase_stack,timegate_samples)
+    #timegate_samples = int(pws_timegate * sampling_rate)
+    #phase_stack = moving_ave(phase_stack,timegate_samples)
     weighted = np.multiply(arr,phase_stack)
-    return np.mean(weighted,axis=0)/N
-
-def dtw(x,r, g=1.05):
-    """ Dynamic Time Warping Algorithm
-
-    Inputs:
-    x:     target vector
-    r:     vector to be warped
-
-    Outputs:
-    D: Distance matrix
-    Dist:  unnormalized distance between t and r
-    w:     warping path
-    
-    originally written in MATLAB by Peter Huybers 
-    """
-
-    x = norm(x)
-    r = norm(r)
-
-    N = len(x)
-    M = len(r)
-
-    d = (np.tile(x,(M,1)).T - np.tile(r,(N,1)))**2
-    d[0,:] *= 0.25
-    d[:,-1] *= 0.25
-
-    D=np.zeros(d.shape)
-    D[0,0] = d[0,0]
-
-    for ii in range(1,N):
-        D[ii,0] = d[ii,0] + D[ii - 1,0]     
-
-    for ii in range(1,M):
-        D[0,ii] = d[0,ii] + D[0,ii-1]
-
-    for ii in range(1,N):
-        for jj in range(1,M):
-            D[ii,jj] = d[ii,jj] + np.min([g * D[ii - 1, jj], D[ii - 1, jj - 1], g * D[ii, jj - 1]]) 
-
-    dist = D[-1,-1]
-    ii,jj,kk = N - 1, M - 1, 1
-    w = []
-    w.append([ii, jj])
-    while (ii + jj) != 0:
-        if ii == 0:
-            jj -= 1
-        elif jj == 0:
-            ii -= 1 
-        else:
-            ind = np.argmin([D[ii - 1, jj], D[ii, jj - 1], D[ii - 1, jj - 1]])
-            if ind == 0:
-                ii -= 1
-            elif ind == 1:
-                jj -= 1
-            else:
-                ii -= 1
-                jj -= 1
-        kk += 1
-        w.append([ii, jj])
-
-    w = np.array(w)
-    
-    return D,dist,w 
+    return np.mean(weighted,axis=0)
 
 
 def norm(arr):

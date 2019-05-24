@@ -12,6 +12,9 @@ import pyasdf
 import pandas as pd
 from mpi4py import MPI
 
+if not sys.warnoptions:
+    import warnings
+    warnings.simplefilter("ignore")
 
 '''
 this script loop through the days by using MPI and compute cross-correlation functions for each station-pair at that
@@ -37,23 +40,23 @@ the right beginning, so that 1) the required memory for dealing with large numbe
 
 ttt0=time.time()
 
-rootpath = '/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW'
+rootpath = '/Users/chengxin/Documents/Harvard/code_develop/NoisePy/real_data'
 FFTDIR = os.path.join(rootpath,'FFT')
-CCFDIR = os.path.join(rootpath,'CCF/test')
+CCFDIR = os.path.join(rootpath,'CCF')
 
 #-----some control parameters------
 flag=False               #output intermediate variables and computing times
 #auto_corr=False         #include single-station auto-correlations or not
 smooth_N=10             #window length for smoothing the spectrum amplitude
-num_seg=4
-downsamp_freq=20
+num_seg=1
+downsamp_freq=10
 dt=1/downsamp_freq
 cc_len=3600
 step=1800
-maxlag=800              #enlarge this number if to do C3
-method='deconv'
-start_date = '2011_03_01'
-end_date   = '2011_03_03'
+maxlag=500              #enlarge this number if to do C3
+method='coherence'
+start_date = '2010_01_01'
+end_date   = '2010_01_02'
 inc_days   = 1
 
 #if auto_corr and method=='coherence':
@@ -102,7 +105,7 @@ for ii in range(rank,splits+size-extra,size):
             ntrace = ncomp*nsta
 
         #----double check the ncomp parameters by opening a few stations------
-        for jj in range(1,10):
+        for jj in range(1,5):
             with pyasdf.ASDFDataSet(sfiles[jj],mpi=False,mode='r') as ds:
                 data_types = ds.auxiliary_data.list()
                 if len(data_types) > ncomp:
@@ -232,6 +235,7 @@ for ii in range(rank,splits+size-extra,size):
 
                     #---no data for icomp---
                     if cc_flag[cc_indxS]==0:
+                        #print('no data for %dth comp of %s' %(icompS,staS))
                         continue
                             
                     fft1 = cc_array[cc_indxS][:]
@@ -259,7 +263,7 @@ for ii in range(rank,splits+size-extra,size):
                             raise ValueError('smoothed spectrum has zero values')
 
                     elif method == 'raw':
-                        sfft1 = fft1
+                        sfft1 = np.conj(fft1)
                     
                     sfft1 = sfft1.reshape(nhours,Nfft//2)
 
@@ -285,6 +289,7 @@ for ii in range(rank,splits+size-extra,size):
 
                             #---no data for icomp---
                             if cc_flag[cc_indxR]==0:
+                                #print('no data for %dth comp of %s' %(icompR,staR))
                                 continue
                             
                             t2 = time.time()
@@ -304,6 +309,8 @@ for ii in range(rank,splits+size-extra,size):
                             corr=noise_module.optimized_correlate1(sfft1[bb,:],fft2[bb,:],\
                                     np.round(maxlag),dt,Nfft,len(bb),method)
                             t4=time.time()
+
+                            #print('finished %s %s comp %s %s'%(staS,staR,icompS,icompR))
 
                             #---------------keep daily cross-correlation into a hdf5 file--------------
                             cc_aday_h5 = os.path.join(CCFDIR,iday+'.h5')

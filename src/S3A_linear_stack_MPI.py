@@ -21,28 +21,28 @@ this script keeps the days of missing data for some of the components
 t0=time.time()
 
 #-------------absolute path of working directory-------------
-rootpath = '/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/pre_processing'
+rootpath = '/Users/chengxin/Documents/Harvard/code_develop/NoisePy/real_data'
 CCFDIR = os.path.join(rootpath,'CCF')
 FFTDIR = os.path.join(rootpath,'FFT')
-STACKDIR = os.path.join(rootpath,'STACK_raw')
+STACKDIR = os.path.join(rootpath,'STACK')
 
 #------------make correction due to mis-orientation of instruments---------------
-correction = True
+correction = False
 if correction:
-    corrfile = '/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/rotation/meso_angles.dat'
+    corrfile = '/Users/chengxin/Documents/Harvard/code_develop/NoisePy/angle.dat'
     locs     = pd.read_csv(corrfile)
     sta_list = list(locs.iloc[:]['station'])
     angles   = list(locs.iloc[:]['angle'])
 
 #---control variables---
 flag = False
-do_rotation   = True
+do_rotation   = False
 one_component = False
 stack_days = 1
 num_seg = 1
 
 maxlag = 500
-downsamp_freq=20
+downsamp_freq=10
 dt=1/downsamp_freq
 pi = 3.141593
 

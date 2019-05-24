@@ -25,9 +25,9 @@ font = {'family':'normal','weight':'bold','size':10}
 matplotlib.rc('font', **font)
 
 #----the path for the data---
-rootpath = '/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW'
-STACKDIR = os.path.join(rootpath,'STACK1')
-sta = glob.glob(os.path.join(STACKDIR,'E.*'))
+rootpath = '/Users/chengxin/Documents/Harvard/code_develop/NoisePy/real_data'
+STACKDIR = os.path.join(rootpath,'STACK')
+sta = glob.glob(os.path.join(STACKDIR,'N.*'))
 
 #----some common variables-----
 epsilon = 0.01              # limit for the dv/v range (*100 to get range in %)
@@ -40,11 +40,11 @@ comp = 'ZZ'
 maxlag  = 100                # maximum window to measure dv/v
 stretch = True               # flag for the stretching method
 mwcs    = True               # flag for the MWCS method
-allstation = False           # make measurement to all stacked data or not
+allstation = True           # make measurement to all stacked data or not
 wfilter    = True            # make measurement to the clean waveforms from wiener filter
 onelag     = False           # make measurement based on both lags data
 start_date = '2010_01_01'    # assume a continuous recording from start to end date with increment of stack-days
-end_date   = '2011_01_01'
+end_date   = '2010_01_02'
 stack_days = 1
 
 
