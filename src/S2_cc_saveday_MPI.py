@@ -40,7 +40,7 @@ the right beginning, so that 1) the required memory for dealing with large numbe
 
 ttt0=time.time()
 
-rootpath = '/Users/chengxin/Documents/Harvard/code_develop/NoisePy/real_data'
+rootpath = '/Users/chengxin/Documents/Harvard/code_develop/NoisePy/example_data'
 FFTDIR = os.path.join(rootpath,'FFT')
 CCFDIR = os.path.join(rootpath,'CCF')
 

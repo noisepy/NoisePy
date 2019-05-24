@@ -21,7 +21,7 @@ this script keeps the days of missing data for some of the components
 t0=time.time()
 
 #-------------absolute path of working directory-------------
-rootpath = '/Users/chengxin/Documents/Harvard/code_develop/NoisePy/real_data'
+rootpath = '/Users/chengxin/Documents/Harvard/code_develop/NoisePy/example_data'
 CCFDIR = os.path.join(rootpath,'CCF')
 FFTDIR = os.path.join(rootpath,'FFT')
 STACKDIR = os.path.join(rootpath,'STACK')

@@ -31,7 +31,7 @@ is expected to preserve the relative amplitude among them. (May.10.2019)
 t00=time.time()
 
 #------absolute path parameters-------
-rootpath  = '/Users/chengxin/Documents/Harvard/code_develop/NoisePy/real_data'
+rootpath  = '/Users/chengxin/Documents/Harvard/code_develop/NoisePy/example_data'
 FFTDIR = os.path.join(rootpath,'FFT')
 event = os.path.join(rootpath,'noise_data/Event_*')
 resp_dir = os.path.join(rootpath,'new_processing')       #needed only when resp is set to something other than 'inv'
