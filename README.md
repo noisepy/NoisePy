@@ -8,6 +8,7 @@ Gathers all of our ambient noise modules in python
  ## Installation
 
 This will tell people how to install and what dependencies we need.
+list what the requirements are
 
 ## Functionality
 Noise is designed for fast and easy ambient noise cross-correlation in Julia.
