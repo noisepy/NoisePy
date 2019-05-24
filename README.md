@@ -14,3 +14,4 @@ list what the requirements are, add a requirement.txt
 Noise is designed for fast and easy ambient noise cross-correlation in Julia.
 
 # add a jupyter notebook tutorial
+add data, 1 day, 1Hz, 2 stations.
