@@ -23,10 +23,13 @@ ASDF files. (Feb.22.2019)
 
 allow to download the data based on an existing file of station list
 
+Note: segmentation fault while manipulating obspy stream can come from too large memory: 
+- reduce the inc_day variable
+
 A beginning of nice NoisePy journey! 
 '''
 
-direc  = "/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/data_download"
+direc  = "./data_download"
 dlist  = os.path.join(direc,'station.lst')
 
 #----check whether folder exists------
@@ -36,7 +39,7 @@ if not os.path.isdir(direc):
 ## download parameters
 client = Client('IRIS')                         # client
 NewFreq = 10                                    # resampling at X samples per seconds 
-down_all = True                                 # download all stations according to a panda table
+down_list = False                                 # download stations from list
 
 #-----parameters for 
 checkt   = True                                  # check for traces with points bewtween sample intervals
@@ -45,7 +48,7 @@ resp_dir = 'none'
 pre_filt = [0.04,0.05,4,5]
 oput_CSV = True                                 # output station.list to a CSV file to be used in later stacking steps
 flag     = True                                 # print progress when running the script
-inc_days   = 5                                  # number of days for each request
+inc_days   = 1                                  # number of days for each request
 
 #---provence of the data in ASDF files--
 if resp and checkt:
@@ -58,7 +61,7 @@ else:
     tags = 'raw-recordings'
 
 #-----download one by one and input manually------
-if not down_all:
+if not down_list:
 
     lamin,lomin,lamax,lomax=46.9,-123,48.8,-121.1   # regional box: min lat, min lon, max lat, max lon
     chan= 'HH*'                                      # channel
@@ -75,7 +78,7 @@ if not down_all:
     try:
         inv = client.get_stations(network=net, station=sta, channel=chan, location='*', \
             starttime = starttime, endtime=endtime,minlatitude=lamin, maxlatitude=lamax, \
-            minlongitude=lomin, maxlongitude=lomax)
+            minlongitude=lomin, maxlongitude=lomax,level="response")
     except Exception as e:
         print('Abort! '+type(e))
         exit()
@@ -93,74 +96,75 @@ if not down_all:
             f1 = direc + "/" + str(K.code) + "."  + str(sta.code) + ".h5"
             
             if os.path.isfile(f1):
-                raise IOError('file %s already exists!' % f1)
+                print('file %s already exists!' % f1)
             
-            with pyasdf.ASDFDataSet(f1,compression="gzip-3") as ds:
+            for chan in sta:
+                sta_inv = client.get_stations(network=K.code,station=sta.code,channel=chan.code,starttime = starttime, endtime=endtime,level="response")
+                with pyasdf.ASDFDataSet(f1,compression="gzip-3") as ds:
 
-                #------add the inventory for all components + all time of this tation-------
-                sta_inv = client.get_stations(network=net,station=sta,channel=chan,starttime = starttime, endtime=endtime,level="response")
-                ds.add_stationxml(sta_inv)
+                    #------add the inventory for all components + all time of this tation-------
+                    ds.add_stationxml(sta_inv)
 
-                # loop through channels
-                for chan in sta:
+                    # loop through channels
+                    for chan in sta:
 
-                    #----get a list of all days within the targeted period range----
-                    all_days = noise_module.get_event_list(start_date,end_date,inc_days)
-
-                    #---------loop through the days--------
-                    for ii in range(len(all_days)-1):
-                        day1  = all_days[ii]
-                        day2  = all_days[ii+1]
-                        year1 = int(day1[:4])
-                        year2 = int(day2[:4])
-                        mon1  = int(day1[5:7])
-                        mon2  = int(day2[5:7])
-                        iday1 = int(day1[8:]) 
-                        iday2 = int(day2[8:])
-
-                        t1=obspy.UTCDateTime(year1,mon1,iday1)
-                        t2=obspy.UTCDateTime(year2,mon2,iday2)
-                                
-                        # sanity checks
-                        if flag:
-                            print(K.code + "." + sta.code + "." + chan.code+' at '+str(t1)+'.'+str(t2))
+                        #----get a list of all days within the targeted period range----
+                        all_days = noise_module.get_event_list(start_date,end_date,inc_days)
                         
-                        try:
-                            # get data
-                            t0=time.time()
-                            tr = client.get_waveforms(network=K.code, station=sta.code, channel=chan.code, location='*', \
-                                starttime = t1, endtime=t2)
-                            t1=time.time()
+                        #---------loop through the days--------
+                        for ii in range(len(all_days)-1):
+                            day1  = all_days[ii]
+                            day2  = all_days[ii+1]
+                            year1 = int(day1[:4])
+                            year2 = int(day2[:4])
+                            mon1  = int(day1[5:7])
+                            mon2  = int(day2[5:7])
+                            iday1 = int(day1[8:]) 
+                            iday2 = int(day2[8:])
 
-                        except Exception as e:
-                            print(e)
-                            continue
-                            
-                        if len(tr):
-                            # clean up data
-                            t2=time.time()
-                            tr = noise_module.preprocess_raw(tr,sta_inv,NewFreq,checkt,pre_filt,resp,resp_dir)
-                            t3=time.time()
-
-                            # only keep the one with good data after processing
-                            if len(tr)>0:
-                                if len(tr)==1:
-                                    new_tags = tags+'_{0:04d}_{1:02d}_{2:02d}_{3}'.format(tr[0].stats.starttime.year,\
-                                        tr[0].stats.starttime.month,tr[0].stats.starttime.day,chan.code.lower())
-                                    ds.add_waveforms(tr,tag=new_tags)
-                                else:
-                                    for ii in range(len(tr)):
-                                        new_tags = tags+'_{0:04d}_{1:02d}_{2:02d}_{3}'.format(tr[ii].stats.starttime.year,\
-                                            tr[ii].stats.starttime.month,tr[ii].stats.starttime.day,chan.code.lower())
-                                        ds.add_waveforms(tr[ii],tag=new_tags)
-
+                            t1=obspy.UTCDateTime(year1,mon1,iday1)
+                            t2=obspy.UTCDateTime(year2,mon2,iday2)
+                                    
+                            # sanity checks
                             if flag:
-                                print(ds) # sanity check
-                                print('downloading data %6.2f s; pre-process %6.2f s' % ((t1-t0),(t3-t2)))
+                                print(K.code + "." + sta.code + "." + chan.code+' at '+str(t1)+'.'+str(t2))
+                            
+                            try:
+                                # get data
+                                t0=time.time()
+                                tr = client.get_waveforms(network=K.code, station=sta.code, channel=chan.code, location='*', \
+                                    starttime = t1, endtime=t2)
+                                t1=time.time()
 
-                #------add the inventory for all components + all time of this tation-------
-                sta_inv = client.get_stations(network=net, station=sta,level="response")
-                ds.add_stationxml(sta_inv)
+                            except Exception as e:
+                                print(e)
+                                continue
+                                
+                            if len(tr):
+                                # clean up data
+                                t2=time.time()
+                                tr = noise_module.preprocess_raw(tr,sta_inv,NewFreq,checkt,pre_filt,resp,resp_dir)
+                                t3=time.time()
+
+                                # only keep the one with good data after processing
+                                if len(tr)>0:
+                                    if len(tr)==1:
+                                        new_tags = tags+'_{0:04d}_{1:02d}_{2:02d}_{3}'.format(tr[0].stats.starttime.year,\
+                                            tr[0].stats.starttime.month,tr[0].stats.starttime.day,chan.code.lower())
+                                        ds.add_waveforms(tr,tag=new_tags)
+                                    else:
+                                        for ii in range(len(tr)):
+                                            new_tags = tags+'_{0:04d}_{1:02d}_{2:02d}_{3}'.format(tr[ii].stats.starttime.year,\
+                                                tr[ii].stats.starttime.month,tr[ii].stats.starttime.day,chan.code.lower())
+                                            ds.add_waveforms(tr[ii],tag=new_tags)
+
+                                if flag:
+                                    print(ds) # sanity check
+                                    print('downloading data %6.2f s; pre-process %6.2f s' % ((t1-t0),(t3-t2)))
+
+                    #------add the inventory for all components + all time of this tation-------
+                    sta_inv = client.get_stations(network=K.code, station=sta.code,level="response")
+                    ds.add_stationxml(sta_inv)
 
 #----it gets much faster with a station lst
 else:
