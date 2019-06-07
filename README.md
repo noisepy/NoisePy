@@ -11,7 +11,7 @@ This will tell people how to install and what dependencies we need.
 list what the requirements are, add a requirement.txt
 
 # Functionality
-Noise is designed for fast and easy ambient noise cross-correlation in Julia.
+Noise is designed for fast and easy ambient noise cross-correlation in Python.
 
 # add a jupyter notebook tutorial
 add data, 1 day, 1Hz, 2 stations.
