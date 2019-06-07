@@ -3,3 +3,15 @@
 We need to prepare documentation, maybe with this (http://www.sphinx-doc.org/en/master/usage/quickstart.html), which will make a readthedocs webpage.
 
 
+1) Installation 
+  instruction
+  dependencies
+  testing
+  building the documentation
+  
+ 2) tutorial
+    learning python, obspy, pyasdf, link to all.
+    link here to a jupyter notebook
+    
+  3) API: with all of the functions
+  
