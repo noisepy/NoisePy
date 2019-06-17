@@ -1109,7 +1109,7 @@ def calc_distance(sta1,sta2):
     return dist,azi,baz
 
 
-def fft_parameters(dt,cc_len,source_params,locs,component,Nfft,Nt):
+def fft_parameters(dt,step,cc_len,source_params,locs,component,Nfft,Nt,data_t):
     """ 
     Creates parameter dict for cross-correlations and header info to ASDF.
 
@@ -1135,16 +1135,19 @@ def fft_parameters(dt,cc_len,source_params,locs,component,Nfft,Nt):
                          source_params[:,1],source_params[:,2]
     lon,lat,el=locs["longitude"],locs["latitude"],locs["elevation"]
     parameters = {
+             'dt':dt,
              'twin':cc_len,
+             'step':step,
+             'data_t':data_t,
+             'nfft':Nfft,
+             'nseg':Nt,
              'mad':source_mad,
              'std':source_std,
              'nonzero':source_nonzero,
              'longitude':lon,
              'latitude':lat,
              'elevation_in_m':el,
-             'component':component,
-             'nfft':Nfft,
-             'nseg':Nt}
+             'component':component,}
     return parameters   
 
 def stats_to_dict(stats,stat_type):
