@@ -9,40 +9,55 @@ import noise_module
 from mpi4py import MPI
 
 '''
-this script stacks the cross-correlation functions according to the parameter of stack_days, 
-which afford exploration of the stability of the stacked ccfs for monitoring purpose
+Step3A of NoisePy package!
 
-modified to make statistic analysis of the daily CCFs (amplitude) in order to select the ones
-with abnormal large amplitude that would dominate the finally stacked waveforms (Apr/01/2019)
+This script linearly stacks the cross-correlation functions according to parameter of stack_days. 
+This free parameter allows future exploration of the stability of the stacked ccfs that could be
+useful for monitoring purpose.
+by C.Jiang, T.Clements, M.Denolle (Nov.09.2018)
 
-this script keeps the days of missing data for some of the components
+Update history:
+    - make statistic analysis of the amplitude of daily CCFs in order to remove ones
+    with abnormal large amplitude that would otherwise dominate the final waveforms (Apr/01/2019)
+
+    - write a tmp file for station pairs of no data so that in the future, the script can skip
+    such station pairs when the inital stacking is restarted (Jun/15/2019)
+    
+Note:
+    - this script keeps the days of missing data for some of the components
 '''
 
 t0=time.time()
 
 #-------------absolute path of working directory-------------
-rootpath = '/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/pre_processing'
-CCFDIR = os.path.join(rootpath,'CCF_decon')
+rootpath = '/Users/chengxin/Documents/Harvard/code_develop/NoisePy/example_data'
+CCFDIR = os.path.join(rootpath,'CCF')
 FFTDIR = os.path.join(rootpath,'FFT')
-STACKDIR = os.path.join(rootpath,'STACK_pws')
+STACKDIR = os.path.join(rootpath,'STACK')
 
 #------------make correction due to mis-orientation of instruments---------------
-correction = True
+correction = False
 if correction:
-    corrfile = '/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/rotation/meso_angles.dat'
+    corrfile = '/Users/chengxin/Documents/Harvard/code_develop/NoisePy/angle.dat'
     locs     = pd.read_csv(corrfile)
     sta_list = list(locs.iloc[:]['station'])
     angles   = list(locs.iloc[:]['angle'])
 
 #---control variables---
 flag = False
-do_rotation   = True
+do_rotation   = False
 one_component = False
+stack_method  = 'linear'        # linear or pws
 stack_days = 1
 num_seg = 1
 
+#----dictionary for stack parameters----
+stack_para = {'do_rotation':do_rotation,'one_component':one_component,\
+    'stack_days':stack_days,'correct_angle':correction}
+
+#-----loading the cc parameters-----
 maxlag = 500
-downsamp_freq=20
+downsamp_freq=10
 dt=1/downsamp_freq
 pi = 3.141593
 
@@ -93,7 +108,6 @@ if rank == 0:
     #-------make station pairs based on list--------        
     pairs= noise_module.get_station_pairs(sta)
     ccfs = sorted(glob.glob(os.path.join(CCFDIR,'*.h5')))
-    
     splits = len(pairs)
 
     if not ccfs:
@@ -122,7 +136,9 @@ for ii in range(rank,splits+size-extra,size):
 
         #-------------move to next pair if it already exists----------------
         stack_h5 = os.path.join(STACKDIR,source+'/'+source+'_'+receiver+'.h5')
-        if os.path.isfile(stack_h5):
+        stack_tmp = os.path.join(STACKDIR,source+'/'+source+'_'+receiver+'.tmp')
+
+        if os.path.isfile(stack_h5) or os.path.isfile(stack_tmp):
             print('file %s already exists! continue' % stack_h5.split('/')[-1])
             continue
 
@@ -162,6 +178,9 @@ for ii in range(rank,splits+size-extra,size):
 
                 for data_type in slist:
                     paths = ds.auxiliary_data[data_type].list()
+
+                    if not paths:
+                        continue
 
                     #-------find the correspoinding receiver--------
                     rlist = np.array([r for r in paths if staR in r])
@@ -209,6 +228,7 @@ for ii in range(rank,splits+size-extra,size):
             print('loading data takes %6.3fs'%(t2-t1))
 
         if no_data==0:
+
             #--------make statistic analysis of CCFs at each component----------
             for icomp in range(ncomp):
                 indx1 = np.where(nflag[:,icomp]>0)[0]
@@ -277,7 +297,10 @@ for ii in range(rank,splits+size-extra,size):
                                 continue
 
                             #------do average-----
-                            tcorr[jj] = noise_module.pws(corr[indx],downsamp_freq)
+                            if stack_method == 'linear':
+                                tcorr[jj] = np.mean(corr[indx],axis=0)
+                            elif stack_method == 'pws':
+                                tcorr[jj] = noise_module.pws(corr[indx],downsamp_freq)
 
                             if flag:
                                 print('estimate the SNR of component %s for %s_%s in E-N-Z system' % (enz_components[jj],source,receiver))
@@ -368,7 +391,10 @@ for ii in range(rank,splits+size-extra,size):
                         continue
 
                     #------do average-----
-                    tcorr[jj] = noise_module.pws(corr[indx],downsamp_freq)
+                    if stack_method == 'linear':
+                        tcorr[jj] = np.mean(corr[indx],axis=0)
+                    elif stack_method == 'pws':
+                        tcorr[jj] = noise_module.pws(corr[indx],downsamp_freq)
 
                     if nstack<=1:
                         tngood = 0
@@ -443,8 +469,18 @@ for ii in range(rank,splits+size-extra,size):
             
             del corr,ampmax,nflag,ngood
 
-t4=time.time()
-print('S3 takes '+str(t4-t0)+' s')
+        else:
+
+            #---write tmp files to skip such source in the future----
+            ftmp = open(stack_tmp,'w')
+            ftmp.write('no data')
+            ftmp.close()
+        
+        t4=time.time()
+        print('each stacking takes '+str(t4-t0)+' s')
+
+t5=time.time()
+print('S3 takes '+str(t5-t0)+' s')
 
 #---ready to exit---
 comm.barrier()
