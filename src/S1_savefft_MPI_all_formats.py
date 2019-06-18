@@ -86,7 +86,8 @@ fft_para={'pre_filt':pre_filt,'downsamp_freq':downsamp_freq,'dt':dt,\
     'pre-processing':prepro,'to_whiten':to_whiten,'time_norm':time_norm,\
     'norm_type':norm_type,'whiten_type':whiten_type,'method':method,\
     'smooth_N':smooth_N,'roopath':rootpath,'data_format':input_fmt,\
-    'station.list:':locations,'FFTDIR':FFTDIR}
+    'station.list':locations,'FFTDIR':FFTDIR,'start_date':start_date[0],\
+        'end_date':end_date[0],'inc_days':inc_days}
 
 dtmp=pd.DataFrame(data=fft_para)
 dtmp.to_csv(f_metadata)    # and save to file
@@ -150,6 +151,7 @@ for ista in range (rank,splits+size-extra,size):
             station = temp[0].split('.')[1]
             # location = temp[0].split('.')[2]
             inv1 = ds.waveforms[temp[0]]['StationXML']
+            location = inv1[0][0][0].location_code
             if flag:
                 print("working on station %s " % station)
 
