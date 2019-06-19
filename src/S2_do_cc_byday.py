@@ -308,7 +308,6 @@ for ii in range(rank,splits+size-extra,size):
                             
                     fft1 = fft_array[cc_indxS][:]
                     source_std = fft_std[cc_indxS][:]
-                    sou_ind = np.where(source_std < 10)[0]
                     
                     t0=time.time()
                     #-----------get the smoothed source spectrum for decon later----------
@@ -366,7 +365,8 @@ for ii in range(rank,splits+size-extra,size):
                             receiver_std = fft_std[cc_indxR][:]
 
                             #---------- check the existence of earthquakes ----------
-                            rec_ind = np.where(receiver_std < 10)[0]
+                            rec_ind = np.where( (receiver_std < cc_para["max_over_std"]) & (receiver_std> 0) & (np.isnan(receiver_std)==0))[0]
+                            sou_ind = np.where( (source_std < cc_para["max_over_std"])   & (source_std > 0)  & (np.isnan(source_std)==0))[0]
 
                             #-----note that Hi-net has a few mi-secs differences to Mesonet in terms starting time-----
                             bb=np.intersect1d(sou_ind,rec_ind)
