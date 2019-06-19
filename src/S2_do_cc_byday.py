@@ -6,6 +6,7 @@ import numpy as np
 import scipy
 import obspy
 import matplotlib.pyplot as plt
+from datetime import datetime
 import noise_module
 import time
 import pyasdf
@@ -17,50 +18,90 @@ if not sys.warnoptions:
     warnings.simplefilter("ignore")
 
 '''
-this script loop through the days by using MPI and compute cross-correlation functions for each station-pair at that
-day when there are overlapping time windows. (Nov.09.2018)
+Step2 of the NoisePy package.
 
-optimized to run ~5 times faster by 1) making smoothed spectrum of the source outside of the receiver loop; 2) taking 
-advantage of the linearality of ifft to average the spectrum first before doing ifft in cross-correlaiton functions, 
-and 3) sacrifice storage (by 1.5 times) to improve the I/O speed (by 4 times). 
-Thanks to Zhitu Ma for thoughtful discussions.  (Jan,28,2019)
+This script loops through days by using MPI and compute cross-correlation functions for each
+station-pair at that day.
+by C.Jiang, M.Denolle, T.Clements (Nov.09.2018)
 
-new updates include 1) remove the need of input station.lst by listing available HDF5 files, 2) make use of the inventory
-for lon, lat information, 3) add new parameters to HDF5 files needed for later CC steps and 4) make data_types and paths
-in the same format (Feb.15.2019). 
+Update history:
+    - achieve ~5 times speed-up by 1) making smoothed spectrum of the source outside of the 
+    receiver loop; 2) taking advantage of the linearality of ifft to average the spectrum 
+    first before doing ifft to get cross-correlaiton functions, and 3) sacrifice storage (~1.5 times)
+    to improve the I/O speed (by 4 times). 
+    Thanks to Zhitu Ma for thoughtful discussions.  (Jan,28,2019)
 
-add the functionality of auto-correlations (Feb.22.2019). Note that the auto-cc is normalizing each station to its Z comp.
+    - new updates to 1) remove the need of input station.lst file by make list of available HDF5 files;
+    2) make use of the inventory for lon, lat information, 3) add new parameters to HDF5 files needed
+    for later CC steps and 4) make data_types and paths in the same format (Feb.15.2019). 
 
-modify the structure of ASDF files to make it more flexable for later stacking and matrix rotation (Mar.06.2019)
+    - modify the structure of ASDF files to make it more flexable for later stacking and matrix rotation
+    (Mar.06.2019)
 
-updated to allow breaking the FFT of all stations into several segments and load them one segment by one segment at one in
-the right beginning, so that 1) the required memory for dealing with large number of station-pairs can be minimized and 
-2) it saves the time of repeatly reading the FFT for each station-pair (Mar.20.2019)
+    - add a free parameter (has to be integer times of cc_len) to allow sub-stacking for daily ccfs, which 
+    helps 1) reduce the required memory for loading ccfs between all station-pairs in stacking step and 
+    2) saves the time for repeatly loading the FFT (Jun.16.2019)
+
+    - load useful parameters directly from saved file so that it avoids parameters re-difination (Jun.17.2019)
+
+Note:
+    !!!!!!VERY IMPORTANT!!!!!!!!
+    As noted in S1, we choose 1-day as the basic length for data storage and processing but allow breaking 
+    the daily chunck data to smaller length for pre-processing and fft. In default, we choose to average 
+    all of the CCFs for the day (between e.g. every hour). the variable of sub_stack_len is to keep 
+    sub-stacks of the day, which might be useful if your target time-scale is on the order of hours.
 '''
 
 ttt0=time.time()
 
-rootpath = '/Users/chengxin/Documents/Harvard/code_develop/NoisePy/example_data'
-FFTDIR = os.path.join(rootpath,'FFT')
-CCFDIR = os.path.join(rootpath,'CCF')
+#------load most parameters from fft metadata files-----
+rootpath  = '/Users/chengxin/Documents/Harvard/code_develop/NoisePy/example_data'
+f_metadata = os.path.join(rootpath,'fft_metadata.txt')
+if not os.path.isfile(f_metadata):
+    raise ValueError('Abort! cannot find metadata file used for fft %s' % f_metadata)
+else:
+    fft_para = eval(open(f_metadata).read())
 
-#-----some control parameters------
-flag=False               #output intermediate variables and computing times
-#auto_corr=False         #include single-station auto-correlations or not
-smooth_N=10             #window length for smoothing the spectrum amplitude
-num_seg=1               # by how many times to we divide the day?
-downsamp_freq=10
-dt=1/downsamp_freq
-cc_len=3600
-step=1800
-maxlag=500              #enlarge this number if to do C3
-method='coherence'
-start_date = '2010_01_01'
+#----absolute paths for new inputs/outputs-----
+FFTDIR   = fft_para['FFTDIR']
+CCFDIR   = os.path.join(rootpath,'CCF')
+if not os.path.isdir(CCFDIR):
+    os.mkdir(CCFDIR)
+c_metadata = os.path.join(rootpath,'cc_metadata.txt')
+
+#-----useful parameters-----
+dt     = fft_para['dt']
+cc_len = fft_para['cc_len']
+step   = fft_para['step']
+maxlag = fft_para['maxlag']             # enlarge this number if to do C3
+method = fft_para['method']             # selected in S1
+
+#-----some control parameters for cc------
+flag=False                                  # output intermediate variables and computing times
+auto_corr=False                             # include single-station cross-correlation or not
+sub_stack_len  = 4*cc_len                   # Time unit in sectons to stack over: need to be integer times of cc_len
+smoothspect_N  = 10                         # moving window length to smooth spectrum amplitude
+start_date = '2010_01_01'                   # these two variables allow processing subset of the continuous noise data
 end_date   = '2010_01_02'
-inc_days   = 1
+INC_DAYS   = 1                              # this has to be 1 because it is the basic length we use (see NOTES above)
 
-#if auto_corr and method=='coherence':
-#    raise ValueError('Please set method to decon: coherence cannot be applied when auto_corr is wanted!')
+# criteria for data selection
+max_over_std = 10                           # maximum threshold between the maximum absolute amplitude and the STD of the time series
+max_kurtosis = 10                           # max kurtosis allowed.
+
+#### How much memory do you allow in Gb.
+MAX_MEM = 4.0
+
+#-----make a dictionary to store all variables-----
+cc_para={'dt':dt,'cc_len':cc_len,'step':step,'method':method,'maxlag':maxlag,\
+    'smoothspect_N':smoothspect_N,'sub_stack_len':sub_stack_len,'start_date':\
+    start_date,'end_date':end_date,'inc_days':INC_DAYS,'max_over_std':max_over_std,\
+    'max_kurtosis':max_kurtosis,'MAX_MEM':MAX_MEM}
+
+#--save cc metadata for later use--
+fout = open(c_metadata,'w')
+fout.write(str(cc_para))
+fout.close()
 
 #---------MPI-----------
 comm = MPI.COMM_WORLD
@@ -73,8 +114,9 @@ if rank ==0:
     if not os.path.isdir(CCFDIR):
         os.mkdir(CCFDIR)
 
+    #------the station order should be kept here--------
     sfiles = sorted(glob.glob(os.path.join(FFTDIR,'*.h5')))
-    day = noise_module.get_event_list(start_date,end_date,inc_days)
+    day = noise_module.get_event_list(start_date,end_date,INC_DAYS)
     splits = len(day)
 
     if not sfiles:
@@ -98,13 +140,24 @@ for ii in range(rank,splits+size-extra,size):
         with pyasdf.ASDFDataSet(sfiles[0],mpi=False,mode='r') as ds:
             data_types = ds.auxiliary_data.list()
             paths      = ds.auxiliary_data[data_types[0]].list()
-            Nfft = ds.auxiliary_data[data_types[0]][paths[0]].parameters['nfft']
-            Nseg = ds.auxiliary_data[data_types[0]][paths[0]].parameters['nseg']
+            Nfft  = ds.auxiliary_data[data_types[0]][paths[0]].parameters['nfft']
+            Nseg  = ds.auxiliary_data[data_types[0]][paths[0]].parameters['nseg']
             ncomp = len(data_types)
             nsta  = len(sfiles)
             ntrace = ncomp*nsta
+            Nfft2 = Nfft//2
+        
+        # crutial estimate on required memory for loading all FFT at once: float32 in default--------
+        num_seg = 1
+        nseg2load = Nseg
+        memory_size = ntrace*Nfft2*Nseg*8/1024/1024/1024
+        if memory_size > MAX_MEM:
+            print('Memory exceeds %s GB! No enough memory to load them all once!' % (MAX_MEM))
+            nseg2load = np.floor(MAX_MEM/(ntrace*Nfft2*8/1024/1024/1024 ))
+            num_seg= np.floor(Nseg/nseg2load)
+            print('thus splitting the files into %s chunks of %3.1f GB each' % (num_seg, memory_size))
 
-        #----double check the ncomp parameters by opening a few stations------
+        #----double check ncomp by opening a few more stations------
         for jj in range(1,5):
             with pyasdf.ASDFDataSet(sfiles[jj],mpi=False,mode='r') as ds:
                 data_types = ds.auxiliary_data.list()
@@ -117,35 +170,30 @@ for ii in range(rank,splits+size-extra,size):
         sta = []
         net = []
 
-        #----loop through each data segment-----
-        nhours = int(np.ceil(Nseg/num_seg))
+        #--------load data for sub-stacking--------
         for iseg in range(num_seg):
-            
+        
             #---index for the data chunck---
-            sindx1 = iseg*nhours
+            sindx1 = iseg*nseg2load
             if iseg==num_seg-1:
-                nhours = Nseg-iseg*nhours
-            sindx2 = sindx1+nhours
+                nseg2load = Nseg-iseg*nseg2load
+            sindx2 = sindx1+nseg2load
 
-            if nhours==0 or nhours <0:
+            if nseg2load==0 or nseg2load <0:
                 raise ValueError('nhours<=0, please double check')
 
             if flag:
                 print('working on %dth segments of the daily FFT'% iseg)
 
-            #-------make a crutial estimate on memory needed for the FFT of all stations: defaultly using float32--------
-            memory_size = ntrace*Nfft/2*nhours*8/1024/1024/1024
-            if memory_size > 8:
-                raise MemoryError('Memory exceeds 8 GB! No enough memory to load them all once!')
-
-            print('initialize the array ~%3.1f GB for storing all cc data' % (memory_size))
-
             #---------------initialize the array-------------------
-            cc_array = np.zeros((ntrace,nhours*Nfft//2),dtype=np.complex64)
-            cc_std   = np.zeros((ntrace,nhours),dtype=np.float32)
-            cc_flag  = np.zeros((ntrace),dtype=np.int16)
+            fft_array = np.zeros((ntrace,nseg2load*Nfft2),dtype=np.complex64)
+            fft_std   = np.zeros((ntrace,nseg2load),dtype=np.float32)
+            fft_time   = np.zeros((ntrace,nseg2load),dtype=np.float32)
+            fft_flag  = np.zeros((ntrace),dtype=np.int16)
+            Timestamps = np.empty((ntrace,nseg2load),dtype='datetime64[s]')
 
             ttr0 = time.time()
+
             #-----loop through all stations------
             for ifile in range(len(sfiles)):
                 tfile = sfiles[ifile]
@@ -181,16 +229,27 @@ for ii in range(rank,splits+size-extra,size):
 
                                 #-----check bound----
                                 if indx > ntrace:
-                                    raise ValueError('index out of bound')
+                                    raise ValueError('index out of bound at L230')
                                 
                                 dsize = ds.auxiliary_data[icomp][iday].data.size
-                                if dsize == Nseg*Nfft//2:
-                                    cc_flag[indx] = 1
-                                    data  = ds.auxiliary_data[icomp][iday].data[sindx1:sindx2,:]
-                                    cc_array[indx][:]= data.reshape(data.size)
-                                    std   = ds.auxiliary_data[icomp][iday].parameters['std']
-                                    cc_std[indx][:]  = std[sindx1:sindx2]
-                    
+
+                                if dsize != Nseg*Nfft2:
+                                    continue
+                                fft_flag[indx] = 1
+                                data  = ds.auxiliary_data[icomp][iday].data[sindx1:sindx2,:]
+                                fft_array[indx][:]= data.reshape(data.size)
+                                # get max_over_std parameters
+                                std   = ds.auxiliary_data[icomp][iday].parameters['std']
+                                fft_std[indx][:]  = std[sindx1:sindx2]
+                                # get time stamps of each window
+                                t = ds.auxiliary_data[icomp][iday].parameters['data_t']  
+                                fft_time[indx][:]   = t[sindx1:sindx2]
+                                
+                                # convert timestamp to UTC
+                                for kk in range((sindx2-sindx1)):
+                                    Timestamps[indx][kk]=datetime.fromtimestamp(t[sindx1+kk])
+                                print(Timestamps[indx][:])
+
                     else:
 
                         #-----E-N-U/Z orders when all components are available-----
@@ -207,12 +266,21 @@ for ii in range(rank,splits+size-extra,size):
                                     raise ValueError('index out of bound')
 
                                 dsize = ds.auxiliary_data[icomp][iday].data.size
-                                if dsize == Nseg*Nfft//2:
-                                    data  = ds.auxiliary_data[icomp][iday].data[sindx1:sindx2,:]
-                                    cc_array[indx][:]= data.reshape(data.size)
-                                    std   = ds.auxiliary_data[icomp][iday].parameters['std']
-                                    cc_std[indx][:]  = std[sindx1:sindx2]
-                                    cc_flag[indx] = 1
+                                if dsize != Nseg*Nfft2:
+                                    continue
+                                fft_flag[indx] = 1
+                                data  = ds.auxiliary_data[icomp][iday].data[sindx1:sindx2,:]
+                                fft_array[indx][:]= data.reshape(data.size)
+                                # get max_over_std parameters
+                                std   = ds.auxiliary_data[icomp][iday].parameters['std']
+                                fft_std[indx][:]  = std[sindx1:sindx2]
+                               # get time stamps of each window
+                                t = ds.auxiliary_data[icomp][iday].parameters['data_t']  
+                                fft_time[indx][:]   = t[sindx1:sindx2]
+                                # convert timestamp to UTC
+                                for kk in range((sindx2-sindx1)):
+                                    Timestamps[indx][kk]=datetime.fromtimestamp(t[sindx1+kk])
+                                print(Timestamps[indx][:])
 
             ttr1 = time.time()
             print('loading all FFT takes %6.4fs' % (ttr1-ttr0))
@@ -234,12 +302,12 @@ for ii in range(rank,splits+size-extra,size):
                     cc_indxS = isource*ncomp+icompS
 
                     #---no data for icomp---
-                    if cc_flag[cc_indxS]==0:
+                    if fft_flag[cc_indxS]==0:
                         #print('no data for %dth comp of %s' %(icompS,staS))
                         continue
                             
-                    fft1 = cc_array[cc_indxS][:]
-                    source_std = cc_std[cc_indxS][:]
+                    fft1 = fft_array[cc_indxS][:]
+                    source_std = fft_std[cc_indxS][:]
                     sou_ind = np.where(source_std < 10)[0]
                     
                     t0=time.time()
@@ -247,7 +315,7 @@ for ii in range(rank,splits+size-extra,size):
                     if method == 'deconv':
 
                         #-----normalize single-station cc to z component-----
-                        temp = noise_module.moving_ave(np.abs(fft1),smooth_N)
+                        temp = noise_module.moving_ave(np.abs(fft1),smoothspect_N)
 
                         #--------think about how to avoid temp==0-----------
                         try:
@@ -256,7 +324,7 @@ for ii in range(rank,splits+size-extra,size):
                             raise ValueError('smoothed spectrum has zero values')
 
                     elif method == 'coherence':
-                        temp = noise_module.moving_ave(np.abs(fft1),smooth_N)
+                        temp = noise_module.moving_ave(np.abs(fft1),smoothspect_N)
                         try:
                             sfft1 = np.conj(fft1)/temp
                         except ValueError:
@@ -265,7 +333,7 @@ for ii in range(rank,splits+size-extra,size):
                     elif method == 'raw':
                         sfft1 = np.conj(fft1)
                     
-                    sfft1 = sfft1.reshape(nhours,Nfft//2)
+                    sfft1 = sfft1.reshape(nseg2load,Nfft2)
 
                     t1=time.time()
                     if flag:
@@ -288,14 +356,14 @@ for ii in range(rank,splits+size-extra,size):
                             cc_indxR = ireceiver*ncomp+icompR
 
                             #---no data for icomp---
-                            if cc_flag[cc_indxR]==0:
+                            if fft_flag[cc_indxR]==0:
                                 #print('no data for %dth comp of %s' %(icompR,staR))
                                 continue
                             
                             t2 = time.time()
-                            fft2 = cc_array[cc_indxR][:]
-                            fft2 = fft2.reshape(nhours,Nfft//2)
-                            receiver_std = cc_std[cc_indxR][:]
+                            fft2 = fft_array[cc_indxR][:]
+                            fft2 = fft2.reshape(nseg2load,Nfft2)
+                            receiver_std = fft_std[cc_indxR][:]
 
                             #---------- check the existence of earthquakes ----------
                             rec_ind = np.where(receiver_std < 10)[0]
@@ -306,11 +374,8 @@ for ii in range(rank,splits+size-extra,size):
                                 continue
 
                             t3=time.time()
-                            corr=noise_module.optimized_correlate1(sfft1[bb,:],fft2[bb,:],\
-                                    np.round(maxlag),dt,Nfft,len(bb),method)
+                            tcorr,corr=noise_module.optimized_correlate2(sfft1[bb,:],fft2[bb,:],cc_para,Timestamps[cc_indxR][bb])
                             t4=time.time()
-
-                            #print('finished %s %s comp %s %s'%(staS,staR,icompS,icompR))
 
                             #---------------keep daily cross-correlation into a hdf5 file--------------
                             cc_aday_h5 = os.path.join(CCFDIR,iday+'.h5')
@@ -321,7 +386,8 @@ for ii in range(rank,splits+size-extra,size):
                                     pass 
 
                             with pyasdf.ASDFDataSet(cc_aday_h5,mpi=False) as ccf_ds:
-                                parameters = noise_module.optimized_cc_parameters(dt,maxlag,str(method),len(bb),lonS,latS,lonR,latR)
+                                parameters = noise_module.optimized_cc_parameters(dt,maxlag,\
+                                    str(method),len(bb),lonS,latS,lonR,latR)
 
                                 #-----------make a universal change to component-----------
                                 if icompR==0:
@@ -354,10 +420,12 @@ for ii in range(rank,splits+size-extra,size):
             print('unreadable garbarge',n)
 
             ttr2 = time.time()
-            print('it takes %6.4fs to process %dth segment of data' %((ttr2-ttr1),iseg))
+            if flag:
+                print('it takes %6.4fs to process %dth segment of data' %((ttr2-ttr1),iseg))
 
         tt1 = time.time()
-        print('it takes %6.4fs to process day %s [%d segment] in step 2' % (tt1-tt0,iday,num_seg))
+        if flag:
+            print('it takes %6.4fs to process day %s [%d segment] in step 2' % (tt1-tt0,iday,num_seg))
 
 
 ttt1=time.time()

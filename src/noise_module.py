@@ -124,7 +124,7 @@ def stats2inv(stats,resp=None,filexml=None,locs=None):
 
     return inv        
 
-def preprocess_raw(st,inv,downsamp_freq,clean_time=True,pre_filt=None,resp=False,respdir=None):
+def preprocess_raw(st,inv,fft_para):
     '''
     pre-process daily stream of data from IRIS server, including:
 
@@ -139,6 +139,13 @@ def preprocess_raw(st,inv,downsamp_freq,clean_time=True,pre_filt=None,resp=False
             "polezeros" -> use the pole zeros for a crude correction of response
         - trim data to a day-long sequence and interpolate it to ensure starting at 00:00:00.000
     '''
+
+    #----load variable-----
+    downsamp_freq = fft_para['downsamp_freq']
+    clean_time    = fft_para['checkt']
+    pre_filt      = fft_para['pre_filt']
+    resp          = fft_para['resp']
+    respdir       = fft_para['respdir']
 
     #----remove the ones with too many segments and gaps------
     if len(st) > 100 or portion_gaps(st) > 0.2:
@@ -176,7 +183,7 @@ def preprocess_raw(st,inv,downsamp_freq,clean_time=True,pre_filt=None,resp=False
     if abs(downsamp_freq-sps) > 1E-4:
         #-----low pass filter with corner frequency = 0.9*Nyquist frequency----
         #st[0].data = lowpass(st[0].data,freq=0.4*downsamp_freq,df=sps,corners=4,zerophase=True)
-        st[0].data = bandpass(st[0].data,0.01,0.4*downsamp_freq,df=sps,corners=4,zerophase=True)
+        st[0].data = bandpass(st[0].data,pre_filt[0],0.4*downsamp_freq,df=sps,corners=4,zerophase=True)
 
         #----make downsampling------
         st.interpolate(downsamp_freq,method='weighted_average_slopes')
@@ -480,7 +487,7 @@ def get_coda_window(dist,vmin,maxlag,dt,wcoda):
 
     return ind    
 
-def whiten(data, delta, freqmin, freqmax,Nfft=None):
+def whiten(data, fft_para):
     """This function takes 1-dimensional *data* timeseries array,
     goes to frequency domain using fft, whitens the amplitude of the spectrum
     in frequency domain between *freqmin* and *freqmax*
@@ -501,14 +508,18 @@ def whiten(data, delta, freqmin, freqmax,Nfft=None):
     :returns: The FFT of the input trace, whitened between the frequency bounds
     """
 
+    # load parameters
+    delta   = fft_para['dt']
+    freqmin = fft_para['freqmin']
+    freqmax = fft_para['freqmax']
+
     # Speed up FFT by padding to optimal size for FFTPACK
     if data.ndim == 1:
         axis = 0
     elif data.ndim == 2:
         axis = 1
 
-    if Nfft is None:
-        Nfft = next_fast_len(int(data.shape[axis]))
+    Nfft = int(next_fast_len(int(data.shape[axis])))
 
     Napod = 100
     Nfft = int(Nfft)
@@ -705,6 +716,82 @@ def optimized_correlate1(fft1_smoothed_abs,fft2,maxlag,dt,Nfft,nwin,method="cros
     
     return ncorr
 
+def optimized_correlate2(fft1_smoothed_abs,fft2,D,Timestamp):
+    '''
+    Optimized version of the correlation functions: put the smoothed 
+    source spectrum amplitude out of the inner for loop. 
+    It also takes advantage of the linear relationship of ifft, so that
+    stacking in spectrum first to reduce the total number of times for ifft,
+    which is the most time consuming steps in the previous correlate function.
+    Modified from Marine on 02/25/19 to accommodate sub-stacking of over tave seconds in the day
+    step is overlap step   
+
+    fft1_smoothed_abs: already smoothed power spectral density of the FFT from the first station
+    fft2: FFT from station 2
+    D: input a dictionary with the following parameters:
+        D["maxlag"]: maxlag to keep in the cross correlation
+        D["dt"]: sampling rate (in s)
+        D["Nfft"]: number of frequency points
+        D["nwin"]: number of windows
+        D["method"]: either cross-correlation or deconvolution or coherency
+        D["freqmin"]: minimum frequency to look at (Hz)
+        D["freqmax"]: maximum frequency to look at (Hz)
+    Timestamp: array of datetime object.
+
+
+    '''
+    Nfft2=D["Nfft"][0]//2
+    nwin=len(fft1_smoothed_abs[:,0])
+
+    #------convert all 2D arrays into 1D to speed up--------
+    corr = np.zeros(nwin*Nfft2,dtype=np.complex64)
+    corr = fft1_smoothed_abs.reshape(fft1_smoothed_abs.size,) * fft2.reshape(fft2.size,)
+
+    if D["method"][0] == "coherence":
+        temp = moving_ave(np.abs(fft2.reshape(fft2.size,)),10)
+        corr /= temp
+
+    corr  = corr.reshape(nwin,Nfft2)
+
+    #--------------- remove outliers in frequency domain -------------------
+    # note here : i am trying to reduce the number of IFFT by pre-selecting the 
+    # good windows, then doing a substack, then doing the ifft of each sub stacks.
+    freq = scipy.fftpack.fftfreq(D["Nfft"][0], d=D["dt"][0])[:Nfft2]
+    i1 = np.where( (freq>=D["freqmin"][0]) & (freq <= D["freqmax"][0]))[0]
+
+    # this creates the residuals between each window and their median
+    med= np.log10(np.median(corr[:,i1],axis=0))
+    r = np.log10(corr[:,i1]) - med
+    ik=np.where(  (r>=med-np.log10(5)) & (r<=med+np.log10(5))  )[0]
+
+    #make substacks for all windows that either start or end within a period of increment
+    Ttotal = Timestamp[-1]-Timestamp[0] # total duration of what we have now
+    dtime = np.timedelta64(D["unit_time"][0],'s')
+
+    # number of data chuncks
+    tstart=Timestamp[0]
+    i=0 
+    ncorr = np.zeros(shape=(int(Ttotal/dtime),D["Nfft"][0]),dtype=np.complex64)
+    tcorr= np.empty(int(Ttotal/dtime),dtype='datetime64[s]')
+
+    while tstart < Timestamp[-1]-dtime:
+        # find the indexes of all of the windows that start or end within 
+        itime = np.where( (Timestamp >= tstart) & (Timestamp < tstart+dtime) )[0]
+        ncorr[i,:Nfft2] = np.mean(corr[ik[itime]],axis=0)
+        ncorr[i,-(Nfft2)+1:]=np.flip(np.conj(ncorr[i,1:(Nfft2)]),axis=0)
+        ncorr[i,0]=complex(0,0)
+        ncorr[i,:] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(ncorr[i,:], D["Nfft"][0], axis=0)))
+        tcorr[i] = tstart
+        tstart = tstart + dtime
+        print('correlation done and stacked at time %s' % str(tcorr[i]))
+        i+=1
+
+    t = np.arange(-Nfft2 + 1, Nfft2)*D["dt"][0]
+    ind   = np.where(np.abs(t) <= D["maxlag"][0])[0]
+    ncorr = ncorr[:,ind]
+    return ncorr,tcorr
+
+
 @jit('float32[:](float32[:],int16)')
 def moving_ave(A,N):
     '''
@@ -728,12 +815,18 @@ def moving_ave(A,N):
             B[pos]=1
     return B[N:-N]
 
-def whiten_smooth(data,dt,freqmin,freqmax,smooth_N):
+def whiten_smooth(data,fft_para):
     '''
     subfunction to make a moving window average on the ampliutde spectrum
     with a tapering on the lower and higher end of the frequency range
 
     '''
+    # load parameters
+    dt       = fft_para['dt']
+    freqmin  = fft_para['freqmin']
+    freqmax  = fft_para['freqmax']
+    smooth_N = fft_para['smooth_N']
+
     if data.ndim == 1:
         axis = 0
     elif data.ndim == 2:

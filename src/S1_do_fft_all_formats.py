@@ -22,7 +22,7 @@ Step1 of the NoisePy package.
 
 This script pre-processs the noise data for each single station using the parameters given below
 and then stored the whitened and nomalized fft trace for each station in a ASDF format. 
-by C.Jiang, T.Clements, M.Denolle (Nov.09.2018)
+by C.Jiang, M.Denolle, T.Clements (Nov.09.2018)
 
 Update history:
     - allow to handle SAC, MiniSeed and ASDF formate inputs. (Apr.18.2019)
@@ -30,10 +30,19 @@ Update history:
     - add a sub-function to make time-domain and freq-domain normalization according to 
     Bensen et al., 2007. (May.10.2019)
 
+    - cast most variables into a dictionary to pass between sub-functions. (Jun.16.2019)
+
 Note:
+    !!!!!!!!VERY IMPORTANT!!!!!!!
+    We choose one-day (24 hours) as the basic length for data storage and processing. this means if 
+    you input 10-day long continous data, we will break them into 1-day long and do processing
+    thereafter on the 1-day long data. we remove the day if it is shorter than 0.5 day. for the
+    daily-long segment, we tend to break them into smaller chunck with certain overlapping for CCFs
+    in order to increase the SNR. If you want to keep longer duration as the basic length (2 days), 
+    please check/modify the subfunction of preprocess_raw and the associated functions.
+
     For the ASDF data, we assume that you already chose to remove the instrumental response. 
-    It will be part of the pre-processing function. It will check in the tags of the ASDF whether 
-    the instr resp was removed.
+    But the code will check again in the tags of the ASDF to see whether the instr resp was removed.
 '''
 
 t00=time.time()
@@ -45,14 +54,13 @@ event = os.path.join(rootpath,'noise_data/Event_*')
 if (len(glob.glob(event))==0): 
     raise ValueError('No data file in %s',event)
 
+#--------some other useful input files---------
 locations = os.path.join(rootpath,'locations.txt')       # station information - not needed for data in ASDF format 
 resp_dir = os.path.join(rootpath,'new_processing')       # only needed when resp set to something other than 'inv'
-f_metadata = os.path.join(rootpath,'metadata.txt')       # keep a record of used parameters
-
-#------input file types: make sure it is asdf--------
-input_fmt   = 'asdf'            # string: 'asdf', 'sac','mseed' 
+f_metadata = os.path.join(rootpath,'fft_metadata.txt')   # keep a record of used parameters
 
 #-----some control parameters------
+input_fmt   = 'asdf'            # string: 'asdf', 'sac','mseed' 
 prepro      = False             # preprocess the data (correct time/downsampling/trim data/response removal)?
 to_whiten   = False             # whiten the spectrum?
 time_norm   = False             # normalize the data in time domain (remove EQ and ambiguity)?
@@ -61,35 +69,37 @@ flag        = False             # print intermediate variables and computing tim
 #-----assume response has been removed in downloading process-----
 checkt   = True                 # check for traces with points bewtween sample intervals
 resp     = False                # False (not removing instr), or "polozeros", "RESP_files", "spectrum", "inv"
-resp_dir = 'none'               # needed when resp set to polozeros/RESP_files/spectrum/inv for extra files to remove response
+respdir  = 'none'               # needed when resp set to polozeros/RESP_files/spectrum/inv for extra files to remove response
 
 #----pre-processing parameters----
-pre_filt=[0.04,0.05,4,5]
-downsamp_freq=10
+pre_filt=[0.04,0.05,4,5]        # broad band for filter the data
+downsamp_freq=10                # targeted sampling rate 
 dt=1/downsamp_freq
-cc_len=3600
-step=1800
-freqmin=0.05  
-freqmax=4
+cc_len=3600                     # basic unit of data lenght for fft
+step=1800                       # overlapping between each cc_len
+freqmin=0.05                    # min frequency for the filter
+freqmax=4                       # max frequency for the filter
 
 #----pre-processing types-----
 method='deconv'                     # raw, deconv or coherency
 if to_whiten:
-    norm_type='running_mean'        # one-bit or running_mean
+    norm_type='running_mean'        # one-bit or running_mean (only needed when to_whiten is true)
 if time_norm:
-    whiten_type='running_mean'      # one-bit or running_mean
+    whiten_type='running_mean'      # one-bit or running_mean (only needed when time_norm is true)
     smooth_N=100 
 
 #-----make a dictionary to store all variables: also for later cc-----
 fft_para={'pre_filt':pre_filt,'downsamp_freq':downsamp_freq,'dt':dt,\
     'cc_len':cc_len,'step':step,'freqmin':freqmin,'freqmax':freqmax,\
-    'pre-processing':prepro,'to_whiten':to_whiten,'time_norm':time_norm,\
-    'norm_type':norm_type,'whiten_type':whiten_type,'method':method,\
-    'smooth_N':smooth_N,'roopath':rootpath,'data_format':input_fmt,\
-    'station.list:':locations,'FFTDIR':FFTDIR}
+    'checkt':checkt,'resp':resp,'resp_dir':respdir,'pre-processing':prepro,\
+    'to_whiten':to_whiten,'time_norm':time_norm,'norm_type':norm_type,\
+    'whiten_type':whiten_type,'method':method,'smooth_N':smooth_N,\
+    'data_format':input_fmt,'station.list:':locations,'FFTDIR':FFTDIR}
 
-dtmp=pd.DataFrame(data=fft_para)
-dtmp.to_csv(f_metadata)    # and save to file
+#--save fft metadata for later use--
+fout = open(f_metadata,'w')
+fout.write(str(fft_para))
+fout.close()
 
 #---------MPI-----------
 comm = MPI.COMM_WORLD
@@ -150,6 +160,10 @@ for ista in range (rank,splits+size-extra,size):
             station = temp[0].split('.')[1]
             # location = temp[0].split('.')[2]
             inv1 = ds.waveforms[temp[0]]['StationXML']
+            if inv1[0][0][0].location_code:
+                location = inv1[0][0][0].location_code
+            else:
+                location = '00'
             if flag:
                 print("working on station %s " % station)
 
@@ -176,9 +190,10 @@ for ista in range (rank,splits+size-extra,size):
                 if ((all_tags[itag].split('_')[0] != 'raw') and (prepro)):
                     print('warning! it appears pre-processing has not yet been performed! will do now')
                     t0=time.time()
-                    source = noise_module.preprocess_raw(source,inv1,downsamp_freq,checkt,pre_filt,resp,resp_dir)
+                    source = noise_module.preprocess_raw(source,inv1,fft_para)
                     t1=time.time()
-                    print("prepro takes %f s" % (t1-t0))
+                    if flag:
+                        print("prepro takes %f s" % (t1-t0))
                 
                 #----------variables to define days with earthquakes----------
                 all_madS = noise_module.mad(source[0].data)
@@ -262,9 +277,9 @@ for ista in range (rank,splits+size-extra,size):
                     t0=time.time()
 
                     if whiten_type == 'one_bit':
-                        source_white = noise_module.whiten(white,dt,freqmin,freqmax)
+                        source_white = noise_module.whiten(white,fft_para)
                     elif whiten_type == 'running_mean':
-                        source_white = noise_module.whiten_smooth(white,dt,freqmin,freqmax,smooth_N)
+                        source_white = noise_module.whiten_smooth(white,fft_para)
                     t1=time.time()
                     if flag:
                         print("spectral whitening takes %f s"%(t1-t0))
@@ -273,7 +288,7 @@ for ista in range (rank,splits+size-extra,size):
 
                 #-------------save FFTs as HDF5 files-----------------
                 crap=np.zeros(shape=(N,Nfft//2),dtype=np.complex64)
-                fft_h5 = os.path.join(FFTDIR,network+'.'+station+'.h5')
+                fft_h5 = os.path.join(FFTDIR,network+'.'+station+'.'+location+'.h5')
 
                 if not os.path.isfile(fft_h5):
                     with pyasdf.ASDFDataSet(fft_h5,mpi=False,compression=None) as fft_ds:
@@ -302,6 +317,7 @@ for ista in range (rank,splits+size-extra,size):
             for jj in range (len(tdir)):
                 station = locs.iloc[ista]['station']
                 network = locs.iloc[ista]['network']
+                location= locs.iloc[ista]['location']
                 if flag:
                     print("working on station %s " % station)
                 
@@ -330,7 +346,7 @@ for ista in range (rank,splits+size-extra,size):
                         
                         if prepro:
                             t0=time.time()
-                            source = noise_module.preprocess_raw(source,inv1,downsamp_freq,checkt,pre_filt,resp,resp_dir)
+                            source = noise_module.preprocess_raw(source,inv1,fft_para)
                             if len(source)==0:
                                 continue
                             t1=time.time()
@@ -409,9 +425,9 @@ for ista in range (rank,splits+size-extra,size):
                             t0=time.time()
 
                             if whiten_type == 'one_bit':
-                                source_white = noise_module.whiten(white,dt,freqmin,freqmax)
+                                source_white = noise_module.whiten(white,fft_para)
                             elif whiten_type == 'running_mean':
-                                source_white = noise_module.whiten_smooth(white,dt,freqmin,freqmax,smooth_N)
+                                source_white = noise_module.whiten_smooth(white,fft_para)
                             t1=time.time()
                             if flag:
                                 print("spectral whitening takes %f s"%(t1-t0))
@@ -420,7 +436,7 @@ for ista in range (rank,splits+size-extra,size):
 
                         #-------------save FFTs as ASDF files-----------------
                         crap=np.zeros(shape=(N,Nfft//2),dtype=np.complex64)
-                        fft_h5 = os.path.join(FFTDIR,network+'.'+station+'.h5')
+                        fft_h5 = os.path.join(FFTDIR,network+'.'+station+'.'+location+'.h5')
 
                         if not os.path.isfile(fft_h5):
                             with pyasdf.ASDFDataSet(fft_h5,mpi=False,compression=None) as fft_ds:
