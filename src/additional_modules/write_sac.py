@@ -13,7 +13,7 @@ add an option to output the CCFs into txt files for image transform analysis
 '''
 
 #------absolute path to output data-------
-STACKDIR = '/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/pre_processing/STACK_decon/E.AYHM'
+STACKDIR = '/Users/chengxin/Documents/Research/Harvard/Kanto/STACK_pws/E.AYHM'
 ALLFILES = glob.glob(os.path.join(STACKDIR,'*.h5'))
 COMP_OUT = ['ZZ','TT','RR']
 #COMP_OUT = ['ZR','ZT','ZZ','TR','TT','TZ','RR','RT','RZ']

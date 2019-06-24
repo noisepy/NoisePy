@@ -723,12 +723,12 @@ def optimized_correlate2(fft1_smoothed_abs,fft2,D,Timestamp):
     It also takes advantage of the linear relationship of ifft, so that
     stacking in spectrum first to reduce the total number of times for ifft,
     which is the most time consuming steps in the previous correlate function.
-    Modified from Marine on 02/25/19 to accommodate sub-stacking of over tave seconds in the day
+    Modified by Marine on 02/25/19 to accommodate sub-stacking of over tave seconds in the day
     step is overlap step   
 
     fft1_smoothed_abs: already smoothed power spectral density of the FFT from the first station
     fft2: FFT from station 2
-    D: input a dictionary with the following parameters:
+    D: input dictionary with the following parameters:
         D["maxlag"]: maxlag to keep in the cross correlation
         D["dt"]: sampling rate (in s)
         D["Nfft"]: number of frequency points
@@ -737,41 +737,47 @@ def optimized_correlate2(fft1_smoothed_abs,fft2,D,Timestamp):
         D["freqmin"]: minimum frequency to look at (Hz)
         D["freqmax"]: maximum frequency to look at (Hz)
     Timestamp: array of datetime object.
-
-
     '''
-    Nfft2=D["Nfft"][0]//2
+    #----load paramters----
+    Nfft = D['Nfft']
+    Nfft2= Nfft//2
+    dt   = D['dt']
+    freqmin = D['freqmin']
+    freqmax = D['freqmax']
+    maxlag  = D['maxlag']
+    method  = D['method']
+    unit_time = D['unit_time']
+    smoothspect_N = D['smoothspect_N']
     nwin=len(fft1_smoothed_abs[:,0])
 
     #------convert all 2D arrays into 1D to speed up--------
     corr = np.zeros(nwin*Nfft2,dtype=np.complex64)
     corr = fft1_smoothed_abs.reshape(fft1_smoothed_abs.size,) * fft2.reshape(fft2.size,)
 
-    if D["method"][0] == "coherence":
-        temp = moving_ave(np.abs(fft2.reshape(fft2.size,)),10)
+    if method == "coherence":
+        temp = moving_ave(np.abs(fft2.reshape(fft2.size,)),smoothspect_N)
         corr /= temp
-
     corr  = corr.reshape(nwin,Nfft2)
 
     #--------------- remove outliers in frequency domain -------------------
     # note here : i am trying to reduce the number of IFFT by pre-selecting the 
     # good windows, then doing a substack, then doing the ifft of each sub stacks.
-    freq = scipy.fftpack.fftfreq(D["Nfft"][0], d=D["dt"][0])[:Nfft2]
-    i1 = np.where( (freq>=D["freqmin"][0]) & (freq <= D["freqmax"][0]))[0]
+    freq = scipy.fftpack.fftfreq(Nfft, d=dt)[:Nfft2]
+    i1 = np.where( freq>=freqmin & freq <= freqmax)[0]
 
     # this creates the residuals between each window and their median
-    med= np.log10(np.median(corr[:,i1],axis=0))
-    r = np.log10(corr[:,i1]) - med
-    ik=np.where(  (r>=med-np.log10(5)) & (r<=med+np.log10(5))  )[0]
+    med = np.log10(np.median(corr[:,i1],axis=0))
+    r   = np.log10(corr[:,i1]) - med
+    ik  = np.where(r>=med-np.log10(5) & r<=med+np.log10(5) )[0]
 
-    #make substacks for all windows that either start or end within a period of increment
-    Ttotal = Timestamp[-1]-Timestamp[0] # total duration of what we have now
-    dtime = np.timedelta64(D["unit_time"][0],'s')
+    # make substacks for all windows that either start or end within a period of increment
+    Ttotal = Timestamp[-1]-Timestamp[0]             # total duration of what we have now
+    dtime  = np.timedelta64(unit_time,'s')
 
     # number of data chuncks
     tstart=Timestamp[0]
     i=0 
-    ncorr = np.zeros(shape=(int(Ttotal/dtime),D["Nfft"][0]),dtype=np.complex64)
+    ncorr = np.zeros(shape=(int(Ttotal/dtime),Nfft),dtype=np.complex64)
     tcorr= np.empty(int(Ttotal/dtime),dtype='datetime64[s]')
 
     while tstart < Timestamp[-1]-dtime:
@@ -780,14 +786,14 @@ def optimized_correlate2(fft1_smoothed_abs,fft2,D,Timestamp):
         ncorr[i,:Nfft2] = np.mean(corr[ik[itime]],axis=0)
         ncorr[i,-(Nfft2)+1:]=np.flip(np.conj(ncorr[i,1:(Nfft2)]),axis=0)
         ncorr[i,0]=complex(0,0)
-        ncorr[i,:] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(ncorr[i,:], D["Nfft"][0], axis=0)))
+        ncorr[i,:] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(ncorr[i,:], Nfft, axis=0)))
         tcorr[i] = tstart
         tstart = tstart + dtime
         print('correlation done and stacked at time %s' % str(tcorr[i]))
         i+=1
 
-    t = np.arange(-Nfft2 + 1, Nfft2)*D["dt"][0]
-    ind   = np.where(np.abs(t) <= D["maxlag"][0])[0]
+    t = np.arange(-Nfft2 + 1, Nfft2)*dt[0]
+    ind   = np.where(np.abs(t) <= maxlag)[0]
     ncorr = ncorr[:,ind]
     return ncorr,tcorr
 

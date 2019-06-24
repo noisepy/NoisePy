@@ -308,7 +308,7 @@ for ista in range (rank,splits+size-extra,size):
                     crap[:,:Nfft//2]=source_white[:,:Nfft//2]
                     fft_ds.add_auxiliary_data(data=crap, data_type=data_type, path=path, parameters=parameters)
                     print(savedate)
-                del  fft_ds, crap, parameters, source_slice, source_white, dataS, dataS_stats, dataS_t, source_params     
+                    
             del ds # forces to close the file
 
         else:
@@ -391,8 +391,11 @@ for ista in range (rank,splits+size-extra,size):
                         #---------seems un-necesary for data already pre-processed with same length (zero-padding)-------
                         N = len(source_slice)
                         NtS = np.max(nptsS)
+                        dataS_t= np.zeros(shape=(N,2))
                         dataS = np.zeros(shape=(N,NtS),dtype=np.float32)
                         for ii,trace in enumerate(source_slice):
+                            dataS_t[ii,0]= source_slice[ii].stats.starttime-obspy.UTCDateTime(1970,1,1)# convert to dataframe
+                            dataS_t[ii,1]= source_slice[ii].stats.endtime -obspy.UTCDateTime(1970,1,1)# convert to dataframe
                             dataS[ii,0:nptsS[ii]] = trace.data
                             if ii==0:
                                 dataS_stats=trace.stats

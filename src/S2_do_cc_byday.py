@@ -48,8 +48,9 @@ Note:
     !!!!!!VERY IMPORTANT!!!!!!!!
     As noted in S1, we choose 1-day as the basic length for data storage and processing but allow breaking 
     the daily chunck data to smaller length for pre-processing and fft. In default, we choose to average 
-    all of the CCFs for the day (between e.g. every hour). the variable of sub_stack_len is to keep 
-    sub-stacks of the day, which might be useful if your target time-scale is on the order of hours.
+    all of the CCFs for the day (e.g., betwen every hour). the variable of sub_stack_len is to keep
+    sub-stacks of the day, which might be useful if your target time-scale is on the order of hours. if you
+    want to have longer duration however, (e.g., 10 days), then you need to check out S3.  
 '''
 
 ttt0=time.time()
@@ -79,7 +80,7 @@ method = fft_para['method']             # selected in S1
 #-----some control parameters for cc------
 flag=False                                  # output intermediate variables and computing times
 auto_corr=False                             # include single-station cross-correlation or not
-sub_stack_len  = 4*cc_len                   # Time unit in sectons to stack over: need to be integer times of cc_len
+unit_time  = 4*cc_len                       # Time unit in sectons to stack over: need to be integer times of cc_len
 smoothspect_N  = 10                         # moving window length to smooth spectrum amplitude
 start_date = '2010_01_01'                   # these two variables allow processing subset of the continuous noise data
 end_date   = '2010_01_02'
@@ -89,19 +90,14 @@ INC_DAYS   = 1                              # this has to be 1 because it is the
 max_over_std = 10                           # maximum threshold between the maximum absolute amplitude and the STD of the time series
 max_kurtosis = 10                           # max kurtosis allowed.
 
-#### How much memory do you allow in Gb.
+#### How much memory allowed in Gb.
 MAX_MEM = 4.0
 
 #-----make a dictionary to store all variables-----
 cc_para={'dt':dt,'cc_len':cc_len,'step':step,'method':method,'maxlag':maxlag,\
-    'smoothspect_N':smoothspect_N,'sub_stack_len':sub_stack_len,'start_date':\
+    'smoothspect_N':smoothspect_N,'unit_time':unit_time,'start_date':\
     start_date,'end_date':end_date,'inc_days':INC_DAYS,'max_over_std':max_over_std,\
     'max_kurtosis':max_kurtosis,'MAX_MEM':MAX_MEM}
-
-#--save cc metadata for later use--
-fout = open(c_metadata,'w')
-fout.write(str(cc_para))
-fout.close()
 
 #---------MPI-----------
 comm = MPI.COMM_WORLD
@@ -274,7 +270,7 @@ for ii in range(rank,splits+size-extra,size):
                                 # get max_over_std parameters
                                 std   = ds.auxiliary_data[icomp][iday].parameters['std']
                                 fft_std[indx][:]  = std[sindx1:sindx2]
-                               # get time stamps of each window
+                                # get time stamps of each window
                                 t = ds.auxiliary_data[icomp][iday].parameters['data_t']  
                                 fft_time[indx][:]   = t[sindx1:sindx2]
                                 # convert timestamp to UTC
@@ -365,8 +361,8 @@ for ii in range(rank,splits+size-extra,size):
                             receiver_std = fft_std[cc_indxR][:]
 
                             #---------- check the existence of earthquakes ----------
-                            rec_ind = np.where( (receiver_std < cc_para["max_over_std"]) & (receiver_std> 0) & (np.isnan(receiver_std)==0))[0]
-                            sou_ind = np.where( (source_std < cc_para["max_over_std"])   & (source_std > 0)  & (np.isnan(source_std)==0))[0]
+                            rec_ind = np.where( (receiver_std < cc_para['max_over_std']) & (receiver_std> 0) & (np.isnan(receiver_std)==0))[0]
+                            sou_ind = np.where( (source_std < cc_para['max_over_std'])   & (source_std > 0)  & (np.isnan(source_std)==0))[0]
 
                             #-----note that Hi-net has a few mi-secs differences to Mesonet in terms starting time-----
                             bb=np.intersect1d(sou_ind,rec_ind)
@@ -415,7 +411,7 @@ for ii in range(rank,splits+size-extra,size):
                             if flag:
                                 print('read R %6.4fs, cc %6.4fs, write cc %6.4fs'% ((t3-t2),(t4-t3),(t5-t4)))
 
-            cc_array=[];cc_std=[];cc_flag=[]
+            fft_array=[];fft_std=[];fft_flag=[];fft_time=[];Timestamps=[]
             n = gc.collect()
             print('unreadable garbarge',n)
 
@@ -433,4 +429,16 @@ print('all step 2 takes %6.4fs'%(ttt1-ttt0))
 
 comm.barrier()
 if rank == 0:
+
+    #-----update the dictionary to store all variables-----
+    cc_para={'dt':dt,'cc_len':cc_len,'step':step,'method':method,'maxlag':maxlag,\
+        'smoothspect_N':smoothspect_N,'unit_time':unit_time,'start_date':\
+        start_date,'end_date':end_date,'inc_days':INC_DAYS,'max_over_std':max_over_std,\
+        'max_kurtosis':max_kurtosis,'MAX_MEM':MAX_MEM,'num_seg':num_seg,'nseg2load':nseg2load}
+
+    #--save cc metadata for later use--
+    fout = open(c_metadata,'w')
+    fout.write(str(cc_para))
+    fout.close()
+
     sys.exit()

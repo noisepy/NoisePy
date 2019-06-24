@@ -36,13 +36,22 @@ if not os.path.isfile(c_metadata):
     raise ValueError('Abort! cannot find metadata file used for cc %s' % c_metadata)
 else:
     cc_para = eval(open(c_metadata).read())
+
 CCFDIR = os.path.join(rootpath,'CCF')
 FFTDIR = os.path.join(rootpath,'FFT')
 STACKDIR = os.path.join(rootpath,'STACK')
 if not os.path.isdir(STACKDIR):
     os.mkdir(STACKDIR)
 
-#------------make correction due to mis-orientation of instruments---------------
+#----load useful cc parameters----
+maxlag = cc_para['maxlag']
+dt     = cc_para['dt']
+downsamp_freq = int(1/dt)
+unit_time     = cc_para['unit_time']
+num_seg       = cc_para['num_seg']
+nseg2load     = cc_para['nseg2load']
+
+#--------make correction due to mis-orientation of instruments if needed----------
 correction = False
 if correction:
     corrfile = '/Users/chengxin/Documents/Harvard/code_develop/NoisePy/angle.dat'
@@ -51,22 +60,16 @@ if correction:
     angles   = list(locs.iloc[:]['angle'])
 
 #---control variables---
-flag = False
-do_rotation   = False
-one_component = False
-stack_method  = 'linear'        # linear or pws
-stack_days = 1
-num_seg = 1
+flag = False                    # output intermediate variables and computing times
+do_rotation   = False           # rotate from E-N-Z system to R-T-Z
+one_component = False           # one-component or 9-component cross-correlations
+stack_method  = 'linear'        # linear or pws for stacking
+stack_days = 1                  # stacking increment time for output
+PI = 3.141593
 
 #----dictionary for stack parameters----
 stack_para = {'do_rotation':do_rotation,'one_component':one_component,\
     'stack_days':stack_days,'correct_angle':correction}
-
-#-----loading the cc parameters-----
-maxlag = 500
-downsamp_freq=10
-dt=1/downsamp_freq
-pi = 3.141593
 
 #----parameters to estimate SNR----
 snr_parameters = {
@@ -184,9 +187,10 @@ for ii in range(rank,splits+size-extra,size):
                     continue
 
                 for data_type in slist:
-                    paths = ds.auxiliary_data[data_type].list()
-
-                    if not paths:
+                    try:
+                        paths = ds.auxiliary_data[data_type].list()
+                    except Exception as e:
+                        print("paths error at l163 %s" % e)
                         continue
 
                     #-------find the correspoinding receiver--------
@@ -336,15 +340,15 @@ for ii in range(rank,splits+size-extra,size):
                                 acorr = angles[ind]
                                 ind = sta_list.index(staR)
                                 bcorr = angles[ind]
-                                cosa = np.cos((azi+acorr)*pi/180)
-                                sina = np.sin((azi+acorr)*pi/180)
-                                cosb = np.cos((baz+bcorr)*pi/180)
-                                sinb = np.sin((baz+bcorr)*pi/180)
+                                cosa = np.cos((azi+acorr)*PI/180)
+                                sina = np.sin((azi+acorr)*PI/180)
+                                cosb = np.cos((baz+bcorr)*PI/180)
+                                sinb = np.sin((baz+bcorr)*PI/180)
                             else:
-                                cosa = np.cos(azi*pi/180)
-                                sina = np.sin(azi*pi/180)
-                                cosb = np.cos(baz*pi/180)
-                                sinb = np.sin(baz*pi/180)
+                                cosa = np.cos(azi*PI/180)
+                                sina = np.sin(azi*PI/180)
+                                cosb = np.cos(baz*PI/180)
+                                sinb = np.sin(baz*PI/180)
 
                             #------9 component tensor rotation 1-by-1------
                             for jj in range(len(rtz_components)):
@@ -433,15 +437,15 @@ for ii in range(rank,splits+size-extra,size):
                             acorr = angles[ind]
                             ind = sta_list.index(staR)
                             bcorr = angles[ind]
-                            cosa = np.cos((azi+acorr)*pi/180)
-                            sina = np.sin((azi+acorr)*pi/180)
-                            cosb = np.cos((baz+bcorr)*pi/180)
-                            sinb = np.sin((baz+bcorr)*pi/180)
+                            cosa = np.cos((azi+acorr)*PI/180)
+                            sina = np.sin((azi+acorr)*PI/180)
+                            cosb = np.cos((baz+bcorr)*PI/180)
+                            sinb = np.sin((baz+bcorr)*PI/180)
                         else:
-                            cosa = np.cos(azi*pi/180)
-                            sina = np.sin(azi*pi/180)
-                            cosb = np.cos(baz*pi/180)
-                            sinb = np.sin(baz*pi/180)
+                            cosa = np.cos(azi*PI/180)
+                            sina = np.sin(azi*PI/180)
+                            cosb = np.cos(baz*PI/180)
+                            sinb = np.sin(baz*PI/180)
 
                     #------9 component tensor rotation 1-by-1------
                     for jj in range(len(rtz_components)):
