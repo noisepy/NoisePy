@@ -21,11 +21,11 @@ if not sys.warnoptions:
 Step1 of the NoisePy package.
 
 This script pre-processs the noise data for each single station using the parameters given below
-and then stored the whitened and nomalized fft trace for each station in a ASDF format. 
+and then stored the whitened and nomalized FFT trace for each station in a ASDF format. 
 by C.Jiang, M.Denolle, T.Clements (Nov.09.2018)
 
 Update history:
-    - allow to handle SAC, MiniSeed and ASDF formate inputs. (Apr.18.2019)
+    - allow to handle SAC, MiniSeed and ASDF formate inputs in one script. (Apr.18.2019)
 
     - add a sub-function to make time-domain and freq-domain normalization according to 
     Bensen et al., 2007. (May.10.2019)
@@ -33,7 +33,7 @@ Update history:
     - cast most variables into a dictionary to pass between sub-functions. (Jun.16.2019)
 
 Note:
-    !!!!!!!!VERY IMPORTANT!!!!!!!
+    1. !!!!!!!!VERY IMPORTANT!!!!!!!
     We choose one-day (24 hours) as the basic length for data storage and processing. this means if 
     you input 10-day long continous data, we will break them into 1-day long and do processing
     thereafter on the 1-day long data. we remove the day if it is shorter than 0.5 day. for the
@@ -41,14 +41,23 @@ Note:
     in order to increase the SNR. If you want to keep longer duration as the basic length (2 days), 
     please check/modify the subfunction of preprocess_raw and the associated functions.
 
-    For the ASDF data, we assume that you already chose to remove the instrumental response. 
+    2. For the ASDF data, we assume that you already chose to remove the instrumental response. 
     But the code will check again in the tags of the ASDF to see whether the instr resp was removed.
+
+    3. Here we choose to compute all of the FFTs, even if the window contain earthquakes. We calculate 
+    statistical metrics in each window and save that in the parameters of the FFT. The selection will
+    be made in the cross correlation step.
+
+    4. Note that neither time and frequency normalization is needed if choose coherency (potentially
+    deconv as well) method. See Seats et al., 2012 for more details (DOI:10.1111/j.1365-246X.2011.05263.x)
+
+To add: the kurtosis metrics.
 '''
 
 t00=time.time()
 
 #------absolute path parameters-------
-rootpath  = '/Users/chengxin/Documents/Harvard/code_develop/NoisePy/example_data'
+rootpath  = '/mnt/data0/NZ/XCORR'
 FFTDIR = os.path.join(rootpath,'FFT/')
 event = os.path.join(rootpath,'noise_data/Event_*')
 if (len(glob.glob(event))==0): 
@@ -82,11 +91,18 @@ freqmax=4                       # max frequency for the filter
 
 #----pre-processing types-----
 method='deconv'                     # raw, deconv or coherency
-if to_whiten:
-    norm_type='running_mean'        # one-bit or running_mean (only needed when to_whiten is true)
-if time_norm:
-    whiten_type='running_mean'      # one-bit or running_mean (only needed when time_norm is true)
-    smooth_N=100 
+norm_type='running_mean'            # one-bit or running_mean (only needed when to_whiten is true)
+if not to_whiten:
+    norm_type=''
+whiten_type='running_mean'          # one-bit or running_mean (only needed when time_norm is true)
+smooth_N=100 
+if not time_norm:
+    whiten_type=''
+    smooth_N=0
+
+start_date = ["2018_05_01"]         # start date of downloaded data or locally-stored data
+end_date   = ["2018_05_31"]         # end date of data
+inc_days   = 20
 
 #-----make a dictionary to store all variables: also for later cc-----
 fft_para={'pre_filt':pre_filt,'downsamp_freq':downsamp_freq,'dt':dt,\
@@ -94,7 +110,8 @@ fft_para={'pre_filt':pre_filt,'downsamp_freq':downsamp_freq,'dt':dt,\
     'checkt':checkt,'resp':resp,'resp_dir':respdir,'pre-processing':prepro,\
     'to_whiten':to_whiten,'time_norm':time_norm,'norm_type':norm_type,\
     'whiten_type':whiten_type,'method':method,'smooth_N':smooth_N,\
-    'data_format':input_fmt,'station.list:':locations,'FFTDIR':FFTDIR}
+    'data_format':input_fmt,'station.list:':locations,'FFTDIR':FFTDIR,\
+    'start_date':start_date[0],'end_date':end_date[0],'inc_days':inc_days}
 
 #--save fft metadata for later use--
 fout = open(f_metadata,'w')
@@ -253,7 +270,6 @@ for ista in range (rank,splits+size-extra,size):
                 Nfft = int(next_fast_len(int(dataS.shape[axis])))
 
                 #------to normalize in time or not------
-                ##### YOU NEED TO WHITEN BEFORE YOU DO 1 BIT #####
                 if time_norm:
                     t0=time.time()   
 
@@ -303,12 +319,12 @@ for ista in range (rank,splits+size-extra,size):
                     path = savedate
 
                     data_type = str(comp)
-                    if ((itag==0) or (not len(fft_ds.waveforms[temp[0]]['StationXML']))):
+                    if ((itag==0) and (len(fft_ds.waveforms[temp[0]]['StationXML']))==0):
                         fft_ds.add_stationxml(inv1)
+
                     crap[:,:Nfft//2]=source_white[:,:Nfft//2]
                     fft_ds.add_auxiliary_data(data=crap, data_type=data_type, path=path, parameters=parameters)
                     print(savedate)
-                    
             del ds # forces to close the file
 
         else:
@@ -317,148 +333,149 @@ for ista in range (rank,splits+size-extra,size):
             for jj in range (len(tdir)):
                 station = locs.iloc[ista]['station']
                 network = locs.iloc[ista]['network']
-                location= locs.iloc[ista]['location']
+                try:
+                    location = locs.iloc[ista]['location']
+                except Exception:
+                    location = '00'
+
                 if flag:
                     print("working on station %s " % station)
                 
-                #-----------SAC and MiniSeed both works here-----------
+                #-----------SAC and MiniSeed both work here-----------
                 tfiles = glob.glob(os.path.join(tdir[jj],'*'+station+'*'))
                 if len(tfiles)==0:
                     print(str(station)+' does not have sac file at '+str(tdir[jj]))
                     continue
 
-                if method != 'raw':
-                    #----loop through each channel----
-                    for tfile in tfiles:
-                        sacfile = os.path.basename(tfile)
-                        try:
-                            source = obspy.read(tfile)
-                        except Exception as inst:
-                            print(inst)
-                            continue
-                        comp = source[0].stats.channel
-                        
-                        if flag:
-                            print("working on sacfile %s" % sacfile)
+                #----loop through each channel----
+                for tfile in tfiles:
+                    sacfile = os.path.basename(tfile)
+                    try:
+                        source = obspy.read(tfile)
+                    except Exception as inst:
+                        print(inst)
+                        continue
+                    comp = source[0].stats.channel
+                    
+                    if flag:
+                        print("working on sacfile %s" % sacfile)
 
-                        #---------make an inventory---------
-                        inv1=noise_module.stats2inv(source[0].stats)
-                        
-                        if prepro:
-                            t0=time.time()
-                            source = noise_module.preprocess_raw(source,inv1,fft_para)
-                            if len(source)==0:
-                                continue
-                            t1=time.time()
-                            if flag:
-                                print("prepro takes %f s" % (t1-t0))
-
-                        #----------variables to define days with earthquakes----------
-                        all_madS = noise_module.mad(source[0].data)
-                        all_stdS = np.std(source[0].data)
-                        if all_madS==0 or all_stdS==0:
-                            print("continue! madS or stdS equeals to 0 for %s" %tfile)
-                            continue
-
-                        trace_madS = []
-                        trace_stdS = []
-                        nonzeroS = []
-                        nptsS = []
-                        source_slice = obspy.Stream()
-
-                        #--------break a continous recording into pieces----------
+                    #---------make an inventory---------
+                    inv1=noise_module.stats2inv(source[0].stats)
+                    
+                    if prepro:
                         t0=time.time()
-                        for ii,win in enumerate(source[0].slide(window_length=cc_len, step=step)):
-                            win.detrend(type="constant")
-                            win.detrend(type="linear")
-                            trace_madS.append(np.max(np.abs(win.data))/all_madS)
-                            trace_stdS.append(np.max(np.abs(win.data))/all_stdS)
-                            nonzeroS.append(np.count_nonzero(win.data)/win.stats.npts)
-                            nptsS.append(win.stats.npts)
-                            win.taper(max_percentage=0.05,max_length=20)
-                            source_slice.append(win)
-                        del source
+                        source = noise_module.preprocess_raw(source,inv1,fft_para)
+                        if len(source)==0:
+                            continue
                         t1=time.time()
                         if flag:
-                            print("breaking records takes %f s"%(t1-t0))
+                            print("prepro takes %f s" % (t1-t0))
 
-                        if len(source_slice) == 0:
-                            print("No traces for %s " % tfile)
-                            continue
+                    #----------variables to define days with earthquakes----------
+                    all_madS = noise_module.mad(source[0].data)
+                    all_stdS = np.std(source[0].data)
+                    if all_madS==0 or all_stdS==0:
+                        print("continue! madS or stdS equeals to 0 for %s" %tfile)
+                        continue
 
-                        source_params= np.vstack([trace_madS,trace_stdS,nonzeroS]).T
+                    trace_madS = []
+                    trace_stdS = []
+                    nonzeroS = []
+                    nptsS = []
+                    source_slice = obspy.Stream()
 
-                        #---------seems un-necesary for data already pre-processed with same length (zero-padding)-------
-                        N = len(source_slice)
-                        NtS = np.max(nptsS)
-                        dataS_t= np.zeros(shape=(N,2))
-                        dataS = np.zeros(shape=(N,NtS),dtype=np.float32)
-                        for ii,trace in enumerate(source_slice):
-                            dataS_t[ii,0]= source_slice[ii].stats.starttime-obspy.UTCDateTime(1970,1,1)# convert to dataframe
-                            dataS_t[ii,1]= source_slice[ii].stats.endtime -obspy.UTCDateTime(1970,1,1)# convert to dataframe
-                            dataS[ii,0:nptsS[ii]] = trace.data
-                            if ii==0:
-                                dataS_stats=trace.stats
+                    #--------break a continous recording into pieces----------
+                    t0=time.time()
+                    for ii,win in enumerate(source[0].slide(window_length=cc_len, step=step)):
+                        win.detrend(type="constant")
+                        win.detrend(type="linear")
+                        trace_madS.append(np.max(np.abs(win.data))/all_madS)
+                        trace_stdS.append(np.max(np.abs(win.data))/all_stdS)
+                        nonzeroS.append(np.count_nonzero(win.data)/win.stats.npts)
+                        nptsS.append(win.stats.npts)
+                        win.taper(max_percentage=0.05,max_length=20)
+                        source_slice.append(win)
+                    del source
+                    t1=time.time()
+                    if flag:
+                        print("breaking records takes %f s"%(t1-t0))
 
-                        #---2 parameters----
-                        axis = dataS.ndim-1
-                        Nfft = int(next_fast_len(int(dataS.shape[axis])))
+                    if len(source_slice) == 0:
+                        print("No traces for %s " % tfile)
+                        continue
 
-                        #------to normalize in time or not------
-                        if time_norm:
-                            t0=time.time()   
+                    source_params= np.vstack([trace_madS,trace_stdS,nonzeroS]).T
 
-                            if norm_type == 'one_bit': 
-                                white = np.sign(dataS)
-                            elif norm_type == 'running_mean':
-                                
-                                #--------convert to 1D array for smoothing in time-domain---------
-                                white = np.zeros(shape=dataS.shape,dtype=dataS.dtype)
-                                for kkk in range(N):
-                                    white[kkk,:] = dataS[kkk,:]/noise_module.moving_ave(np.abs(dataS[kkk,:]),smooth_N)
+                    #---------seems un-necesary for data already pre-processed with same length (zero-padding)-------
+                    N = len(source_slice)
+                    NtS = np.max(nptsS)
+                    dataS_t= np.zeros(shape=(N,2))
+                    dataS = np.zeros(shape=(N,NtS),dtype=np.float32)
+                    for ii,trace in enumerate(source_slice):
+                        dataS_t[ii,0]= source_slice[ii].stats.starttime-obspy.UTCDateTime(1970,1,1)# convert to dataframe
+                        dataS_t[ii,1]= source_slice[ii].stats.endtime -obspy.UTCDateTime(1970,1,1)# convert to dataframe
+                        dataS[ii,0:nptsS[ii]] = trace.data
+                        if ii==0:
+                            dataS_stats=trace.stats
 
-                            t1=time.time()
-                            if flag:
-                                print("temporal normalization takes %f s"%(t1-t0))
-                        else:
-                            white = dataS
+                    #---2 parameters----
+                    axis = dataS.ndim-1
+                    Nfft = int(next_fast_len(int(dataS.shape[axis])))
 
-                        #-----to whiten or not------
-                        if to_whiten:
-                            t0=time.time()
+                    #------to normalize in time or not------
+                    if time_norm:
+                        t0=time.time()   
 
-                            if whiten_type == 'one_bit':
-                                source_white = noise_module.whiten(white,fft_para)
-                            elif whiten_type == 'running_mean':
-                                source_white = noise_module.whiten_smooth(white,fft_para)
-                            t1=time.time()
-                            if flag:
-                                print("spectral whitening takes %f s"%(t1-t0))
-                        else:
-                            source_white = scipy.fftpack.fft(white, Nfft, axis=axis)
-
-                        #-------------save FFTs as ASDF files-----------------
-                        crap=np.zeros(shape=(N,Nfft//2),dtype=np.complex64)
-                        fft_h5 = os.path.join(FFTDIR,network+'.'+station+'.'+location+'.h5')
-
-                        if not os.path.isfile(fft_h5):
-                            with pyasdf.ASDFDataSet(fft_h5,mpi=False,compression=None) as fft_ds:
-                                pass # create pyasdf file 
-                
-                        with pyasdf.ASDFDataSet(fft_h5,mpi=False,compression=None) as fft_ds:
-                            parameters = noise_module.fft_parameters(dt,step,cc_len,source_params, \
-                                locs.iloc[0],comp,Nfft,N,dataS_t[:,0])
+                        if norm_type == 'one_bit': 
+                            white = np.sign(dataS)
+                        elif norm_type == 'running_mean':
                             
-                            savedate = '{0:04d}_{1:02d}_{2:02d}'.format(dataS_stats.starttime.year,\
-                                dataS_stats.starttime.month,dataS_stats.starttime.day)
-                            path = savedate
+                            #--------convert to 1D array for smoothing in time-domain---------
+                            white = np.zeros(shape=dataS.shape,dtype=dataS.dtype)
+                            for kkk in range(N):
+                                white[kkk,:] = dataS[kkk,:]/noise_module.moving_ave(np.abs(dataS[kkk,:]),smooth_N)
 
-                            data_type = str(comp)
-                            fft_ds.add_stationxml(inv1)
-                            crap[:,:Nfft//2]=source_white[:,:Nfft//2]
-                            fft_ds.add_auxiliary_data(data=crap, data_type=data_type, path=path, parameters=parameters)
+                        t1=time.time()
+                        if flag:
+                            print("temporal normalization takes %f s"%(t1-t0))
+                    else:
+                        white = dataS
 
-                        del fft_ds, crap, parameters, source_slice, source_white, dataS, dataS_stats, source_params 
+                    #-----to whiten or not------
+                    if to_whiten:
+                        t0=time.time()
+
+                        if whiten_type == 'one_bit':
+                            source_white = noise_module.whiten(white,fft_para)
+                        elif whiten_type == 'running_mean':
+                            source_white = noise_module.whiten_smooth(white,fft_para)
+                        t1=time.time()
+                        if flag:
+                            print("spectral whitening takes %f s"%(t1-t0))
+                    else:
+                        source_white = scipy.fftpack.fft(white, Nfft, axis=axis)
+
+                    #-------------save FFTs as ASDF files-----------------
+                    crap=np.zeros(shape=(N,Nfft//2),dtype=np.complex64)
+                    fft_h5 = os.path.join(FFTDIR,network+'.'+station+'.'+location+'.h5')
+
+                    if not os.path.isfile(fft_h5):
+                        with pyasdf.ASDFDataSet(fft_h5,mpi=False,compression=None) as fft_ds:
+                            pass # create pyasdf file 
+            
+                    with pyasdf.ASDFDataSet(fft_h5,mpi=False,compression=None) as fft_ds:
+                        parameters = noise_module.fft_parameters(dt,step,cc_len,source_params, \
+                            locs.iloc[0],comp,Nfft,N,dataS_t[:,0])
+                        
+                        savedate = '{0:04d}_{1:02d}_{2:02d}'.format(dataS_stats.starttime.year,\
+                            dataS_stats.starttime.month,dataS_stats.starttime.day)
+                        path = savedate
+
+                        data_type = str(comp)
+                        fft_ds.add_stationxml(inv1)
+                        crap[:,:Nfft//2]=source_white[:,:Nfft//2]
+                        fft_ds.add_auxiliary_data(data=crap, data_type=data_type, path=path, parameters=parameters)
         
         t11=time.time()
         print('it takes '+str(t11-t10)+' s to process one station in step 1')

@@ -11,9 +11,10 @@ from mpi4py import MPI
 '''
 Step3A of NoisePy package!
 
-This script linearly stacks the cross-correlation functions according to parameter of stack_days. 
-This free parameter allows future exploration of the stability of the stacked ccfs that could be
-useful for monitoring purpose.
+This script offers several options to stack the sub-stacks of the cross-correlation functions, including
+linear, pws and adaptive stacking (Nakata et al., 2015) methods. in particular, a parameter of stack_days 
+is set to allow outputting the sub-stacked cross-correlations, which could be useful to high-resolution
+temporal monitoring purpose.
 by C.Jiang, T.Clements, M.Denolle (Nov.09.2018)
 
 Update history:
@@ -30,7 +31,7 @@ Note:
 t0=time.time()
 
 #-------------absolute path of working directory-------------
-rootpath = '/Users/chengxin/Documents/Harvard/code_develop/NoisePy/example_data'
+rootpath = '/mnt/data0/NZ/XCORR/'
 c_metadata = os.path.join(rootpath,'cc_metadata.txt')
 if not os.path.isfile(c_metadata):
     raise ValueError('Abort! cannot find metadata file used for cc %s' % c_metadata)
@@ -40,16 +41,17 @@ else:
 CCFDIR = os.path.join(rootpath,'CCF')
 FFTDIR = os.path.join(rootpath,'FFT')
 STACKDIR = os.path.join(rootpath,'STACK')
-if not os.path.isdir(STACKDIR):
-    os.mkdir(STACKDIR)
+if not os.path.isdir(STACKDIR):os.mkdir(STACKDIR)
 
 #----load useful cc parameters----
 maxlag = cc_para['maxlag']
 dt     = cc_para['dt']
+npts   = int(maxlag/dt)*2+1
 downsamp_freq = int(1/dt)
-unit_time     = cc_para['unit_time']
-num_seg       = cc_para['num_seg']
+substack_len  = cc_para['substack_len']
+num_load      = cc_para['num_load']
 nseg2load     = cc_para['nseg2load']
+nsubstacks    = cc_para['nsubstacks']
 
 #--------make correction due to mis-orientation of instruments if needed----------
 correction = False
@@ -61,15 +63,17 @@ if correction:
 
 #---control variables---
 flag = False                    # output intermediate variables and computing times
-do_rotation   = False           # rotate from E-N-Z system to R-T-Z
-one_component = False           # one-component or 9-component cross-correlations
-stack_method  = 'linear'        # linear or pws for stacking
-stack_days = 1                  # stacking increment time for output
+do_rotation    = False           # rotate from E-N-Z system to R-T-Z
+one_component  = False           # one-component or 9-component cross-correlations
+stack_method   = 'linear'        # linear, pws or adaptive stacking (ADD AD STACKING!!!)
+final_substack = False           # note this is different from sub_stacks of daily ccfs in S2
+final_stackday = 1               # sub-stacking increment time to output (can be different from unit_time)
+MAX_MEM        = 4               # maximum memory allowed per core in GB
 PI = 3.141593
 
 #----dictionary for stack parameters----
-stack_para = {'do_rotation':do_rotation,'one_component':one_component,\
-    'stack_days':stack_days,'correct_angle':correction}
+stack_para = {'do_rotation':do_rotation,'one_component':one_component,'stack_method':stack_method,\
+    'final_substack':final_substack,'final_stackday':final_stackday,'correction':correction}
 
 #----parameters to estimate SNR----
 snr_parameters = {
@@ -142,7 +146,12 @@ for ii in range(rank,splits+size-extra,size):
         source,receiver = pairs[ii][0],pairs[ii][1]
         ndays  = len(ccfs)
         ncomp  = len(enz_components)
-        nstack = ndays//stack_days
+        nfinal_stacks = ndays//final_stackday
+
+        # assume memory is enough for loading all ccfs for one station pair (9-cross component for 3-comp data)
+        memory_size = ndays*npts*nsubstacks*9*8/1024/1024/1024
+        if memory_size > MAX_MEM:
+            print('Memory exceeds %s GB! No enough memory to load them all once!' % (MAX_MEM))
 
         #-------------move to next pair if it already exists----------------
         stack_h5 = os.path.join(STACKDIR,source+'/'+source+'_'+receiver+'.h5')
@@ -153,10 +162,9 @@ for ii in range(rank,splits+size-extra,size):
             continue
 
         #---------------parameters to store the CCFs------------------
-        corr   = np.zeros((ndays*ncomp,int(2*maxlag/dt)+1),dtype=np.float32)
-        ampmax = np.zeros((ndays,ncomp),dtype=np.float32)
+        corr   = np.zeros((ndays*ncomp*nsubstacks,npts),dtype=np.float32)
+        ampmax = np.zeros((ndays*nsubstacks,ncomp),dtype=np.float32)
         ngood  = np.zeros((ndays,ncomp),dtype=np.int16)
-        nflag  = np.zeros((ndays,ncomp),dtype=np.int16)
 
         #-----source information-----
         staS = source.split('.')[1]
@@ -167,7 +175,7 @@ for ii in range(rank,splits+size-extra,size):
         netR = receiver.split('.')[0]
 
         #--used to jump through the station-pairs without data--
-        no_data = 1
+        no_data = True
 
         #-----loop through each day----
         for iday in range(ndays):
@@ -213,12 +221,12 @@ for ii in range(rank,splits+size-extra,size):
 
                     for path in rlist:
 
-                        no_data = 0
+                        no_data = False
 
                         #--------cross component-------
-                        if num_seg==0:
+                        if num_load==0:
                             ccomp = data_type[-1]+path[-1]
-                        elif num_seg < 10:
+                        elif num_load < 10:
                             ccomp = data_type[-1]+path[-2]
                         else:
                             ccomp = data_type[-1]+path[-3]
@@ -228,7 +236,6 @@ for ii in range(rank,splits+size-extra,size):
                         findx  = iday*ncomp+tindx
                         corr[findx] += ds.auxiliary_data[data_type][path].data[:]
                         ngood[iday,tindx] += ds.auxiliary_data[data_type][path].parameters['ngood']
-                        nflag[iday,tindx] += 1
 
                         #------maximum amplitude of daly CCFs--------
                         if ampmax[iday,tindx] < np.max(corr[findx]):
@@ -238,9 +245,11 @@ for ii in range(rank,splits+size-extra,size):
         if flag:
             print('loading data takes %6.3fs'%(t2-t1))
 
-        if no_data==0:
+        if not no_data:
 
             #--------make statistic analysis of CCFs at each component----------
+            #?????REDUNDENT OR NOT SINCE NEW CORRELATION SCHEME HAS REMOVED OUTLIERS?????
+            '''
             for icomp in range(ncomp):
                 indx1 = np.where(nflag[:,icomp]>0)[0]
                 indx2 = np.where(ampmax[indx1,icomp]<50*np.median(ampmax[indx1,icomp]))[0]     # remove the ones with too big amplitudes
@@ -254,16 +263,17 @@ for ii in range(rank,splits+size-extra,size):
                     else:
                         findx = tt*ncomp+icomp
                         corr[findx] /= nflag[tt,icomp]
+            '''
 
-            if nstack > 1:
+            if final_substack:
                 #------stack the CCFs------
-                for isday in range(nstack):
+                for isday in range(nfinal_stacks):
 
-                    indx1 = isday*stack_days
-                    if isday == nstack-1:
+                    indx1 = isday*final_stackday
+                    if isday == nfinal_stacks-1:
                         indx2 = ndays-1
                     else:
-                        indx2 = (indx1+stack_days)
+                        indx2 = (indx1+final_stackday)
 
                     #--break the loop---
                     if indx1 == indx2:

@@ -38,9 +38,8 @@ Update history:
     - modify the structure of ASDF files to make it more flexable for later stacking and matrix rotation
     (Mar.06.2019)
 
-    - add a free parameter (has to be integer times of cc_len) to allow sub-stacking for daily ccfs, which 
-    helps 1) reduce the required memory for loading ccfs between all station-pairs in stacking step and 
-    2) saves the time for repeatly loading the FFT (Jun.16.2019)
+    - add a free parameter (integer times of cc_len) to keep sub-stackings of the daily ccfs. it also
+    tries to load as much fft data at once as possible to save repetitive data loading time (Jun.16.2019)
 
     - load useful parameters directly from saved file so that it avoids parameters re-difination (Jun.17.2019)
 
@@ -55,8 +54,12 @@ Note:
 
 ttt0=time.time()
 
+########################################
+#########PARAMETER SECTION##############
+########################################
+
 #------load most parameters from fft metadata files-----
-rootpath  = '/Users/chengxin/Documents/Harvard/code_develop/NoisePy/example_data'
+rootpath  = '/mnt/data0/NZ/XCORR'
 f_metadata = os.path.join(rootpath,'fft_metadata.txt')
 if not os.path.isfile(f_metadata):
     raise ValueError('Abort! cannot find metadata file used for fft %s' % f_metadata)
@@ -76,11 +79,14 @@ cc_len = fft_para['cc_len']
 step   = fft_para['step']
 maxlag = fft_para['maxlag']             # enlarge this number if to do C3
 method = fft_para['method']             # selected in S1
+start_date = fft_para['start_date']
+end_date = fft_para['end_date']
+inc_days = fft_para['inc_days']
 
 #-----some control parameters for cc------
 flag=False                                  # output intermediate variables and computing times
 auto_corr=False                             # include single-station cross-correlation or not
-unit_time  = 4*cc_len                       # Time unit in sectons to stack over: need to be integer times of cc_len
+substack_len   = 4*cc_len                   # Time unit in sectons to stack over: need to be integer times of cc_len
 smoothspect_N  = 10                         # moving window length to smooth spectrum amplitude
 start_date = '2010_01_01'                   # these two variables allow processing subset of the continuous noise data
 end_date   = '2010_01_02'
@@ -90,20 +96,23 @@ INC_DAYS   = 1                              # this has to be 1 because it is the
 max_over_std = 10                           # maximum threshold between the maximum absolute amplitude and the STD of the time series
 max_kurtosis = 10                           # max kurtosis allowed.
 
-#### How much memory allowed in Gb.
+# maximum memory allowed per core in Gb.
 MAX_MEM = 4.0
 
 #-----make a dictionary to store all variables-----
 cc_para={'dt':dt,'cc_len':cc_len,'step':step,'method':method,'maxlag':maxlag,\
-    'smoothspect_N':smoothspect_N,'unit_time':unit_time,'start_date':\
+    'smoothspect_N':smoothspect_N,'substack_len':substack_len,'start_date':\
     start_date,'end_date':end_date,'inc_days':INC_DAYS,'max_over_std':max_over_std,\
     'max_kurtosis':max_kurtosis,'MAX_MEM':MAX_MEM}
 
-#---------MPI-----------
+#######################################
+###########PROCESSING SECTION##########
+#######################################
+
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
-#-----------------------
+
 
 #-------form a station pair to loop through-------
 if rank ==0:
@@ -144,14 +153,14 @@ for ii in range(rank,splits+size-extra,size):
             Nfft2 = Nfft//2
         
         # crutial estimate on required memory for loading all FFT at once: float32 in default--------
-        num_seg = 1
+        num_load  = 1
         nseg2load = Nseg
         memory_size = ntrace*Nfft2*Nseg*8/1024/1024/1024
         if memory_size > MAX_MEM:
             print('Memory exceeds %s GB! No enough memory to load them all once!' % (MAX_MEM))
             nseg2load = np.floor(MAX_MEM/(ntrace*Nfft2*8/1024/1024/1024 ))
-            num_seg= np.floor(Nseg/nseg2load)
-            print('thus splitting the files into %s chunks of %3.1f GB each' % (num_seg, memory_size))
+            num_load= np.floor(Nseg/nseg2load)
+            print('thus splitting the files into %s chunks of %3.1f GB each' % (num_load, memory_size))
 
         #----double check ncomp by opening a few more stations------
         for jj in range(1,5):
@@ -167,19 +176,19 @@ for ii in range(rank,splits+size-extra,size):
         net = []
 
         #--------load data for sub-stacking--------
-        for iseg in range(num_seg):
+        for iload in range(num_load):
         
             #---index for the data chunck---
-            sindx1 = iseg*nseg2load
-            if iseg==num_seg-1:
-                nseg2load = Nseg-iseg*nseg2load
+            sindx1 = iload*nseg2load
+            if iload==num_load-1:
+                nseg2load = Nseg-iload*nseg2load
             sindx2 = sindx1+nseg2load
 
             if nseg2load==0 or nseg2load <0:
                 raise ValueError('nhours<=0, please double check')
 
             if flag:
-                print('working on %dth segments of the daily FFT'% iseg)
+                print('working on %dth segments of the daily FFT'% iload)
 
             #---------------initialize the array-------------------
             fft_array = np.zeros((ntrace,nseg2load*Nfft2),dtype=np.complex64)
@@ -198,7 +207,7 @@ for ii in range(rank,splits+size-extra,size):
                     data_types = ds.auxiliary_data.list()
 
                     #-----load station informaiton here------
-                    if iseg==0:
+                    if iload==0:
                         temp = ds.waveforms.list()
                         invS = ds.waveforms[temp[0]]['StationXML']
                         sta.append(temp[0].split('.')[1])
@@ -220,7 +229,7 @@ for ii in range(rank,splits+size-extra,size):
 
                             if iday in tpaths:
                                 if flag:
-                                    print('find %dth data chunck for station %s day %s' % (iseg,tfile.split('/')[-1],iday))
+                                    print('find %dth data chunck for station %s day %s' % (iload,tfile.split('/')[-1],iday))
                                 indx = ifile*ncomp+iindx
 
                                 #-----check bound----
@@ -239,7 +248,7 @@ for ii in range(rank,splits+size-extra,size):
                                 fft_std[indx][:]  = std[sindx1:sindx2]
                                 # get time stamps of each window
                                 t = ds.auxiliary_data[icomp][iday].parameters['data_t']  
-                                fft_time[indx][:]   = t[sindx1:sindx2]
+                                fft_time[indx][:] = t[sindx1:sindx2]
                                 
                                 # convert timestamp to UTC
                                 for kk in range((sindx2-sindx1)):
@@ -254,7 +263,7 @@ for ii in range(rank,splits+size-extra,size):
                             tpaths = ds.auxiliary_data[icomp].list()
                             if iday in tpaths:
                                 if flag:
-                                    print('find %dth data chunck for station %s day %s' % (iseg,tfile.split('/')[-1],iday))
+                                    print('find %dth data chunck for station %s day %s' % (iload,tfile.split('/')[-1],iday))
                                 indx = ifile*ncomp+jj
                                 
                                 #-----check bound----
@@ -272,7 +281,7 @@ for ii in range(rank,splits+size-extra,size):
                                 fft_std[indx][:]  = std[sindx1:sindx2]
                                 # get time stamps of each window
                                 t = ds.auxiliary_data[icomp][iday].parameters['data_t']  
-                                fft_time[indx][:]   = t[sindx1:sindx2]
+                                fft_time[indx][:] = t[sindx1:sindx2]
                                 # convert timestamp to UTC
                                 for kk in range((sindx2-sindx1)):
                                     Timestamps[indx][kk]=datetime.fromtimestamp(t[sindx1+kk])
@@ -383,7 +392,7 @@ for ii in range(rank,splits+size-extra,size):
 
                             with pyasdf.ASDFDataSet(cc_aday_h5,mpi=False) as ccf_ds:
                                 parameters = noise_module.optimized_cc_parameters(dt,maxlag,\
-                                    str(method),len(bb),lonS,latS,lonR,latR)
+                                    str(method),len(bb),lonS,latS,lonR,latR,tcorr)              # keep the timestamp of each sub-stack
 
                                 #-----------make a universal change to component-----------
                                 if icompR==0:
@@ -401,7 +410,7 @@ for ii in range(rank,splits+size-extra,size):
                                     compS = 'Z' 
 
                                 #------save the time domain cross-correlation functions-----
-                                path = netR+'s'+staR+'s'+compR+str(iseg)
+                                path = netR+'s'+staR+'s'+compR+str(iload)
                                 data_type = netS+'s'+staS+'s'+compS
 
                                 crap[:] = corr[:]
@@ -417,11 +426,11 @@ for ii in range(rank,splits+size-extra,size):
 
             ttr2 = time.time()
             if flag:
-                print('it takes %6.4fs to process %dth segment of data' %((ttr2-ttr1),iseg))
+                print('it takes %6.4fs to process %dth segment of data' %((ttr2-ttr1),iload))
 
         tt1 = time.time()
         if flag:
-            print('it takes %6.4fs to process day %s [%d segment] in step 2' % (tt1-tt0,iday,num_seg))
+            print('it takes %6.4fs to process day %s [%d segment] in step 2' % (tt1-tt0,iday,num_load))
 
 
 ttt1=time.time()
@@ -432,9 +441,10 @@ if rank == 0:
 
     #-----update the dictionary to store all variables-----
     cc_para={'dt':dt,'cc_len':cc_len,'step':step,'method':method,'maxlag':maxlag,\
-        'smoothspect_N':smoothspect_N,'unit_time':unit_time,'start_date':\
+        'smoothspect_N':smoothspect_N,'substack_len':substack_len,'start_date':\
         start_date,'end_date':end_date,'inc_days':INC_DAYS,'max_over_std':max_over_std,\
-        'max_kurtosis':max_kurtosis,'MAX_MEM':MAX_MEM,'num_seg':num_seg,'nseg2load':nseg2load}
+        'max_kurtosis':max_kurtosis,'MAX_MEM':MAX_MEM,'num_load':num_load,'nseg2load':nseg2load,\
+        'nsubstacks':len(tcorr)}
 
     #--save cc metadata for later use--
     fout = open(c_metadata,'w')

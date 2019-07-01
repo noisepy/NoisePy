@@ -141,7 +141,7 @@ def preprocess_raw(st,inv,fft_para):
     '''
 
     #----load variable-----
-    downsamp_freq = fft_para['downsamp_freq']
+    samp_freq = fft_para['samp_freq']
     clean_time    = fft_para['checkt']
     pre_filt      = fft_para['pre_filt']
     resp          = fft_para['resp']
@@ -180,13 +180,13 @@ def preprocess_raw(st,inv,fft_para):
 
     st.merge(method=1,fill_value=0)
 
-    if abs(downsamp_freq-sps) > 1E-4:
+    if abs(samp_freq-sps) > 1E-4:
         #-----low pass filter with corner frequency = 0.9*Nyquist frequency----
-        #st[0].data = lowpass(st[0].data,freq=0.4*downsamp_freq,df=sps,corners=4,zerophase=True)
-        st[0].data = bandpass(st[0].data,pre_filt[0],0.4*downsamp_freq,df=sps,corners=4,zerophase=True)
+        #st[0].data = lowpass(st[0].data,freq=0.4*samp_freq,df=sps,corners=4,zerophase=True)
+        st[0].data = bandpass(st[0].data,pre_filt[0],0.4*samp_freq,df=sps,corners=4,zerophase=True)
 
-        #----make downsampling------
-        st.interpolate(downsamp_freq,method='weighted_average_slopes')
+        #----downsampling------
+        st.interpolate(samp_freq,method='weighted_average_slopes')
 
         delta = st[0].stats.delta
         #-------when starttimes are between sampling points-------
@@ -218,7 +218,7 @@ def preprocess_raw(st,inv,fft_para):
             specfile = glob.glob(os.path.join(respdir,'*'+station+'*'))
             if len(specfile)==0:
                 raise ValueError('no response sepctrum found for %s' % station)
-            st = resp_spectrum(st,specfile[0],downsamp_freq,pre_filt)
+            st = resp_spectrum(st,specfile[0],samp_freq,pre_filt)
 
         elif resp == 'RESP_files':
             print('using RESP files')
@@ -291,7 +291,7 @@ def segment_interpolate(sig1,nfric):
 
     return sig2
 
-def resp_spectrum(source,resp_file,downsamp_freq,pre_filt=None):
+def resp_spectrum(source,resp_file,samp_freq,pre_filt=None):
     '''
     remove the instrument response with response spectrum from evalresp.
     the response spectrum is evaluated based on RESP/PZ files and then 
@@ -665,7 +665,7 @@ def C3_process(S1_data,S2_data,Nfft,win):
 
     return ccp,ccn
     
-def optimized_cc_parameters(dt,maxlag,method,nhours,lonS,latS,lonR,latR):
+def optimized_cc_parameters(dt,maxlag,method,nhours,lonS,latS,lonR,latR,Timestamp):
     '''
     provide the parameters for computting CC later
     '''
@@ -681,7 +681,8 @@ def optimized_cc_parameters(dt,maxlag,method,nhours,lonS,latS,lonR,latR):
         'lonR':np.float32(lonR),
         'latR':np.float32(latR),
         'ngood':nhours,
-        'method':method}
+        'method':method,
+        'time':Timestamp}
     return parameters
 
 def optimized_correlate1(fft1_smoothed_abs,fft2,maxlag,dt,Nfft,nwin,method="cross-correlation"):
@@ -746,16 +747,17 @@ def optimized_correlate2(fft1_smoothed_abs,fft2,D,Timestamp):
     freqmax = D['freqmax']
     maxlag  = D['maxlag']
     method  = D['method']
+    cc_len  = D['cc_len']                                                               # CJ
     unit_time = D['unit_time']
     smoothspect_N = D['smoothspect_N']
     nwin=len(fft1_smoothed_abs[:,0])
 
     #------convert all 2D arrays into 1D to speed up--------
     corr = np.zeros(nwin*Nfft2,dtype=np.complex64)
-    corr = fft1_smoothed_abs.reshape(fft1_smoothed_abs.size,) * fft2.reshape(fft2.size,)
+    corr = fft1_smoothed_abs.reshape(fft1_smoothed_abs.size,)*fft2.reshape(fft2.size,)
 
     if method == "coherence":
-        temp = moving_ave(np.abs(fft2.reshape(fft2.size,)),smoothspect_N)
+        temp = moving_ave(np.abs(fft2.reshape(fft2.size,)),smoothspect_N)               # CJ
         corr /= temp
     corr  = corr.reshape(nwin,Nfft2)
 
@@ -778,21 +780,27 @@ def optimized_correlate2(fft1_smoothed_abs,fft2,D,Timestamp):
     tstart=Timestamp[0]
     i=0 
     ncorr = np.zeros(shape=(int(Ttotal/dtime),Nfft),dtype=np.complex64)
-    tcorr= np.empty(int(Ttotal/dtime),dtype='datetime64[s]')
+    tcorr = np.empty(int(Ttotal/dtime),dtype='datetime64[s]')
 
-    while tstart < Timestamp[-1]-dtime:
+    # set the endtime variable
+    if dtime == cc_len:                                                                     # CJ 06/25
+        tend = Timestamp[-1]                                                                # CJ
+    else:                                                                                   # CJ
+        tend = Timestamp[-1]-dtime                                                          # CJ
+
+    while tstart < tend:                                                                    # CJ
         # find the indexes of all of the windows that start or end within 
-        itime = np.where( (Timestamp >= tstart) & (Timestamp < tstart+dtime) )[0]
+        itime = np.where( (Timestamp[ik] >= tstart) & (Timestamp[ik] < tstart+dtime) )[0]   # CJ
         ncorr[i,:Nfft2] = np.mean(corr[ik[itime]],axis=0)
         ncorr[i,-(Nfft2)+1:]=np.flip(np.conj(ncorr[i,1:(Nfft2)]),axis=0)
-        ncorr[i,0]=complex(0,0)
+        ncorr[i,0] = complex(0,0)
         ncorr[i,:] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(ncorr[i,:], Nfft, axis=0)))
         tcorr[i] = tstart
         tstart = tstart + dtime
         print('correlation done and stacked at time %s' % str(tcorr[i]))
         i+=1
 
-    t = np.arange(-Nfft2 + 1, Nfft2)*dt[0]
+    t = np.arange(-Nfft2+1, Nfft2)*dt[0]
     ind   = np.where(np.abs(t) <= maxlag)[0]
     ncorr = ncorr[:,ind]
     return ncorr,tcorr
