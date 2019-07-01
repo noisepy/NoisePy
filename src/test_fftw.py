@@ -5,6 +5,10 @@ import pyfftw
 import scipy
 import time
 
+'''
+test the computation efficiecy and memory requirements for each fft package
+'''
+
 @profile
 def fftw_comp_2D():
     # create random variables
@@ -16,6 +20,15 @@ def fftw_comp_2D():
     c = a+1j*b
 
     # compare efficiency of three fftw package
+    t0 = time.time()
+    fft0 = pyfftw.interfaces.numpy_fft.fft(a)
+    t1 = time.time()
+    fft1 = np.fft.fft(a)
+    t2 = time.time()
+    fft2 = scipy.fftpack.fft(a)
+    t3 = time.time()
+    print('fft takes %f %f %f' % (t1-t0,t2-t1,t3-t2))
+
     t0 = time.time()
     fft0 = pyfftw.interfaces.numpy_fft.fft(c)
     t1 = time.time()
@@ -46,5 +59,5 @@ def fftw_comp_1D():
     print('fft takes %f %f %f' % (t1-t0,t2-t1,t3-t2))
 
 if __name__ == '__main__':
-    fftw_comp_1D()
+    #fftw_comp_1D()
     fftw_comp_2D()
