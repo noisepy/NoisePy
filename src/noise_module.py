@@ -1,13 +1,14 @@
 import os
 import glob
-import datetime
 import copy
-import matplotlib.pyplot as plt
-from numba import jit
-import pyasdf
-import pandas as pd
-import numpy as np
 import scipy
+import time
+import pyasdf
+import numpy as np
+import pandas as pd
+from numba import jit
+from datetime import datetime
+import matplotlib.pyplot as plt
 from scipy.fftpack import fft,ifft,next_fast_len
 from scipy.signal import butter, hilbert, wiener
 from scipy.linalg import svd
@@ -18,6 +19,284 @@ import obspy
 from obspy.signal.util import _npts2nfft
 from obspy.core.inventory import Inventory, Network, Station, Channel, Site
 
+
+def cut_trace_make_statis(fft_para,source,flag):
+    '''
+    cut daily continous noise data into user-defined segments, estimate the statistics of 
+    each segment and keep timestamp for later use
+
+    fft_para: dictionary containing all useful variables used for fft
+    source: obspy stream objects
+    flag: boolen variable to output intermediate variables or not
+    '''
+    # define return variables first
+    source_params=[];dataS_t=[];dataS=[];dataS_stats=[]
+
+    # load parameters from structure
+    cc_len = fft_para['cc_len']
+    step   = fft_para['step']
+
+    # statistic to detect segments that may be associated with earthquakes
+    all_madS = mad(source[0].data)
+    all_stdS = np.std(source[0].data)
+    if all_madS==0 or all_stdS==0 or np.isnan(all_madS) or np.isnan(all_stdS):
+        print("continue! madS or stdS equeals to 0 for %s" % source)
+        return source_params,dataS_t,dataS,dataS_stats
+
+    trace_madS = []
+    trace_stdS = []
+    nonzeroS = []
+    nptsS = []
+    source_slice = obspy.Stream()
+
+    #--------break a continous recording into pieces----------
+    t0=time.time()
+    for ii,win in enumerate(source[0].slide(window_length=cc_len, step=step)):
+        win.detrend(type="constant")
+        win.detrend(type="linear")
+        trace_madS.append(np.max(np.abs(win.data))/all_madS)
+        trace_stdS.append(np.max(np.abs(win.data))/all_stdS)
+        nonzeroS.append(np.count_nonzero(win.data)/win.stats.npts)
+        nptsS.append(win.stats.npts)
+        win.taper(max_percentage=0.05,max_length=20)
+        source_slice.append(win)
+    
+    t1=time.time()
+    if flag:
+        print("breaking records takes %f s"%(t1-t0))
+
+    if len(source_slice) == 0:
+        print("No traces for %s " % source)
+        return source_params,dataS_t,dataS,dataS_stats
+    else:
+        source_params = np.vstack([trace_madS,trace_stdS,nonzeroS]).T
+
+    #---------seems unnecessary for data already pre-processed with same length (zero-padding)-------
+    Nseg   = len(source_slice)
+    Npts   = np.max(nptsS)
+    dataS_t= np.zeros(shape=(Nseg,2))
+    dataS  = np.zeros(shape=(Nseg,Npts),dtype=np.float32)
+    for ii,trace in enumerate(source_slice):
+        dataS_t[ii,0]= source_slice[ii].stats.starttime-obspy.UTCDateTime(1970,1,1)# convert to dataframe
+        dataS_t[ii,1]= source_slice[ii].stats.endtime -obspy.UTCDateTime(1970,1,1)# convert to dataframe
+        dataS[ii,0:nptsS[ii]] = trace.data
+        if ii==0:
+            dataS_stats=trace.stats
+
+    return source_params,dataS_t,dataS,dataS_stats
+
+
+def noise_processing(fft_para,dataS,flag):
+    '''
+    perform time domain and frequency normalization according to user's need. note that
+    this step is not recommended if deconv or coherency method is selected for calculating
+    cross-correlation functions. 
+
+    fft_para: dictionary containing all useful variables used for fft
+    dataS: data matrix containing all segmented noise data
+    flag: boolen variable to output intermediate variables or not
+    '''
+    # load parameters first
+    time_norm   = fft_para['time_norm']
+    to_whiten   = fft_para['to_whiten']
+    smooth_N    = fft_para['smooth_N']
+
+    N = dataS.shape[0]
+
+    #------to normalize in time or not------
+    if time_norm:
+        t0=time.time()   
+
+        if time_norm == 'one_bit': 
+            white = np.sign(dataS)
+        elif time_norm == 'running_mean':
+            
+            #--------convert to 1D array for smoothing in time-domain---------
+            white = np.zeros(shape=dataS.shape,dtype=dataS.dtype)
+            for kkk in range(N):
+                white[kkk,:] = dataS[kkk,:]/moving_ave(np.abs(dataS[kkk,:]),smooth_N)
+
+        t1=time.time()
+        if flag:
+            print("temporal normalization takes %f s"%(t1-t0))
+    else:
+        white = dataS
+
+    #-----to whiten or not------
+    if to_whiten:
+
+        t0=time.time()
+        source_white = whiten(white,fft_para)
+        t1=time.time()
+        if flag:
+            print("spectral whitening takes %f s"%(t1-t0))
+    else:
+
+        Nfft = int(next_fast_len(int(dataS.shape[1])))
+        source_white = scipy.fftpack.fft(white, Nfft, axis=1)
+    
+    return source_white
+
+
+def load_fft_matrix(iday,iload,data_info,sfiles,flag):
+    '''
+    load the fft matrix to memory for later fast cross-correlation because I/O of 
+    ASDF5 data takes longer time than CC part
+
+    data_info: a dictionary about the data information
+    flag: boolen variable to output intermediate variables or not
+    '''
+    nsta     = data_info['nsta']
+    num_load = data_info['num_load']
+    nseg2load= data_info['nseg2load']
+    ntrace   = data_info['ntrace']
+    Nfft2    = data_info['Nfft2']
+    Nseg     = data_info['Nseg']
+    ncomp    = data_info['ncomp']
+
+    #--------record station information--------
+    lon=[];lat=[];sta=[];net=[]
+    
+    #---index for the data chunck---
+    sindx1 = iload*nseg2load
+    if iload==num_load-1:
+        nseg2load = Nseg-iload*nseg2load
+    sindx2 = sindx1+nseg2load
+
+    if nseg2load==0 or nseg2load<0:
+        raise ValueError('nhours<=0, please double check')
+
+    if flag:
+        print('working on %dth segments of the daily FFT'% iload)
+
+    #---------------initialize the array-------------------
+    fft_array = np.zeros((ntrace,nseg2load*Nfft2),dtype=np.complex64)
+    fft_std   = np.zeros((ntrace,nseg2load),dtype=np.float32)
+    fft_flag  = np.zeros((ntrace),dtype=np.int16)
+    Timestamps = np.empty((ntrace,nseg2load),dtype='datetime64[s]')
+
+    #-----loop through all stations------
+    for ifile in range(len(sfiles)):
+        tfile = sfiles[ifile]
+
+        with pyasdf.ASDFDataSet(tfile,mpi=False,mode='r') as ds:
+            data_types = ds.auxiliary_data.list()
+
+            #-----load station informaiton here------
+            if iload==0:
+                temp = ds.waveforms.list()
+                invS = ds.waveforms[temp[0]]['StationXML']
+                sta.append(temp[0].split('.')[1])
+                net.append(temp[0].split('.')[0])
+                lon.append(invS[0][0].longitude)
+                lat.append(invS[0][0].latitude)
+                sta_info = {'sta':sta,'net':net,'lon':lon,'lat':lat}
+
+            if len(data_types) < ncomp:
+                
+                #-----check whether mising some components-----
+                for icomp in data_types:
+                    if icomp[-1]=='E':
+                        iindx = 0
+                    elif icomp[-1]=='N':
+                        iindx = 1
+                    else:
+                        iindx = 2
+                    tpaths = ds.auxiliary_data[icomp].list()
+
+                    if iday in tpaths:
+                        if flag:
+                            print('find %dth data chunck for station %s day %s' % (iload,tfile.split('/')[-1],iday))
+                        indx = ifile*ncomp+iindx
+
+                        #-----check bound----
+                        if indx > ntrace:
+                            raise ValueError('index out of bound at L213 of noise module')
+                        
+                        dsize = ds.auxiliary_data[icomp][iday].data.size
+
+                        if dsize != Nseg*Nfft2:
+                            continue
+                        fft_flag[indx] = 1
+                        data  = ds.auxiliary_data[icomp][iday].data[sindx1:sindx2,:]
+                        fft_array[indx][:]= data.reshape(data.size)
+                        # get max_over_std parameters
+                        std   = ds.auxiliary_data[icomp][iday].parameters['std']
+                        fft_std[indx][:]  = std[sindx1:sindx2]
+                        # get time stamps of each window
+                        t = ds.auxiliary_data[icomp][iday].parameters['data_t']  
+                        
+                        # convert timestamp to UTC
+                        for kk in range((sindx2-sindx1)):
+                            Timestamps[indx][kk]=datetime.fromtimestamp(t[sindx1+kk])
+                        print(Timestamps[indx][:])
+
+            else:
+
+                #-----E-N-U/Z orders when all components are available-----
+                for jj in range(len(data_types)):
+                    icomp = data_types[jj]
+                    tpaths = ds.auxiliary_data[icomp].list()
+                    if iday in tpaths:
+                        if flag:
+                            print('find %dth data chunck for station %s day %s' % (iload,tfile.split('/')[-1],iday))
+                        indx = ifile*ncomp+jj
+                        
+                        #-----check bound----
+                        if indx > ntrace:
+                            raise ValueError('index out of bound')
+
+                        dsize = ds.auxiliary_data[icomp][iday].data.size
+                        if dsize != Nseg*Nfft2:
+                            continue
+                        fft_flag[indx] = 1
+                        data  = ds.auxiliary_data[icomp][iday].data[sindx1:sindx2,:]
+                        fft_array[indx][:]= data.reshape(data.size)
+                        # get max_over_std parameters
+                        std   = ds.auxiliary_data[icomp][iday].parameters['std']
+                        fft_std[indx][:]  = std[sindx1:sindx2]
+                        # get time stamps of each window
+                        t = ds.auxiliary_data[icomp][iday].parameters['data_t']  
+
+                        # convert timestamp to UTC
+                        for kk in range((sindx2-sindx1)):
+                            Timestamps[indx][kk]=datetime.fromtimestamp(t[sindx1+kk])
+                        print(Timestamps[indx][:])
+    
+    return fft_array,fft_std,fft_flag,Timestamps,sta_info
+
+def smooth_source_spect(cc_para,fft1):
+    '''
+    take the source/receiver spectrum normalization for coherency/deconv method out of the
+    innermost for loop to save time
+
+    input cc_para: dictionary containing useful cc parameters
+          fft1: complex matrix containing source spectrum
+    output sfft1: complex numpy array with normalized spectrum
+    '''
+    cc_method = cc_para['cc_method']
+    smoothspect_N = cc_para['smoothspect_N']
+
+    if cc_method == 'deconv':
+        
+        #-----normalize single-station cc to z component-----
+        temp = moving_ave(np.abs(fft1),smoothspect_N)
+        try:
+            sfft1 = np.conj(fft1)/temp**2
+        except ValueError:
+            raise ValueError('smoothed spectrum has zero values')
+
+    elif cc_method == 'coherency':
+        temp = moving_ave(np.abs(fft1),smoothspect_N)
+        try:
+            sfft1 = np.conj(fft1)/temp
+        except ValueError:
+            raise ValueError('smoothed spectrum has zero values')
+
+    elif cc_method == 'raw':
+        sfft1 = np.conj(fft1)
+    
+    return sfft1
 
 def stats2inv(stats,resp=None,filexml=None,locs=None):
 
@@ -126,85 +405,84 @@ def stats2inv(stats,resp=None,filexml=None,locs=None):
 
 def preprocess_raw(st,inv,fft_para):
     '''
-    pre-process daily stream of data from IRIS server, including:
+    pre-process the raw stream of data including:
+    - check whether sample rate is matching (from original process_raw)
+    - remove trend and mean of each trace
+    - filter and downsample the data if needed (from original process_raw) and correct the
+    time if integer time are between sampling points
+    - remove instrument responses with selected methods. 
+        "inv"        -> using inventory information to remove_response;
+        "spectrum"   -> use the response spectrum (inverse; recommened due to efficiency). note
+        that one script is provided in the package to estimate response spectrum from RESP files
+        "RESP_files" -> use the raw download RESP files
+        "polezeros"  -> use pole/zero info for a crude correction of response
+    - trim data to a day-long sequence and interpolate it to ensure starting at 00:00:00.000
 
-        - check sample rate is matching (from original process_raw)
-        - remove small traces (from original process_raw)
-        - remove trend and mean of each trace
-        - interpolated to ensure all samples are at interger times of the sampling rate
-        - low pass and downsample the data  (from original process_raw)
-        - remove instrument response according to the option of resp_option. 
-            "inv" -> using inventory information and obspy function of remove_response;
-            "spectrum" -> use downloaded response spectrum and interpolate if necessary
-            "polezeros" -> use the pole zeros for a crude correction of response
-        - trim data to a day-long sequence and interpolate it to ensure starting at 00:00:00.000
+    st: obspy stream object, containing traces of noise data
+    inv: obspy inventory object, containing all information about stations
+    fft_para: dictionary containing all useful fft parameters
     '''
+    # load paramters from fft dict
+    rm_resp       = fft_para['rm_resp']
+    respdir       = fft_para['resp_dir']
+    freqmin       = fft_para['freqmin']
+    freqmax       = fft_para['freqmax']
+    samp_freq     = fft_para['samp_freq']
 
-    #----load variable-----
-    samp_freq = fft_para['samp_freq']
-    clean_time    = fft_para['checkt']
-    pre_filt      = fft_para['pre_filt']
-    resp          = fft_para['resp']
-    respdir       = fft_para['respdir']
+    # parameters for butterworth filter
+    f1 = 0.9*freqmin;f2=freqmin
+    if 1.1*freqmax > 0.45*samp_freq:
+        f3 = 0.4*samp_freq
+        f4 = 0.45*samp_freq
+    else:
+        f3 = freqmax
+        f4= 1.1*freqmax
+    pre_filt  = [f1,f2,f3,f4]
 
-    #----remove the ones with too many segments and gaps------
-    if len(st) > 100 or portion_gaps(st) > 0.2:
-        print('Too many traces or gaps in Stream: Continue!')
-        st=[]
-        return st
-
-    #----check sampling rate and trace length----
-    st = check_sample(st)
-            
+    # check sampling rate and trace length
+    st = check_sample_gaps(st)
     if len(st) == 0:
-        print('No traces in Stream: Continue!')
-        return st
-
+        print('No traces in Stream: Continue!');return st
     sps = int(st[0].stats.sampling_rate)
-    #-----remove mean and trend for each trace before merge------
-    for ii in range(len(st)):
-        if st[ii].stats.sampling_rate != sps:
-            st[ii].stats.sampling_rate = sps
-        
-        #-----set nan values to zeros (it does happens!)-----
-        tttindx = np.where(np.isnan(st[ii].data))
-        if len(tttindx) >0:
-            st[ii].data[tttindx]=0
+    station = st[0].stats.station
 
+    # remove nan/inf, mean and trend of each trace before merging
+    for ii in range(len(st)):
+
+        #-----set nan/inf values to zeros (it does happens!)-----
+        tttindx = np.where(np.isnan(st[ii].data))
+        if len(tttindx) >0:st[ii].data[tttindx]=0
         tttindx = np.where(np.isinf(st[ii].data))
-        if len(tttindx) >0:
-            st[ii].data[tttindx]=0
+        if len(tttindx) >0:st[ii].data[tttindx]=0
+
         st[ii].data = np.float32(st[ii].data)
         st[ii].data = scipy.signal.detrend(st[ii].data,type='constant')
         st[ii].data = scipy.signal.detrend(st[ii].data,type='linear')
 
-    st.merge(method=1,fill_value=0)
+    if len(st)>1:st.merge(method=1,fill_value=0)
 
+    # make downsampling if needed
     if abs(samp_freq-sps) > 1E-4:
-        #-----low pass filter with corner frequency = 0.9*Nyquist frequency----
-        #st[0].data = lowpass(st[0].data,freq=0.4*samp_freq,df=sps,corners=4,zerophase=True)
-        st[0].data = bandpass(st[0].data,pre_filt[0],0.4*samp_freq,df=sps,corners=4,zerophase=True)
+        st[0].data = bandpass(st[0].data,pre_filt[0],pre_filt[-1],df=sps,corners=4,zerophase=True)
 
-        #----downsampling------
+        # downsampling here
         st.interpolate(samp_freq,method='weighted_average_slopes')
-
         delta = st[0].stats.delta
-        #-------when starttimes are between sampling points-------
+
+        # when starttimes are between sampling points
         fric = st[0].stats.starttime.microsecond%(delta*1E6)
         if fric>1E-4:
             st[0].data = segment_interpolate(np.float32(st[0].data),float(fric/delta*1E6))
             #--reset the time to remove the discrepancy---
             st[0].stats.starttime-=(fric*1E-6)
 
-    station = st[0].stats.station
-
-    #-----check whether file folder exists-------
-    if resp is not False:
-        if resp != 'inv':
+    # several options to remove instrument response
+    if rm_resp:
+        if rm_resp != 'inv':
             if (respdir is None) or (not os.path.isdir(respdir)):
                 raise ValueError('response file folder not found! abort!')
 
-        if resp == 'inv':
+        if rm_resp == 'inv':
             #----check whether inventory is attached----
             if not inv[0][0][0].response:
                 raise ValueError('no response found in the inventory! abort!')
@@ -213,55 +491,49 @@ def preprocess_raw(st,inv,fft_para):
                 st[0].attach_response(inv)
                 st[0].remove_response(output="VEL",pre_filt=pre_filt,water_level=60)
 
-        elif resp == 'spectrum':
+        elif rm_resp == 'spectrum':
             print('remove response using spectrum')
             specfile = glob.glob(os.path.join(respdir,'*'+station+'*'))
             if len(specfile)==0:
                 raise ValueError('no response sepctrum found for %s' % station)
             st = resp_spectrum(st,specfile[0],samp_freq,pre_filt)
 
-        elif resp == 'RESP_files':
-            print('using RESP files')
+        elif rm_resp == 'RESP_files':
+            print('remove response using RESP files')
             seedresp = glob.glob(os.path.join(respdir,'RESP.'+station+'*'))
             if len(seedresp)==0:
                 raise ValueError('no RESP files found for %s' % station)
             st.simulate(paz_remove=None,pre_filt=pre_filt,seedresp=seedresp[0])
 
-        elif resp == 'polozeros':
-            print('using polos and zeros')
+        elif rm_resp == 'polozeros':
+            print('remove response using polos and zeros')
             paz_sts = glob.glob(os.path.join(respdir,'*'+station+'*'))
             if len(paz_sts)==0:
                 raise ValueError('no polozeros found for %s' % station)
             st.simulate(paz_remove=paz_sts[0],pre_filt=pre_filt)
 
         else:
-            raise ValueError('no such option of resp in preprocess_raw! please double check!')
+            raise ValueError('no such option for rm_resp! please double check!')
 
     #-----fill gaps, trim data and interpolate to ensure all starts at 00:00:00.0------
-    if clean_time:
-        st = clean_daily_segments(st)
+    st = clean_daily_segments(st)
 
     return st
 
 def portion_gaps(stream):
     '''
-    get the accumulated gaps (npts) by looking at the accumulated difference between starttime and endtime,
-    instead of using the get_gaps function of obspy object of stream. remove the trace if gap length is 
-    more than 30% of the trace size. remove the ones with sampling rate not consistent with max(freq) 
+    get the accumulated gaps (npts) from the accumulated difference between starttime and endtime.
+    trace with gap length of 30% of trace size is removed. 
+
+    stream: obspy stream object
+    return float: portions of gaps in stream
     '''
-    #-----check the consistency of sampling rate----
-
     pgaps=0
-
-    if len(stream)==0:
-        return pgaps
-        
-    else:
-        npts = (stream[-1].stats.endtime-stream[0].stats.starttime)*stream[0].stats.sampling_rate
-        #----loop through all trace to find gaps----
-        for ii in range(len(stream)-1):
-            pgaps += (stream[ii+1].stats.starttime-stream[ii].stats.endtime)*stream[ii].stats.sampling_rate
-
+    npts = (stream[-1].stats.endtime-stream[0].stats.starttime)*stream[0].stats.sampling_rate
+    
+    #loop through all trace to accumulate gaps
+    for ii in range(len(stream)-1):
+        pgaps += (stream[ii+1].stats.starttime-stream[ii].stats.endtime)*stream[ii].stats.sampling_rate
     return pgaps/npts
 
 @jit('float32[:](float32[:],float32)')
@@ -291,7 +563,7 @@ def segment_interpolate(sig1,nfric):
 
     return sig2
 
-def resp_spectrum(source,resp_file,samp_freq,pre_filt=None):
+def resp_spectrum(source,resp_file,downsamp_freq,pre_filt=None):
     '''
     remove the instrument response with response spectrum from evalresp.
     the response spectrum is evaluated based on RESP/PZ files and then 
@@ -512,6 +784,8 @@ def whiten(data, fft_para):
     delta   = fft_para['dt']
     freqmin = fft_para['freqmin']
     freqmax = fft_para['freqmax']
+    smooth_N  = fft_para['smooth_N']
+    to_whiten = fft_para['to_whiten']
 
     # Speed up FFT by padding to optimal size for FFTPACK
     if data.ndim == 1:
@@ -543,7 +817,12 @@ def whiten(data, fft_para):
             np.linspace(np.pi / 2., np.pi, left - low)) ** 2 * np.exp(
             1j * np.angle(FFTRawSign[:,low:left]))
         # Pass band:
-        FFTRawSign[:,left:right] = np.exp(1j * np.angle(FFTRawSign[:,left:right]))
+        if to_whiten=='one-bit':
+            FFTRawSign[:,left:right] = np.exp(1j * np.angle(FFTRawSign[:,left:right]))
+        elif to_whiten == 'running-mean':
+            for ii in range(data.shape[0]):
+                tave = moving_ave(np.abs(FFTRawSign[ii,left:right]),smooth_N)
+                FFTRawSign[ii,left:right] = FFTRawSign[ii,left:right]/tave
         # Right tapering:
         FFTRawSign[:,right:high] = np.cos(
             np.linspace(0., np.pi / 2., high - right)) ** 2 * np.exp(
@@ -558,7 +837,11 @@ def whiten(data, fft_para):
             np.linspace(np.pi / 2., np.pi, left - low)) ** 2 * np.exp(
             1j * np.angle(FFTRawSign[low:left]))
         # Pass band:
-        FFTRawSign[left:right] = np.exp(1j * np.angle(FFTRawSign[left:right]))
+        if to_whiten == 'one-bit':
+            FFTRawSign[left:right] = np.exp(1j * np.angle(FFTRawSign[left:right]))
+        elif to_whiten == 'running-mean':
+            tave = moving_ave(np.abs(FFTRawSign[left:right]),smooth_N)
+            FFTRawSign[left:right] = FFTRawSign[left:right]/tave
         # Right tapering:
         FFTRawSign[right:high] = np.cos(
             np.linspace(0., np.pi / 2., high - right)) ** 2 * np.exp(
@@ -665,11 +948,18 @@ def C3_process(S1_data,S2_data,Nfft,win):
 
     return ccp,ccn
     
-def optimized_cc_parameters(dt,maxlag,method,nhours,lonS,latS,lonR,latR,Timestamp):
+def optimized_cc_parameters(cc_para,coor,tcorr,ncorr):
     '''
     provide the parameters for computting CC later
     '''
-    #dist = get_distance(lonS,latS,lonR,latR)
+    latS = coor['latS']
+    lonS = coor['lonS']
+    latR = coor['latR']
+    lonR = coor['lonR']
+    dt        = cc_para['dt']
+    maxlag    = cc_para['maxlag']
+    cc_method = cc_para['cc_method']
+
     dist,azi,baz = obspy.geodetics.base.gps2dist_azimuth(latS,lonS,latR,lonR)
     parameters = {'dt':dt,
         'lag':int(maxlag),
@@ -680,9 +970,9 @@ def optimized_cc_parameters(dt,maxlag,method,nhours,lonS,latS,lonR,latR,Timestam
         'latS':np.float32(latS),
         'lonR':np.float32(lonR),
         'latR':np.float32(latR),
-        'ngood':nhours,
-        'method':method,
-        'time':Timestamp}
+        'ngood':ncorr,
+        'cc_method':cc_method,
+        'time':tcorr}
     return parameters
 
 def optimized_correlate1(fft1_smoothed_abs,fft2,maxlag,dt,Nfft,nwin,method="cross-correlation"):
@@ -717,7 +1007,7 @@ def optimized_correlate1(fft1_smoothed_abs,fft2,maxlag,dt,Nfft,nwin,method="cros
     
     return ncorr
 
-def optimized_correlate2(fft1_smoothed_abs,fft2,D,Timestamp):
+def optimized_correlate(fft1_smoothed_abs,fft2,D,Nfft,Timestamp):
     '''
     Optimized version of the correlation functions: put the smoothed 
     source spectrum amplitude out of the inner for loop. 
@@ -740,70 +1030,109 @@ def optimized_correlate2(fft1_smoothed_abs,fft2,D,Timestamp):
     Timestamp: array of datetime object.
     '''
     #----load paramters----
-    Nfft = D['Nfft']
-    Nfft2= Nfft//2
-    dt   = D['dt']
+    dt      = D['dt']
     freqmin = D['freqmin']
     freqmax = D['freqmax']
     maxlag  = D['maxlag']
-    method  = D['method']
-    cc_len  = D['cc_len']                                                               # CJ
-    unit_time = D['unit_time']
+    method  = D['cc_method']
+    cc_len  = D['cc_len'] 
+    substack= D['substack']                                                              # CJ
+    substack_len  = D['substack_len']
     smoothspect_N = D['smoothspect_N']
-    nwin=len(fft1_smoothed_abs[:,0])
+
+    nwin  = fft1_smoothed_abs.shape[0]
+    Nfft2 = Nfft//2
 
     #------convert all 2D arrays into 1D to speed up--------
     corr = np.zeros(nwin*Nfft2,dtype=np.complex64)
     corr = fft1_smoothed_abs.reshape(fft1_smoothed_abs.size,)*fft2.reshape(fft2.size,)
 
-    if method == "coherence":
+    if method == "coherency":
         temp = moving_ave(np.abs(fft2.reshape(fft2.size,)),smoothspect_N)               # CJ
         corr /= temp
     corr  = corr.reshape(nwin,Nfft2)
 
     #--------------- remove outliers in frequency domain -------------------
-    # note here : i am trying to reduce the number of IFFT by pre-selecting the 
-    # good windows, then doing a substack, then doing the ifft of each sub stacks.
+    # reduce the number of IFFT by pre-selecting good windows before substack
     freq = scipy.fftpack.fftfreq(Nfft, d=dt)[:Nfft2]
     i1 = np.where( freq>=freqmin & freq <= freqmax)[0]
 
+    ###################DOUBLE CHECK THIS SECTION#####################
     # this creates the residuals between each window and their median
     med = np.log10(np.median(corr[:,i1],axis=0))
     r   = np.log10(corr[:,i1]) - med
-    ik  = np.where(r>=med-np.log10(5) & r<=med+np.log10(5) )[0]
+    #ik  = np.where(r>=med-5 & r<=med+5)[0]
+    ik  = np.zeros(nwin,dtype=np.int)
+    for i in range(nwin):
+        if np.any( (r[i,:]>=med-10)& (r[i,:]<=med+10) ):ik[i]=i
+    ik1=np.nonzero(ik)
+    ik=ik[ik1]
+    #################################################################
 
-    # make substacks for all windows that either start or end within a period of increment
-    Ttotal = Timestamp[-1]-Timestamp[0]             # total duration of what we have now
-    dtime  = np.timedelta64(unit_time,'s')
+    if substack:
+    
+        if substack_len == cc_len:
+            # choose to keep all fft data for a day
+            ncorr  = np.zeros(shape=(nwin,Nfft),dtype=np.float32)
+            nncorr = np.ones(nwin,dtype=np.int16)
+            tcorr  = Timestamp
+            crap   = np.zeros(Nfft,dtype=np.complex64)
+            for i in range(len(ik)):            
+                crap[:Nfft2] = corr[ik[i],:]
+                crap[:Nfft2] = crap[:Nfft2]-np.mean(crap[:Nfft2])   # remove the mean in freq domain (spike at t=0)
+                crap[-(Nfft2)+1:]=np.flip(np.conj(crap[1:(Nfft2)]),axis=0)
+                crap[0]=complex(0,0)
+                ncorr[i,:] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
+        
+        else:     
+            # make substacks for all windows that either start or end within a period of increment
+            Ttotal = Timestamp[-1]-Timestamp[0]             # total duration of what we have now
+            dtime  = np.timedelta64(substack_len,'s')
 
-    # number of data chuncks
-    tstart=Timestamp[0]
-    i=0 
-    ncorr = np.zeros(shape=(int(Ttotal/dtime),Nfft),dtype=np.complex64)
-    tcorr = np.empty(int(Ttotal/dtime),dtype='datetime64[s]')
+            # number of data chuncks
+            tstart=Timestamp[0]
+            i=0 
+            ncorr = np.zeros(shape=(int(Ttotal/dtime),Nfft),dtype=np.complex64)
+            tcorr = np.empty(int(Ttotal/dtime),dtype='datetime64[s]')
+            nncorr= np.zeros(int(Ttotal/dtime),dtype=np.int)
+            crap  = np.zeros(Nfft,dtype=np.complex64)
 
-    # set the endtime variable
-    if dtime == cc_len:                                                                     # CJ 06/25
-        tend = Timestamp[-1]                                                                # CJ
-    else:                                                                                   # CJ
-        tend = Timestamp[-1]-dtime                                                          # CJ
+            # set the endtime variable
+            if dtime == cc_len:                                                                     # CJ 06/25
+                tend = Timestamp[-1]                                                                # CJ
+            else:                                                                                   # CJ
+                tend = Timestamp[-1]-dtime                                                          # CJ
 
-    while tstart < tend:                                                                    # CJ
-        # find the indexes of all of the windows that start or end within 
-        itime = np.where( (Timestamp[ik] >= tstart) & (Timestamp[ik] < tstart+dtime) )[0]   # CJ
-        ncorr[i,:Nfft2] = np.mean(corr[ik[itime]],axis=0)
-        ncorr[i,-(Nfft2)+1:]=np.flip(np.conj(ncorr[i,1:(Nfft2)]),axis=0)
-        ncorr[i,0] = complex(0,0)
-        ncorr[i,:] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(ncorr[i,:], Nfft, axis=0)))
-        tcorr[i] = tstart
-        tstart = tstart + dtime
-        print('correlation done and stacked at time %s' % str(tcorr[i]))
-        i+=1
+            while tstart < tend:                                                                    # CJ
+                # find the indexes of all of the windows that start or end within 
+                itime = np.where( (Timestamp[ik] >= tstart) & (Timestamp[ik] < tstart+dtime) )[0]   # CJ
+                if len(ik[itime])==0:tstart+=dtime;continue
+                
+                crap[:Nfft2] = np.mean(corr[ik[itime],:],axis=0)   # linear average of the correlation 
+                crap[:Nfft2] = crap[:Nfft2]-np.mean(crap[:Nfft2])   # remove the mean in freq domain (spike at t=0)
+                crap[-(Nfft2)+1:]=np.flip(np.conj(crap[1:(Nfft2)]),axis=0)
+                crap[0]=complex(0,0)
+                ncorr[i,:] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, D["Nfft"], axis=0)))
+                nncorr[i] = len(ik[itime])          # number of windows stacks
+                tcorr[i] = tstart                   # save the time stamps
+                tstart += dtime
+                print('correlation done and stacked at time %s' % str(tcorr[i]))
+                i+=1
+
+    else:
+        # average daily cross correlation functions
+        nncorr = len(ik)
+        corr  = corr.reshape(nwin,Nfft2)
+        tcorr = Timestamp[0]
+        ncorr = np.zeros(shape=Nfft,dtype=np.complex64)
+        ncorr[:Nfft//2] = ncorr[:Nfft//2]-np.mean(corr,axis=0)
+        ncorr[-(Nfft//2)+1:]=np.flip(np.conj(ncorr[1:(Nfft//2)]),axis=0)
+        ncorr = np.real(np.fft.ifftshift(scipy.fftpack.ifft(ncorr, Nfft, axis=0)))
 
     t = np.arange(-Nfft2+1, Nfft2)*dt[0]
     ind   = np.where(np.abs(t) <= maxlag)[0]
     ncorr = ncorr[:,ind]
-    return ncorr,tcorr
+    return ncorr,tcorr,nncorr
 
 
 @jit('float32[:](float32[:],int16)')
@@ -828,78 +1157,6 @@ def moving_ave(A,N):
         if B[pos]==0:
             B[pos]=1
     return B[N:-N]
-
-def whiten_smooth(data,fft_para):
-    '''
-    subfunction to make a moving window average on the ampliutde spectrum
-    with a tapering on the lower and higher end of the frequency range
-
-    '''
-    # load parameters
-    dt       = fft_para['dt']
-    freqmin  = fft_para['freqmin']
-    freqmax  = fft_para['freqmax']
-    smooth_N = fft_para['smooth_N']
-
-    if data.ndim == 1:
-        axis = 0
-    elif data.ndim == 2:
-        axis = 1
-
-    #--------frequency information----------
-    Nfft = int(next_fast_len(int(data.shape[axis])))
-    freqVec = scipy.fftpack.fftfreq(Nfft, d=dt)[:Nfft // 2]
-    J = np.where((freqVec >= freqmin) & (freqVec <= freqmax))[0]
-
-    #------four frequency parameters-------
-    Napod = 100
-    left  = J[0]
-    right = J[-1]
-    low = J[0] - Napod
-    if low < 0:
-        low = 0
-    high = J[-1] + Napod
-    if high > Nfft/2:
-        high = int(Nfft//2)
-
-    spect = scipy.fftpack.fft(data,Nfft,axis=axis)
-
-    #-----smooth the spectrum and do tapering-----
-    if axis:
-        spect[:,0:low] *= 0
-        #----left tapering---
-        spect[:,low:left] = np.cos(
-            np.linspace(np.pi / 2., np.pi, left - low)) ** 2 * np.exp(
-            1j * np.angle(spect[:,low:left]))
-        #-----Pass band-------
-        for ii in range(data.shape[0]):
-            tave = moving_ave(np.abs(spect[ii,left:right]),smooth_N)
-            spect[ii,left:right] = spect[ii,left:right]/tave
-        #----right tapering------
-        spect[:,right:high] = np.cos(
-            np.linspace(0., np.pi / 2., high - right)) ** 2 * np.exp(
-            1j * np.angle(spect[:,right:high]))
-        spect[:,high:Nfft//2+1] *= 0
-
-        spect[:,-(Nfft//2)+1:] = np.flip(np.conj(spect[:,1:(Nfft//2)]),axis=axis)
-    else:
-        spect[0:low] *= 0
-        #----left tapering---
-        spect[low:left] = np.cos(
-            np.linspace(np.pi / 2., np.pi, left - low)) ** 2 * np.exp(
-            1j * np.angle(spect[low:left]))
-        #-----Pass band-------
-        tave = moving_ave(np.abs(spect[left:right]),smooth_N)
-        spect[left:right] = spect[left:right]/tave
-        #----right tapering------
-        spect[right:high] = np.cos(
-            np.linspace(0., np.pi / 2., high - right)) ** 2 * np.exp(
-            1j * np.angle(spect[right:high]))
-        spect[high:Nfft//2] *= 0
-
-        spect[-(Nfft//2)+1:] = np.flip(np.conj(spect[1:(Nfft//2)]),axis=axis)    
-
-    return spect   
 
 
 def get_SNR(corr,snr_parameters,parameters):
@@ -1055,74 +1312,28 @@ def norm(arr):
     arr -= arr.mean(axis=1, keepdims=True)
     return (arr.T / arr.std(axis=-1)).T
 
-
-def pole_zero(inv): 
+def check_sample_gaps(stream):
     """
-
-    Return only pole and zeros of instrument response
-
-    """
-    for ii,chan in enumerate(inv[0][0]):
-        stages = chan.response.response_stages
-        new_stages = []
-        for stage in stages:
-            if type(stage) == obspy.core.inventory.response.PolesZerosResponseStage:
-                new_stages.append(stage)
-            elif type(stage) == obspy.core.inventory.response.CoefficientsTypeResponseStage:
-                new_stages.append(stage)
-
-        inv[0][0][ii].response.response_stages = new_stages
-
-    return inv
-
-def check_and_phase_shift(trace):
-    # print trace
-    taper_length = 20.0
-    # if trace.stats.npts < 4 * taper_length*trace.stats.sampling_rate:
-    # 	trace.data = np.zeros(trace.stats.npts)
-    # 	return trace
-
-    dt = np.mod(trace.stats.starttime.datetime.microsecond*1.0e-6,
-                trace.stats.delta)
-    if (trace.stats.delta - dt) <= np.finfo(float).eps:
-        dt = 0
-    if dt != 0:
-        if dt <= (trace.stats.delta / 2.):
-            dt = -dt
-        # direction = "left"
-        else:
-            dt = (trace.stats.delta - dt)
-        # direction = "right"
-        trace.detrend(type="demean")
-        trace.detrend(type="simple")
-        taper_1s = taper_length * float(trace.stats.sampling_rate) / trace.stats.npts
-        trace.taper(taper_1s)
-
-        n = int(2**nextpow2(len(trace.data)))
-        FFTdata = scipy.fftpack.fft(trace.data, n=n)
-        fftfreq = scipy.fftpack.fftfreq(n, d=trace.stats.delta)
-        FFTdata = FFTdata * np.exp(1j * 2. * np.pi * fftfreq * dt)
-        trace.data = np.real(scipy.fftpack.ifft(FFTdata, n=n)[:len(trace.data)])
-        trace.stats.starttime += dt
-        return trace
-    else:
-        return trace
-
-def check_sample(stream):
-    """
-    Returns sampling rate of traces in stream.
+    Returns sampling rate and gaps of traces in stream.
 
     :type stream:`~obspy.core.stream.Stream` object. 
     :param stream: Stream containing one or more day-long trace 
-    :return: List of sampling rates in stream
+    :return: List of good traces in stream
 
     """
-    if len(stream)==0:
+    # remove empty/big traces
+    if len(stream)==0 or len(stream)>100:
+        stream = []
         return stream
-    else:
-        freqs = []	
-        for tr in stream:
-            freqs.append(int(tr.stats.sampling_rate))
+    
+    # remove traces with big gaps
+    if portion_gaps(stream)>0.2:
+        stream = []
+        return stream
+    
+    freqs = []	
+    for tr in stream:
+        freqs.append(int(tr.stats.sampling_rate))
 
     freq = max(freqs)
     for tr in stream:
@@ -1131,48 +1342,6 @@ def check_sample(stream):
 
     return stream				
 
-
-def remove_resp(arr,stats,inv):
-    """
-    Removes instrument response of cross-correlation
-
-    :type arr: numpy.ndarray 
-    :type stats: `~obspy.core.trace.Stats` object.
-    :type inv: `~obspy.core.inventory.inventory.Inventory`
-    :param inv: StationXML file containing response information
-    :returns: cross-correlation with response removed
-    """	
-    
-    def arr_to_trace(arr,stats):
-        tr = obspy.Trace(arr)
-        tr.stats = stats
-        tr.stats.npts = len(tr.data)
-        return tr
-
-    # prefilter and remove response
-    
-    st = obspy.Stream()
-    if len(arr.shape) == 2:
-        for row in arr:
-            tr = arr_to_trace(row,stats)
-            st += tr
-    else:
-        tr = arr_to_trace(arr,stats)
-        st += tr
-    min_freq = 1/tr.stats.npts*tr.stats.sampling_rate
-    min_freq = np.max([min_freq,0.005])
-    pre_filt = [min_freq,min_freq*1.5, 0.9*tr.stats.sampling_rate, 0.95*tr.stats.sampling_rate]
-    st.attach_response(inv)
-    st.remove_response(output="VEL",pre_filt=pre_filt) 
-
-    if len(st) > 1: 
-        data = []
-        for tr in st:
-            data.append(tr.data)
-        data = np.array(data)
-    else:
-        data = st[0].data
-    return data			
 
 def mad(arr):
     """ 
@@ -1216,28 +1385,31 @@ def calc_distance(sta1,sta2):
     return dist,azi,baz
 
 
-def fft_parameters(dt,step,cc_len,source_params,locs,component,Nfft,Nt,data_t):
+def fft_parameters(fft_para,source_params,locs,component,Nfft,data_t):
     """ 
     Creates parameter dict for cross-correlations and header info to ASDF.
 
-    :type source: `~obspy.core.trace.Stats` object.
-    :param source: Stats header from xcorr source station
-    :type receiver: `~obspy.core.trace.Stats` object.
-    :param receiver: Stats header from xcorr receiver station
-    :type start_end_t: `~np.ndarray`
-    :param start_end_t: starttime, endtime of cross-correlation (UTCDateTime)
+    :type fft_para: python dictionary.
+    :param fft_para: useful parameters used for fft
     :type source_params: `~np.ndarray`
     :param source_params: max_mad,max_std,percent non-zero values of source trace
-    :type receiver_params: `~np.ndarray`
-    :param receiver_params: max_mad,max_std,percent non-zero values of receiver trace
     :type locs: dict
     :param locs: dict with latitude, elevation_in_m, and longitude of all stations
-    :type maxlag: int
-    :param maxlag: number of lag points in cross-correlation (sample points) 
+    :type component: char 
+    :param component: component information about the data
+    :type Nfft: int
+    :param maxlag: number of fft points
+    :type data_t: int matrix
+    :param data_t: UTC date information
     :return: Auxiliary data parameter dict
     :rtype: dict
 
     """
+    dt = fft_para['dt']
+    cc_len = fft_para['cc_len']
+    step   = fft_para['step']
+    Nt     = data_t.shape[0]
+
     source_mad,source_std,source_nonzero = source_params[:,0],\
                          source_params[:,1],source_params[:,2]
     lon,lat,el=locs["longitude"],locs["latitude"],locs["elevation"]
@@ -1297,712 +1469,5 @@ def NCF_denoising(img_to_denoise,Mdate,Ntau,NSV):
 
 	return denoised_img
 
-def Stretching_current(ref, cur, t, dv_range, nbtrial, window, fmin, fmax, tmin, tmax):
-    """
-    Stretching function: 
-    This function compares the Reference waveform to stretched/compressed current waveforms to get the relative seismic velocity variation (and associated error).
-    It also computes the correlation coefficient between the Reference waveform and the current waveform.
-
-    modified based on the script from L. Viens 04/26/2018 (Viens et al., 2018 JGR)
-
-    INPUTS:
-        - ref = Reference waveform (np.ndarray, size N)
-        - cur = Current waveform (np.ndarray, size N)
-        - t = time vector, common to both ref and cur (np.ndarray, size N)
-        - dvmin = minimum bound for the velocity variation; example: dvmin=-0.03 for -3% of relative velocity change ('float')
-        - dvmax = maximum bound for the velocity variation; example: dvmax=0.03 for 3% of relative velocity change ('float')
-        - nbtrial = number of stretching coefficient between dvmin and dvmax, no need to be higher than 100  ('float')
-        - window = vector of the indices of the cur and ref windows on wich you want to do the measurements (np.ndarray, size tmin*delta:tmax*delta)
-        For error computation:
-            - fmin = minimum frequency of the data
-            - fmax = maximum frequency of the data
-            - tmin = minimum time window where the dv/v is computed 
-            - tmax = maximum time window where the dv/v is computed 
-
-    OUTPUTS:
-        - dv = Relative velocity change dv/v (in %)
-        - cc = correlation coefficient between the reference waveform and the best stretched/compressed current waveform
-        - cdp = correlation coefficient between the reference waveform and the initial current waveform
-        - error = Errors in the dv/v measurements based on Weaver, R., C. Hadziioannou, E. Larose, and M. Camnpillo (2011), On the precision of noise-correlation interferometry, Geophys. J. Int., 185(3), 1384?1392
-
-    The code first finds the best correlation coefficient between the Reference waveform and the stretched/compressed current waveform among the "nbtrial" values. 
-    A refined analysis is then performed around this value to obtain a more precise dv/v measurement .
-    """ 
-    dvmin = -np.abs(dv_range)
-    dvmax = np.abs(dv_range)
-    Eps = 1+(np.linspace(dvmin, dvmax, nbtrial))
-    cof = np.zeros(Eps.shape,dtype=np.float32)
-
-    # Set of stretched/compressed current waveforms
-    for ii in range(len(Eps)):
-        nt = t*Eps[ii]
-        s = np.interp(x=t, xp=nt, fp=cur[window])
-        waveform_ref = ref[window]
-        waveform_cur = s
-        cof[ii] = np.corrcoef(waveform_ref, waveform_cur)[0, 1]
-
-    cdp = np.corrcoef(cur[window], ref[window])[0, 1] # correlation coefficient between the reference and initial current waveforms
-
-    # find the maximum correlation coefficient
-    imax = np.nanargmax(cof)
-    if imax >= len(Eps)-2:
-        imax = imax - 2
-    if imax <= 2:
-        imax = imax + 2
-
-    # Proceed to the second step to get a more precise dv/v measurement
-    dtfiner = np.linspace(Eps[imax-2], Eps[imax+2], 100)
-    ncof    = np.zeros(dtfiner.shape,dtype=np.float32)
-    for ii in range(len(dtfiner)):
-        nt = t*dtfiner[ii]
-        s = np.interp(x=t, xp=nt, fp=cur[window])
-        waveform_ref = ref[window]
-        waveform_cur = s
-        ncof[ii] = np.corrcoef(waveform_ref, waveform_cur)[0, 1]
-
-    cc = np.max(ncof) # Find maximum correlation coefficient of the refined  analysis
-    dv = 100. * dtfiner[np.argmax(ncof)]-100 # Multiply by 100 to convert to percentage (Epsilon = -dt/t = dv/v)
-
-    # Error computation based on Weaver, R., C. Hadziioannou, E. Larose, and M. Camnpillo (2011), On the precision of noise-correlation interferometry, Geophys. J. Int., 185(3), 1384?1392
-    T = 1 / (fmax - fmin)
-    X = cc
-    wc = np.pi * (fmin + fmax)
-    t1 = np.min([tmin, tmax])
-    t2 = np.max([tmin, tmax])
-    error = 100*(np.sqrt(1-X**2)/(2*X)*np.sqrt((6* np.sqrt(np.pi/2)*T)/(wc**2*(t2**3-t1**3))))
-
-    return dv, cc, cdp, error
-
-
-def smooth(x, window='boxcar', half_win=3):
-    """ some window smoothing """
-    # TODO: docsting
-    window_len = 2 * half_win + 1
-    # extending the data at beginning and at the end
-    # to apply the window at the borders
-    s = np.r_[x[window_len - 1:0:-1], x, x[-1:-window_len:-1]]
-    if window == "boxcar":
-        w = scipy.signal.boxcar(window_len).astype('complex')
-    else:
-        w = scipy.signal.hanning(window_len).astype('complex')
-    y = np.convolve(w / w.sum(), s, mode='valid')
-    return y[half_win:len(y) - half_win]
-
-
-def getCoherence(dcs, ds1, ds2):
-    # TODO: docsting
-    n = len(dcs)
-    coh = np.zeros(n).astype('complex')
-    valids = np.argwhere(np.logical_and(np.abs(ds1) > 0, np.abs(ds2) > 0))
-    coh[valids] = dcs[valids] / (ds1[valids] * ds2[valids])
-    coh[coh > (1.0 + 0j)] = 1.0 + 0j
-    return coh
-
-def mwcs_dvv(ref, cur, moving_window_length, slide_step, delta, window, fmin, fmax, tmin, smoothing_half_win=5):
-    """
-    modified sub-function from MSNoise package by Thomas Lecocq. download from
-    https://github.com/ROBelgium/MSNoise/tree/master/msnoise
-
-    combine the mwcs and dv/v functionality of MSNoise into a single function
-
-    ref: The "Reference" timeseries
-    cur: The "Current" timeseries
-    moving_window_length: The moving window length (in seconds)
-    slide_step: The step to jump for the moving window (in seconds)
-    delta: The sampling rate of the input timeseries (in Hz)
-    window: The target window for measuring dt/t
-    fmin: The lower frequency bound to compute the dephasing (in Hz)
-    fmax: The higher frequency bound to compute the dephasing (in Hz)
-    tmin: The leftmost time lag (used to compute the "time lags array")
-    smoothing_half_win: If different from 0, defines the half length of
-        the smoothing hanning window.
-    :returns: [time_axis,delta_t,delta_err,delta_mcoh]. time_axis contains the
-        central times of the windows. The three other columns contain dt, error and
-        mean coherence for each window.
-    """
-    
-    ##########################
-    #-----part I: mwcs-------
-    ##########################
-    delta_t = []
-    delta_err = []
-    delta_mcoh = []
-    time_axis = []
-
-    window_length_samples = np.int(moving_window_length * delta)
-    padd = int(2 ** (nextpow2(window_length_samples) + 2))
-    count = 0
-    tp = cosine_taper(window_length_samples, 0.85)
-
-    #----does minind really start from 0??-----
-    minind = 0
-    maxind = window_length_samples
-
-    #-------loop through all sub-windows-------
-    while maxind <= len(window):
-        cci = cur[window[minind:maxind]]
-        cci = scipy.signal.detrend(cci, type='linear')
-        cci *= tp
-
-        cri = ref[window[minind:maxind]]
-        cri = scipy.signal.detrend(cri, type='linear')
-        cri *= tp
-
-        minind += int(slide_step*delta)
-        maxind += int(slide_step*delta)
-
-        #-------------get the spectrum-------------
-        fcur = scipy.fftpack.fft(cci, n=padd)[:padd // 2]
-        fref = scipy.fftpack.fft(cri, n=padd)[:padd // 2]
-
-        fcur2 = np.real(fcur) ** 2 + np.imag(fcur) ** 2
-        fref2 = np.real(fref) ** 2 + np.imag(fref) ** 2
-
-        # Calculate the cross-spectrum
-        X = fref * (fcur.conj())
-        if smoothing_half_win != 0:
-            dcur = np.sqrt(smooth(fcur2, window='hanning',half_win=smoothing_half_win))
-            dref = np.sqrt(smooth(fref2, window='hanning',half_win=smoothing_half_win))
-            X = smooth(X, window='hanning',half_win=smoothing_half_win)
-        else:
-            dcur = np.sqrt(fcur2)
-            dref = np.sqrt(fref2)
-
-        dcs = np.abs(X)
-
-        # Find the values the frequency range of interest
-        freq_vec = scipy.fftpack.fftfreq(len(X) * 2, 1. / delta)[:padd // 2]
-        index_range = np.argwhere(np.logical_and(freq_vec >= fmin,freq_vec <= fmax))
-
-        # Get Coherence and its mean value
-        coh = getCoherence(dcs, dref, dcur)
-        mcoh = np.mean(coh[index_range])
-
-        # Get Weights
-        w = 1.0 / (1.0 / (coh[index_range] ** 2) - 1.0)
-        w[coh[index_range] >= 0.99] = 1.0 / (1.0 / 0.9801 - 1.0)
-        w = np.sqrt(w * np.sqrt(dcs[index_range]))
-        w = np.real(w)
-
-        # Frequency array:
-        v = np.real(freq_vec[index_range]) * 2 * np.pi
-
-        # Phase:
-        phi = np.angle(X)
-        phi[0] = 0.
-        phi = np.unwrap(phi)
-        phi = phi[index_range]
-
-        # Calculate the slope with a weighted least square linear regression
-        # forced through the origin
-        # weights for the WLS must be the variance !
-        m, em = linear_regression(v.flatten(), phi.flatten(), w.flatten())
-
-        delta_t.append(m)
-
-        # print phi.shape, v.shape, w.shape
-        e = np.sum((phi - m * v) ** 2) / (np.size(v) - 1)
-        s2x2 = np.sum(v ** 2 * w ** 2)
-        sx2 = np.sum(w * v ** 2)
-        e = np.sqrt(e * s2x2 / sx2 ** 2)
-
-        delta_err.append(e)
-        delta_mcoh.append(np.real(mcoh))
-        time_axis.append(tmin+moving_window_length/2.+count*slide_step)
-        count += 1
-
-        del fcur, fref
-        del X
-        del freq_vec
-        del index_range
-        del w, v, e, s2x2, sx2, m, em
-
-    if maxind > len(cur) + slide_step*delta:
-        print("The last window was too small, but was computed")
-
-    delta_t = np.array(delta_t)
-    delta_err = np.array(delta_err)
-    delta_mcoh = np.array(delta_mcoh)
-    time_axis  = np.array(time_axis)
-
-    #####################################
-    #-----------part II: dv/v------------
-    #####################################
-    delta_mincho = 0.65
-    delta_maxerr = 0.1
-    delta_maxdt  = 0.1
-    indx1 = np.where(delta_mcoh>delta_mincho)
-    indx2 = np.where(delta_err<delta_maxerr)
-    indx3 = np.where(delta_t<delta_maxdt)
-
-    #-----find good dt measurements-----
-    indx = np.intersect1d(indx1,indx2)
-    indx = np.intersect1d(indx,indx3)
-
-    if len(indx) >2:
-
-        #----estimate weight for regression----
-        w = 1/delta_err[indx]
-        w[~np.isfinite(w)] = 1.0
-
-        #---------do linear regression-----------
-        #m, a, em, ea = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=False)
-        m0, em0 = linear_regression(time_axis[indx], delta_t[indx], w,intercept_origin=True)
-    
-    else:
-        print('not enough points to estimate dv/v')
-        m0=0;em0=0
-
-    return np.array([-m0*100,em0*100]).T
-
-
-def wavg_wstd(data, errors):
-    '''
-    estimate the weights for doing linear regression in order to get dt/t
-    '''
-
-    d = data
-    errors[errors == 0] = 1e-6
-    w = 1. / errors
-    wavg = (d * w).sum() / w.sum()
-    N = len(np.nonzero(w)[0])
-    wstd = np.sqrt(np.sum(w * (d - wavg) ** 2) / ((N - 1) * np.sum(w) / N))
-    return wavg, wstd
-
-
-def mwcs_dvv1(ref, cur, moving_window_length, slide_step, delta, window, fmin, fmax, tmin, smoothing_half_win=5):
-    """
-    modified sub-function from MSNoise package by Thomas Lecocq. download from
-    https://github.com/ROBelgium/MSNoise/tree/master/msnoise
-
-    combine the mwcs and dv/v functionality of MSNoise into a single function
-
-    ref: The "Reference" timeseries
-    cur: The "Current" timeseries
-    moving_window_length: The moving window length (in seconds)
-    slide_step: The step to jump for the moving window (in seconds)
-    delta: The sampling rate of the input timeseries (in Hz)
-    window: The target window for measuring dt/t
-    fmin: The lower frequency bound to compute the dephasing (in Hz)
-    fmax: The higher frequency bound to compute the dephasing (in Hz)
-    tmin: The leftmost time lag (used to compute the "time lags array")
-    smoothing_half_win: If different from 0, defines the half length of
-        the smoothing hanning window.
-    :returns: [time_axis,delta_t,delta_err,delta_mcoh]. time_axis contains the
-        central times of the windows. The three other columns contain dt, error and
-        mean coherence for each window.
-    """
-    
-    ##################################################################
-    #-------------------------part I: mwcs----------------------------
-    ##################################################################
-    delta_t    = []
-    delta_err  = []
-    delta_mcoh = []
-    time_axis  = []
-
-    window_length_samples = np.int(moving_window_length * delta)
-    padd  = int(2 ** (nextpow2(window_length_samples) + 2))
-    tp = cosine_taper(window_length_samples, 0.85)
-
-    #----make usage of both lags----
-    flip_flag = [0,1]
-    for iflip in flip_flag:
-
-        #----indices of the moving window-----
-        count  = 0
-        minind = 0
-        maxind = window_length_samples
-
-        if iflip:
-            cur = np.flip(cur,axis=0)
-            ref = np.flip(ref,axis=0)
-
-        #-------loop through all sub-windows-------
-        while maxind <= len(window):
-            cci = cur[window[minind:maxind]]
-            cci = scipy.signal.detrend(cci, type='linear')
-            cci *= tp
-
-            cri = ref[window[minind:maxind]]
-            cri = scipy.signal.detrend(cri, type='linear')
-            cri *= tp
-
-            minind += int(slide_step*delta)
-            maxind += int(slide_step*delta)
-
-            #-------------get the spectrum-------------
-            fcur = scipy.fftpack.fft(cci, n=padd)[:padd // 2]
-            fref = scipy.fftpack.fft(cri, n=padd)[:padd // 2]
-
-            fcur2 = np.real(fcur) ** 2 + np.imag(fcur) ** 2
-            fref2 = np.real(fref) ** 2 + np.imag(fref) ** 2
-
-            # Calculate the cross-spectrum
-            X = fref * (fcur.conj())
-            if smoothing_half_win != 0:
-                dcur = np.sqrt(smooth(fcur2, window='hanning',half_win=smoothing_half_win))
-                dref = np.sqrt(smooth(fref2, window='hanning',half_win=smoothing_half_win))
-                X = smooth(X, window='hanning',half_win=smoothing_half_win)
-            else:
-                dcur = np.sqrt(fcur2)
-                dref = np.sqrt(fref2)
-
-            dcs = np.abs(X)
-
-            # Find the values the frequency range of interest
-            freq_vec = scipy.fftpack.fftfreq(len(X) * 2, 1. / delta)[:padd // 2]
-            index_range = np.argwhere(np.logical_and(freq_vec >= fmin,freq_vec <= fmax))
-
-            # Get Coherence and its mean value
-            coh  = getCoherence(dcs, dref, dcur)
-            mcoh = np.mean(coh[index_range])
-
-            # Get Weights
-            w = 1.0 / (1.0 / (coh[index_range] ** 2) - 1.0)
-            w[coh[index_range] >= 0.99] = 1.0 / (1.0 / 0.9801 - 1.0)
-            w = np.sqrt(w * np.sqrt(dcs[index_range]))
-            w = np.real(w)
-
-            # Frequency array:
-            v = np.real(freq_vec[index_range]) * 2 * np.pi
-
-            # Phase:
-            phi = np.angle(X)
-            phi[0] = 0.
-            phi = np.unwrap(phi)
-            phi = phi[index_range]
-
-            # Calculate the slope with a weighted least square linear regression
-            # forced through the origin
-            # weights for the WLS must be the variance !
-            m, em = linear_regression(v.flatten(), phi.flatten(), w.flatten())
-
-            delta_t.append(m)
-
-            # print phi.shape, v.shape, w.shape
-            e    = np.sum((phi - m * v) ** 2) / (np.size(v) - 1)
-            s2x2 = np.sum(v ** 2 * w ** 2)
-            sx2  = np.sum(w * v ** 2)
-            e    = np.sqrt(e * s2x2 / sx2 ** 2)
-
-            delta_err.append(e)
-            delta_mcoh.append(np.real(mcoh))
-            if iflip:
-                time_axis.append((tmin+moving_window_length/2.+count*slide_step)*-1)
-            else:
-                time_axis.append(tmin+moving_window_length/2.+count*slide_step)
-            count += 1
-
-            del fcur, fref
-            del X
-            del freq_vec
-            del index_range
-            del w, v, e, s2x2, sx2, m, em
-
-        if maxind > len(cur) + slide_step*delta:
-            print("The last window was too small, but was computed")
-
-    delta_t    = np.array(delta_t)
-    delta_err  = np.array(delta_err)
-    delta_mcoh = np.array(delta_mcoh)
-    time_axis  = np.array(time_axis)
-
-    tt = np.arange(0,len(ref))*delta
-    plt.subplot(211)
-    plt.scatter(time_axis,delta_t)
-    plt.subplot(212)
-    plt.plot(tt,ref,'r-');plt.plot(tt,cur,'g-')
-    plt.show()
-
-    ##################################################################
-    #--------------------------part II: dv/v--------------------------
-    ##################################################################
-
-    #-----some default parameters used in MSNoise-------
-    delta_mincho = 0.65
-    delta_maxerr = 0.1
-    delta_maxdt  = 0.1
-    indx1 = np.where(delta_mcoh>delta_mincho)
-    indx2 = np.where(delta_err<delta_maxerr)
-    indx3 = np.where(delta_t<delta_maxdt)
-
-    #-----find good dt measurements-----
-    indx = np.intersect1d(indx1,indx2)
-    indx = np.intersect1d(indx,indx3)
-
-    #-----at least 3 points for the linear regression------
-    if len(indx) >2:
-
-        #----estimate weight for regression----
-        w = 1/delta_err[indx]
-        w[~np.isfinite(w)] = 1.0
-
-        #---------do linear regression-----------
-        #m, a, em, ea = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=False)
-        m0, em0 = linear_regression(time_axis[indx], delta_t[indx], w,intercept_origin=True)
-    
-    else:
-        print('not enough points to estimate dv/v')
-        m0=np.nan;em0=np.nan
-
-    return np.array([-m0*100,em0*100]).T
-
-def computeErrorFunction(u1, u0, nSample, lag, norm='L2'):
-    """
-    USAGE: err = computeErrorFunction( u1, u0, nSample, lag )
-    
-    INPUT:
-        u1      = trace that we want to warp; size = (nsamp,1)
-        u0      = reference trace to compare with: size = (nsamp,1)
-        nSample = numer of points to compare in the traces
-        lag     = maximum lag in sample number to search
-        norm    = 'L2' or 'L1' (default is 'L2')
-    OUTPUT:
-        err = the 2D error function; size = (nsamp,2*lag+1)
-    
-    The error function is equation 1 in Hale, 2013. You could uncomment the
-    L1 norm and comment the L2 norm if you want on Line 29
-    
-    Original by Di Yang
-    Last modified by Dylan Mikesell (25 Feb. 2015)
-    Translated to python by Tim Clements (17 Aug. 2018)
-
-    """
-
-    if lag >= nSample: 
-        raise ValueError('computeErrorFunction:lagProblem','lag must be smaller than nSample')
-
-    # Allocate error function variable
-    err = np.zeros([nSample, 2 * lag + 1])
-
-    # initial error calculation 
-    # loop over lags
-    for ll in np.arange(-lag,lag + 1):
-        thisLag = ll + lag 
-
-        # loop over samples 
-        for ii in range(nSample):
-            
-            # skip corners for now, we will come back to these
-            if (ii + ll >= 0) & (ii + ll < nSample):
-                err[ii,thisLag] = u1[ii] - u0[ii + ll]
-
-    if norm == 'L2':
-        err = err**2
-    elif norm == 'L1':
-        err = np.abs(err)
-
-    # Now fix corners with constant extrapolation
-    for ll in np.arange(-lag,lag + 1):
-        thisLag = ll + lag 
-
-        for ii in range(nSample):
-            if ii + ll < 0:
-                err[ii, thisLag] = err[-ll, thisLag]
-
-            elif ii + ll > nSample - 1:
-                err[ii,thisLag] = err[nSample - ll - 1,thisLag]
-    
-    return err
-
-
-def accumulateErrorFunction(dir, err, nSample, lag, b ):
-    """
-    USAGE: d = accumulation_diw_mod( dir, err, nSample, lag, b )
-
-    INPUT:
-        dir = accumulation direction ( dir > 0 = forward in time, dir <= 0 = backward in time)
-        err = the 2D error function; size = (nsamp,2*lag+1)
-        nSample = numer of points to compare in the traces
-        lag = maximum lag in sample number to search
-        b = strain limit (integer value >= 1)
-    OUTPUT:
-        d = the 2D distance function; size = (nsamp,2*lag+1)
-    
-    The function is equation 6 in Hale, 2013.
-
-    Original by Di Yang
-    Last modified by Dylan Mikesell (25 Feb. 2015)
-
-    Translated to python by Tim Clements (17 Aug. 2018)
-
-    """
-
-    # number of lags from [ -lag : +lag ]
-    nLag = ( 2 * lag ) + 1
-
-    # allocate distance matrix
-    d = np.zeros([nSample, nLag])
-
-    # Setup indices based on forward or backward accumulation direction
-    if dir > 0: # FORWARD
-        iBegin, iEnd, iInc = 0, nSample - 1, 1
-    else: # BACKWARD
-        iBegin, iEnd, iInc = nSample - 1, 0, -1 
-
-    # Loop through all times ii in forward or backward direction
-    for ii in range(iBegin,iEnd + iInc,iInc):
-
-        # min/max to account for the edges/boundaries
-        ji = max([0, min([nSample - 1, ii - iInc])])
-        jb = max([0, min([nSample - 1, ii - iInc * b])])
-
-        # loop through all lag 
-        for ll in range(nLag):
-
-            # check limits on lag indices 
-            lMinus1 = ll - 1
-
-            # check lag index is greater than 0
-            if lMinus1 < 0:
-                lMinus1 = 0 # make lag = first lag
-
-            lPlus1 = ll + 1 # lag at l+1
-            
-            # check lag index less than max lag
-            if lPlus1 > nLag - 1: 
-                lPlus1 = nLag - 1
-            
-            # get distance at lags (ll-1, ll, ll+1)
-            distLminus1 = d[jb, lMinus1] # minus:  d[i-b, j-1]
-            distL = d[ji,ll] # actual d[i-1, j]
-            distLplus1 = d[jb, lPlus1] # plus d[i-b, j+1]
-
-            if ji != jb: # equation 10 in Hale, 2013
-                for kb in range(ji,jb + iInc - 1, -iInc): 
-                    distLminus1 = distLminus1 + err[kb, lMinus1]
-                    distLplus1 = distLplus1 + err[kb, lPlus1]
-            
-            # equation 6 (if b=1) or 10 (if b>1) in Hale (2013) after treating boundaries
-            d[ii, ll] = err[ii,ll] + min([distLminus1, distL, distLplus1])
-
-    return d
-
-
-def backtrackDistanceFunction(dir, d, err, lmin, b):
-    """
-    USAGE: stbar = backtrackDistanceFunction( dir, d, err, lmin, b )
-
-    INPUT:
-        dir   = side to start minimization ( dir > 0 = front, dir <= 0 =  back)
-        d     = the 2D distance function; size = (nsamp,2*lag+1)
-        err   = the 2D error function; size = (nsamp,2*lag+1)
-        lmin  = minimum lag to search over
-        b     = strain limit (integer value >= 1)
-    OUTPUT:
-        stbar = vector of integer shifts subject to |u(i)-u(i-1)| <= 1/b
-
-    The function is equation 2 in Hale, 2013.
-
-    Original by Di Yang
-    Last modified by Dylan Mikesell (19 Dec. 2014)
-
-    Translated to python by Tim Clements (17 Aug. 2018)
-
-    """
-
-    nSample, nLag = d.shape
-    stbar = np.zeros(nSample)
-
-    # Setup indices based on forward or backward accumulation direction
-    if dir > 0: # FORWARD
-        iBegin, iEnd, iInc = 0, nSample - 1, 1
-    else: # BACKWARD
-        iBegin, iEnd, iInc = nSample - 1, 0, -1 
-
-    # start from the end (front or back)
-    ll = np.argmin(d[iBegin,:]) # find minimum accumulated distance at front or back depending on 'dir'
-    stbar[iBegin] = ll + lmin # absolute value of integer shift
-
-    # move through all time samples in forward or backward direction
-    ii = iBegin
-
-    while ii != iEnd: 
-
-        # min/max for edges/boundaries
-        ji = np.max([0, np.min([nSample - 1, ii + iInc])])
-        jb = np.max([0, np.min([nSample - 1, ii + iInc * b])])
-
-        # check limits on lag indices 
-        lMinus1 = ll - 1
-
-        if lMinus1 < 0: # check lag index is greater than 1
-            lMinus1 = 0 # make lag = first lag
-
-        lPlus1 = ll + 1
-
-        if lPlus1 > nLag - 1: # check lag index less than max lag
-            lPlus1 = nLag - 1
-
-        # get distance at lags (ll-1, ll, ll+1)
-        distLminus1 = d[jb, lMinus1] # minus:  d[i-b, j-1]
-        distL = d[ji,ll] # actual d[i-1, j]
-        distLplus1 = d[jb, lPlus1] # plus d[i-b, j+1]
-
-        # equation 10 in Hale (2013)
-        # sum errors over i-1:i-b+1
-        if ji != jb:
-            for kb in range(ji, jb - iInc - 1, iInc):
-                distLminus1 = distLminus1 + err[kb, lMinus1]
-                distLplus1  = distLplus1  + err[kb, lPlus1]
-        
-        # update minimum distance to previous sample
-        dl = np.min([distLminus1, distL, distLplus1 ])
-
-        if dl != distL: # then ll ~= ll and we check forward and backward
-            if dl == distLminus1:
-                ll = lMinus1
-            else: 
-                ll = lPlus1
-        
-        # assume ii = ii - 1
-        ii += iInc 
-
-        # absolute integer of lag
-        stbar[ii] = ll + lmin 
-
-        # now move to correct time index, if smoothing difference over many
-        # time samples using 'b'
-        if (ll == lMinus1) | (ll == lPlus1): # check edges to see about b values
-            if ji != jb: # if b>1 then need to move more steps
-                for kb in range(ji, jb - iInc - 1, iInc):
-                    ii = ii + iInc # move from i-1:i-b-1
-                    stbar[ii] = ll + lmin  # constant lag over that time
-
-    return stbar
-
-
-def computeDTWerror( Aerr, u, lag0):
-    """
-
-    Compute the accumulated error along the warping path for Dynamic Time Warping.
-
-    USAGE: function error = computeDTWerror( Aerr, u, lag0 )
-
-    INPUT:
-        Aerr = error MATRIX (equation 13 in Hale, 2013)
-        u    = warping function (samples) VECTOR
-        lag0 = value of maximum lag (samples) SCALAR
-
-    Written by Dylan Mikesell
-    Last modified: 25 February 2015
-    Translated to python by Tim Clements (17 Aug. 2018)
-    """
-
-    npts = len(u)
-
-    if Aerr.shape[0] != npts:
-        print('Funny things with dimensions of error matrix: check inputs.')
-        Aerr = Aerr.T
-
-    error = 0
-    for ii in range(npts):
-        idx = lag0 + 1 + u[ii] # index of lag 
-        error = error + Aerr[ii,idx]
-
-    return error 
-
 if __name__ == "__main__":
     pass
-
