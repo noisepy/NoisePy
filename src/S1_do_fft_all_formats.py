@@ -178,8 +178,7 @@ for ista in range (rank,splits+size-extra,size):
             else:
                 location = ''
 
-            if flag:
-                print("working on station %s " % station)
+            if flag:print("working on station %s " % station)
 
             #---------construct a pd structure for fft_parameter functions later----------
             locs = pd.DataFrame([[inv1[0][0].latitude,inv1[0][0].longitude,inv1[0][0].elevation]],\
@@ -191,8 +190,7 @@ for ista in range (rank,splits+size-extra,size):
 
             #----loop through each stream----
             for itag in range(len(all_tags)):
-                if flag:
-                    print("working on trace " + all_tags[itag])
+                if flag:print("working on trace " + all_tags[itag])
 
                 source = ds.waveforms[temp[0]][all_tags[itag]]
                 comp = source[0].stats.channel
@@ -204,8 +202,7 @@ for ista in range (rank,splits+size-extra,size):
                     t0=time.time()
                     source = noise_module.preprocess_raw(source,inv1,fft_para)
                     t1=time.time()
-                    if flag:
-                        print("prepro takes %f s" % (t1-t0))
+                    if flag:print("prepro takes %f s" % (t1-t0))
 
                 # cut daily-long data into smaller segments (dataS always in 2D)
                 source_params,dataS_t,dataS,dataS_stats = noise_module.cut_trace_make_statis(fft_para,source,flag)
@@ -214,8 +211,7 @@ for ista in range (rank,splits+size-extra,size):
                 # do normalization if needed
                 source_white = noise_module.noise_processing(fft_para,dataS,flag)
                 Nfft = source_white.shape[1]
-                if flag:
-                    print('N and Nfft are %d %d' %(N,Nfft))
+                if flag:print('N and Nfft are %d %d' %(N,Nfft))
 
                 # save FFTs into HDF5 format
                 crap=np.zeros(shape=(N,Nfft//2),dtype=np.complex64)
@@ -232,7 +228,6 @@ for ista in range (rank,splits+size-extra,size):
                     savedate = '{0:04d}_{1:02d}_{2:02d}'.format(dataS_stats.starttime.year,\
                         dataS_stats.starttime.month,dataS_stats.starttime.day)
                     path = savedate
-
                     data_type = str(comp)
                     if ((itag==0) and (len(fft_ds.waveforms[temp[0]]['StationXML']))==0):
                         fft_ds.add_stationxml(inv1)
@@ -252,14 +247,12 @@ for ista in range (rank,splits+size-extra,size):
                 except Exception:
                     location = ''
 
-                if flag:
-                    print("working on station %s " % station)
+                if flag:print("working on station %s " % station)
                 
                 #-----------SAC and MiniSeed both work here-----------
                 tfiles = glob.glob(os.path.join(tdir[jj],'*'+station+'*'+location+'*'))
                 if len(tfiles)==0:
-                    print(str(station)+' does not have sac file at '+str(tdir[jj]))
-                    continue
+                    print(str(station)+' does not have sac file at '+str(tdir[jj]));continue
 
                 #----loop through each channel----
                 for tfile in tfiles:
@@ -282,8 +275,7 @@ for ista in range (rank,splits+size-extra,size):
                         source = noise_module.preprocess_raw(source,inv1,fft_para)
                         t1=time.time()                    
                         if len(source)==0:continue
-                        if flag:
-                            print("prepro takes %f s" % (t1-t0))
+                        if flag:print("prepro takes %f s" % (t1-t0))
 
                     # cut daily-long data into smaller segments
                     source_params,dataS_t,dataS,dataS_stats = noise_module.cut_trace_make_statis(fft_para,source,flag)
@@ -292,8 +284,7 @@ for ista in range (rank,splits+size-extra,size):
                     # do normalization if needed
                     source_white = noise_module.noise_processing(fft_para,dataS,flag)
                     Nfft = source_white.shape[1]
-                    if flag:
-                        print('N and Nfft are %d %d' % (N,Nfft))
+                    if flag:print('N and Nfft are %d %d' % (N,Nfft))
 
                     # save FFTs into HDF5 format
                     crap=np.zeros(shape=(N,Nfft//2),dtype=np.complex64)
@@ -310,7 +301,6 @@ for ista in range (rank,splits+size-extra,size):
                         savedate = '{0:04d}_{1:02d}_{2:02d}'.format(dataS_stats.starttime.year,\
                             dataS_stats.starttime.month,dataS_stats.starttime.day)
                         path = savedate
-
                         data_type = str(comp)
                         
                         fft_ds.add_stationxml(inv1)

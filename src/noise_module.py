@@ -606,6 +606,7 @@ def clean_daily_segments(tr):
     into a day-long segment from 00:00:00.0 to 24:00:00.0.
 
     tr: obspy stream object
+    return ntr: obspy stream object
     '''
     #-----all potential-useful time information-----
     stream_time = tr[0].stats.starttime
@@ -622,8 +623,7 @@ def clean_daily_segments(tr):
     #-----ndays represents how many days from starttime to endtime----
     ndays = round((tr[0].stats.endtime-starttime)/(time2-time0))
     if ndays==0:
-        tr=[]
-        return tr
+        tr=[];return tr
 
     else:
         #-----make a new stream------
