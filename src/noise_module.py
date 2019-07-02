@@ -4,10 +4,10 @@ import copy
 import scipy
 import time
 import pyasdf
+import datetime
 import numpy as np
 import pandas as pd
 from numba import jit
-from datetime import datetime
 import matplotlib.pyplot as plt
 from scipy.fftpack import fft,ifft,next_fast_len
 from scipy.signal import butter, hilbert, wiener
@@ -403,7 +403,7 @@ def stats2inv(stats,resp=None,filexml=None,locs=None):
 
     return inv        
 
-def preprocess_raw(st,inv,fft_para):
+def preprocess_raw(st,inv,prepro_para,date_info):
     '''
     pre-process the raw stream of data including:
     - check whether sample rate is matching (from original process_raw)
@@ -420,14 +420,14 @@ def preprocess_raw(st,inv,fft_para):
 
     st: obspy stream object, containing traces of noise data
     inv: obspy inventory object, containing all information about stations
-    fft_para: dictionary containing all useful fft parameters
+    prepro_para: dictionary containing all useful fft parameters
     '''
     # load paramters from fft dict
-    rm_resp       = fft_para['rm_resp']
-    respdir       = fft_para['resp_dir']
-    freqmin       = fft_para['freqmin']
-    freqmax       = fft_para['freqmax']
-    samp_freq     = fft_para['samp_freq']
+    rm_resp       = prepro_para['rm_resp']
+    respdir       = prepro_para['respdir']
+    freqmin       = prepro_para['freqmin']
+    freqmax       = prepro_para['freqmax']
+    samp_freq     = prepro_para['samp_freq']
 
     # parameters for butterworth filter
     f1 = 0.9*freqmin;f2=freqmin
@@ -440,7 +440,7 @@ def preprocess_raw(st,inv,fft_para):
     pre_filt  = [f1,f2,f3,f4]
 
     # check sampling rate and trace length
-    st = check_sample_gaps(st)
+    st = check_sample_gaps(st,date_info)
     if len(st) == 0:
         print('No traces in Stream: Continue!');return st
     sps = int(st[0].stats.sampling_rate)
@@ -516,11 +516,11 @@ def preprocess_raw(st,inv,fft_para):
             raise ValueError('no such option for rm_resp! please double check!')
 
     #-----fill gaps, trim data and interpolate to ensure all starts at 00:00:00.0------
-    st = clean_daily_segments(st)
+    st = clean_daily_segments(st,date_info)
 
     return st
 
-def portion_gaps(stream):
+def portion_gaps(stream,date_info):
     '''
     get the accumulated gaps (npts) from the accumulated difference between starttime and endtime.
     trace with gap length of 30% of trace size is removed. 
@@ -528,9 +528,12 @@ def portion_gaps(stream):
     stream: obspy stream object
     return float: portions of gaps in stream
     '''
+    # ideal duration of data
+    starttime = date_info['starttime']
+    endtime   = date_info['endtime']
+    npts      = (endtime-starttime)*stream[0].stats.sampling_rate
+
     pgaps=0
-    npts = (stream[-1].stats.endtime-stream[0].stats.starttime)*stream[0].stats.sampling_rate
-    
     #loop through all trace to accumulate gaps
     for ii in range(len(stream)-1):
         pgaps += (stream[ii+1].stats.starttime-stream[ii].stats.endtime)*stream[ii].stats.sampling_rate
@@ -598,7 +601,7 @@ def resp_spectrum(source,resp_file,downsamp_freq,pre_filt=None):
 
     return source
 
-def clean_daily_segments(tr):
+def clean_daily_segments(tr,date_info):
     '''
     subfunction to clean the tr recordings. only the traces with at least 0.5-day long
     sequence (respect to 00:00:00.0 of the day) is kept. note that the trace here could
@@ -608,35 +611,15 @@ def clean_daily_segments(tr):
     tr: obspy stream object
     return ntr: obspy stream object
     '''
-    #-----all potential-useful time information-----
-    stream_time = tr[0].stats.starttime
-    time0 = obspy.UTCDateTime(stream_time.year,stream_time.month,stream_time.day,0,0,0)
-    time1 = obspy.UTCDateTime(stream_time.year,stream_time.month,stream_time.day,12,0,0)
-    time2 = time1+datetime.timedelta(hours=12)
+    # duration of data
+    starttime = date_info['starttime']
+    endtime = date_info['endtime']
 
-    #--only keep days with > 0.5-day recordings-
-    if stream_time <= time1:
-        starttime=time0
-    else:
-        starttime=time2
-
-    #-----ndays represents how many days from starttime to endtime----
-    ndays = round((tr[0].stats.endtime-starttime)/(time2-time0))
-    if ndays==0:
-        tr=[];return tr
-
-    else:
-        #-----make a new stream------
-        ntr = obspy.Stream()
-        ttr = tr[0].copy()
-        #----trim a continous segment into day-long sequences----
-        for ii in range(ndays):    
-            tr[0] = ttr.copy()
-            endtime = starttime+datetime.timedelta(days=1)
-            tr[0].trim(starttime=starttime,endtime=endtime,pad=True,fill_value=0)
-
-            ntr.append(tr[0])
-            starttime = endtime
+    # make a new stream 
+    ntr = obspy.Stream()
+    # trim a continous segment into user-defined sequences
+    tr[0].trim(starttime=starttime,endtime=endtime,pad=True,fill_value=0)
+    ntr.append(tr[0])
 
     return ntr
 
@@ -1135,7 +1118,7 @@ def optimized_correlate(fft1_smoothed_abs,fft2,D,Nfft,Timestamp):
     return ncorr,tcorr,nncorr
 
 
-@jit('float32[:](float32[:],int16)')
+@jit(nopython = True)
 def moving_ave(A,N):
     '''
     Numba compiled function to do running smooth average.
@@ -1312,7 +1295,7 @@ def norm(arr):
     arr -= arr.mean(axis=1, keepdims=True)
     return (arr.T / arr.std(axis=-1)).T
 
-def check_sample_gaps(stream):
+def check_sample_gaps(stream,date_info):
     """
     Returns sampling rate and gaps of traces in stream.
 
@@ -1327,7 +1310,7 @@ def check_sample_gaps(stream):
         return stream
     
     # remove traces with big gaps
-    if portion_gaps(stream)>0.2:
+    if portion_gaps(stream,date_info)>0.3:
         stream = []
         return stream
     
