@@ -168,7 +168,7 @@ for ick in range (rank,splits+size-extra,size):
                 if save_fft:
                     # save FFTs into HDF5 format
                     crap=np.zeros(shape=(N,Nfft//2),dtype=np.complex64)
-                    fft_h5 = os.path.join(FFTDIR,network+'.'+station+'.'+location+'.h5')
+                    fft_h5=os.path.join(FFTDIR,all_chunck[ick]+'T'+all_chunck[ick+1]+'.h5')
 
                     if not os.path.isfile(fft_h5):
                         with pyasdf.ASDFDataSet(fft_h5,mpi=False,compression=None) as fft_ds:
@@ -192,4 +192,4 @@ for ick in range (rank,splits+size-extra,size):
                 # load the fft data in memory
 
         # make cross-correlations 
-        
+
