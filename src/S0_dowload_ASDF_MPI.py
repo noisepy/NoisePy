@@ -162,10 +162,6 @@ for ick in range (rank,splits+size-extra,size):
 
                 # loop through each channel
                 for ista in range(nsta):
-
-                    # get channel inventory
-                    inv = client.get_stations(network=net[ista],station=sta[ista],\
-                        channel=dchan[0],starttime=s1,endtime=s2,location=location[ista],level="response")
                     
                     ############CHECK THIS OUT##############
                     sta_inv = inv.select(network=net[ista],station=sta[ista],channel=chan[ista],starttime=s1,\
