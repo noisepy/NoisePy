@@ -302,7 +302,7 @@ def stats2inv(stats,resp=None,filexml=None,locs=None):
 
     # We'll first create all the various objects. These strongly follow the
     # hierarchy of StationXML files.
-    inv = Inventory(networks=[],source="japan_from_resp")
+    inv = Inventory(networks=[],source="homegrown")
 
     if locs is None:
         net = Network(
