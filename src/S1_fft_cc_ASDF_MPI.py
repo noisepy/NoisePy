@@ -1,17 +1,16 @@
 import os
 import sys
 import glob
-from datetime import datetime
-import numpy as np
-import scipy
-from scipy.fftpack.helper import next_fast_len
-import obspy
-import matplotlib.pyplot as plt
-import noise_module
 import time
+import scipy
+import obspy
 import pyasdf
+import numpy as np
 import pandas as pd
+import noise_module
 from mpi4py import MPI
+import matplotlib.pyplot as plt
+from scipy.fftpack.helper import next_fast_len
 
 if not sys.warnoptions:
     import warnings
@@ -29,10 +28,10 @@ t00=time.time()
 ########################################
 
 #------absolute path parameters-------
-rootpath  = '/mnt/data0/NZ/XCORR'                        # root path for this data processing
-FFTDIR    = os.path.join(rootpath,'FFT')                 # dir to store FFT data
-CCDIR     = os.path.join(rootpath,'CCF')                 # dir to store CC data
-data_dir  = os.path.join(rootpath,'data_download')       # dir where noise data is located
+rootpath  = '/mnt/data0/NZ/XCORR'                       # root path for this data processing
+FFTDIR    = os.path.join(rootpath,'FFT')                # dir to store FFT data
+CCFDIR    = os.path.join(rootpath,'CCF')                # dir to store CC data
+data_dir  = os.path.join(rootpath,'RAW_DATA')           # dir where noise data is located
 if (len(glob.glob(data_dir))==0): 
     raise ValueError('No data file in %s',data_dir)
 
@@ -40,13 +39,11 @@ if (len(glob.glob(data_dir))==0):
 dfile = os.path.join(data_dir,'download_info.txt')
 down_info = eval(open(dfile).read())
 samp_freq = down_info['samp_freq']
-rm_resp   = down_info['rm_resp']
-respdir   = down_info['respdir']
 freqmin   = down_info['freqmin']
 freqmax   = down_info['freqmax']
 start_date = down_info['start_date']
 end_date   = down_info['end_date']
-inc_days   = down_info['inc_days']
+inc_hours  = down_info['inc_hours']
 
 #-------some control parameters--------
 input_fmt   = 'asdf'            # string: 'asdf', 'sac','mseed' 
@@ -70,17 +67,13 @@ max_kurtosis = 10                           # max kurtosis allowed.
 MAX_MEM = 4.0
 
 # make a dictionary to store all variables: also for later cc
-para_dic={'samp_freq':samp_freq,'dt':dt,'cc_len':cc_len,'step':step,\
-    'freqmin':freqmin,'freqmax':freqmax,'rm_resp':rm_resp,'respdir':respdir,\
-    'to_whiten':to_whiten,'time_norm':time_norm,'cc_method':cc_method,\
-    'smooth_N':smooth_N,'data_format':input_fmt,'rootpath':rootpath,'FFTDIR':\
-    FFTDIR,'start_date':start_date[0],'end_date':end_date[0],'inc_days':inc_days}
-
+para_dic={'samp_freq':samp_freq,'dt':dt,'cc_len':cc_len,'step':step,'freqmin':freqmin,\
+    'freqmax':freqmax,'to_whiten':to_whiten,'time_norm':time_norm,'cc_method':cc_method,\
+    'smooth_N':smooth_N,'data_format':input_fmt,'rootpath':rootpath,'FFTDIR':FFTDIR,\
+    'start_date':start_date[0],'end_date':end_date[0],'inc_hours':inc_hours}
 # save fft metadata for future reference
 fc_metadata  = os.path.join(rootpath,'fft_cc_data.txt')        # keep a record of used parameters
-fout = open(fc_metadata,'w')
-fout.write(str(para_dic))
-fout.close()
+
 
 #######################################
 ###########PROCESSING SECTION##########
@@ -92,15 +85,18 @@ rank = comm.Get_rank()
 size = comm.Get_size()
 
 if rank == 0:
-    #-----check whether dir exist----
     if save_fft:
         if not os.path.isdir(FFTDIR):os.mkdir(FFTDIR)
-    if not os.path.isdir(CCDIR):os.mkdir(CCDIR)
-    tdir = sorted(glob.glob(data_dir))
-    print(tdir)
+    if not os.path.isdir(CCFDIR):os.mkdir(CCFDIR)
+    
+    # save metadata 
+    fout = open(fc_metadata,'w')
+    fout.write(str(para_dic));fout.close()
 
-    splits  = len(tdir)
+    # set variables to broadcast
+    tdir = sorted(glob.glob(data_dir))
     nchunck = len(tdir)
+    splits  = nchunck
     if nchunck==0:
         raise IOError('Abort! no available seismic files for doing FFT')
 else:
@@ -111,7 +107,7 @@ splits = comm.bcast(splits,root=0)
 tdir  = comm.bcast(tdir,root=0)
 extra = splits % size
 
-#--------MPI: loop through each time chunck--------
+# MPI loop: loop through each user-defined time chunck
 for ick in range (rank,splits+size-extra,size):
     if ick<splits:
         t10=time.time()   
@@ -119,12 +115,17 @@ for ick in range (rank,splits+size-extra,size):
         ds=pyasdf.ASDFDataSet(tdir[ick],mode='r')         
         sta_list = ds.waveforms.list()    
         nsta     = len(sta_list)
-        if (nsta==0):continue
+        if (nsta==0):
+            if flag:
+                print('no data in %s'%tdir[ick]);continue
 
         # crude estimation on memory requirement (assume float32)
-        memory_size = nsta*inc_days*86400*samp_freq*4/1024/1024/1024
+        nsec_chunck = inc_hours/24*86400
+        nseg_chunck = np.floor(nsec_chunck/cc_len)
+        npts_chunck = nseg_chunck*cc_len*samp_freq 
+        memory_size = nsta*npts_chunck*4/1024/1024/1024
         if memory_size > MAX_MEM:
-            print('Memory exceeds %s GB! No enough memory to load them all once!' % (MAX_MEM))
+            print('Memory exceeds %s GB! No enough memory to load %s h of data all once!' % (MAX_MEM,inc_hours))
 
         # loop through all stations
         for ista in range(nsta):
@@ -153,7 +154,7 @@ for ick in range (rank,splits+size-extra,size):
                 if flag:print("working on trace " + all_tags[itag])
 
                 source = ds.waveforms[tmps][all_tags[itag]]
-                comp = source[0].stats.channel
+                comp = source[0].stats.channel4
                 if len(source)==0:continue
 
                 # cut daily-long data into smaller segments (dataS always in 2D)
@@ -168,7 +169,7 @@ for ick in range (rank,splits+size-extra,size):
                 if save_fft:
                     # save FFTs into HDF5 format
                     crap=np.zeros(shape=(N,Nfft//2),dtype=np.complex64)
-                    fft_h5=os.path.join(FFTDIR,all_chunck[ick]+'T'+all_chunck[ick+1]+'.h5')
+                    fft_h5=os.path.join(FFTDIR,tdir[ick])
 
                     if not os.path.isfile(fft_h5):
                         with pyasdf.ASDFDataSet(fft_h5,mpi=False,compression=None) as fft_ds:
@@ -176,10 +177,9 @@ for ick in range (rank,splits+size-extra,size):
             
                     with pyasdf.ASDFDataSet(fft_h5,mpi=False,compression=None) as fft_ds:
                         parameters = noise_module.fft_parameters(para_dic,source_params, \
-                            locs.iloc[0],comp,Nfft,dataS_t[:,0])
+                            locs.iloc[0],Nfft,dataS_t[:,0])
                         
-                        savedate = '{0:04d}_{1:02d}_{2:02d}'.format(dataS_stats.starttime.year,\
-                            dataS_stats.starttime.month,dataS_stats.starttime.day)
+                        savedate = '{0:s}_{1:s}_{2:s}_{3:s}'.format(station,network,comp,location)
                         path = savedate
                         data_type = str(comp)
                         if ((itag==0) and (len(fft_ds.waveforms[tmps]['StationXML']))==0):
@@ -190,6 +190,7 @@ for ick in range (rank,splits+size-extra,size):
                         print(savedate)
 
                 # load the fft data in memory
+
 
         # make cross-correlations 
 
