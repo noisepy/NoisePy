@@ -405,7 +405,7 @@ def preprocess_raw(st,inv,prepro_para,date_info):
             raise ValueError('no such option for rm_resp! please double check!')
 
     #-----fill gaps, trim data and interpolate to ensure all starts at 00:00:00.0------
-    st = clean_daily_segments(st,date_info)
+    st = clean_segments(st,date_info)
 
     return st
 
@@ -490,7 +490,7 @@ def resp_spectrum(source,resp_file,downsamp_freq,pre_filt=None):
 
     return source
 
-def clean_daily_segments(tr,date_info):
+def clean_segments(tr,date_info):
     '''
     subfunction to clean the tr recordings. only the traces with at least 0.5-day long
     sequence (respect to 00:00:00.0 of the day) is kept. note that the trace here could
