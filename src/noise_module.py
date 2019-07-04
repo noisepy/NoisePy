@@ -134,134 +134,6 @@ def noise_processing(fft_para,dataS,flag):
     
     return source_white
 
-
-def load_fft_matrix(iday,iload,data_info,sfiles,flag):
-    '''
-    load the fft matrix to memory for later fast cross-correlation because I/O of 
-    ASDF5 data takes longer time than CC part
-
-    data_info: a dictionary about the data information
-    flag: boolen variable to output intermediate variables or not
-    '''
-    nsta     = data_info['nsta']
-    num_load = data_info['num_load']
-    nseg2load= data_info['nseg2load']
-    ntrace   = data_info['ntrace']
-    Nfft2    = data_info['Nfft2']
-    Nseg     = data_info['Nseg']
-    ncomp    = data_info['ncomp']
-
-    #--------record station information--------
-    lon=[];lat=[];sta=[];net=[]
-    
-    #---index for the data chunck---
-    sindx1 = iload*nseg2load
-    if iload==num_load-1:
-        nseg2load = Nseg-iload*nseg2load
-    sindx2 = sindx1+nseg2load
-
-    if nseg2load==0 or nseg2load<0:
-        raise ValueError('nhours<=0, please double check')
-
-    if flag:
-        print('working on %dth segments of the daily FFT'% iload)
-
-    #---------------initialize the array-------------------
-    fft_array = np.zeros((ntrace,nseg2load*Nfft2),dtype=np.complex64)
-    fft_std   = np.zeros((ntrace,nseg2load),dtype=np.float32)
-    fft_flag  = np.zeros((ntrace),dtype=np.int16)
-    Timestamps = np.empty((ntrace,nseg2load),dtype='datetime64[s]')
-
-    #-----loop through all stations------
-    for ifile in range(len(sfiles)):
-        tfile = sfiles[ifile]
-
-        with pyasdf.ASDFDataSet(tfile,mpi=False,mode='r') as ds:
-            data_types = ds.auxiliary_data.list()
-
-            #-----load station informaiton here------
-            if iload==0:
-                temp = ds.waveforms.list()
-                invS = ds.waveforms[temp[0]]['StationXML']
-                sta.append(temp[0].split('.')[1])
-                net.append(temp[0].split('.')[0])
-                lon.append(invS[0][0].longitude)
-                lat.append(invS[0][0].latitude)
-                sta_info = {'sta':sta,'net':net,'lon':lon,'lat':lat}
-
-            if len(data_types) < ncomp:
-                
-                #-----check whether mising some components-----
-                for icomp in data_types:
-                    if icomp[-1]=='E':
-                        iindx = 0
-                    elif icomp[-1]=='N':
-                        iindx = 1
-                    else:
-                        iindx = 2
-                    tpaths = ds.auxiliary_data[icomp].list()
-
-                    if iday in tpaths:
-                        if flag:
-                            print('find %dth data chunck for station %s day %s' % (iload,tfile.split('/')[-1],iday))
-                        indx = ifile*ncomp+iindx
-
-                        #-----check bound----
-                        if indx > ntrace:
-                            raise ValueError('index out of bound at L213 of noise module')
-                        
-                        dsize = ds.auxiliary_data[icomp][iday].data.size
-
-                        if dsize != Nseg*Nfft2:
-                            continue
-                        fft_flag[indx] = 1
-                        data  = ds.auxiliary_data[icomp][iday].data[sindx1:sindx2,:]
-                        fft_array[indx][:]= data.reshape(data.size)
-                        # get max_over_std parameters
-                        std   = ds.auxiliary_data[icomp][iday].parameters['std']
-                        fft_std[indx][:]  = std[sindx1:sindx2]
-                        # get time stamps of each window
-                        t = ds.auxiliary_data[icomp][iday].parameters['data_t']  
-                        
-                        # convert timestamp to UTC
-                        for kk in range((sindx2-sindx1)):
-                            Timestamps[indx][kk]=datetime.fromtimestamp(t[sindx1+kk])
-                        print(Timestamps[indx][:])
-
-            else:
-
-                #-----E-N-U/Z orders when all components are available-----
-                for jj in range(len(data_types)):
-                    icomp = data_types[jj]
-                    tpaths = ds.auxiliary_data[icomp].list()
-                    if iday in tpaths:
-                        if flag:
-                            print('find %dth data chunck for station %s day %s' % (iload,tfile.split('/')[-1],iday))
-                        indx = ifile*ncomp+jj
-                        
-                        #-----check bound----
-                        if indx > ntrace:
-                            raise ValueError('index out of bound')
-
-                        dsize = ds.auxiliary_data[icomp][iday].data.size
-                        if dsize != Nseg*Nfft2:
-                            continue
-                        fft_flag[indx] = 1
-                        data  = ds.auxiliary_data[icomp][iday].data[sindx1:sindx2,:]
-                        fft_array[indx][:]= data.reshape(data.size)
-                        # get max_over_std parameters
-                        std   = ds.auxiliary_data[icomp][iday].parameters['std']
-                        fft_std[indx][:]  = std[sindx1:sindx2]
-                        # get time stamps of each window
-                        t = ds.auxiliary_data[icomp][iday].parameters['data_t']  
-
-                        # convert timestamp to UTC
-                        for kk in range((sindx2-sindx1)):
-                            Timestamps[indx][kk]=datetime.fromtimestamp(t[sindx1+kk])
-                        print(Timestamps[indx][:])
-    
-    return fft_array,fft_std,fft_flag,Timestamps,sta_info
-
 def smooth_source_spect(cc_para,fft1):
     '''
     take the source/receiver spectrum normalization for coherency/deconv method out of the
@@ -299,7 +171,7 @@ def stats2inv(stats,resp=None,filexml=None,locs=None):
 
     # We'll first create all the various objects. These strongly follow the
     # hierarchy of StationXML files.
-    inv = Inventory(networks=[],source="japan_from_resp")
+    inv = Inventory(networks=[],source="homegrown")
 
     if locs is None:
         net = Network(
