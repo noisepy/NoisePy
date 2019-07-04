@@ -22,15 +22,15 @@ from obspy.core.inventory import Inventory, Network, Station, Channel, Site
 
 def cut_trace_make_statis(fft_para,source,flag):
     '''
-    cut daily continous noise data into user-defined segments, estimate the statistics of 
+    cut continous noise data into user-defined segments, estimate the statistics of 
     each segment and keep timestamp for later use
 
-    fft_para: dictionary containing all useful variables used for fft
-    source: obspy stream objects
+    fft_para: dictionary containing all useful variables for later fft
+    source: obspy stream objects of noise data
     flag: boolen variable to output intermediate variables or not
     '''
     # define return variables first
-    source_params=[];dataS_t=[];dataS=[];dataS_stats=[]
+    source_params=[];dataS_t=[];dataS=[]
 
     # load parameters from structure
     cc_len = fft_para['cc_len']
@@ -41,7 +41,7 @@ def cut_trace_make_statis(fft_para,source,flag):
     all_stdS = np.std(source[0].data)
     if all_madS==0 or all_stdS==0 or np.isnan(all_madS) or np.isnan(all_stdS):
         print("continue! madS or stdS equeals to 0 for %s" % source)
-        return source_params,dataS_t,dataS,dataS_stats
+        return source_params,dataS_t,dataS
 
     trace_madS = []
     trace_stdS = []
@@ -67,7 +67,7 @@ def cut_trace_make_statis(fft_para,source,flag):
 
     if len(source_slice) == 0:
         print("No traces for %s " % source)
-        return source_params,dataS_t,dataS,dataS_stats
+        return source_params,dataS_t,dataS
     else:
         source_params = np.vstack([trace_madS,trace_stdS,nonzeroS]).T
 
@@ -80,10 +80,8 @@ def cut_trace_make_statis(fft_para,source,flag):
         dataS_t[ii,0]= source_slice[ii].stats.starttime-obspy.UTCDateTime(1970,1,1)# convert to dataframe
         dataS_t[ii,1]= source_slice[ii].stats.endtime -obspy.UTCDateTime(1970,1,1)# convert to dataframe
         dataS[ii,0:nptsS[ii]] = trace.data
-        if ii==0:
-            dataS_stats=trace.stats
 
-    return source_params,dataS_t,dataS,dataS_stats
+    return source_params,dataS_t,dataS
 
 
 def noise_processing(fft_para,dataS,flag):
@@ -100,7 +98,6 @@ def noise_processing(fft_para,dataS,flag):
     time_norm   = fft_para['time_norm']
     to_whiten   = fft_para['to_whiten']
     smooth_N    = fft_para['smooth_N']
-
     N = dataS.shape[0]
 
     #------to normalize in time or not------
@@ -402,6 +399,26 @@ def stats2inv(stats,resp=None,filexml=None,locs=None):
         inv.write(filexml, format="stationxml", validate=True)
 
     return inv        
+
+def sta_info_from_inv(inv):
+    '''
+    output station information from reading the inventory info
+
+    input parameter of inv: station inventory 
+    '''
+    sta = inv[0][0].code
+    net = inv[0].code
+    lon = inv[0][0].longitude
+    lat = inv[0][0].latitude
+    if inv[0][0].elevation:
+        elv = inv[0][0].elevation
+    else: elv = 0.
+
+    if inv[0][0][0].location_code:
+        location = inv[0][0][0].location_code
+    else: location = '00'
+
+    return sta,net,lon,lat,elv,location
 
 def preprocess_raw(st,inv,prepro_para,date_info):
     '''
@@ -988,7 +1005,7 @@ def optimized_correlate1(fft1_smoothed_abs,fft2,maxlag,dt,Nfft,nwin,method="cros
     
     return ncorr
 
-def optimized_correlate(fft1_smoothed_abs,fft2,D,Nfft,Timestamp):
+def optimized_correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
     '''
     Optimized version of the correlation functions: put the smoothed 
     source spectrum amplitude out of the inner for loop. 
@@ -998,8 +1015,8 @@ def optimized_correlate(fft1_smoothed_abs,fft2,D,Nfft,Timestamp):
     Modified by Marine on 02/25/19 to accommodate sub-stacking of over tave seconds in the day
     step is overlap step   
 
-    fft1_smoothed_abs: already smoothed power spectral density of the FFT from the first station
-    fft2: FFT from station 2
+    fft1_smoothed_abs: already smoothed power spectral density of the FFT from source station
+    fft2: FFT from receiver station
     D: input dictionary with the following parameters:
         D["maxlag"]: maxlag to keep in the cross correlation
         D["dt"]: sampling rate (in s)
@@ -1024,6 +1041,11 @@ def optimized_correlate(fft1_smoothed_abs,fft2,D,Nfft,Timestamp):
     nwin  = fft1_smoothed_abs.shape[0]
     Nfft2 = Nfft//2
 
+    # convert UTC time to datetime64
+    Timestamps = np.empty(dataS_t.size,dtype='datetime64[s]') 
+    for ii in range(dataS_t.shape[0]):
+        Timestamps[ii] = datetime.datetime.fromtimestamp(dataS_t[ii])
+
     #------convert all 2D arrays into 1D to speed up--------
     corr = np.zeros(nwin*Nfft2,dtype=np.complex64)
     corr = fft1_smoothed_abs.reshape(fft1_smoothed_abs.size,)*fft2.reshape(fft2.size,)
@@ -1036,7 +1058,7 @@ def optimized_correlate(fft1_smoothed_abs,fft2,D,Nfft,Timestamp):
     #--------------- remove outliers in frequency domain -------------------
     # reduce the number of IFFT by pre-selecting good windows before substack
     freq = scipy.fftpack.fftfreq(Nfft, d=dt)[:Nfft2]
-    i1 = np.where( freq>=freqmin & freq <= freqmax)[0]
+    i1 = np.where( (freq>=freqmin) & (freq <= freqmax))[0]
 
     ###################DOUBLE CHECK THIS SECTION#####################
     # this creates the residuals between each window and their median
@@ -1045,75 +1067,77 @@ def optimized_correlate(fft1_smoothed_abs,fft2,D,Nfft,Timestamp):
     #ik  = np.where(r>=med-5 & r<=med+5)[0]
     ik  = np.zeros(nwin,dtype=np.int)
     for i in range(nwin):
-        if np.any( (r[i,:]>=med-10)& (r[i,:]<=med+10) ):ik[i]=i
+        if np.any( (r[i,:]>=med-10) & (r[i,:]<=med+10) ):ik[i]=i
     ik1=np.nonzero(ik)
     ik=ik[ik1]
     #################################################################
 
     if substack:
-    
         if substack_len == cc_len:
             # choose to keep all fft data for a day
-            ncorr  = np.zeros(shape=(nwin,Nfft),dtype=np.float32)
-            nncorr = np.ones(nwin,dtype=np.int16)
-            tcorr  = Timestamp
+            n_corr = np.zeros(shape=(nwin,Nfft),dtype=np.float32)
+            c_corr = np.ones(nwin,dtype=np.int16)
+            t_corr = Timestamps
             crap   = np.zeros(Nfft,dtype=np.complex64)
             for i in range(len(ik)):            
                 crap[:Nfft2] = corr[ik[i],:]
                 crap[:Nfft2] = crap[:Nfft2]-np.mean(crap[:Nfft2])   # remove the mean in freq domain (spike at t=0)
                 crap[-(Nfft2)+1:]=np.flip(np.conj(crap[1:(Nfft2)]),axis=0)
                 crap[0]=complex(0,0)
-                ncorr[i,:] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
+                n_corr[i,:] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
         
         else:     
             # make substacks for all windows that either start or end within a period of increment
-            Ttotal = Timestamp[-1]-Timestamp[0]             # total duration of what we have now
+            Ttotal = Timestamps[-1]-Timestamps[0]             # total duration of what we have now
             dtime  = np.timedelta64(substack_len,'s')
 
             # number of data chuncks
-            tstart=Timestamp[0]
+            tstart = Timestamps[0]
             i=0 
-            ncorr = np.zeros(shape=(int(Ttotal/dtime),Nfft),dtype=np.complex64)
-            tcorr = np.empty(int(Ttotal/dtime),dtype='datetime64[s]')
-            nncorr= np.zeros(int(Ttotal/dtime),dtype=np.int)
-            crap  = np.zeros(Nfft,dtype=np.complex64)
+            n_corr = np.zeros(shape=(int(Ttotal/dtime),Nfft),dtype=np.float32)
+            t_corr = np.empty(int(Ttotal/dtime),dtype='datetime64[s]')
+            c_corr = np.zeros(int(Ttotal/dtime),dtype=np.int)
+            crap   = np.zeros(Nfft,dtype=np.complex64)
 
             # set the endtime variable
             if dtime == cc_len:                                                                     # CJ 06/25
-                tend = Timestamp[-1]                                                                # CJ
+                tend = Timestamps[-1]                                                                # CJ
             else:                                                                                   # CJ
-                tend = Timestamp[-1]-dtime                                                          # CJ
+                tend = Timestamps[-1]-dtime                                                          # CJ
 
             while tstart < tend:                                                                    # CJ
                 # find the indexes of all of the windows that start or end within 
-                itime = np.where( (Timestamp[ik] >= tstart) & (Timestamp[ik] < tstart+dtime) )[0]   # CJ
+                itime = np.where( (Timestamps[ik] >= tstart) & (Timestamps[ik] < tstart+dtime) )[0]   # CJ
                 if len(ik[itime])==0:tstart+=dtime;continue
                 
                 crap[:Nfft2] = np.mean(corr[ik[itime],:],axis=0)   # linear average of the correlation 
                 crap[:Nfft2] = crap[:Nfft2]-np.mean(crap[:Nfft2])   # remove the mean in freq domain (spike at t=0)
                 crap[-(Nfft2)+1:]=np.flip(np.conj(crap[1:(Nfft2)]),axis=0)
                 crap[0]=complex(0,0)
-                ncorr[i,:] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, D["Nfft"], axis=0)))
-                nncorr[i] = len(ik[itime])          # number of windows stacks
-                tcorr[i] = tstart                   # save the time stamps
+                n_corr[i,:] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
+                c_corr[i] = len(ik[itime])          # number of windows stacks
+                t_corr[i] = tstart                   # save the time stamps
                 tstart += dtime
-                print('correlation done and stacked at time %s' % str(tcorr[i]))
+                print('correlation done and stacked at time %s' % str(t_corr[i]))
                 i+=1
-
     else:
         # average daily cross correlation functions
-        nncorr = len(ik)
-        corr  = corr.reshape(nwin,Nfft2)
-        tcorr = Timestamp[0]
-        ncorr = np.zeros(shape=Nfft,dtype=np.complex64)
-        ncorr[:Nfft//2] = ncorr[:Nfft//2]-np.mean(corr,axis=0)
-        ncorr[-(Nfft//2)+1:]=np.flip(np.conj(ncorr[1:(Nfft//2)]),axis=0)
-        ncorr = np.real(np.fft.ifftshift(scipy.fftpack.ifft(ncorr, Nfft, axis=0)))
+        c_corr = len(ik)
+        n_corr = np.zeros(Nfft,dtype=np.float32)
+        t_corr = Timestamps[0]
+        crap  = np.zeros(Nfft,dtype=np.complex64)
+        crap[:Nfft2] = np.mean(corr[ik,:],axis=0)
+        crap[:Nfft2] = crap[:Nfft//2]-np.mean(crap[:Nfft2],axis=0)
+        crap[-(Nfft2)+1:]=np.flip(np.conj(crap[1:(Nfft2)]),axis=0)
+        n_corr = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
 
-    t = np.arange(-Nfft2+1, Nfft2)*dt[0]
+    t = np.arange(-Nfft2+1, Nfft2)*dt
     ind   = np.where(np.abs(t) <= maxlag)[0]
-    ncorr = ncorr[:,ind]
-    return ncorr,tcorr,nncorr
+    if n_corr.ndim==1:
+        n_corr = n_corr[ind]
+    elif n_corr.ndim==2:
+        n_corr = n_corr[:,ind]
+    return n_corr,t_corr,c_corr
 
 
 @jit(nopython = True)
@@ -1123,7 +1147,7 @@ def moving_ave(A,N):
     N is the the half window length to smooth
     A and B are both 1-D arrays (which runs faster compared to 2-D operations)
     '''
-    A = np.r_[A[:N],A,A[-N:]]
+    A = np.concatenate((A[:N],A,A[-N:]),axis=0)
     B = np.zeros(A.shape,A.dtype)
     
     tmp=0.
@@ -1366,7 +1390,7 @@ def calc_distance(sta1,sta2):
     return dist,azi,baz
 
 
-def fft_parameters(fft_para,source_params,locs,Nfft,data_t):
+def fft_parameters(fft_para,source_params,inv,Nfft,data_t):
     """ 
     Creates parameter dict for cross-correlations and header info to ASDF.
 
@@ -1391,9 +1415,10 @@ def fft_parameters(fft_para,source_params,locs,Nfft,data_t):
     step   = fft_para['step']
     Nt     = data_t.shape[0]
 
-    source_mad,source_std,source_nonzero = source_params[:,0],\
-                         source_params[:,1],source_params[:,2]
-    lon,lat,el=locs["longitude"],locs["latitude"],locs["elevation"]
+    source_mad,source_std,source_nonzero = source_params[:,0],source_params[:,1],source_params[:,2]
+    lon = inv[0][0].longitude
+    lat = inv[0][0].latitude
+    el  = inv[0][0].elevation
     parameters = {
              'dt':dt,
              'twin':cc_len,

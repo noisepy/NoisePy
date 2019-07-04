@@ -15,7 +15,7 @@ if not sys.warnoptions:
     warnings.simplefilter("ignore")
 
 '''
-This script:
+This downloading script:
     1) downloads data chunck on your choice of length and Client or pre-compiled station list;
     2) cleans up the traces including gaps, removing instrumental response, downsampling and trim;
     3) saves data into ASDF format;
@@ -24,17 +24,17 @@ This script:
 Authors: Marine Denolle (mdenolle@fas.harvard.edu) - 11/16/18,06/08/19
          Chengxin Jiang (chengxin_jiang@fas.harvard.edu) - 02/22/19,07/01/19
          
-Note: 1. segmentation fault while manipulating obspy stream can come from too large memory:
-     reduce the inc_day variable
-      2. if choose to download stations from an existing CSV files, station with same name but 
-     different channcel is regarded as different stations
+Note: 1. segmentation fault while manipulating obspy stream can come from too large data in memory:
+     reduce the inc_hours variable
+      2. if choose to download stations from an existing CSV files, station with the same name but 
+     different channel is regarded as different stations
 
 A beginning of NoisePy journey! 
 '''
 
-###############################
-#######PARAMETER SECTION#######
-###############################
+#######################################################
+################PARAMETER SECTION######################
+#######################################################
 tt0=time.time()
 
 # paths and filenames
@@ -49,7 +49,7 @@ oput_CSV  = True                                # output station.list to a CSV f
 flag      = True                                # print progress when running the script
 NewFreq   = 10                                  # resampling at X samples per seconds 
 rm_resp   = False                               # False to not remove, True to remove, but 'inv' to remove with inventory
-respdir   = 'none'                              # output response directory (has to be given if rm_resp is true and other than inv)
+respdir   = 'none'                              # output response directory (required if rm_resp is true and other than inv)
 freqmin   = 0.05                                # pre filtering frequency bandwidth
 freqmax   = 4
 
@@ -59,7 +59,7 @@ dchan= ['HH*']                                  # channel if down_list=false
 dnet = ["NZ"]                                   # network  
 dsta = ["M?Z"]                                  # station (do either one station or *)
 start_date = ["2018_05_01_0_0_0"]               # start date of download
-end_date   = ["2018_05_03_0_0_0"]               # end date of download
+end_date   = ["2018_05_04_0_0_0"]               # end date of download
 inc_hours  = 48                                 # length of data for each request (in hour)
 
 # time tags
@@ -68,10 +68,10 @@ endtime   = obspy.UTCDateTime(end_date[0])
 
 # assemble parameters for pre-processing
 prepro_para = {'rm_resp':rm_resp,'respdir':respdir,'freqmin':freqmin,'freqmax':freqmax,\
-    'samp_freq':NewFreq,'start_date':start_date,'end_date':end_date,'inc_days':inc_hours}
+    'samp_freq':NewFreq,'start_date':start_date,'end_date':end_date,'inc_hours':inc_hours}
 metadata = os.path.join(direc,'download_info.txt') 
 
-# prepare station info
+# prepare station info (existing station list vs. fetching from client)
 if down_list:
     if not os.path.isfile(dlist):
         raise IOError('file %s not exist! double check!' % dlist)
@@ -98,7 +98,10 @@ else:
         inv = client.get_stations(network=dnet[0],station=dsta[0],channel=dchan[0],location='*', \
             starttime=starttime,endtime=endtime,minlatitude=lamin,maxlatitude=lamax, \
             minlongitude=lomin, maxlongitude=lomax,level="response")
-        if flag:print(inv)
+        # make a selection to remove redundent channel (it indeed happens!)
+        inv1 = inv.select(network=dnet[0],station=dsta[0],channel=dchan[0],starttime=starttime,\
+            endtime=endtime,location='*') 
+        if flag:print(inv1)
     except Exception as e:
         print('Abort! '+str(e))
         exit()
@@ -114,11 +117,12 @@ else:
                 chan.append(chan1.code)
                 location.append(chan1.location_code)
                 nsta+=1
+    prepro_para['nsta'] = nsta
 
 
-##################################
-########DOWNLOAD SECTION##########
-##################################
+########################################################
+#################DOWNLOAD SECTION#######################
+########################################################
 
 #--------MPI---------
 comm = MPI.COMM_WORLD
@@ -163,17 +167,13 @@ for ick in range (rank,splits+size-extra,size):
                 # loop through each channel
                 for ista in range(nsta):
 
-                    # get channel inventory
-                    inv = client.get_stations(network=net[ista],station=sta[ista],\
-                        channel=dchan[0],starttime=s1,endtime=s2,location=location[ista],level="response")
-                    
-                    ############CHECK THIS OUT##############
-                    sta_inv = inv.select(network=net[ista],station=sta[ista],channel=chan[ista],starttime=s1,\
-                        endtime=s2,location=location[ista])    
+                    # select from existing inventory database
+                    sta_inv = inv1.select(network=net[ista],station=sta[ista],location=location[ista])    
 
-                    # add the inventory for all components + all time of this tation          
-                    if (not ds.waveforms.list()) :
-                        ds.add_stationxml(sta_inv)     
+                    # add the inventory for all components + all time of this tation         
+                    try:ds.add_stationxml(sta_inv) 
+                    except Exception:pass   
+
                     try:
                         # get data
                         t0=time.time()
@@ -189,10 +189,10 @@ for ick in range (rank,splits+size-extra,size):
 
                     if len(tr):
                         new_tags = '{0:s}_{1:s}'.format(chan[ista].lower(),location[ista].lower())
-                        print(new_tags)
                         ds.add_waveforms(tr,tag=new_tags)
+
                     if flag:
-                        print(ds);print('downloading data %6.2f s; pre-process %6.2f s' % ((t1-t0),(t2-t1)))
+                        print(ds,new_tags);print('downloading data %6.2f s; pre-process %6.2f s' % ((t1-t0),(t2-t1)))
 
 tt1=time.time()
 print('downloading step takes %6.2f s' %(tt1-tt0))
