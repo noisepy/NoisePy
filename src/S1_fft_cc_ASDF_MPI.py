@@ -1,16 +1,14 @@
-import os
 import sys
-import glob
 import time
 import scipy
 import obspy
 import pyasdf
 import datetime
+import os, glob
 import numpy as np
 import pandas as pd
 import noise_module
 from mpi4py import MPI
-import matplotlib.pyplot as plt
 from scipy.fftpack.helper import next_fast_len
 
 if not sys.warnoptions:
@@ -274,6 +272,12 @@ for ick in range (rank,splits+size-extra,size):
 
         fft_array=[];fft_std=[];fft_flag=[];fft_time=[]
         n = gc.collect();print('unreadable garbarge',n)
+
+        # save the ASDF path info for later stacking use
+        path_para = {'paths':path_array}
+        pfile = os.path.join(rootpath,'CCF/paths_'+str(rank)+'.txt')
+        fout  = open(pfile,'w')
+        fout.write(str(path_para));fout.close()
     
     t11 = time.time()
     print('it takes %6.4s to process the chunck of %s' % (t11-t10,tdir[ick]))

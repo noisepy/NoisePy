@@ -906,12 +906,12 @@ def optimized_correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
     maxlag  = D['maxlag']
     method  = D['cc_method']
     cc_len  = D['cc_len'] 
-    substack= D['substack']                                                              # CJ
+    substack= D['substack']                                                          
     substack_len  = D['substack_len']
     smoothspect_N = D['smoothspect_N']
 
     nwin  = fft1_smoothed_abs.shape[0]
-    Nfft2 = Nfft//2
+    Nfft2 = fft1_smoothed_abs.shape[1]
 
     # convert UTC time to datetime64
     Timestamps = np.empty(dataS_t.size,dtype='datetime64[s]') 
@@ -923,7 +923,7 @@ def optimized_correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
     corr = fft1_smoothed_abs.reshape(fft1_smoothed_abs.size,)*fft2.reshape(fft2.size,)
 
     if method == "coherency":
-        temp = moving_ave(np.abs(fft2.reshape(fft2.size,)),smoothspect_N)               # CJ
+        temp = moving_ave(np.abs(fft2.reshape(fft2.size,)),smoothspect_N)             
         corr /= temp
     corr  = corr.reshape(nwin,Nfft2)
 
@@ -948,10 +948,11 @@ def optimized_correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
         if substack_len == cc_len:
             # choose to keep all fft data for a day
             n_corr = np.zeros(shape=(nwin,Nfft),dtype=np.float32)
-            c_corr = np.ones(nwin,dtype=np.int16)
+            c_corr = np.zeros(nwin,dtype=np.int16)
             t_corr = Timestamps
             crap   = np.zeros(Nfft,dtype=np.complex64)
-            for i in range(len(ik)):            
+            for i in range(len(ik)): 
+                c_corr[ik[i]]= 1           
                 crap[:Nfft2] = corr[ik[i],:]
                 crap[:Nfft2] = crap[:Nfft2]-np.mean(crap[:Nfft2])   # remove the mean in freq domain (spike at t=0)
                 crap[-(Nfft2)+1:]=np.flip(np.conj(crap[1:(Nfft2)]),axis=0)
@@ -972,14 +973,14 @@ def optimized_correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
             crap   = np.zeros(Nfft,dtype=np.complex64)
 
             # set the endtime variable
-            if dtime == cc_len:                                                                     # CJ 06/25
-                tend = Timestamps[-1]                                                                # CJ
-            else:                                                                                   # CJ
-                tend = Timestamps[-1]-dtime                                                          # CJ
+            if dtime == cc_len:                                                                  
+                tend = Timestamps[-1]                                                              
+            else:                                                                                  
+                tend = Timestamps[-1]-dtime                                                         
 
-            while tstart < tend:                                                                    # CJ
+            while tstart < tend:                                                                   
                 # find the indexes of all of the windows that start or end within 
-                itime = np.where( (Timestamps[ik] >= tstart) & (Timestamps[ik] < tstart+dtime) )[0]   # CJ
+                itime = np.where( (Timestamps[ik] >= tstart) & (Timestamps[ik] < tstart+dtime) )[0]  
                 if len(ik[itime])==0:tstart+=dtime;continue
                 
                 crap[:Nfft2] = np.mean(corr[ik[itime],:],axis=0)   # linear average of the correlation 
@@ -987,7 +988,7 @@ def optimized_correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
                 crap[-(Nfft2)+1:]=np.flip(np.conj(crap[1:(Nfft2)]),axis=0)
                 crap[0]=complex(0,0)
                 n_corr[i,:] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
-                c_corr[i] = len(ik[itime])          # number of windows stacks
+                c_corr[i] = len(ik[itime])           # number of windows stacks
                 t_corr[i] = tstart                   # save the time stamps
                 tstart += dtime
                 print('correlation done and stacked at time %s' % str(t_corr[i]))
@@ -1035,6 +1036,58 @@ def moving_ave(A,N):
             B[pos]=1
     return B[N:-N]
 
+def load_pfiles(pfiles):
+    '''
+    read the dictionary containing all station-pair information for the cross-correlation data
+    that is saved in ASDF format, and merge them into one sigle array for stacking purpose. 
+
+    input pfiles: the file names containing all path information
+    output: an array of all station-pair information for the cross-correlations
+    '''
+    paths_all = []
+    for ii in range(len(pfiles)):
+        pfile = eval(open(pfiles[ii]).read())
+        tpath = pfile['paths']
+        paths_all = set(paths_all+tpath)
+    return paths_all
+
+def do_stacking(cc_array,cc_time,f_substack_len):
+    '''
+    stacks the cross correlation data according to the interval of substack_len
+
+    input variables:
+    cc_array: 2D numpy float32 matrix containing all segmented cross-correlation data
+    cc_time: 1D numpy array of all timestamp information for each segment of cc_array
+    f_substack_len: length of time intervals for sub-stacking
+
+    return variables:
+    '''
+    # do substacking and output them
+    npts = cc_array.shape[1]
+    if f_substack_len:
+        Ttotal = cc_time[-1]-cc_time[0]             # total duration of what we have now
+        dtime  = np.timedelta64(f_substack_len,'s')
+
+        # number of data chuncks
+        tstart = cc_time[0]
+        i=0 
+        n_corr = np.zeros(shape=(int(Ttotal/dtime),npts),dtype=np.float32)
+        t_corr = np.empty(int(Ttotal/dtime),dtype='datetime64[s]')                                                   
+
+        while tstart < cc_time[-1]:                                                                 
+            # find the indexes of all of the windows that start or end within 
+            itime = np.where( (cc_time >= tstart) & (cc_time < tstart+dtime) )[0]  
+            if len(itime)==0:tstart+=dtime;continue
+            
+            n_corr = np.mean(cc_array[itime],axis=0)
+            t_corr = tstart               
+            tstart += dtime
+            print('correlation done and stacked at time %s' % str(t_corr[i]))
+            i+=1
+    else:
+        # do all averaging
+        n_corr = np.zeros(shape=(int(Ttotal/dtime),npts),dtype=np.float32)
+        t_corr = np.empty(int(Ttotal/dtime),dtype='datetime64[s]')
 
 def get_SNR(corr,snr_parameters,parameters):
     '''
