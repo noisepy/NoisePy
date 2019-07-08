@@ -1,3 +1,4 @@
+import gc
 import sys
 import time
 import scipy
@@ -180,6 +181,7 @@ for ick in range (rank,splits+size-extra,size):
 
                 # cut daily-long data into smaller segments (dataS always in 2D)
                 source_params,dataS_t,dataS = noise_module.cut_trace_make_statis(fc_para,source,flag)
+                if not len(dataS): continue
                 N = dataS.shape[0]
 
                 # do normalization if needed
@@ -214,7 +216,7 @@ for ick in range (rank,splits+size-extra,size):
 
         # check whether array size is enough
         if iii!=nsta:
-            print('it seems some data is missing in download step, but it is okay!')
+            print('it seems some stations miss data in download step, but it is OKAY!')
 
         # make cross-correlations 
         path_array=[]
@@ -275,15 +277,15 @@ for ick in range (rank,splits+size-extra,size):
 
         # save the ASDF path info for later stacking use
         path_para = {'paths':path_array}
-        pfile = os.path.join(rootpath,'CCF/paths_'+str(rank)+'.txt')
+        pfile = os.path.join(rootpath,'CCF/paths_'+str(rank)+'.lst')
         fout  = open(pfile,'w')
         fout.write(str(path_para));fout.close()
     
-    t11 = time.time()
-    print('it takes %6.4s to process the chunck of %s' % (t11-t10,tdir[ick]))
+        t11 = time.time()
+        print('it takes %6.2fs to process the chunck of %s' % (t11-t10,tdir[ick]))
 
 tt1 = time.time()
-print('it takes %6.4fs to process step 1' % (tt1-tt0))
+print('it takes %6.2fs to process step 1 in total' % (tt1-tt0))
 comm.barrier()
 
 # merge all path_array and output

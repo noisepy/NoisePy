@@ -74,7 +74,7 @@ def cut_trace_make_statis(fft_para,source,flag):
     #---------seems unnecessary for data already pre-processed with same length (zero-padding)-------
     Nseg   = len(source_slice)
     Npts   = np.max(nptsS)
-    dataS_t= np.zeros(shape=(Nseg,2))
+    dataS_t= np.zeros(shape=(Nseg,2),dtype=np.float)
     dataS  = np.zeros(shape=(Nseg,Npts),dtype=np.float32)
     for ii,trace in enumerate(source_slice):
         dataS_t[ii,0]= source_slice[ii].stats.starttime-obspy.UTCDateTime(1970,1,1)# convert to dataframe
@@ -177,10 +177,8 @@ def stats2inv(stats,resp=None,filexml=None,locs=None):
         net = Network(
             # This is the network code according to the SEED standard.
             code=stats.network,
-            # A list of stations. We'll add one later.
             stations=[],
             description="Marine created from SAC and resp files",
-            # Start-and end dates are optional.
             start_date=stats.starttime)
 
         sta = Station(
@@ -212,10 +210,8 @@ def stats2inv(stats,resp=None,filexml=None,locs=None):
         net = Network(
             # This is the network code according to the SEED standard.
             code=locs.iloc[ista]["network"],
-            # A list of stations. We'll add one later.
             stations=[],
             description="Marine created from SAC and resp files",
-            # Start-and end dates are optional.
             start_date=stats.starttime)
 
         sta = Station(
@@ -227,11 +223,8 @@ def stats2inv(stats,resp=None,filexml=None,locs=None):
             creation_date=stats.starttime,
             site=Site(name="First station"))
         cha = Channel(
-            # This is the channel code according to the SEED standard.
             code=stats.channel,
-            # This is the location code according to the SEED standard.
             location_code=stats.location,
-            # Note that these coordinates can differ from the station coordinates.
             latitude=locs.iloc[ista]["latitude"],
             longitude=locs.iloc[ista]["longitude"],
             elevation=locs.iloc[ista]["elevation"],
@@ -243,18 +236,6 @@ def stats2inv(stats,resp=None,filexml=None,locs=None):
     response = obspy.core.inventory.response.Response()
     if resp is not None:
         print('i dont have the response')
-    # By default this accesses the NRL online. Offline copies of the NRL can
-    # also be used instead
-    # nrl = NRL()
-    # The contents of the NRL can be explored interactively in a Python prompt,
-    # see API documentation of NRL submodule:
-    # http://docs.obspy.org/packages/obspy.clients.nrl.html
-    # Here we assume that the end point of data logger and sensor are already
-    # known:
-    #response = nrl.get_response( # doctest: +SKIP
-    #    sensor_keys=['Streckeisen', 'STS-1', '360 seconds'],
-    #    datalogger_keys=['REF TEK', 'RT 130 & 130-SMA', '1', '200'])
-
 
     # Now tie it all together.
     cha.response = response
@@ -264,9 +245,6 @@ def stats2inv(stats,resp=None,filexml=None,locs=None):
 
     # And finally write it to a StationXML file. We also force a validation against
     # the StationXML schema to ensure it produces a valid StationXML file.
-    #
-    # Note that it is also possible to serialize to any of the other inventory
-    # output formats ObsPy supports.
     if filexml is not None:
         inv.write(filexml, format="stationxml", validate=True)
 
@@ -723,66 +701,7 @@ def whiten(data, fft_para):
  
 
     return FFTRawSign
-
-
-def cross_corr_parameters(source, receiver, start_end_t, source_params,
-    receiver_params, locs, maxlag):
-    """ 
-    Creates parameter dict for cross-correlations and header info to ASDF.
-
-    :type source: `~obspy.core.trace.Stats` object.
-    :param source: Stats header from xcorr source station
-    :type receiver: `~obspy.core.trace.Stats` object.
-    :param receiver: Stats header from xcorr receiver station
-    :type start_end_t: `~np.ndarray`
-    :param start_end_t: starttime, endtime of cross-correlation (UTCDateTime)
-    :type source_params: `~np.ndarray`
-    :param source_params: max_mad,max_std,percent non-zero values of source trace
-    :type receiver_params: `~np.ndarray`
-    :param receiver_params: max_mad,max_std,percent non-zero values of receiver trace
-    :type locs: dict
-    :param locs: dict with latitude, elevation_in_m, and longitude of all stations
-    :type maxlag: int
-    :param maxlag: number of lag points in cross-correlation (sample points) 
-    :return: Auxiliary data parameter dict
-    :rtype: dict
-
-    """
-
-    # source and receiver locations in dict with lat, elevation_in_m, and lon
-    source_loc = locs.ix[source['network'] + '.' + source['station']]
-    receiver_loc = locs.ix[receiver['network'] + '.' + receiver['station']]
-
-    # # get distance (in km), azimuth and back azimuth
-    dist,azi,baz = calc_distance(source_loc,receiver_loc) 
-
-    source_mad,source_std,source_nonzero = source_params[:,0],\
-                         source_params[:,1],source_params[:,2]
-    receiver_mad,receiver_std,receiver_nonzero = receiver_params[:,0],\
-                         receiver_params[:,1],receiver_params[:,2]
-    
-    starttime = start_end_t[:,0] - obspy.UTCDateTime(1970,1,1)
-    starttime = starttime.astype('float')
-    endtime = start_end_t[:,1] - obspy.UTCDateTime(1970,1,1)
-    endtime = endtime.astype('float')
-    source = stats_to_dict(source,'source')
-    receiver = stats_to_dict(receiver,'receiver')
-    # fill Correlation attribDict 
-    parameters = {'source_mad':source_mad,
-            'source_std':source_std,
-            'source_nonzero':source_nonzero,
-            'receiver_mad':receiver_mad,
-            'receiver_std':receiver_std,
-            'receiver_nonzero':receiver_nonzero,
-            'dist':dist,
-            'azi':azi,
-            'baz':baz,
-            'lag':maxlag,
-            'starttime':starttime,
-            'endtime':endtime}
-    parameters.update(source)
-    parameters.update(receiver)
-    return parameters    
+   
 
 def C3_process(S1_data,S2_data,Nfft,win):
     '''
@@ -913,11 +832,6 @@ def optimized_correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
     nwin  = fft1_smoothed_abs.shape[0]
     Nfft2 = fft1_smoothed_abs.shape[1]
 
-    # convert UTC time to datetime64
-    Timestamps = np.empty(dataS_t.size,dtype='datetime64[s]') 
-    for ii in range(dataS_t.shape[0]):
-        Timestamps[ii] = datetime.datetime.fromtimestamp(dataS_t[ii])
-
     #------convert all 2D arrays into 1D to speed up--------
     corr = np.zeros(nwin*Nfft2,dtype=np.complex64)
     corr = fft1_smoothed_abs.reshape(fft1_smoothed_abs.size,)*fft2.reshape(fft2.size,)
@@ -928,89 +842,84 @@ def optimized_correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
     corr  = corr.reshape(nwin,Nfft2)
 
     #--------------- remove outliers in frequency domain -------------------
-    # reduce the number of IFFT by pre-selecting good windows before substack
+    # [reduce the number of IFFT by pre-selecting good windows before substack]
     freq = scipy.fftpack.fftfreq(Nfft, d=dt)[:Nfft2]
     i1 = np.where( (freq>=freqmin) & (freq <= freqmax))[0]
 
-    ###################DOUBLE CHECK THIS SECTION#####################
     # this creates the residuals between each window and their median
     med = np.log10(np.median(corr[:,i1],axis=0))
     r   = np.log10(corr[:,i1]) - med
-    #ik  = np.where(r>=med-5 & r<=med+5)[0]
     ik  = np.zeros(nwin,dtype=np.int)
+    # find time window of good data
     for i in range(nwin):
         if np.any( (r[i,:]>=med-10) & (r[i,:]<=med+10) ):ik[i]=i
-    ik1=np.nonzero(ik)
+    ik1 = np.nonzero(ik)
     ik=ik[ik1]
-    #################################################################
 
     if substack:
         if substack_len == cc_len:
             # choose to keep all fft data for a day
-            n_corr = np.zeros(shape=(nwin,Nfft),dtype=np.float32)
-            c_corr = np.zeros(nwin,dtype=np.int16)
-            t_corr = Timestamps
+            s_corr = np.zeros(shape=(nwin,Nfft),dtype=np.float32)   # stacked correlation
+            n_corr = np.zeros(nwin,dtype=np.int16)                  # number of correlations for each substack
+            t_corr = dataS_t[0]                                     # timestamp
             crap   = np.zeros(Nfft,dtype=np.complex64)
             for i in range(len(ik)): 
-                c_corr[ik[i]]= 1           
+                n_corr[ik[i]]= 1           
                 crap[:Nfft2] = corr[ik[i],:]
                 crap[:Nfft2] = crap[:Nfft2]-np.mean(crap[:Nfft2])   # remove the mean in freq domain (spike at t=0)
-                crap[-(Nfft2)+1:]=np.flip(np.conj(crap[1:(Nfft2)]),axis=0)
+                crap[-(Nfft2)+1:] = np.flip(np.conj(crap[1:(Nfft2)]),axis=0)
                 crap[0]=complex(0,0)
-                n_corr[i,:] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
+                s_corr[i,:] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
+            tindx = np.where(n_corr>0)[0]
+            s_corr = s_corr[tindx]
         
         else:     
-            # make substacks for all windows that either start or end within a period of increment
-            Ttotal = Timestamps[-1]-Timestamps[0]             # total duration of what we have now
-            dtime  = np.timedelta64(substack_len,'s')
+            # get time information
+            Ttotal = dataS_t[-1]-dataS_t[0]             # total duration of what we have now
+            tstart = dataS_t[0]
 
-            # number of data chuncks
-            tstart = Timestamps[0]
-            i=0 
-            n_corr = np.zeros(shape=(int(Ttotal/dtime),Nfft),dtype=np.float32)
-            t_corr = np.empty(int(Ttotal/dtime),dtype='datetime64[s]')
-            c_corr = np.zeros(int(Ttotal/dtime),dtype=np.int)
-            crap   = np.zeros(Nfft,dtype=np.complex64)
+            nstack = int(np.round(Ttotal/substack_len))
+            s_corr = np.zeros(shape=(nstack,Nfft),dtype=np.float32)
+            n_corr = np.zeros(nstack,dtype=np.int)
+            t_corr = np.zeros(nstack,dtype=np.float)
+            crap   = np.zeros(Nfft,dtype=np.complex64)                                              
 
-            # set the endtime variable
-            if dtime == cc_len:                                                                  
-                tend = Timestamps[-1]                                                              
-            else:                                                                                  
-                tend = Timestamps[-1]-dtime                                                         
-
-            while tstart < tend:                                                                   
+            for istack in range(nstack):                                                                   
                 # find the indexes of all of the windows that start or end within 
-                itime = np.where( (Timestamps[ik] >= tstart) & (Timestamps[ik] < tstart+dtime) )[0]  
-                if len(ik[itime])==0:tstart+=dtime;continue
+                itime = np.where( (dataS_t[ik] >= tstart) & (dataS_t[ik] < tstart+substack_len) )[0]  
+                if len(ik[itime])==0:tstart+=substack_len;continue
                 
                 crap[:Nfft2] = np.mean(corr[ik[itime],:],axis=0)   # linear average of the correlation 
                 crap[:Nfft2] = crap[:Nfft2]-np.mean(crap[:Nfft2])   # remove the mean in freq domain (spike at t=0)
                 crap[-(Nfft2)+1:]=np.flip(np.conj(crap[1:(Nfft2)]),axis=0)
                 crap[0]=complex(0,0)
-                n_corr[i,:] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
-                c_corr[i] = len(ik[itime])           # number of windows stacks
-                t_corr[i] = tstart                   # save the time stamps
-                tstart += dtime
-                print('correlation done and stacked at time %s' % str(t_corr[i]))
-                i+=1
+                s_corr[istack,:] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
+                n_corr[istack] = len(ik[itime])           # number of windows stacks
+                t_corr[istack] = tstart                   # save the time stamps
+                tstart += substack_len
+                #print('correlation done and stacked at time %s' % str(t_corr[istack]))
+            tindx = np.where(n_corr>0)
+            s_corr = s_corr[tindx]
+
     else:
         # average daily cross correlation functions
-        c_corr = len(ik)
-        n_corr = np.zeros(Nfft,dtype=np.float32)
-        t_corr = Timestamps[0]
-        crap  = np.zeros(Nfft,dtype=np.complex64)
+        n_corr = len(ik)
+        s_corr = np.zeros(Nfft,dtype=np.float32)
+        t_corr = dataS_t[0]
+        crap   = np.zeros(Nfft,dtype=np.complex64)
         crap[:Nfft2] = np.mean(corr[ik,:],axis=0)
-        crap[:Nfft2] = crap[:Nfft//2]-np.mean(crap[:Nfft2],axis=0)
+        crap[:Nfft2] = crap[:Nfft2]-np.mean(crap[:Nfft2],axis=0)
         crap[-(Nfft2)+1:]=np.flip(np.conj(crap[1:(Nfft2)]),axis=0)
         n_corr = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
 
+    # trim the CCFs in [-maxlag maxlag] 
     t = np.arange(-Nfft2+1, Nfft2)*dt
-    ind   = np.where(np.abs(t) <= maxlag)[0]
-    if n_corr.ndim==1:
-        n_corr = n_corr[ind]
-    elif n_corr.ndim==2:
-        n_corr = n_corr[:,ind]
-    return n_corr,t_corr,c_corr
+    ind = np.where(np.abs(t) <= maxlag)[0]
+    if s_corr.ndim==1:
+        s_corr = s_corr[ind]
+    elif s_corr.ndim==2:
+        s_corr = s_corr[:,ind]
+    return s_corr,t_corr,n_corr
 
 
 @jit(nopython = True)
@@ -1048,7 +957,7 @@ def load_pfiles(pfiles):
     for ii in range(len(pfiles)):
         pfile = eval(open(pfiles[ii]).read())
         tpath = pfile['paths']
-        paths_all = set(paths_all+tpath)
+        paths_all = list(set(paths_all+tpath))
     return paths_all
 
 def do_stacking(cc_array,cc_time,f_substack_len):
@@ -1064,30 +973,35 @@ def do_stacking(cc_array,cc_time,f_substack_len):
     '''
     # do substacking and output them
     npts = cc_array.shape[1]
+
     if f_substack_len:
+        # get time information
         Ttotal = cc_time[-1]-cc_time[0]             # total duration of what we have now
-        dtime  = np.timedelta64(f_substack_len,'s')
-
-        # number of data chuncks
         tstart = cc_time[0]
-        i=0 
-        n_corr = np.zeros(shape=(int(Ttotal/dtime),npts),dtype=np.float32)
-        t_corr = np.empty(int(Ttotal/dtime),dtype='datetime64[s]')                                                   
 
-        while tstart < cc_time[-1]:                                                                 
+        nstack = int(np.round(Ttotal/f_substack_len))
+        s_corr = np.zeros(shape=(nstack,npts),dtype=np.float32)
+        n_corr = np.zeros(nstack,dtype=np.int)
+        t_corr = np.zeros(nstack,dtype=np.float)
+        crap   = np.zeros(npts,dtype=np.float32)                                              
+
+        for istack in range(nstack):                                                                   
             # find the indexes of all of the windows that start or end within 
-            itime = np.where( (cc_time >= tstart) & (cc_time < tstart+dtime) )[0]  
-            if len(itime)==0:tstart+=dtime;continue
-            
-            n_corr = np.mean(cc_array[itime],axis=0)
-            t_corr = tstart               
-            tstart += dtime
-            print('correlation done and stacked at time %s' % str(t_corr[i]))
-            i+=1
+            itime  = np.where( (cc_time >= tstart) & (cc_time < tstart+f_substack_len) )[0]  
+            s_corr[istack] = np.mean(cc_array[itime,:],axis=0)    # linear average of the correlation 
+            n_corr[istack] = len(itime)           # number of windows stacks
+            t_corr[istack] = tstart               # save the time stamps
+            tstart += f_substack_len
+            #print('correlation done and stacked at time %s' % str(t_corr[istack]))
+
     else:
         # do all averaging
-        n_corr = np.zeros(shape=(int(Ttotal/dtime),npts),dtype=np.float32)
-        t_corr = np.empty(int(Ttotal/dtime),dtype='datetime64[s]')
+        s_corr = np.zeros(npts,dtype=np.float32)
+        n_corr = 1
+        t_corr = cc_time[0]
+        s_corr = np.mean(cc_array[:],axis=0)
+    
+    return s_corr,t_corr,n_corr
 
 def get_SNR(corr,snr_parameters,parameters):
     '''
@@ -1155,45 +1069,12 @@ def get_SNR(corr,snr_parameters,parameters):
             nsnr[ii] = nsignal/nnoise
             ssnr[ii] = ssignal/snoise
 
-        #------plot the signals-------
-        '''
-        plt.figure(figsize=(16,3))
-        indx0 = 100*sampling_rate
-        tt = np.arange(-100*sampling_rate,100*sampling_rate+1)/sampling_rate
-        plt.plot(tt,ncorr[indx-indx0:indx+indx0+1],'k-',linewidth=0.6)
-        plt.title('psnr %4.1f nsnr %4.1f ssnr %4.1f' % (psnr[ii],nsnr[ii],ssnr[ii]))
-        plt.grid(True)
-        plt.show()
-        '''
-
     parameters['psnr'] = psnr[1:-1]
     parameters['nsnr'] = nsnr[1:-1]
     parameters['ssnr'] = nsnr[1:-1]
     parameters['freq'] = freq[1:-1]
 
     return parameters
-
-def nextpow2(x):
-    """
-    Returns the next power of 2 of x.
-
-    :type x: int 
-    :returns: the next power of 2 of x
-
-    """
-
-    return int(np.ceil(np.log2(np.abs(x)))) 	
-
-def abs_max(arr):
-    """
-    Returns array divided by its absolute maximum value.
-
-    :type arr:`~numpy.ndarray` 
-    :returns: Array divided by its absolute maximum value
-    
-    """
-    
-    return (arr.T / np.abs(arr.max(axis=-1))).T
 
 
 def pws(arr,sampling_rate,power=2,pws_timegate=5.):
@@ -1264,7 +1145,6 @@ def check_sample_gaps(stream,date_info):
     freqs = []	
     for tr in stream:
         freqs.append(int(tr.stats.sampling_rate))
-
     freq = max(freqs)
     for tr in stream:
         if int(tr.stats.sampling_rate) != freq:
@@ -1358,21 +1238,6 @@ def fft_parameters(fft_para,source_params,inv,Nfft,data_t):
              'latitude':lat,
              'elevation_in_m':el}
     return parameters   
-
-def stats_to_dict(stats,stat_type):
-    """
-    Converts obspy.core.trace.Stats object to dict
-    :type stats: `~obspy.core.trace.Stats` object.
-    :type source: str
-    :param source: 'source' or 'receiver'
-    """
-    stat_dict = {'{}_network'.format(stat_type):stats['network'],
-                 '{}_station'.format(stat_type):stats['station'],
-                 '{}_channel'.format(stat_type):stats['channel'],
-                 '{}_delta'.format(stat_type):stats['delta'],
-                 '{}_npts'.format(stat_type):stats['npts'],
-                 '{}_sampling_rate'.format(stat_type):stats['sampling_rate']}
-    return stat_dict 
 
 def NCF_denoising(img_to_denoise,Mdate,Ntau,NSV):
 
