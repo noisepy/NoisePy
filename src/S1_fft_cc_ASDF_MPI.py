@@ -17,15 +17,21 @@ if not sys.warnoptions:
     warnings.simplefilter("ignore")
 
 '''
-This main script of NoisePy:
+This main script of NoisePy. 
     1) read the data
     2) noise pre-processing: slice and pre process data
     3) FFT all and store in memory
     4) cross correlate for each station pair.
     
-    
-    2) output FFT data of each station in ASDF format if needed and load them in memory for
-        later cross-correlation; NOTE:
+Data format:
+    - can read in mseed, SAC, ASDF
+    - outputs in ASDF
+Parallelization:
+ 
+    This job should be launched on each node and parallelized according to the number
+    of cores for each node available. It parallelizes over a "time period" (e.g. 1 month) that contains multiple
+    time chunks (e.g. half days) and returns matrices of the cross correlations with one file per time chunks.
+    The job outputs one file of all cross correlations within each time chunk.
 
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
          Marine Denolle (mdenolle@fas.harvard.edu)
@@ -33,6 +39,7 @@ Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
 To do list:
     1) tune the script to read SAC/miniSEED files
     2) implement max_kurtosis?
+    3) implements the option to take on the entire number of cores.
 '''
 
 tt0=time.time()
