@@ -18,18 +18,20 @@ if not sys.warnoptions:
 
 '''
 This main script of NoisePy:
-    1) read the saved noise data in user-defined chunck as inc_hours, cut them into smaller
+    1) reads the saved noise data in user-defined chunck as inc_hours, cut them into smaller
         length segments, do general pre-processing (trend, normalization) and then do FFT;
-    2) output FFT data of each station in ASDF format if needed and load them in memory for
+    2) outputs FFT data of each station in ASDF format if needed and load them in memory for
         later cross-correlation;
-    3) perform cross-correlation for all station pairs in that time chunck and output the
-        sub-stacked (if selected) into ASDF format
+    3) performs cross-correlation for all station pairs in that time chunck and output the
+        sub-stacked (if selected) into ASDF format;
+    4) has the option to read SAC/mseed data stored in local machine. (Jul.8.2019)
 
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
          Marine Denolle (mdenolle@fas.harvard.edu)
         
 Note:
-    1) tune the script to read SAC/miniSEED files
+    1) to read SAC/mseed files, we assume the users have sorted their data according to the 
+    time chunck they want to break and store them in a folder started with Event_20*
     2) implement max_kurtosis?
 '''
 
@@ -40,34 +42,22 @@ tt0=time.time()
 ########################################
 
 #------absolute path parameters-------
-rootpath  = '/Users/chengxin/Documents/Harvard/NoisePy/v4.0_July'                       # root path for this data processing
+rootpath  = '/Users/chengxin/Documents/Research/Harvard/Kanto'                       # root path for this data processing
 FFTDIR    = os.path.join(rootpath,'FFT')                # dir to store FFT data
 CCFDIR    = os.path.join(rootpath,'CCF')                # dir to store CC data
-data_dir  = os.path.join(rootpath,'RAW_DATA')           # dir where noise data is located
+data_dir  = os.path.join(rootpath,'noise_data')         # dir where noise data is located
 if (len(glob.glob(data_dir))==0): 
     raise ValueError('No data file in %s',data_dir)
 
-# load useful download info
-dfile = os.path.join(data_dir,'download_info.txt')
-down_info = eval(open(dfile).read())
-samp_freq = down_info['samp_freq']
-freqmin   = down_info['freqmin']
-freqmax   = down_info['freqmax']
-start_date = down_info['start_date']
-end_date   = down_info['end_date']
-inc_hours  = down_info['inc_hours']
-nsta       = down_info['inc_hours']
-
 #-------some control parameters--------
-input_fmt   = 'asdf'            # string: 'asdf', 'sac','mseed' 
+input_fmt   = 'SAC'            # string: 'ASDF', 'SAC','mseed' 
 to_whiten   = False             # False (no whitening), or running-mean, one-bit normalization
 time_norm   = False             # False (no time normalization), or running-mean, one-bit normalization
 cc_method   = 'deconv'          # select between raw, deconv and coherency
-save_fft    = True              # True to save fft data, or False
+save_fft    = False             # True to save fft data, or False
 flag        = True              # print intermediate variables and computing time for debugging purpose
 
 # pre-processing parameters 
-dt        = 1/samp_freq
 cc_len    = 3600                # basic unit of data length for fft (s)
 step      = 1800                # overlapping between each cc_len (s)
 smooth_N  = 100                 # moving window length for time/freq domain normalization if selected
@@ -77,6 +67,26 @@ maxlag         = 500            # lags of cross-correlation to save
 substack       = True           # sub-stack daily cross-correlation or not
 substack_len   = 4*cc_len       # Time unit in sectons to stack over: need to be integer times of cc_len
 smoothspect_N  = 10             # moving window length to smooth spectrum amplitude
+
+# load useful download info if start from ASDF
+if input_fmt == 'ASDF':
+    dfile = os.path.join(data_dir,'download_info.txt')
+    down_info = eval(open(dfile).read())
+    samp_freq = down_info['samp_freq']
+    freqmin   = down_info['freqmin']
+    freqmax   = down_info['freqmax']
+    start_date = down_info['start_date']
+    end_date   = down_info['end_date']
+    inc_hours  = down_info['inc_hours']
+    nsta       = down_info['inc_hours']
+else:   # SAC or mseed format
+    samp_freq = 20
+    freqmin   = 0.05
+    freqmax   = 4
+    start_date = ["2010_12_16_0_0_0"]
+    end_date   = ["2010_12_18_0_0_0"]
+    inc_hours  = 1*24
+dt = 1/samp_freq
 
 # criteria for data selection
 max_over_std = 10               # maximum threshold between the maximum absolute amplitude and the STD of the time series
@@ -93,7 +103,6 @@ fc_para={'samp_freq':samp_freq,'dt':dt,'cc_len':cc_len,'step':step,'freqmin':fre
     'maxlag':maxlag,'max_over_std':max_over_std,'max_kurtosis':max_kurtosis,'MAX_MEM':MAX_MEM}
 # save fft metadata for future reference
 fc_metadata  = os.path.join(rootpath,'fft_cc_data.txt')       
-
 
 #######################################
 ###########PROCESSING SECTION##########
@@ -114,26 +123,41 @@ if rank == 0:
     fout.write(str(fc_para));fout.close()
 
     # set variables to broadcast
-    tdir = sorted(glob.glob(os.path.join(data_dir,'*.h5')))
+    if input_fmt == 'ASDF':
+        tdir = sorted(glob.glob(os.path.join(data_dir,'*.h5')))
+    else:
+        tdir = sorted(glob.glob(os.path.join(data_dir,'Event_*')))
+        # get nsta by loop through all event folder
+        nsta = 0
+        for ii in range(len(tdir)):
+            tnsta = len(glob.glob(os.path.join(tdir[ii],'*.sac')))
+            if nsta<tnsta:nsta=tnsta
+
     nchunck = len(tdir)
     splits  = nchunck
     if nchunck==0:
         raise IOError('Abort! no available seismic files for FFT')
 else:
-    splits,tdir = [None for _ in range(2)]
+    if input_fmt == 'ASDF':
+        splits,tdir = [None for _ in range(2)]
+    else: splits,tdir,nsta = [None for _ in range(3)]
 
 # broadcast the variables
 splits = comm.bcast(splits,root=0)
 tdir  = comm.bcast(tdir,root=0)
 extra = splits % size
+if input_fmt != 'ASDF': nsta = comm.bcast(nsta,root=0)
 
 # MPI loop: loop through each user-defined time chunck
 for ick in range (rank,splits+size-extra,size):
     if ick<splits:
         t10=time.time()   
-            
-        ds=pyasdf.ASDFDataSet(tdir[ick],mode='r')         
-        sta_list = ds.waveforms.list()    
+        
+        if input_fmt == 'ASDF':
+            ds=pyasdf.ASDFDataSet(tdir[ick],mpi=False,mode='r') 
+            sta_list = ds.waveforms.list()
+        else:
+            sta_list = glob.glob(os.path.join(tdir[ick],'*.sac'))   
         if (len(sta_list)==0):
             print('continue! no data in %s'%tdir[ick]);continue
 
@@ -158,22 +182,35 @@ for ick in range (rank,splits+size-extra,size):
         iii = 0
         for ista in range(len(sta_list)):
             tmps = sta_list[ista]
-            # get station and inventory
-            try:
-                inv1 = ds.waveforms[tmps]['StationXML']
-            except Exception as e:
-                print(e);raise ValueError('abort! no stationxml for %s in file %s'%(tmps,tdir[ick]))
-            sta,net,lon,lat,elv,loc = noise_module.sta_info_from_inv(inv1)
 
-            #------get day information: works better than just list the tags------
-            all_tags = ds.waveforms[tmps].get_waveform_tags()
-            if len(all_tags)==0:continue
+            if input_fmt == 'ASDF':
+                # get station and inventory
+                try:
+                    inv1 = ds.waveforms[tmps]['StationXML']
+                except Exception as e:
+                    print(e);raise ValueError('abort! no stationxml for %s in file %s'%(tmps,tdir[ick]))
+                sta,net,lon,lat,elv,loc = noise_module.sta_info_from_inv(inv1)
+
+                #------get day information: works better than just list the tags------
+                all_tags = ds.waveforms[tmps].get_waveform_tags()
+                if len(all_tags)==0:continue
+                
+            else: # get station information
+                all_tags = [1]
+                sta = tmps.split('/')[-1]
 
             #----loop through each stream----
             for itag in range(len(all_tags)):
                 if flag:print("working on station %s and trace %s" % (sta,all_tags[itag]))
 
-                source = ds.waveforms[tmps][all_tags[itag]]
+                # read waveform data
+                if input_fmt == 'ASDF':
+                    source = ds.waveforms[tmps][all_tags[itag]]
+                else:
+                    source = obspy.read(tmps)
+                    inv1   = noise_module.stats2inv(source[0].stats)
+                    sta,net,lon,lat,elv,loc = noise_module.sta_info_from_inv(inv1)
+
                 comp = source[0].stats.channel
                 if len(source)==0:continue
                 station.append(sta);network.append(net);channel.append(comp),clon.append(lon)
@@ -192,7 +229,11 @@ for ick in range (rank,splits+size-extra,size):
                 if save_fft:
                     # save FFTs into HDF5 format
                     crap=np.zeros(shape=(N,Nfft2),dtype=np.complex64)
-                    fft_h5=os.path.join(FFTDIR,tdir[ick].split('/')[-1])
+                    if input_fmt == 'ASDF':
+                        tname = tdir[ick].split('/')[-1]
+                    else: 
+                        tname = tdir[ick].split('/')[-1]+'.h5'
+                    fft_h5=os.path.join(FFTDIR,tname)
 
                     with pyasdf.ASDFDataSet(fft_h5,mpi=False,compression=None) as fft_ds:
                         parameters = noise_module.fft_parameters(fc_para,source_params,inv1,Nfft,dataS_t[:,0])
@@ -212,7 +253,8 @@ for ick in range (rank,splits+size-extra,size):
                 fft_flag[iii]  = 1
                 fft_time[iii]  = dataS_t[:,0]
                 iii+=1
-        del ds
+        
+        if input_fmt == 'ASDF': del ds
 
         # check whether array size is enough
         if iii!=nsta:
@@ -252,7 +294,11 @@ for ick in range (rank,splits+size-extra,size):
                 t3=time.time()
 
                 #---------------keep daily cross-correlation into a hdf5 file--------------
-                cc_h5 = os.path.join(CCFDIR,tdir[ick].split('/')[-1])
+                if input_fmt == 'ASDF':
+                    tname = tdir[ick].split('/')[-1]
+                else: 
+                    tname = tdir[ick].split('/')[-1]+'.h5'
+                cc_h5 = os.path.join(CCFDIR,tname)
                 crap  = np.zeros(corr.shape,dtype=corr.dtype)
 
                 with pyasdf.ASDFDataSet(cc_h5,mpi=False) as ccf_ds:
@@ -282,7 +328,7 @@ for ick in range (rank,splits+size-extra,size):
         fout.write(str(path_para));fout.close()
     
         t11 = time.time()
-        print('it takes %6.2fs to process the chunck of %s' % (t11-t10,tdir[ick]))
+        print('it takes %6.2fs to process the chunck of %s' % (t11-t10,tdir[ick].split('/')[-1]))
 
 tt1 = time.time()
 print('it takes %6.2fs to process step 1 in total' % (tt1-tt0))

@@ -30,7 +30,7 @@ tt0=time.time()
 ########################################
 
 # absolute path parameters
-rootpath  = '/Users/chengxin/Documents/Research/code/Github/NoisePy/src/test/real_data'                       # root path for this data processing
+rootpath  = '/Users/chengxin/Documents/Research/Harvard/Kanto'                       # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                    # dir where CC data is stored
 STACKDIR  = os.path.join(rootpath,'STACK') 
 
@@ -157,14 +157,12 @@ for ipath in range (rank,splits+size-extra,size):
 
         # do substacking if needed
         if f_substack:
-            print(cc_time)
             substacks,stime,num_stacks = noise_module.do_stacking(cc_array[:iseg],cc_time[:iseg],f_substack_len)
             t2=time.time()
             if flag:print('finished substacking, which takes %6.2fs'%(t2-t1))
             
             if out_format=='ASDF':
                 stack_h5 = os.path.join(STACKDIR,idir+'/'+outfn)
-                print(stack_h5)
                 with pyasdf.ASDFDataSet(stack_h5,mpi=False) as ds:
                     for iii in range(substacks.shape[0]):
                         tparameters['time']  = stime
@@ -182,8 +180,9 @@ for ipath in range (rank,splits+size-extra,size):
             with pyasdf.ASDFDataSet(stack_h5,mpi=False) as ds:
                 tparameters['time']  = alltime
                 tparameters['ngood'] = num_stacks
-                data_type = 'T'+str(int(alltime))
-                ds.add_auxiliary_data(data=allstacks, data_type=data_type, path='allstack', parameters=tparameters)
+                tpath     = ttr[2][-1]+ttr[6][-1]
+                data_type = 'Allstack'
+                ds.add_auxiliary_data(data=allstacks, data_type=data_type, path=tpath, parameters=tparameters)
 
         t5 = time.time()
         if flag:print('takes %6.2fs to process one chunck data, %6.2fs for all stacking' %(t5-t0,t4-t3))
