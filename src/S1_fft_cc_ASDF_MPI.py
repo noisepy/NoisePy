@@ -52,9 +52,9 @@ tt0=time.time()
 rootpath  = '/Users/chengxin/Documents/Harvard/NoisePy/v4.0_July'                       # root path for this data processing
 FFTDIR    = os.path.join(rootpath,'FFT')                # dir to store FFT data
 CCFDIR    = os.path.join(rootpath,'CCF')                # dir to store CC data
-data_dir  = os.path.join(rootpath,'RAW_DATA')           # dir where noise data is located
-if (len(glob.glob(data_dir))==0): 
-    raise ValueError('No data file in %s',data_dir)
+DATADIR  = os.path.join(rootpath,'RAW_DATA')           # dir where noise data is located
+if (len(glob.glob(DATADIR))==0): 
+    raise ValueError('No data file in %s',DATADIR)
 
 # load useful download info
 dfile = os.path.join(data_dir,'download_info.txt')
@@ -123,7 +123,7 @@ if rank == 0:
     fout.write(str(fc_para));fout.close()
 
     # set variables to broadcast
-    tdir = sorted(glob.glob(os.path.join(data_dir,'*.h5')))
+    tdir = sorted(glob.glob(os.path.join(DATADIR,'*.h5')))
     nchunck = len(tdir)
     splits  = nchunck
     if nchunck==0:
