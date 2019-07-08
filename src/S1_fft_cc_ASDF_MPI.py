@@ -18,17 +18,19 @@ if not sys.warnoptions:
 
 '''
 This main script of NoisePy:
-    1) read the saved noise data in user-defined chunck as inc_hours, cut them into smaller
-        length segments, do general pre-processing (trend, normalization) and then do FFT;
+    1) read the data
+    2) noise pre-processing: slice and pre process data
+    3) FFT all and store in memory
+    4) cross correlate for each station pair.
+    
+    
     2) output FFT data of each station in ASDF format if needed and load them in memory for
-        later cross-correlation;
-    3) perform cross-correlation for all station pairs in that time chunck and output the
-        sub-stacked (if selected) into ASDF format
+        later cross-correlation; NOTE:
 
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
          Marine Denolle (mdenolle@fas.harvard.edu)
         
-Note:
+To do list:
     1) tune the script to read SAC/miniSEED files
     2) implement max_kurtosis?
 '''
@@ -189,23 +191,24 @@ for ick in range (rank,splits+size-extra,size):
                 Nfft = source_white.shape[1];Nfft2 = Nfft//2
                 if flag:print('N and Nfft are %d (proposed %d),%d (proposed %d)' %(N,nseg_chunck,Nfft,nnfft))
 
-                if save_fft:
-                    # save FFTs into HDF5 format
-                    crap=np.zeros(shape=(N,Nfft2),dtype=np.complex64)
-                    fft_h5=os.path.join(FFTDIR,tdir[ick].split('/')[-1])
+                    ##### THIS IS NOT NECESSARY AND WILL PROBABLY NOT BE USED
+              #  if save_fft:
+              #      # save FFTs into HDF5 format
+              #      crap=np.zeros(shape=(N,Nfft2),dtype=np.complex64)
+              #      fft_h5=os.path.join(FFTDIR,tdir[ick].split('/')[-1])
 
-                    with pyasdf.ASDFDataSet(fft_h5,mpi=False,compression=None) as fft_ds:
-                        parameters = noise_module.fft_parameters(fc_para,source_params,inv1,Nfft,dataS_t[:,0])
+              #      with pyasdf.ASDFDataSet(fft_h5,mpi=False,compression=None) as fft_ds:
+              #          parameters = noise_module.fft_parameters(fc_para,source_params,inv1,Nfft,dataS_t[:,0])
                         
-                        path = '{0:s}_{1:s}_{2:s}_{3:s}'.format(net,sta,comp,str(loc))
-                        if itag==0:
-                            try: fft_ds.add_stationxml(inv1)
-                            except Exception: pass
+              #          path = '{0:s}_{1:s}_{2:s}_{3:s}'.format(net,sta,comp,str(loc))
+              #          if itag==0:
+              #              try: fft_ds.add_stationxml(inv1)
+              #              except Exception: pass
 
-                        crap[:,:Nfft2]=source_white[:,:Nfft2]
-                        fft_ds.add_auxiliary_data(data=crap, data_type='FFT', path=path, parameters=parameters)
+              #          crap[:,:Nfft2]=source_white[:,:Nfft2]
+              #          fft_ds.add_auxiliary_data(data=crap, data_type='FFT', path=path, parameters=parameters)
 
-                # load fft data in memory for cross-correlations
+                # store fft data in memory for cross-correlations
                 data = source_white[:,:Nfft2]
                 fft_array[iii] = data.reshape(data.size)
                 fft_std[iii]   = source_params[:,1]
