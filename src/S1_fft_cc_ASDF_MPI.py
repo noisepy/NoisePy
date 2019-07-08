@@ -57,7 +57,7 @@ if (len(glob.glob(DATADIR))==0):
     raise ValueError('No data file in %s',DATADIR)
 
 # load useful download info
-dfile = os.path.join(data_dir,'download_info.txt')
+dfile = os.path.join(DATADIR,'download_info.txt')
 down_info = eval(open(dfile).read())
 samp_freq = down_info['samp_freq']
 freqmin   = down_info['freqmin']
