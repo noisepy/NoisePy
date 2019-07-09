@@ -4,6 +4,7 @@ import obspy
 import pyasdf
 import os, glob
 import numpy as np
+import pandas as pd
 import noise_module
 from mpi4py import MPI
 from obspy import UTCDateTime
@@ -64,6 +65,8 @@ inc_hours  = 48                                 # length of data for each reques
 # time tags
 starttime = obspy.UTCDateTime(start_date[0])       
 endtime   = obspy.UTCDateTime(end_date[0])
+if flag:
+    print('station.list selected [%s] for data from %s to %s with %sh interval'%(down_list,starttime,endtime,inc_hours))
 
 # assemble parameters for pre-processing
 prepro_para = {'rm_resp':rm_resp,'respdir':respdir,'freqmin':freqmin,'freqmax':freqmax,\
@@ -88,7 +91,7 @@ if down_list:
     try:
         location = list(locs.iloc[:]['location'])
     except Exception as e:
-        print(e);location = ['*']*nsta
+        location = ['*']*nsta
 
 else:
 
@@ -167,7 +170,18 @@ for ick in range (rank,splits+size-extra,size):
                 for ista in range(nsta):
 
                     # select from existing inventory database
-                    sta_inv = inv1.select(network=net[ista],station=sta[ista],location=location[ista])    
+                    if down_list:
+                        try:
+                            sta_inv = client.get_stations(network=net[ista],station=sta[ista],\
+                                location=location[ista],starttime=s1,endtime=s2,level="response")
+                        except Exception as e:
+                            print(e);continue
+                        if sta_inv[0][0][0].location_code:
+                            location[ista] = sta_inv[0][0][0].location_code
+                    else:
+                        sta_inv = inv1.select(network=net[ista],station=sta[ista],location=location[ista]) 
+                        if not sta_inv:
+                            continue 
 
                     # add the inventory for all components + all time of this tation         
                     try:ds.add_stationxml(sta_inv) 
@@ -180,13 +194,15 @@ for ick in range (rank,splits+size-extra,size):
                             channel=chan[ista],location=location[ista],starttime=s1,endtime=s2)
                         t1=time.time()
                     except Exception as e:
-                        print(e);continue
+                        print(e,'for',sta[ista]);continue
                         
                     # preprocess to clean data  
                     tr = noise_module.preprocess_raw(tr,sta_inv,prepro_para,date_info)
                     t2 = time.time()
 
                     if len(tr):
+                        if location[ista] == '*':
+                            location[ista] = str('00')
                         new_tags = '{0:s}_{1:s}'.format(chan[ista].lower(),location[ista].lower())
                         ds.add_waveforms(tr,tag=new_tags)
 

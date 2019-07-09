@@ -1,1 +1,0 @@
-{'rm_resp': False, 'respdir': 'none', 'freqmin': 0.05, 'freqmax': 4, 'samp_freq': 10, 'start_date': ['2018_05_01_0_0_0'], 'end_date': ['2018_05_21_0_0_0'], 'inc_hours': 48, 'nsta': 18}

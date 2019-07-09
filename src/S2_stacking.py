@@ -15,12 +15,11 @@ if not sys.warnoptions:
 '''
 Stacking script of NoisePy:
     1) read the saved cross-correlation data to do sub-stacks (if needed) and all-time average;
-    2) save the outputs in ASDF or SAC format based on user's choice.
+    2) two ptions to do stacking: linear and pws
+    3) save the outputs in ASDF or SAC format based on user's choice.
 
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
          Marine Denolle (mdenolle@fas.harvard.edu)
-        
-Note:
 '''
 
 tt0=time.time()
@@ -53,9 +52,9 @@ substack_len= fc_para['substack_len']
 # stacking para
 f_substack = True                                           # whether to do sub-stacking (different from that in S1)
 f_substack_len = 10*cc_len                                  # length for sub-stacking to output
-out_format = 'ASDF'                                         # ASDF or SAC format for output
-flag       = True                                           # output intermediate args for debugging
-ccomp      = ['EE','EN','EZ','NE','NN','NZ','ZZ','ZE','ZN'] # ['ZZ'] for one component
+out_format   = 'ASDF'                                       # ASDF or SAC format for output
+flag         = True                                         # output intermediate args for debugging
+stack_method = 'pws'                                        # linear, pws
 
 # maximum memory allowed per core in GB
 MAX_MEM = 4.0
@@ -64,7 +63,7 @@ MAX_MEM = 4.0
 stack_para={'samp_freq':samp_freq,'cc_len':cc_len,'step':step,'rootpath':rootpath,'STACKDIR':\
     STACKDIR,'start_date':start_date[0],'end_date':end_date[0],'inc_hours':inc_hours,\
     'substack':substack,'substack_len':substack_len,'maxlag':maxlag,'MAX_MEM':MAX_MEM,\
-    'f_substack':f_substack,'f_substack_len':f_substack_len}
+    'f_substack':f_substack,'f_substack_len':f_substack_len,'stack_method':stack_method}
 # save fft metadata for future reference
 stack_metadata  = os.path.join(rootpath,'stack_data.txt') 
 
@@ -157,7 +156,7 @@ for ipath in range (rank,splits+size-extra,size):
 
         # do substacking if needed
         if f_substack:
-            substacks,stime,num_stacks = noise_module.do_stacking(cc_array[:iseg],cc_time[:iseg],f_substack_len)
+            substacks,stime,num_stacks = noise_module.do_stacking(cc_array[:iseg],cc_time[:iseg],f_substack_len,stack_para)
             t2=time.time()
             if flag:print('finished substacking, which takes %6.2fs'%(t2-t1))
             
@@ -173,7 +172,7 @@ for ipath in range (rank,splits+size-extra,size):
         
         # do all stacking
         t3=time.time()
-        allstacks,alltime,num_stacks = noise_module.do_stacking(cc_array,cc_time,0)
+        allstacks,alltime,num_stacks = noise_module.do_stacking(cc_array,cc_time,0,stack_para)
         t4=time.time()
         if out_format=='ASDF':
             stack_h5 = os.path.join(STACKDIR,idir+'/'+outfn)

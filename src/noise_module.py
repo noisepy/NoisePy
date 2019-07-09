@@ -960,7 +960,7 @@ def load_pfiles(pfiles):
         paths_all = list(set(paths_all+tpath))
     return paths_all
 
-def do_stacking(cc_array,cc_time,f_substack_len):
+def do_stacking(cc_array,cc_time,f_substack_len,stack_para):
     '''
     stacks the cross correlation data according to the interval of substack_len
 
@@ -968,11 +968,14 @@ def do_stacking(cc_array,cc_time,f_substack_len):
     cc_array: 2D numpy float32 matrix containing all segmented cross-correlation data
     cc_time: 1D numpy array of all timestamp information for each segment of cc_array
     f_substack_len: length of time intervals for sub-stacking
+    smethod: stacking method, chosen between linear and pws
 
     return variables:
     '''
     # do substacking and output them
-    npts = cc_array.shape[1]
+    samp_freq = stack_para['samp_freq']
+    smethod   = stack_para['stack_method']
+    npts      = cc_array.shape[1]
 
     if f_substack_len:
         # get time information
@@ -988,7 +991,10 @@ def do_stacking(cc_array,cc_time,f_substack_len):
         for istack in range(nstack):                                                                   
             # find the indexes of all of the windows that start or end within 
             itime  = np.where( (cc_time >= tstart) & (cc_time < tstart+f_substack_len) )[0]  
-            s_corr[istack] = np.mean(cc_array[itime,:],axis=0)    # linear average of the correlation 
+            if smethod == 'linear':
+                s_corr[istack] = np.mean(cc_array[itime,:],axis=0)    # linear average of the correlation
+            elif smethod == 'pws':
+                s_corr[istack] = pws(cc_array[itime,:],samp_freq) 
             n_corr[istack] = len(itime)           # number of windows stacks
             t_corr[istack] = tstart               # save the time stamps
             tstart += f_substack_len
@@ -999,7 +1005,10 @@ def do_stacking(cc_array,cc_time,f_substack_len):
         s_corr = np.zeros(npts,dtype=np.float32)
         n_corr = 1
         t_corr = cc_time[0]
-        s_corr = np.mean(cc_array[:],axis=0)
+        if smethod == 'linear':
+            s_corr = np.mean(cc_array[:],axis=0)
+        elif smethod == 'pws':
+            s_corr = pws(cc_array[:],samp_freq) 
     
     return s_corr,t_corr,n_corr
 
