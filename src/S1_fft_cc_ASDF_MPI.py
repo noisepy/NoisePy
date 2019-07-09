@@ -46,7 +46,7 @@ tt0=time.time()
 rootpath  = '/Users/chengxin/Documents/Research/Harvard/Kanto'                       # root path for this data processing
 FFTDIR    = os.path.join(rootpath,'FFT')                # dir to store FFT data
 CCFDIR    = os.path.join(rootpath,'CCF')                # dir to store CC data
-data_dir  = os.path.join(rootpath,'noise_data')         # dir where noise data is located
+DATADIR  = os.path.join(rootpath,'noise_data')         # dir where noise data is located
 if (len(glob.glob(data_dir))==0): 
     raise ValueError('No data file in %s',data_dir)
 
