@@ -23,26 +23,27 @@ from obspy.core.inventory import Inventory, Network, Station, Channel, Site
 def cut_trace_make_statis(fft_para,source,flag):
     '''
     cut continous noise data into user-defined segments, estimate the statistics of 
-    each segment and keep timestamp for later use
+    each segment and keep timestamp for later use.
 
-    fft_para: dictionary containing all useful variables for later fft
-    source: obspy stream objects of noise data
-    flag: boolen variable to output intermediate variables or not
+    fft_para: dictionary containing all useful variables for the fft step.
+    source: obspy stream of noise data.
+    flag: boolen variable to output intermediate variables or not.
     '''
     # define return variables first
     source_params=[];dataS_t=[];dataS=[]
 
     # load parameters from structure
-    cc_len = fft_para['cc_len']
-    step   = fft_para['step']
+    cc_len = fft_para['cc_len']		# length of noise windows in seconds
+    step   = fft_para['step']		# duration of the lag in the windowing
 
     # statistic to detect segments that may be associated with earthquakes
-    all_madS = mad(source[0].data)
-    all_stdS = np.std(source[0].data)
+    all_madS = mad(source[0].data)	# median absolute deviation over all noise window
+    all_stdS = np.std(source[0].data)	# standard deviation over all noise window
     if all_madS==0 or all_stdS==0 or np.isnan(all_madS) or np.isnan(all_stdS):
         print("continue! madS or stdS equeals to 0 for %s" % source)
         return source_params,dataS_t,dataS
 
+    # inititialize variables
     trace_madS = []
     trace_stdS = []
     nonzeroS = []
@@ -52,14 +53,16 @@ def cut_trace_make_statis(fft_para,source,flag):
     #--------break a continous recording into pieces----------
     t0=time.time()
     for ii,win in enumerate(source[0].slide(window_length=cc_len, step=step)):
-        win.detrend(type="constant")
-        win.detrend(type="linear")
+	# note: these two steps are the most time consuming. This is to be sped up.
+	#	obspy uses scipy, so using scipy does not speed up much.
+        win.detrend(type="constant")	# remove mean
+        win.detrend(type="linear")	# remove trend
         trace_madS.append(np.max(np.abs(win.data))/all_madS)
         trace_stdS.append(np.max(np.abs(win.data))/all_stdS)
         nonzeroS.append(np.count_nonzero(win.data)/win.stats.npts)
-        nptsS.append(win.stats.npts)
-        win.taper(max_percentage=0.05,max_length=20)
-        source_slice.append(win)
+        nptsS.append(win.stats.npts)	# number of points in window
+        win.taper(max_percentage=0.05,max_length=20)	# taper window
+        source_slice.append(win)	# append slice of tapered noise window
     
     t1=time.time()
     if flag:
@@ -71,11 +74,11 @@ def cut_trace_make_statis(fft_para,source,flag):
     else:
         source_params = np.vstack([trace_madS,trace_stdS,nonzeroS]).T
 
-    #---------seems unnecessary for data already pre-processed with same length (zero-padding)-------
-    Nseg   = len(source_slice)
-    Npts   = np.max(nptsS)
-    dataS_t= np.zeros(shape=(Nseg,2),dtype=np.float)
-    dataS  = np.zeros(shape=(Nseg,Npts),dtype=np.float32)
+    Nseg   = len(source_slice)	# number of segments in the original window
+    Npts   = np.max(nptsS)	# number of points in the segments
+    dataS_t= np.zeros(shape=(Nseg,2),dtype=np.float)	# initialize
+    dataS  = np.zeros(shape=(Nseg,Npts),dtype=np.float32)# initialize
+    # create array of starttime and endtimes.
     for ii,trace in enumerate(source_slice):
         dataS_t[ii,0]= source_slice[ii].stats.starttime-obspy.UTCDateTime(1970,1,1)# convert to dataframe
         dataS_t[ii,1]= source_slice[ii].stats.endtime -obspy.UTCDateTime(1970,1,1)# convert to dataframe
@@ -86,13 +89,17 @@ def cut_trace_make_statis(fft_para,source,flag):
 
 def noise_processing(fft_para,dataS,flag):
     '''
-    perform time domain and frequency normalization according to user's need. note that
-    this step is not recommended if deconv or coherency method is selected for calculating
-    cross-correlation functions. 
+    perform time domain and frequency normalization according to user requirements. 
+    Note that there are discussions in the litterature on noise cross correlation processing
+    (REFs)
+    This may not be necessary for coherency and deconvolution (Prieto et al, 2008, 2009; Denolle et al, 2013)
 
+    # INPUT VARIABLES:
     fft_para: dictionary containing all useful variables used for fft
     dataS: data matrix containing all segmented noise data
     flag: boolen variable to output intermediate variables or not
+    # OUTPUT VARIABLES:
+    source_white: data matrix of processed Fourier spectra
     '''
     # load parameters first
     time_norm   = fft_para['time_norm']
@@ -104,11 +111,9 @@ def noise_processing(fft_para,dataS,flag):
     if time_norm:
         t0=time.time()   
 
-        if time_norm == 'one_bit': 
+        if time_norm == 'one_bit': 	# sign normalization
             white = np.sign(dataS)
-        elif time_norm == 'running_mean':
-            
-            #--------convert to 1D array for smoothing in time-domain---------
+        elif time_norm == 'running_mean': # running mean: normalization over smoothed absolute average           
             white = np.zeros(shape=dataS.shape,dtype=dataS.dtype)
             for kkk in range(N):
                 white[kkk,:] = dataS[kkk,:]/moving_ave(np.abs(dataS[kkk,:]),smooth_N)
@@ -116,28 +121,26 @@ def noise_processing(fft_para,dataS,flag):
         t1=time.time()
         if flag:
             print("temporal normalization takes %f s"%(t1-t0))
-    else:
+    else:	# don't normalize
         white = dataS
 
     #-----to whiten or not------
     if to_whiten:
-
         t0=time.time()
-        source_white = whiten(white,fft_para)
+        source_white = whiten(white,fft_para)	# whiten and return FFT
         t1=time.time()
         if flag:
             print("spectral whitening takes %f s"%(t1-t0))
     else:
-
         Nfft = int(next_fast_len(int(dataS.shape[1])))
-        source_white = scipy.fftpack.fft(white, Nfft, axis=1)
+        source_white = scipy.fftpack.fft(white, Nfft, axis=1) # return FFT
     
     return source_white
 
 def smooth_source_spect(cc_para,fft1):
     '''
-    take the source/receiver spectrum normalization for coherency/deconv method out of the
-    innermost for loop to save time
+    Smoothes the amplitude spectrum of a 2D matrix of Fourier spectra.
+    Used to speed up processing in correlation.
 
     input cc_para: dictionary containing useful cc parameters
           fft1: complex matrix containing source spectrum
@@ -169,8 +172,9 @@ def smooth_source_spect(cc_para,fft1):
 
 def stats2inv(stats,resp=None,filexml=None,locs=None):
 
-    # We'll first create all the various objects. These strongly follow the
-    # hierarchy of StationXML files.
+    #  Creates and inventory given the stats parameters in an obspy stream.
+    # INPUT:
+	
     inv = Inventory(networks=[],source="homegrown")
 
     if locs is None:

@@ -33,6 +33,7 @@ Note:
     1) to read SAC/mseed files, we assume the users have sorted their data according to the 
     time chunck they want to break and store them in a folder started with Event_20*
     2) implement max_kurtosis?
+    3) implements the option to take on the entire number of cores.
 '''
 
 tt0=time.time()
@@ -226,6 +227,7 @@ for ick in range (rank,splits+size-extra,size):
                 Nfft = source_white.shape[1];Nfft2 = Nfft//2
                 if flag:print('N and Nfft are %d (proposed %d),%d (proposed %d)' %(N,nseg_chunck,Nfft,nnfft))
 
+                # leaving the option to user whether save fft
                 if save_fft:
                     # save FFTs into HDF5 format
                     crap=np.zeros(shape=(N,Nfft2),dtype=np.complex64)
@@ -246,7 +248,7 @@ for ick in range (rank,splits+size-extra,size):
                         crap[:,:Nfft2]=source_white[:,:Nfft2]
                         fft_ds.add_auxiliary_data(data=crap, data_type='FFT', path=path, parameters=parameters)
 
-                # load fft data in memory for cross-correlations
+                # store fft data in memory for cross-correlations
                 data = source_white[:,:Nfft2]
                 fft_array[iii] = data.reshape(data.size)
                 fft_std[iii]   = source_params[:,1]
