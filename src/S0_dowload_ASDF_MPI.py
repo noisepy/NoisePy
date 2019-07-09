@@ -47,7 +47,7 @@ client    = Client('GEONET')                    # client/data center. see https:
 down_list = False                               # download stations from pre-compiled list
 oput_CSV  = True                                # output station.list to a CSV file to be used in later stacking steps
 flag      = True                                # print progress when running the script
-NewFreq   = 10                                  # resampling at X samples per seconds 
+samp_freq   = 10                                  # resampling at X samples per seconds 
 rm_resp   = False                               # False to not remove, True to remove, but 'inv' to remove with inventory
 respdir   = 'none'                              # output response directory (required if rm_resp is true and other than inv)
 freqmin   = 0.05                                # pre filtering frequency bandwidth
@@ -70,7 +70,7 @@ if flag:
 
 # assemble parameters for pre-processing
 prepro_para = {'rm_resp':rm_resp,'respdir':respdir,'freqmin':freqmin,'freqmax':freqmax,\
-    'samp_freq':NewFreq,'start_date':start_date,'end_date':end_date,'inc_hours':inc_hours}
+    'samp_freq':samp_freq,'start_date':start_date,'end_date':end_date,'inc_hours':inc_hours}
 metadata = os.path.join(direc,'download_info.txt') 
 
 # prepare station info (existing station list vs. fetching from client)
