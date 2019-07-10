@@ -154,7 +154,7 @@ for ick in range (rank,splits+size-extra,size):
     if ick<splits:
         t10=time.time()   
         
-        if input_fmt == 'ASDF':
+        if input_fmt == 'asdf':
             ds=pyasdf.ASDFDataSet(tdir[ick],mpi=False,mode='r') 
             sta_list = ds.waveforms.list()
         else:
@@ -184,7 +184,7 @@ for ick in range (rank,splits+size-extra,size):
         for ista in range(len(sta_list)):
             tmps = sta_list[ista]
 
-            if input_fmt == 'ASDF':
+            if input_fmt == 'asdf':
                 # get station and inventory
                 try:
                     inv1 = ds.waveforms[tmps]['StationXML']
@@ -205,7 +205,7 @@ for ick in range (rank,splits+size-extra,size):
                 if flag:print("working on station %s and trace %s" % (sta,all_tags[itag]))
 
                 # read waveform data
-                if input_fmt == 'ASDF':
+                if input_fmt == 'asdf':
                     source = ds.waveforms[tmps][all_tags[itag]]
                 else:
                     source = obspy.read(tmps)
