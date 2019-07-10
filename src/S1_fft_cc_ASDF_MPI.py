@@ -71,7 +71,7 @@ smoothspect_N  = 10             # moving window length to smooth spectrum amplit
 
 # load useful download info if start from ASDF
 if input_fmt == 'ASDF':
-    dfile = os.path.join(data_dir,'download_info.txt')
+    dfile = os.path.join(DATADIR,'download_info.txt')
     down_info = eval(open(dfile).read())
     samp_freq = down_info['samp_freq']
     freqmin   = down_info['freqmin']
