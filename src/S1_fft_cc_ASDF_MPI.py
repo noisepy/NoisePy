@@ -51,7 +51,7 @@ if (len(glob.glob(DATADIR))==0):
     raise ValueError('No data file in %s',DATADIR)
 
 #-------some control parameters--------
-input_fmt   = 'SAC'            # string: 'ASDF', 'SAC','mseed' 
+input_fmt   = 'sac'            # string: 'asdf', 'sac','mseed' 
 to_whiten   = False             # False (no whitening), or running-mean, one-bit normalization
 time_norm   = False             # False (no time normalization), or running-mean, one-bit normalization
 cc_method   = 'deconv'          # select between raw, deconv and coherency
@@ -70,7 +70,7 @@ substack_len   = 4*cc_len       # Time unit in sectons to stack over: need to be
 smoothspect_N  = 10             # moving window length to smooth spectrum amplitude
 
 # load useful download info if start from ASDF
-if input_fmt == 'ASDF':
+if input_fmt == 'asdf':
     dfile = os.path.join(DATADIR,'download_info.txt')
     down_info = eval(open(dfile).read())
     samp_freq = down_info['samp_freq']
@@ -80,7 +80,7 @@ if input_fmt == 'ASDF':
     end_date   = down_info['end_date']
     inc_hours  = down_info['inc_hours']
     nsta       = down_info['inc_hours']
-else:   # SAC or mseed format
+else:   # sac or mseed format
     samp_freq = 20
     freqmin   = 0.05
     freqmax   = 4
