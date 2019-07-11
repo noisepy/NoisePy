@@ -408,7 +408,9 @@ def portion_gaps(stream,date_info):
     #loop through all trace to accumulate gaps
     for ii in range(len(stream)-1):
         pgaps += (stream[ii+1].stats.starttime-stream[ii].stats.endtime)*stream[ii].stats.sampling_rate
-    return pgaps/npts
+    if npts!=0:pgaps=pgaps/npts
+    if npts==0:pgaps=1
+    return pgaps
 
 @jit('float32[:](float32[:],float32)')
 def segment_interpolate(sig1,nfric):

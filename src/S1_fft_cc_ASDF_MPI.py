@@ -51,7 +51,7 @@ if (len(glob.glob(DATADIR))==0):
     raise ValueError('No data file in %s',DATADIR)
 
 #-------some control parameters--------
-input_fmt   = 'SAC'            # string: 'ASDF', 'SAC','mseed' 
+input_fmt   = 'sac'            # string: 'asdf', 'sac','mseed' 
 to_whiten   = False             # False (no whitening), or running-mean, one-bit normalization
 time_norm   = False             # False (no time normalization), or running-mean, one-bit normalization
 cc_method   = 'deconv'          # select between raw, deconv and coherency
@@ -80,7 +80,7 @@ if input_fmt == 'ASDF':
     end_date   = down_info['end_date']
     inc_hours  = down_info['inc_hours']
     nsta       = down_info['inc_hours']
-else:   # SAC or mseed format
+else:   # sac or mseed format
     samp_freq = 20
     freqmin   = 0.05
     freqmax   = 4
@@ -99,7 +99,7 @@ MAX_MEM = 4.0
 # make a dictionary to store all variables: also for later cc
 fc_para={'samp_freq':samp_freq,'dt':dt,'cc_len':cc_len,'step':step,'freqmin':freqmin,'freqmax':freqmax,\
     'to_whiten':to_whiten,'time_norm':time_norm,'cc_method':cc_method,'smooth_N':smooth_N,'data_format':\
-    input_fmt,'rootpath':rootpath,'FFTDIR':FFTDIR,'start_date':start_date[0],'end_date':end_date[0],\
+    input_fmt,'rootpath':rootpath,'CCFDIR':CCDIR,'start_date':start_date[0],'end_date':end_date[0],\
     'inc_hours':inc_hours,'substack':substack,'substack_len':substack_len,'smoothspect_N':smoothspect_N,\
     'maxlag':maxlag,'max_over_std':max_over_std,'max_kurtosis':max_kurtosis,'MAX_MEM':MAX_MEM}
 # save fft metadata for future reference
@@ -115,8 +115,8 @@ rank = comm.Get_rank()
 size = comm.Get_size()
 
 if rank == 0:
-    if save_fft:
-        if not os.path.isdir(FFTDIR):os.mkdir(FFTDIR)
+#     if save_fft:
+#         if not os.path.isdir(FFTDIR):os.mkdir(FFTDIR)
     if not os.path.isdir(CCFDIR):os.mkdir(CCFDIR)
     
     # save metadata 
@@ -139,7 +139,7 @@ if rank == 0:
     if nchunck==0:
         raise IOError('Abort! no available seismic files for FFT')
 else:
-    if input_fmt == 'ASDF':
+    if input_fmt == 'asdf':
         splits,tdir = [None for _ in range(2)]
     else: splits,tdir,nsta = [None for _ in range(3)]
 
@@ -147,14 +147,14 @@ else:
 splits = comm.bcast(splits,root=0)
 tdir  = comm.bcast(tdir,root=0)
 extra = splits % size
-if input_fmt != 'ASDF': nsta = comm.bcast(nsta,root=0)
+if input_fmt != 'asdf': nsta = comm.bcast(nsta,root=0)
 
 # MPI loop: loop through each user-defined time chunck
 for ick in range (rank,splits+size-extra,size):
     if ick<splits:
         t10=time.time()   
         
-        if input_fmt == 'ASDF':
+        if input_fmt == 'asdf':
             ds=pyasdf.ASDFDataSet(tdir[ick],mpi=False,mode='r') 
             sta_list = ds.waveforms.list()
         else:
@@ -184,7 +184,7 @@ for ick in range (rank,splits+size-extra,size):
         for ista in range(len(sta_list)):
             tmps = sta_list[ista]
 
-            if input_fmt == 'ASDF':
+            if input_fmt == 'asdf':
                 # get station and inventory
                 try:
                     inv1 = ds.waveforms[tmps]['StationXML']
@@ -205,7 +205,7 @@ for ick in range (rank,splits+size-extra,size):
                 if flag:print("working on station %s and trace %s" % (sta,all_tags[itag]))
 
                 # read waveform data
-                if input_fmt == 'ASDF':
+                if input_fmt == 'asdf':
                     source = ds.waveforms[tmps][all_tags[itag]]
                 else:
                     source = obspy.read(tmps)
@@ -227,28 +227,28 @@ for ick in range (rank,splits+size-extra,size):
                 Nfft = source_white.shape[1];Nfft2 = Nfft//2
                 if flag:print('N and Nfft are %d (proposed %d),%d (proposed %d)' %(N,nseg_chunck,Nfft,nnfft))
 
-                # leaving the option to user whether save fft
-                if save_fft:
-                    # save FFTs into HDF5 format
-                    crap=np.zeros(shape=(N,Nfft2),dtype=np.complex64)
-                    if input_fmt == 'ASDF':
-                        tname = tdir[ick].split('/')[-1]
-                    else: 
-                        tname = tdir[ick].split('/')[-1]+'.h5'
-                    fft_h5=os.path.join(FFTDIR,tname)
+#                 # leaving the option to user whether save fft
+#                 if save_fft:
+#                     # save FFTs into HDF5 format
+#                     crap=np.zeros(shape=(N,Nfft2),dtype=np.complex64)
+#                     if input_fmt == 'ASDF':
+#                         tname = tdir[ick].split('/')[-1]
+#                     else: 
+#                         tname = tdir[ick].split('/')[-1]+'.h5'
+#                     fft_h5=os.path.join(FFTDIR,tname)
 
-                    with pyasdf.ASDFDataSet(fft_h5,mpi=False,compression=None) as fft_ds:
-                        parameters = noise_module.fft_parameters(fc_para,source_params,inv1,Nfft,dataS_t[:,0])
+#                     with pyasdf.ASDFDataSet(fft_h5,mpi=False,compression=None) as fft_ds:
+#                         parameters = noise_module.fft_parameters(fc_para,source_params,inv1,Nfft,dataS_t[:,0])
                         
-                        path = '{0:s}_{1:s}_{2:s}_{3:s}'.format(net,sta,comp,str(loc))
-                        if itag==0:
-                            try: fft_ds.add_stationxml(inv1)
-                            except Exception: pass
+#                         path = '{0:s}_{1:s}_{2:s}_{3:s}'.format(net,sta,comp,str(loc))
+#                         if itag==0:
+#                             try: fft_ds.add_stationxml(inv1)
+#                             except Exception: pass
 
-                        crap[:,:Nfft2]=source_white[:,:Nfft2]
-                        fft_ds.add_auxiliary_data(data=crap, data_type='FFT', path=path, parameters=parameters)
+#                         crap[:,:Nfft2]=source_white[:,:Nfft2]
+#                         fft_ds.add_auxiliary_data(data=crap, data_type='FFT', path=path, parameters=parameters)
 
-                # store fft data in memory for cross-correlations
+                # load fft data in memory for cross-correlations
                 data = source_white[:,:Nfft2]
                 fft_array[iii] = data.reshape(data.size)
                 fft_std[iii]   = source_params[:,1]
@@ -256,7 +256,7 @@ for ick in range (rank,splits+size-extra,size):
                 fft_time[iii]  = dataS_t[:,0]
                 iii+=1
         
-        if input_fmt == 'ASDF': del ds
+        if input_fmt == 'asdf': del ds
 
         # check whether array size is enough
         if iii!=nsta:
@@ -278,7 +278,7 @@ for ick in range (rank,splits+size-extra,size):
                 print('smoothing source takes %6.4fs' % (t1-t0))
 
             #-----------now loop III for each receiver B----------
-            for iiR in range(iiS+1,iii):
+            for iiR in range(iiS,iii): # include auto correlation!! why not?
                 if flag:print('receiver: %s %s' % (station[iiR],network[iiR]))
                 if not fft_flag[iiR]: continue
                     
@@ -296,7 +296,7 @@ for ick in range (rank,splits+size-extra,size):
                 t3=time.time()
 
                 #---------------keep daily cross-correlation into a hdf5 file--------------
-                if input_fmt == 'ASDF':
+                if input_fmt == 'asdf':
                     tname = tdir[ick].split('/')[-1]
                 else: 
                     tname = tdir[ick].split('/')[-1]+'.h5'
