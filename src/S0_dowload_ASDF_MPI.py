@@ -185,7 +185,7 @@ for ick in range (rank,splits+size-extra,size):
 
                     # add the inventory for all components + all time of this tation         
                     try:ds.add_stationxml(sta_inv) 
-                    except Exception:pass   
+                    except Exception: pass   
 
                     try:
                         # get data

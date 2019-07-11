@@ -47,8 +47,8 @@ rootpath  = '/Users/chengxin/Documents/Research/Harvard/Kanto'                  
 FFTDIR    = os.path.join(rootpath,'FFT')                # dir to store FFT data
 CCFDIR    = os.path.join(rootpath,'CCF')                # dir to store CC data
 DATADIR  = os.path.join(rootpath,'noise_data')         # dir where noise data is located
-if (len(glob.glob(data_dir))==0): 
-    raise ValueError('No data file in %s',data_dir)
+if (len(glob.glob(DATADIR))==0): 
+    raise ValueError('No data file in %s',DATADIR)
 
 #-------some control parameters--------
 input_fmt   = 'SAC'            # string: 'ASDF', 'SAC','mseed' 
@@ -71,7 +71,7 @@ smoothspect_N  = 10             # moving window length to smooth spectrum amplit
 
 # load useful download info if start from ASDF
 if input_fmt == 'ASDF':
-    dfile = os.path.join(data_dir,'download_info.txt')
+    dfile = os.path.join(DATADIR,'download_info.txt')
     down_info = eval(open(dfile).read())
     samp_freq = down_info['samp_freq']
     freqmin   = down_info['freqmin']
@@ -125,9 +125,9 @@ if rank == 0:
 
     # set variables to broadcast
     if input_fmt == 'ASDF':
-        tdir = sorted(glob.glob(os.path.join(data_dir,'*.h5')))
+        tdir = sorted(glob.glob(os.path.join(DATADIR,'*.h5')))
     else:
-        tdir = sorted(glob.glob(os.path.join(data_dir,'Event_*')))
+        tdir = sorted(glob.glob(os.path.join(DATADIR,'Event_*')))
         # get nsta by loop through all event folder
         nsta = 0
         for ii in range(len(tdir)):
