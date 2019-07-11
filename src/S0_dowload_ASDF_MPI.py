@@ -49,7 +49,7 @@ oput_CSV  = True                                # output station.list to a CSV f
 flag      = True                                # print progress when running the script
 samp_freq   = 10                                  # resampling at X samples per seconds 
 rm_resp   = False                               # False to not remove, True to remove, but 'inv' to remove with inventory
-respdir   = 'none'                              # output response directory (required if rm_resp is true and other than inv)
+respdir   = 'NONE'                              # output response directory (required if rm_resp is true and other than inv)
 freqmin   = 0.05                                # pre filtering frequency bandwidth
 freqmax   = 4
 

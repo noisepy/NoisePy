@@ -34,6 +34,8 @@ Note:
     time chunck they want to break and store them in a folder started with Event_20*
     2) implement max_kurtosis?
     3) implements the option to take on the entire number of cores.
+    4) NoisePy will be continously updated at https://github.com/chengxinjiang/Noise_python
+
 '''
 
 tt0=time.time()
@@ -51,7 +53,7 @@ if (len(glob.glob(DATADIR))==0):
     raise ValueError('No data file in %s',DATADIR)
 
 #-------some control parameters--------
-input_fmt   = 'sac'            # string: 'asdf', 'sac','mseed' 
+input_fmt   = 'SAC'            # string: 'asdf', 'sac','mseed' 
 to_whiten   = False             # False (no whitening), or running-mean, one-bit normalization
 time_norm   = False             # False (no time normalization), or running-mean, one-bit normalization
 cc_method   = 'deconv'          # select between raw, deconv and coherency
@@ -147,14 +149,14 @@ else:
 splits = comm.bcast(splits,root=0)
 tdir  = comm.bcast(tdir,root=0)
 extra = splits % size
-if input_fmt != 'asdf': nsta = comm.bcast(nsta,root=0)
+if input_fmt != 'ASDF': nsta = comm.bcast(nsta,root=0)
 
 # MPI loop: loop through each user-defined time chunck
 for ick in range (rank,splits+size-extra,size):
     if ick<splits:
         t10=time.time()   
         
-        if input_fmt == 'asdf':
+        if input_fmt == 'ASDF':
             ds=pyasdf.ASDFDataSet(tdir[ick],mpi=False,mode='r') 
             sta_list = ds.waveforms.list()
         else:
@@ -184,7 +186,7 @@ for ick in range (rank,splits+size-extra,size):
         for ista in range(len(sta_list)):
             tmps = sta_list[ista]
 
-            if input_fmt == 'asdf':
+            if input_fmt == 'ASDF':
                 # get station and inventory
                 try:
                     inv1 = ds.waveforms[tmps]['StationXML']
@@ -205,7 +207,7 @@ for ick in range (rank,splits+size-extra,size):
                 if flag:print("working on station %s and trace %s" % (sta,all_tags[itag]))
 
                 # read waveform data
-                if input_fmt == 'asdf':
+                if input_fmt == 'ASDF':
                     source = ds.waveforms[tmps][all_tags[itag]]
                 else:
                     source = obspy.read(tmps)
@@ -256,7 +258,7 @@ for ick in range (rank,splits+size-extra,size):
                 fft_time[iii]  = dataS_t[:,0]
                 iii+=1
         
-        if input_fmt == 'asdf': del ds
+        if input_fmt == 'ASDF': del ds
 
         # check whether array size is enough
         if iii!=nsta:
@@ -296,7 +298,7 @@ for ick in range (rank,splits+size-extra,size):
                 t3=time.time()
 
                 #---------------keep daily cross-correlation into a hdf5 file--------------
-                if input_fmt == 'asdf':
+                if input_fmt == 'ASDF':
                     tname = tdir[ick].split('/')[-1]
                 else: 
                     tname = tdir[ick].split('/')[-1]+'.h5'

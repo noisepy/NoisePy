@@ -916,7 +916,7 @@ def optimized_correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
         crap[:Nfft2] = np.mean(corr[ik,:],axis=0)
         crap[:Nfft2] = crap[:Nfft2]-np.mean(crap[:Nfft2],axis=0)
         crap[-(Nfft2)+1:]=np.flip(np.conj(crap[1:(Nfft2)]),axis=0)
-        n_corr = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
+        s_corr = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
 
     # trim the CCFs in [-maxlag maxlag] 
     t = np.arange(-Nfft2+1, Nfft2)*dt
