@@ -11,6 +11,7 @@ import pandas as pd
 import noise_module
 from mpi4py import MPI
 from scipy.fftpack.helper import next_fast_len
+import matplotlib.pyplot  as plt
 
 if not sys.warnoptions:
     import warnings
@@ -25,7 +26,6 @@ This main script of NoisePy:
     3) performs cross-correlation for all station pairs in that time chunck and output the
         sub-stacked (if selected) into ASDF format;
     4) has the option to read SAC/mseed data stored in local machine. (Jul.8.2019)
-
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
          Marine Denolle (mdenolle@fas.harvard.edu)
         
@@ -34,8 +34,6 @@ Note:
     time chunck they want to break and store them in a folder started with Event_20*
     2) implement max_kurtosis?
     3) implements the option to take on the entire number of cores.
-    4) NoisePy will be continously updated at https://github.com/chengxinjiang/Noise_python
-
 '''
 
 tt0=time.time()
@@ -45,15 +43,15 @@ tt0=time.time()
 ########################################
 
 #------absolute path parameters-------
-rootpath  = '/Users/chengxin/Documents/Research/Harvard/Kanto'                       # root path for this data processing
+rootpath  = '/mnt/data2/SOCAL/XCORR'                       # root path for this data processing
 FFTDIR    = os.path.join(rootpath,'FFT')                # dir to store FFT data
 CCFDIR    = os.path.join(rootpath,'CCF')                # dir to store CC data
-DATADIR  = os.path.join(rootpath,'noise_data')         # dir where noise data is located
+DATADIR  = os.path.join(rootpath,'DATA')         # dir where noise data is located
 if (len(glob.glob(DATADIR))==0): 
     raise ValueError('No data file in %s',DATADIR)
 
 #-------some control parameters--------
-input_fmt   = 'SAC'            # string: 'asdf', 'sac','mseed' 
+input_fmt   = 'asdf'            # string: 'asdf', 'sac','mseed' 
 to_whiten   = False             # False (no whitening), or running-mean, one-bit normalization
 time_norm   = False             # False (no time normalization), or running-mean, one-bit normalization
 cc_method   = 'deconv'          # select between raw, deconv and coherency
@@ -72,16 +70,15 @@ substack_len   = 4*cc_len       # Time unit in sectons to stack over: need to be
 smoothspect_N  = 10             # moving window length to smooth spectrum amplitude
 
 # load useful download info if start from ASDF
-if input_fmt == 'ASDF':
-    dfile = os.path.join(DATADIR,'download_info.txt')
+if input_fmt == 'asdf':
+    dfile = os.path.join(rootpath,'download_info.txt')
     down_info = eval(open(dfile).read())
     samp_freq = down_info['samp_freq']
     freqmin   = down_info['freqmin']
     freqmax   = down_info['freqmax']
     start_date = down_info['start_date']
     end_date   = down_info['end_date']
-    inc_hours  = down_info['inc_hours']
-    nsta       = down_info['inc_hours']
+    inc_hours  = down_info['inc_hours']     # NOTE : WE NEED TO BE ABLE TO BE FLEXIBLE FROM DOWNLOADS.
 else:   # sac or mseed format
     samp_freq = 20
     freqmin   = 0.05
@@ -96,12 +93,12 @@ max_over_std = 10               # maximum threshold between the maximum absolute
 max_kurtosis = 10               # max kurtosis allowed.
 
 # maximum memory allowed per core in GB
-MAX_MEM = 4.0
+MAX_MEM = 10.0
 
 # make a dictionary to store all variables: also for later cc
 fc_para={'samp_freq':samp_freq,'dt':dt,'cc_len':cc_len,'step':step,'freqmin':freqmin,'freqmax':freqmax,\
     'to_whiten':to_whiten,'time_norm':time_norm,'cc_method':cc_method,'smooth_N':smooth_N,'data_format':\
-    input_fmt,'rootpath':rootpath,'CCFDIR':CCDIR,'start_date':start_date[0],'end_date':end_date[0],\
+    input_fmt,'rootpath':rootpath,'CCDIR':CCFDIR,'start_date':start_date[0],'end_date':end_date[0],\
     'inc_hours':inc_hours,'substack':substack,'substack_len':substack_len,'smoothspect_N':smoothspect_N,\
     'maxlag':maxlag,'max_over_std':max_over_std,'max_kurtosis':max_kurtosis,'MAX_MEM':MAX_MEM}
 # save fft metadata for future reference
@@ -126,7 +123,7 @@ if rank == 0:
     fout.write(str(fc_para));fout.close()
 
     # set variables to broadcast
-    if input_fmt == 'ASDF':
+    if input_fmt == 'asdf':
         tdir = sorted(glob.glob(os.path.join(DATADIR,'*.h5')))
     else:
         tdir = sorted(glob.glob(os.path.join(DATADIR,'Event_*')))
@@ -149,16 +146,19 @@ else:
 splits = comm.bcast(splits,root=0)
 tdir  = comm.bcast(tdir,root=0)
 extra = splits % size
-if input_fmt != 'ASDF': nsta = comm.bcast(nsta,root=0)
+if input_fmt != 'asdf': nsta = comm.bcast(nsta,root=0)
 
 # MPI loop: loop through each user-defined time chunck
 for ick in range (rank,splits+size-extra,size):
     if ick<splits:
         t10=time.time()   
         
-        if input_fmt == 'ASDF':
+        if input_fmt == 'asdf':
             ds=pyasdf.ASDFDataSet(tdir[ick],mpi=False,mode='r') 
             sta_list = ds.waveforms.list()
+            all_tags = ds.waveforms[sta_list[0]].list()
+            all_tags.remove('StationXML')
+            nsta=len(sta_list) * len(all_tags)
         else:
             sta_list = glob.glob(os.path.join(tdir[ick],'*.sac'))   
         if (len(sta_list)==0):
@@ -186,7 +186,7 @@ for ick in range (rank,splits+size-extra,size):
         for ista in range(len(sta_list)):
             tmps = sta_list[ista]
 
-            if input_fmt == 'ASDF':
+            if input_fmt == 'asdf':
                 # get station and inventory
                 try:
                     inv1 = ds.waveforms[tmps]['StationXML']
@@ -195,7 +195,8 @@ for ick in range (rank,splits+size-extra,size):
                 sta,net,lon,lat,elv,loc = noise_module.sta_info_from_inv(inv1)
 
                 #------get day information: works better than just list the tags------
-                all_tags = ds.waveforms[tmps].get_waveform_tags()
+                all_tags = ds.waveforms[tmps].list()
+                all_tags.remove('StationXML')
                 if len(all_tags)==0:continue
                 
             else: # get station information
@@ -207,7 +208,7 @@ for ick in range (rank,splits+size-extra,size):
                 if flag:print("working on station %s and trace %s" % (sta,all_tags[itag]))
 
                 # read waveform data
-                if input_fmt == 'ASDF':
+                if input_fmt == 'asdf':
                     source = ds.waveforms[tmps][all_tags[itag]]
                 else:
                     source = obspy.read(tmps)
@@ -220,7 +221,7 @@ for ick in range (rank,splits+size-extra,size):
                 clat.append(lat);location.append(loc);elevation.append(elv)
 
                 # cut daily-long data into smaller segments (dataS always in 2D)
-                source_params,dataS_t,dataS = noise_module.cut_trace_make_statis(fc_para,source,flag)
+                source_params,dataS_t,dataS,dataS_stats = noise_module.cut_trace_make_statis(fc_para,source,flag)
                 if not len(dataS): continue
                 N = dataS.shape[0]
 
@@ -252,13 +253,15 @@ for ick in range (rank,splits+size-extra,size):
 
                 # load fft data in memory for cross-correlations
                 data = source_white[:,:Nfft2]
+                print(iii)
+                print(data.size)
                 fft_array[iii] = data.reshape(data.size)
                 fft_std[iii]   = source_params[:,1]
                 fft_flag[iii]  = 1
                 fft_time[iii]  = dataS_t[:,0]
                 iii+=1
         
-        if input_fmt == 'ASDF': del ds
+        if input_fmt == 'asdf': del ds
 
         # check whether array size is enough
         if iii!=nsta:
@@ -298,7 +301,7 @@ for ick in range (rank,splits+size-extra,size):
                 t3=time.time()
 
                 #---------------keep daily cross-correlation into a hdf5 file--------------
-                if input_fmt == 'ASDF':
+                if input_fmt == 'asdf':
                     tname = tdir[ick].split('/')[-1]
                 else: 
                     tname = tdir[ick].split('/')[-1]+'.h5'
