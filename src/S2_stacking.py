@@ -52,7 +52,7 @@ substack_len= fc_para['substack_len']
 # stacking para
 f_substack = True                                           # whether to do sub-stacking (different from that in S1)
 f_substack_len = 10*cc_len                                  # length for sub-stacking to output
-out_format   = 'ASDF'                                       # ASDF or SAC format for output
+out_format   = 'asdf'                                       # ASDF or SAC format for output
 flag         = True                                         # output intermediate args for debugging
 stack_method = 'pws'                                        # linear, pws
 
@@ -160,7 +160,7 @@ for ipath in range (rank,splits+size-extra,size):
             t2=time.time()
             if flag:print('finished substacking, which takes %6.2fs'%(t2-t1))
             
-            if out_format=='ASDF':
+            if out_format=='asdf':
                 stack_h5 = os.path.join(STACKDIR,idir+'/'+outfn)
                 with pyasdf.ASDFDataSet(stack_h5,mpi=False) as ds:
                     for iii in range(substacks.shape[0]):
@@ -174,7 +174,7 @@ for ipath in range (rank,splits+size-extra,size):
         t3=time.time()
         allstacks,alltime,num_stacks = noise_module.do_stacking(cc_array,cc_time,0,stack_para)
         t4=time.time()
-        if out_format=='ASDF':
+        if out_format=='asdf':
             stack_h5 = os.path.join(STACKDIR,idir+'/'+outfn)
             with pyasdf.ASDFDataSet(stack_h5,mpi=False) as ds:
                 tparameters['time']  = alltime

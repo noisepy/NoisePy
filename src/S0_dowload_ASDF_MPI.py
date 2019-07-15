@@ -24,8 +24,9 @@ This downloading script:
 Authors: Marine Denolle (mdenolle@fas.harvard.edu) - 11/16/18,06/08/19
          Chengxin Jiang (chengxin_jiang@fas.harvard.edu) - 02/22/19,07/01/19
          
-Note: 1. segmentation fault while manipulating obspy stream can come from too large data in memory:
-     reduce the inc_hours variable
+Note: 1. to avoid segmentation fault due to too large data in memory: a rough estimation is made
+     in the beginning of the code for the memory needs. reduce the value of inc_hours if the memory
+     on your machine is not enough to load proposed (x) hours of noise data all at once. 
       2. if choose to download stations from an existing CSV files, station with the same name but 
      different channel is regarded as different stations
 
@@ -61,6 +62,11 @@ dsta = ["M?Z"]                                  # station (do either one station
 start_date = ["2018_05_01_0_0_0"]               # start date of download
 end_date   = ["2018_05_04_0_0_0"]               # end date of download
 inc_hours  = 48                                 # length of data for each request (in hour)
+
+# parameters for noise pre-processing: to estimate memory needs
+cc_len    = 3600                                # basic unit of data length for fft (s)
+step      = 1800                                # overlapping between each cc_len (s)
+MAX_MEM   = 3.0                                 # maximum memory allowed per core in GB
 
 # time tags
 starttime = obspy.UTCDateTime(start_date[0])       
@@ -121,6 +127,14 @@ else:
                 nsta+=1
     prepro_para['nsta'] = nsta
 
+# crude estimation on memory needs (assume float32)
+nsec_chunck = inc_hours/24*86400
+nseg_chunck = int(np.floor((nsec_chunck-cc_len)/step))+1
+npts_chunck = int(nseg_chunck*cc_len*samp_freq)
+memory_size = nsta*npts_chunck*4/1024**3
+if memory_size > MAX_MEM:
+    raise ValueError('Require %s G memory (%s GB provided)! Reduce inc_hours as it cannot load %s h all once!' % (memory_size,MAX_MEM,inc_hours))
+
 
 ########################################################
 #################DOWNLOAD SECTION#######################
@@ -176,8 +190,8 @@ for ick in range (rank,splits+size-extra,size):
                                 location=location[ista],starttime=s1,endtime=s2,level="response")
                         except Exception as e:
                             print(e);continue
-                        if sta_inv[0][0][0].location_code:
-                            location[ista] = sta_inv[0][0][0].location_code
+                        #if sta_inv[0][0][0].location_code:
+                        #    location[ista] = sta_inv[0][0][0].location_code
                     else:
                         sta_inv = inv1.select(network=net[ista],station=sta[ista],location=location[ista]) 
                         if not sta_inv:
@@ -202,8 +216,10 @@ for ick in range (rank,splits+size-extra,size):
 
                     if len(tr):
                         if location[ista] == '*':
-                            location[ista] = str('00')
-                        new_tags = '{0:s}_{1:s}'.format(chan[ista].lower(),location[ista].lower())
+                            tlocation = str('00')
+                        else:
+                            tlocation = location[ista]
+                        new_tags = '{0:s}_{1:s}'.format(chan[ista].lower(),tlocation.lower())
                         ds.add_waveforms(tr,tag=new_tags)
 
                     if flag:

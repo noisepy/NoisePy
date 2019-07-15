@@ -343,7 +343,7 @@ def preprocess_raw(st,inv,prepro_para,date_info):
         # when starttimes are between sampling points
         fric = st[0].stats.starttime.microsecond%(delta*1E6)
         if fric>1E-4:
-            st[0].data = segment_interpolate(np.float32(st[0].data),float(fric/delta*1E6))
+            st[0].data = segment_interpolate(np.float32(st[0].data),float(fric/(delta*1E6)))
             #--reset the time to remove the discrepancy---
             st[0].stats.starttime-=(fric*1E-6)
 
@@ -431,7 +431,7 @@ def segment_interpolate(sig1,nfric):
     for ii in range(npts):
 
         #----deal with edges-----
-        if ii==0 or ii==npts:
+        if ii==0 or ii==npts-1:
             sig2[ii]=sig1[ii]
         else:
             #------interpolate using a hat function------

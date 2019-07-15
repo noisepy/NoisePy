@@ -26,6 +26,7 @@ This main script of NoisePy:
     3) performs cross-correlation for all station pairs in that time chunck and output the
         sub-stacked (if selected) into ASDF format;
     4) has the option to read SAC/mseed data stored in local machine. (Jul.8.2019)
+
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
          Marine Denolle (mdenolle@fas.harvard.edu)
         
@@ -98,7 +99,7 @@ MAX_MEM = 10.0
 # make a dictionary to store all variables: also for later cc
 fc_para={'samp_freq':samp_freq,'dt':dt,'cc_len':cc_len,'step':step,'freqmin':freqmin,'freqmax':freqmax,\
     'to_whiten':to_whiten,'time_norm':time_norm,'cc_method':cc_method,'smooth_N':smooth_N,'data_format':\
-    input_fmt,'rootpath':rootpath,'CCDIR':CCFDIR,'start_date':start_date[0],'end_date':end_date[0],\
+    input_fmt,'rootpath':rootpath,'CCFDIR':CCFDIR,'start_date':start_date[0],'end_date':end_date[0],\
     'inc_hours':inc_hours,'substack':substack,'substack_len':substack_len,'smoothspect_N':smoothspect_N,\
     'maxlag':maxlag,'max_over_std':max_over_std,'max_kurtosis':max_kurtosis,'MAX_MEM':MAX_MEM}
 # save fft metadata for future reference
@@ -330,7 +331,7 @@ for ick in range (rank,splits+size-extra,size):
 
         # save the ASDF path info for later stacking use
         path_para = {'paths':path_array}
-        pfile = os.path.join(rootpath,'CCF/paths_'+str(rank)+'.lst')
+        pfile = os.path.join(CCFDIR,'paths_'+str(rank)+'.lst')
         fout  = open(pfile,'w')
         fout.write(str(path_para));fout.close()
     
