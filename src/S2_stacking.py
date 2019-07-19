@@ -15,7 +15,7 @@ if not sys.warnoptions:
 '''
 Stacking script of NoisePy:
     1) read the saved cross-correlation data to do sub-stacks (if needed) and all-time average;
-    2) two ptions to do stacking: linear and pws
+    2) two options for stacking: linear and pws
     3) save the outputs in ASDF or SAC format based on user's choice.
 
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
@@ -111,7 +111,7 @@ for ipath in range (rank,splits+size-extra,size):
     if ipath<splits:
         t0=time.time()
 
-        if flag:print('rank %d for station-pair %s'%(ipath,paths_all[ipath]))
+        if flag:print('%dth path for station-pair %s'%(ipath,paths_all[ipath]))
         # source folder
         ttr   = paths_all[ipath].split('s')
         idir  = ttr[0]+'.'+ttr[1]+'.'+ttr[3]
@@ -126,54 +126,63 @@ for ipath in range (rank,splits+size-extra,size):
         if memory_size > MAX_MEM:
             raise ValueError('Require %s G memory (%s GB provided)! Cannot load cc data all once!' % (memory_size,MAX_MEM))
         if flag:
-            print('Require %6.4fG memory (%s G provided)!' % (memory_size,MAX_MEM))
+            print('Good on memory (need %s G and %s G provided)!' % (memory_size,MAX_MEM))
             
         # open array to store fft data/info in memory
         cc_array = np.zeros((num_chunck*num_segmts,npts_segmt),dtype=np.float32)
         cc_time  = np.zeros(num_chunck*num_segmts,dtype=np.float)
+        cc_ngood = np.zeros(num_chunck*num_segmts,dtype=np.int16)
 
         # loop through all time-chuncks
         iseg = 0
         station_pair = paths_all[ipath]
         for ifile in range(len(ccfiles)):
-            ds=pyasdf.ASDFDataSet(ccfiles[ifile],mode='r')
+            ds=pyasdf.ASDFDataSet(ccfiles[ifile],mpi=False,mode='r')
             if not ds.auxiliary_data.list(): continue
             path_list = ds.auxiliary_data['CCF'].list()            
             if station_pair not in path_list:
-                if flag:print('continue! no data in %s'%ccfiles[ifile]);continue
+                if flag:print('continue! no data in %s'%ccfiles[ifile])
+                continue
     
             # load the data by segments
             tdata = ds.auxiliary_data['CCF'][station_pair].data[:]
             ttime = ds.auxiliary_data['CCF'][station_pair].parameters['time']
-            if ifile==0:
-                tparameters = ds.auxiliary_data['CCF'][station_pair].parameters
+            tgood = ds.auxiliary_data['CCF'][station_pair].parameters['ngood']
+            tparameters = ds.auxiliary_data['CCF'][station_pair].parameters
             for ii in range(tdata.shape[0]):
                 cc_array[iseg] = tdata[ii]
                 cc_time[iseg]  = ttime[ii]
+                cc_ngood[iseg] = tgood[ii]
                 iseg+=1
         t1=time.time()
         if flag:print('loading CCF data takes %6.2fs'%(t1-t0))
 
+        # continue when there is no data
+        if iseg <= 1: continue
+
         # do substacking if needed
         if f_substack:
-            substacks,stime,num_stacks = noise_module.do_stacking(cc_array[:iseg],cc_time[:iseg],f_substack_len,stack_para)
+            substacks,stime,num_stacks = noise_module.do_stacking(cc_array[:iseg],cc_time[:iseg],cc_ngood[:iseg],f_substack_len,stack_para)
             t2=time.time()
             if flag:print('finished substacking, which takes %6.2fs'%(t2-t1))
             
+            if not len(substacks):print('continue! no substacks done!');continue
+
             if out_format=='asdf':
                 stack_h5 = os.path.join(STACKDIR,idir+'/'+outfn)
                 with pyasdf.ASDFDataSet(stack_h5,mpi=False) as ds:
                     for iii in range(substacks.shape[0]):
-                        tparameters['time']  = stime
-                        tparameters['ngood'] = num_stacks
+                        tparameters['time']  = stime[iii]
+                        tparameters['ngood'] = num_stacks[iii]
                         tpath     = ttr[2][-1]+ttr[6][-1]
                         data_type = 'T'+str(int(stime[iii]))
                         ds.add_auxiliary_data(data=substacks[iii], data_type=data_type, path=tpath, parameters=tparameters)
         
         # do all stacking
         t3=time.time()
-        allstacks,alltime,num_stacks = noise_module.do_stacking(cc_array,cc_time,0,stack_para)
+        allstacks,alltime,num_stacks = noise_module.do_stacking(cc_array[:iseg],cc_time[:iseg],cc_ngood[:iseg],0,stack_para)
         t4=time.time()
+
         if out_format=='asdf':
             stack_h5 = os.path.join(STACKDIR,idir+'/'+outfn)
             with pyasdf.ASDFDataSet(stack_h5,mpi=False) as ds:

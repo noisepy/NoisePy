@@ -29,6 +29,9 @@ Note: 1. to avoid segmentation fault due to too large data in memory: a rough es
      on your machine is not enough to load proposed (x) hours of noise data all at once. 
       2. if choose to download stations from an existing CSV files, station with the same name but 
      different channel is regarded as different stations
+      3. including the location code of the station sometime result in no-data during feteching pro-
+     cessing, thus we recommend setting location code to "*" in the request setting when it is con-
+     firmed by the users that no station with the same name but different location codes occurs
 
 A beginning of NoisePy journey! 
 '''
@@ -53,6 +56,7 @@ rm_resp   = False                               # False to not remove, True to r
 respdir   = 'NONE'                              # output response directory (required if rm_resp is true and other than inv)
 freqmin   = 0.05                                # pre filtering frequency bandwidth
 freqmax   = 4
+outform   = 'ASDF'
 
 # station information 
 lamin,lomin,lamax,lomax=-46.5,168,-38,175       # regional box: min lat, min lon, max lat, max lon
@@ -112,7 +116,7 @@ else:
         if flag:print(inv1)
     except Exception as e:
         print('Abort! '+str(e))
-        exit()
+        sys.exit()
 
     # calculate the total number of channels to download
     sta=[];net=[];chan=[];location=[]
