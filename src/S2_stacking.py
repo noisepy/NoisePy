@@ -29,15 +29,12 @@ tt0=time.time()
 ########################################
 
 # absolute path parameters
-rootpath  = '/Users/chengxin/Documents/Research/Harvard/Kanto'                       # root path for this data processing
+rootpath  = '/Users/chengxin/Documents/NoisePy_example/Kanto'                # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                    # dir where CC data is stored
 STACKDIR  = os.path.join(rootpath,'STACK') 
 
-# assemble path information used to read CC data (stored in ASDF files)
-pfiles    = glob.glob(os.path.join(CCFDIR,'paths_*.lst'))
-
 # load fc_para from S1
-fc_metadata = os.path.join(rootpath,'fft_cc_data.txt')
+fc_metadata = os.path.join(CCFDIR,'fft_cc_data.txt')
 fc_para     = eval(open(fc_metadata).read())
 samp_freq   = fc_para['samp_freq']
 start_date  = fc_para['start_date']
@@ -51,10 +48,10 @@ substack_len= fc_para['substack_len']
 
 # stacking para
 f_substack = True                                           # whether to do sub-stacking (different from that in S1)
-f_substack_len = 10*cc_len                                  # length for sub-stacking to output
+f_substack_len = substack_len                               # length for sub-stacking to output
 out_format   = 'asdf'                                       # ASDF or SAC format for output
 flag         = True                                         # output intermediate args for debugging
-stack_method = 'pws'                                        # linear, pws
+stack_method = 'linear'                                        # linear, pws
 
 # maximum memory allowed per core in GB
 MAX_MEM = 4.0
@@ -65,7 +62,7 @@ stack_para={'samp_freq':samp_freq,'cc_len':cc_len,'step':step,'rootpath':rootpat
     'substack':substack,'substack_len':substack_len,'maxlag':maxlag,'MAX_MEM':MAX_MEM,\
     'f_substack':f_substack,'f_substack_len':f_substack_len,'stack_method':stack_method}
 # save fft metadata for future reference
-stack_metadata  = os.path.join(rootpath,'stack_data.txt') 
+stack_metadata  = os.path.join(STACKDIR,'stack_data.txt') 
 
 #######################################
 ###########PROCESSING SECTION##########
@@ -84,10 +81,9 @@ if rank == 0:
 
     # cross-correlation files
     ccfiles   = sorted(glob.glob(os.path.join(CCFDIR,'*.h5')))
-    # all station-pair info saved in ASDF
-    if not len(pfiles):
-        raise ValueError('abort! no paths file found in %s'%CCFDIR)
-    paths_all = noise_module.load_pfiles(pfiles)
+
+    # load all station-pair info
+    paths_all = noise_module.load_pfiles(ccfiles)
     splits  = len(paths_all)
     if len(ccfiles)==0 or splits==0:
         raise IOError('Abort! no available CCF data for stacking')
@@ -120,7 +116,10 @@ for ipath in range (rank,splits+size-extra,size):
 
         # crude estimation on memory needs (assume float32)
         num_chunck  = len(ccfiles)
-        num_segmts  = int(np.round(inc_hours*3600/substack_len))
+        if substack:
+            num_segmts = int(np.floor((inc_hours*3600-cc_len)/step))+1
+        else: 
+            num_segmts = 1
         npts_segmt  = int(2*maxlag*samp_freq)+1
         memory_size = num_chunck*num_segmts*npts_segmt*4/1024**3
         if memory_size > MAX_MEM:
@@ -141,7 +140,7 @@ for ipath in range (rank,splits+size-extra,size):
             if not ds.auxiliary_data.list(): continue
             path_list = ds.auxiliary_data['CCF'].list()            
             if station_pair not in path_list:
-                if flag:print('continue! no data in %s'%ccfiles[ifile])
+                if flag:print('continue! no data for %s in %s'%(station_pair,ccfiles[ifile]))
                 continue
     
             # load the data by segments
@@ -169,11 +168,12 @@ for ipath in range (rank,splits+size-extra,size):
             if not len(substacks):print('continue! no substacks done!');continue
 
             if out_format=='asdf':
-                stack_h5 = os.path.join(STACKDIR,idir+'/'+outfn)
+                stack_h5 = os.path.join(STACKDIR,idir+'/'+stack_method+'_'+outfn)
                 with pyasdf.ASDFDataSet(stack_h5,mpi=False) as ds:
                     for iii in range(substacks.shape[0]):
                         tparameters['time']  = stime[iii]
                         tparameters['ngood'] = num_stacks[iii]
+                        tparameters['stack_method'] = stack_method
                         tpath     = ttr[2][-1]+ttr[6][-1]
                         data_type = 'T'+str(int(stime[iii]))
                         ds.add_auxiliary_data(data=substacks[iii], data_type=data_type, path=tpath, parameters=tparameters)
@@ -184,10 +184,11 @@ for ipath in range (rank,splits+size-extra,size):
         t4=time.time()
 
         if out_format=='asdf':
-            stack_h5 = os.path.join(STACKDIR,idir+'/'+outfn)
+            stack_h5 = os.path.join(STACKDIR,idir+'/'+stack_method+'_'+outfn)
             with pyasdf.ASDFDataSet(stack_h5,mpi=False) as ds:
                 tparameters['time']  = alltime
                 tparameters['ngood'] = num_stacks
+                tparameters['stack_method'] = stack_method
                 tpath     = ttr[2][-1]+ttr[6][-1]
                 data_type = 'Allstack'
                 ds.add_auxiliary_data(data=allstacks, data_type=data_type, path=tpath, parameters=tparameters)

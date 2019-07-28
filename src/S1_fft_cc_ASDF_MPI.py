@@ -44,35 +44,33 @@ tt0=time.time()
 ########################################
 
 #------absolute path parameters-------
-rootpath  = '/mnt/data2/SOCAL/XCORR'                       # root path for this data processing
-FFTDIR    = os.path.join(rootpath,'FFT')                # dir to store FFT data
-CCFDIR    = os.path.join(rootpath,'CCF')                # dir to store CC data
-DATADIR  = os.path.join(rootpath,'DATA')         # dir where noise data is located
-if (len(glob.glob(DATADIR))==0): 
-    raise ValueError('No data file in %s',DATADIR)
+rootpath  = '/Users/chengxin/Documents/NoisePy_example/Kanto'                    # root path for this data processing
+FFTDIR    = os.path.join(rootpath,'FFT')                        # dir to store FFT data
+CCFDIR    = os.path.join(rootpath,'CCF')                        # dir to store CC data
+DATADIR   = os.path.join(rootpath,'RAW_DATA')                    # dir where noise data is located
 
 #-------some control parameters--------
-input_fmt   = 'asdf'            # string: 'asdf', 'sac','mseed' 
+input_fmt   = 'sac'            # string: 'asdf', 'sac','mseed' 
 to_whiten   = False             # False (no whitening), or running-mean, one-bit normalization
 time_norm   = False             # False (no time normalization), or running-mean, one-bit normalization
-cc_method   = 'deconv'          # select between raw, deconv and coherency
+cc_method   = 'coherency'       # select between raw, deconv and coherency
 save_fft    = False             # True to save fft data, or False
 flag        = True              # print intermediate variables and computing time for debugging purpose
 
 # pre-processing parameters 
 cc_len    = 3600                # basic unit of data length for fft (s)
-step      = 1800                # overlapping between each cc_len (s)
+step      = 900                 # overlapping between each cc_len (s)
 smooth_N  = 100                 # moving window length for time/freq domain normalization if selected
 
 # cross-correlation parameters
-maxlag         = 500            # lags of cross-correlation to save
+maxlag         = 400            # lags of cross-correlation to save
 substack       = True           # sub-stack daily cross-correlation or not
-substack_len   = 4*cc_len       # Time unit in sectons to stack over: need to be integer times of cc_len
+substack_len   = cc_len         # Time unit in sectons to stack over: need to be integer times of cc_len
 smoothspect_N  = 10             # moving window length to smooth spectrum amplitude
 
 # load useful download info if start from ASDF
 if input_fmt == 'asdf':
-    dfile = os.path.join(rootpath,'download_info.txt')
+    dfile = os.path.join(DATADIR,'download_info.txt')
     down_info = eval(open(dfile).read())
     samp_freq = down_info['samp_freq']
     freqmin   = down_info['freqmin']
@@ -84,8 +82,8 @@ else:   # sac or mseed format
     samp_freq = 20
     freqmin   = 0.05
     freqmax   = 4
-    start_date = ["2010_12_16_0_0_0"]
-    end_date   = ["2010_12_18_0_0_0"]
+    start_date = ["2010_12_12_0_0_0"]
+    end_date   = ["2010_12_15_0_0_0"]
     inc_hours  = 1*24
 dt = 1/samp_freq
 
@@ -94,7 +92,7 @@ max_over_std = 10               # maximum threshold between the maximum absolute
 max_kurtosis = 10               # max kurtosis allowed.
 
 # maximum memory allowed per core in GB
-MAX_MEM = 10.0
+MAX_MEM = 4.0
 
 # make a dictionary to store all variables: also for later cc
 fc_para={'samp_freq':samp_freq,'dt':dt,'cc_len':cc_len,'step':step,'freqmin':freqmin,'freqmax':freqmax,\
@@ -103,7 +101,7 @@ fc_para={'samp_freq':samp_freq,'dt':dt,'cc_len':cc_len,'step':step,'freqmin':fre
     'inc_hours':inc_hours,'substack':substack,'substack_len':substack_len,'smoothspect_N':smoothspect_N,\
     'maxlag':maxlag,'max_over_std':max_over_std,'max_kurtosis':max_kurtosis,'MAX_MEM':MAX_MEM}
 # save fft metadata for future reference
-fc_metadata  = os.path.join(rootpath,'fft_cc_data.txt')       
+fc_metadata  = os.path.join(CCFDIR,'fft_cc_data.txt')       
 
 #######################################
 ###########PROCESSING SECTION##########
@@ -126,8 +124,10 @@ if rank == 0:
     # set variables to broadcast
     if input_fmt == 'asdf':
         tdir = sorted(glob.glob(os.path.join(DATADIR,'*.h5')))
+        if len(tdir)==0: raise ValueError('No data file in %s',DATADIR)
     else:
         tdir = sorted(glob.glob(os.path.join(DATADIR,'Event_*')))
+        if len(tdir)==0: raise ValueError('No data file in %s',DATADIR)
         # get nsta by loop through all event folder
         nsta = 0
         for ii in range(len(tdir)):
@@ -153,7 +153,15 @@ if input_fmt != 'asdf': nsta = comm.bcast(nsta,root=0)
 for ick in range (rank,splits+size-extra,size):
     if ick<splits:
         t10=time.time()   
+
+        # check whether time chunck been processed or not
+        if input_fmt == 'asdf':
+            tmpfile = os.path.join(CCFDIR,tdir[ick].split('/')[-1].split('.')[0]+'.tmp')
+        else: 
+            tmpfile = os.path.join(CCFDIR,tdir[ick].split('/')[-1]+'.tmp')
+        if os.path.isfile(tmpfile):continue
         
+        # retrive station information
         if input_fmt == 'asdf':
             ds=pyasdf.ASDFDataSet(tdir[ick],mpi=False,mode='r') 
             sta_list = ds.waveforms.list()
@@ -175,7 +183,7 @@ for ick in range (rank,splits+size-extra,size):
 
         nnfft = int(next_fast_len(int(cc_len*samp_freq+1)))
         # open array to store fft data/info in memory
-        fft_array = np.zeros((nsta,nseg_chunck*nnfft//2),dtype=np.complex64)
+        fft_array = np.zeros((nsta,nseg_chunck*(nnfft//2)),dtype=np.complex64)
         fft_std   = np.zeros((nsta,nseg_chunck),dtype=np.float32)
         fft_flag  = np.zeros(nsta,dtype=np.int16)
         fft_time  = np.zeros((nsta,nseg_chunck),dtype=np.float64) 
@@ -222,7 +230,7 @@ for ick in range (rank,splits+size-extra,size):
                 clat.append(lat);location.append(loc);elevation.append(elv)
 
                 # cut daily-long data into smaller segments (dataS always in 2D)
-                source_params,dataS_t,dataS,dataS_stats = noise_module.cut_trace_make_statis(fc_para,source,flag)
+                source_params,dataS_t,dataS = noise_module.cut_trace_make_statis(fc_para,source,flag)
                 if not len(dataS): continue
                 N = dataS.shape[0]
 
@@ -231,31 +239,8 @@ for ick in range (rank,splits+size-extra,size):
                 Nfft = source_white.shape[1];Nfft2 = Nfft//2
                 if flag:print('N and Nfft are %d (proposed %d),%d (proposed %d)' %(N,nseg_chunck,Nfft,nnfft))
 
-#                 # leaving the option to user whether save fft
-#                 if save_fft:
-#                     # save FFTs into HDF5 format
-#                     crap=np.zeros(shape=(N,Nfft2),dtype=np.complex64)
-#                     if input_fmt == 'ASDF':
-#                         tname = tdir[ick].split('/')[-1]
-#                     else: 
-#                         tname = tdir[ick].split('/')[-1]+'.h5'
-#                     fft_h5=os.path.join(FFTDIR,tname)
-
-#                     with pyasdf.ASDFDataSet(fft_h5,mpi=False,compression=None) as fft_ds:
-#                         parameters = noise_module.fft_parameters(fc_para,source_params,inv1,Nfft,dataS_t[:,0])
-                        
-#                         path = '{0:s}_{1:s}_{2:s}_{3:s}'.format(net,sta,comp,str(loc))
-#                         if itag==0:
-#                             try: fft_ds.add_stationxml(inv1)
-#                             except Exception: pass
-
-#                         crap[:,:Nfft2]=source_white[:,:Nfft2]
-#                         fft_ds.add_auxiliary_data(data=crap, data_type='FFT', path=path, parameters=parameters)
-
                 # load fft data in memory for cross-correlations
                 data = source_white[:,:Nfft2]
-                print(iii)
-                print(data.size)
                 fft_array[iii] = data.reshape(data.size)
                 fft_std[iii]   = source_params[:,1]
                 fft_flag[iii]  = 1
@@ -325,15 +310,25 @@ for ick in range (rank,splits+size-extra,size):
                 t5=time.time()
                 if flag:
                     print('read S %6.4fs, cc %6.4fs, write cc %6.4fs'% ((t1-t0),(t3-t2),(t4-t3)))
+        
+        # create a stamp to show time chunck being done
+        ftmp = open(tmpfile,'w')
+        ftmp.write('done')
+        ftmp.close()
 
         fft_array=[];fft_std=[];fft_flag=[];fft_time=[]
         n = gc.collect();print('unreadable garbarge',n)
 
+        '''
         # save the ASDF path info for later stacking use
         path_para = {'paths':path_array}
         pfile = os.path.join(CCFDIR,'paths_'+str(rank)+'.lst')
-        fout  = open(pfile,'w')
+        if os.path.isfile(pfile):
+            fout = open(pfile,'a')
+        else:
+            fout  = open(pfile,'w')
         fout.write(str(path_para));fout.close()
+        '''
     
         t11 = time.time()
         print('it takes %6.2fs to process the chunck of %s' % (t11-t10,tdir[ick].split('/')[-1]))

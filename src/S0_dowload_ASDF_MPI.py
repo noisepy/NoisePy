@@ -42,30 +42,31 @@ A beginning of NoisePy journey!
 tt0=time.time()
 
 # paths and filenames
-rootpath = '/mnt/data0/NZ/XCORR' 
+rootpath = '/Users/chengxin/Documents/SCAL' 
+if not os.path.isdir(rootpath):os.mkdir(rootpath)
 direc  = os.path.join(rootpath,'RAW_DATA')      # where to store the downloaded data
 dlist  = os.path.join(direc,'station.lst')      # CSV file for station location info
 
 # download parameters
-client    = Client('GEONET')                    # client/data center. see https://docs.obspy.org/packages/obspy.clients.fdsn.html for a list
+client    = Client('SCEDC')                     # client/data center. see https://docs.obspy.org/packages/obspy.clients.fdsn.html for a list
 down_list = False                               # download stations from pre-compiled list
 oput_CSV  = True                                # output station.list to a CSV file to be used in later stacking steps
 flag      = True                                # print progress when running the script
-samp_freq   = 10                                  # resampling at X samples per seconds 
+samp_freq   = 1                                 # resampling at X samples per seconds 
 rm_resp   = False                               # False to not remove, True to remove, but 'inv' to remove with inventory
-respdir   = 'NONE'                              # output response directory (required if rm_resp is true and other than inv)
-freqmin   = 0.05                                # pre filtering frequency bandwidth
-freqmax   = 4
-outform   = 'ASDF'
+respdir   = 'none'                              # output response directory (required if rm_resp is true and other than inv)
+freqmin   = 0.01                                # pre filtering frequency bandwidth
+freqmax   = 0.4                                 # note this cannot exceed Nquist freq
+outform   = 'asdf'                              
 
 # station information 
-lamin,lomin,lamax,lomax=-46.5,168,-38,175       # regional box: min lat, min lon, max lat, max lon
-dchan= ['HH*']                                  # channel if down_list=false
-dnet = ["NZ"]                                   # network  
-dsta = ["M?Z"]                                  # station (do either one station or *)
-start_date = ["2018_05_01_0_0_0"]               # start date of download
-end_date   = ["2018_05_04_0_0_0"]               # end date of download
-inc_hours  = 48                                 # length of data for each request (in hour)
+lamin,lomin,lamax,lomax=32.5,-121,36,-114       # regional box: min lat, min lon, max lat, max lon
+dchan= ["BHZ"]                                  # channel if down_list=false
+dnet = ["CI"]                                   # network  
+dsta = ["*"]                                    # station (do either one station or *)
+start_date = ["2016_07_04_0_0_0"]               # start date of download
+end_date   = ["2016_07_05_0_0_0"]               # end date of download
+inc_hours  = 24                                 # length of data for each request (in hour)
 
 # parameters for noise pre-processing: to estimate memory needs
 cc_len    = 3600                                # basic unit of data length for fft (s)
@@ -110,6 +111,7 @@ else:
         inv = client.get_stations(network=dnet[0],station=dsta[0],channel=dchan[0],location='*', \
             starttime=starttime,endtime=endtime,minlatitude=lamin,maxlatitude=lamax, \
             minlongitude=lomin, maxlongitude=lomax,level="response")
+        
         # make a selection to remove redundent channel (it indeed happens!)
         inv1 = inv.select(network=dnet[0],station=dsta[0],channel=dchan[0],starttime=starttime,\
             endtime=endtime,location='*') 
@@ -127,7 +129,9 @@ else:
                 sta.append(sta1.code)
                 net.append(K.code)
                 chan.append(chan1.code)
-                location.append(chan1.location_code)
+                if chan1.location_code:
+                    location.append(chan1.location_code)
+                else: location.append('*')
                 nsta+=1
     prepro_para['nsta'] = nsta
 
@@ -231,6 +235,7 @@ for ick in range (rank,splits+size-extra,size):
 
 tt1=time.time()
 print('downloading step takes %6.2f s' %(tt1-tt0))
+
 comm.barrier()
 if rank == 0:
     sys.exit()
