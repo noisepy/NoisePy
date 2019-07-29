@@ -79,6 +79,6 @@ Note that, although here we only show the process of downloading/dealing of one 
 Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
 Marine Denolle (mdenolle@fas.harvard.edu).
 
-**Reference**
-Seats, K. J., Jesse F. L., and German A. P. "Improved ambient noise correlation functions using Welch′ s method." _Geophysical Journal International_ 188, no. 2 (2012): 513-523.
+**Reference**\
+Seats, K. J., Jesse F. L., and German A. P. "Improved ambient noise correlation functions using Welch′ s method." _Geophysical Journal International_ 188, no. 2 (2012): 513-523.  
 *Jiang, C., Toghramadjian, N., Yuan, C., Clements, T., and Denolle, M. "NoisePy: a new high-performance python tool for seismic ambient noise seismology." In prep for _Seismological Research Letter_.
