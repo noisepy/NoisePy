@@ -10,14 +10,14 @@ This package contains 3 main python scripts with 1 dependent module (`noise_modu
 
 |  **library**  |  **version**  |
 |:-------------:|:-------------:|
-|[numpy](https://numpy.org/)|  $\geq$ 1.16.3|
-|[scipy](https://www.scipy.org/) | $\geq$ 1.3.0|
-|[numba](https://devblogs.nvidia.com/numba-python-cuda-acceleration/) | $\geq$ 0.44.1|
-|[obspy](https://github.com/obspy/obspy/wiki) | $\geq$ 1.1.1|
-|[pandas](https://pandas.pydata.org/) | $\geq$ 0.24.2|
-|[pyasdf](http://seismicdata.github.io/pyasdf/) |$\geq$ 0.4.0|
-|[python](https://www.python.org/) |$\geq$ 3.7.3|
-|[mpi4py](https://mpi4py.readthedocs.io/en/stable/) | $\geq$ 3.0.1|
+|[numpy](https://numpy.org/)|  >= 1.16.3|
+|[scipy](https://www.scipy.org/) | >= 1.3.0|
+|[numba](https://devblogs.nvidia.com/numba-python-cuda-acceleration/) | >= 0.44.1|
+|[obspy](https://github.com/obspy/obspy/wiki) | >= 1.1.1|
+|[pandas](https://pandas.pydata.org/) | >= 0.24.2|
+|[pyasdf](http://seismicdata.github.io/pyasdf/) | >= 0.4.0|
+|[python](https://www.python.org/) | >= 3.7.3|
+|[mpi4py](https://mpi4py.readthedocs.io/en/stable/) | >= 3.0.1|
 
 
 # Functionality
@@ -75,8 +75,8 @@ plot_modules.plot_all_moveout1(sfiles,0.1,0.2,'ZZ',1,200,True,'/Users/chengxin/D
 ```
 <img src="/docs/src/linear_stack.png" width="400" height="300"><img src="/docs/src/pws_stack.png" width="400" height="300">
 
-Note that, although here we only show the process of downloading/dealing of one component data, the scripts are able to handle 3-component data. We encourage you to download the NoisePy package and play it on your own! If you have any thoughts, comments and suggestions, please do not hesitate to contact 
-Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
+Note that, although here we only show the process of downloading/dealing of one component data, the scripts are able to handle 3-component data. We encourage you to download the NoisePy package and play it on your own! If you have any thoughts, comments and suggestions, please do not hesitate to contact  
+Chengxin Jiang (chengxin_jiang@fas.harvard.edu)  
 Marine Denolle (mdenolle@fas.harvard.edu).
 
 **Reference**\
