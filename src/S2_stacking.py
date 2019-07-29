@@ -6,6 +6,7 @@ import os, glob
 import datetime
 import numpy as np
 import noise_module
+import pandas as pd
 from mpi4py import MPI
 
 if not sys.warnoptions:
@@ -14,9 +15,10 @@ if not sys.warnoptions:
 
 '''
 Stacking script of NoisePy:
-    1) read the saved cross-correlation data to do sub-stacks (if needed) and all-time average;
-    2) two options for stacking: linear and pws
-    3) save the outputs in ASDF or SAC format based on user's choice.
+    1) read the saved cross-correlation data to do sub-stacks (if needed) and all-time averaging;
+    2) two options for the stacking process: linear and phase weighted stacking (pws);
+    3) save outputs in ASDF or SAC format depend on user's choice;
+    4) rotation from a E-N-Z to R-T-Z system if needed.
 
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
          Marine Denolle (mdenolle@fas.harvard.edu)
@@ -29,7 +31,7 @@ tt0=time.time()
 ########################################
 
 # absolute path parameters
-rootpath  = '/Users/chengxin/Documents/NoisePy_example/Kanto'                # root path for this data processing
+rootpath  = '/Users/chengxin/Documents/SCAL'                # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                    # dir where CC data is stored
 STACKDIR  = os.path.join(rootpath,'STACK') 
 
@@ -51,16 +53,23 @@ f_substack = True                                           # whether to do sub-
 f_substack_len = substack_len                               # length for sub-stacking to output
 out_format   = 'asdf'                                       # ASDF or SAC format for output
 flag         = True                                         # output intermediate args for debugging
-stack_method = 'linear'                                        # linear, pws
+stack_method = 'linear'                                     # linear, pws
+
+# rotation para
+rotation     = 'False'                                      # rotation from E-N-Z to R-T-Z 
+correction   = 'True'                                       # angle correction due to mis-orientation
+if rotation and correction:
+    corrfile = '/Users/chengxin/Documents/SCAL/angles.dat'     # csv file containing angle info to be corrected
+    locs     = pd.read_csv(corrfile)
 
 # maximum memory allowed per core in GB
 MAX_MEM = 4.0
 
 # make a dictionary to store all variables: also for later cc
 stack_para={'samp_freq':samp_freq,'cc_len':cc_len,'step':step,'rootpath':rootpath,'STACKDIR':\
-    STACKDIR,'start_date':start_date[0],'end_date':end_date[0],'inc_hours':inc_hours,\
-    'substack':substack,'substack_len':substack_len,'maxlag':maxlag,'MAX_MEM':MAX_MEM,\
-    'f_substack':f_substack,'f_substack_len':f_substack_len,'stack_method':stack_method}
+    STACKDIR,'start_date':start_date[0],'end_date':end_date[0],'inc_hours':inc_hours,'substack':substack,\
+    'substack_len':substack_len,'maxlag':maxlag,'MAX_MEM':MAX_MEM,'f_substack':f_substack,'f_substack_len':\
+    f_substack_len,'stack_method':stack_method,'rotation':rotation,'correction':correction}
 # save fft metadata for future reference
 stack_metadata  = os.path.join(STACKDIR,'stack_data.txt') 
 
@@ -196,6 +205,26 @@ for ipath in range (rank,splits+size-extra,size):
         t5 = time.time()
         if flag:print('takes %6.2fs to process one chunck data, %6.2fs for all stacking' %(t5-t0,t4-t3))
         
+comm.barrier()
+
+if rotation:
+    # do rotation now
+    if rank == 0:
+        sfiles = glob.glob(os.path.join(STACKDIR,'*/*.h5'))
+        splits = len(sfiles)
+    else:
+        sfiles,splits = [None for _ in range(2)]
+
+    # broadcast new variables
+    splits    = comm.bcast(splits,root=0)
+    sfiles    = comm.bcast(sfiles,root=0)
+    extra = splits % size
+
+    # MPI loop through each user-defined time chunck
+    for istack in range (rank,splits+size-extra,size):
+        if ipath<splits:
+            noise_module.do_rotation(sfiles[istack],stack_para,locs,flag)
+
 tt1 = time.time()
 print('it takes %6.2fs to process step 2 in total' % (tt1-tt0))
 comm.barrier()

@@ -507,6 +507,7 @@ def make_stationlist_CSV(inv,path):
     lonlist = []
     latlist = []
     elvlist = []
+    chalist = []
 
     #-----silly inventory structures----
     nnet = len(inv)
@@ -515,18 +516,22 @@ def make_stationlist_CSV(inv,path):
         nsta = len(net)
         for jj in range(nsta):
             sta = net[jj]
-            netlist.append(net.code)
-            stalist.append(sta.code)
-            lonlist.append(sta.longitude)
-            latlist.append(sta.latitude)
-            elvlist.append(sta.elevation)
+            ncha = len(sta)
+            for kk in range(ncha):
+                chan = sta[kk]
+                netlist.append(net.code)
+                stalist.append(sta.code)
+                chalist.append(chan.code)
+                lonlist.append(sta.longitude)
+                latlist.append(sta.latitude)
+                elvlist.append(sta.elevation)
 
     #------------dictionary for a pandas frame------------
-    dict = {'network':netlist,'station':stalist,'latitude':latlist,'longitude':lonlist,'elevation':elvlist}
+    dict = {'network':netlist,'station':stalist,'channel':chalist,'latitude':latlist,'longitude':lonlist,'elevation':elvlist}
     locs = pd.DataFrame(dict)
 
     #----------write into a csv file---------------            
-    locs.to_csv(os.path.join(path,'locations.txt'),index=False)
+    locs.to_csv(os.path.join(path,'station.lst'),index=False)
 
 
 def get_event_list(str1,str2,inc_hours):
@@ -1075,6 +1080,100 @@ def do_stacking(cc_array,cc_time,cc_ngood,f_substack_len,stack_para):
         n_corr = np.sum(cc_ngood[indx])
     
     return s_corr,t_corr,n_corr
+
+def do_rotation(sfile,stack_para,locs,flag):
+    '''
+    function to transfer from a E-N-Z coordinate into a R-T-Z system
+
+    input variables:
+    sfiles:     all stacked files in ASDF format
+    stack_para: dict containing all parameters for stacking
+    locs:       dict containing station angle info
+    flag:       boolen variables to show intermeidate files
+    '''
+    # load useful variables
+    sta_list = list(locs.iloc[:]['station'])
+    angles   = list(locs.iloc[:]['angle'])
+    correction = stack_para['correction']
+
+    # get station info from the name of ASDF file
+    staS  = sfile.split('/')[-1].split('_')[1].split('.')[1]
+    staR  = sfile.split('/')[-1].split('_')[2].split('.')[1]
+    ind   = sta_list.index(staS)
+    acorr = angles[ind]
+    ind   = sta_list.index(staR)
+    bcorr = angles[ind]
+
+    # define useful variables
+    rtz_components = ['ZR','ZT','ZZ','RR','RT','RZ','TR','TT','TZ']
+    pi = 3.1415926
+
+    if flag:
+        print('doing matrix rotation now!')
+
+    # load useful parameters from asdf files 
+    with pyasdf.ASDFDataSet(sfile,mpi=False) as st:
+        dtypes = st.auxiliary_data.list()
+        if not len(dtypes): print('no data in %s, return to main function'%sfile);return
+
+        # loop through each time chunck
+        for itype in dtypes:
+            comp_list = st.auxiliary_data[itype].list()
+
+            if len(comp_list) < 9:
+                print('contine! seems no 9 components ccfs available');continue
+
+            # load parameter dic
+            parameters = st.auxiliary_data[itype][comp_list[0]].parameters
+            azi = parameters['azi']
+            baz = parameters['baz']
+            data = st.auxiliary_data[itype][comp_list[0]].data[:]
+            npts = data.shape[0]
+
+            #---angles to be corrected----
+            if correction:
+                cosa = np.cos((azi+acorr)*pi/180)
+                sina = np.sin((azi+acorr)*pi/180)
+                cosb = np.cos((baz+bcorr)*pi/180)
+                sinb = np.sin((baz+bcorr)*pi/180)
+            else:
+                cosa = np.cos(azi*pi/180)
+                sina = np.sin(azi*pi/180)
+                cosb = np.cos(baz*pi/180)
+                sinb = np.sin(baz*pi/180)
+
+            tcorr = np.zeros(shape=(9,npts),dtype=np.float32)
+            for ii,icomp in enumerate(comp_list):
+                tcorr[ii] = st.auxiliary_data[itype][icomp].data[:]
+
+            #------9 component tensor rotation 1-by-1------
+            for jj in range(len(rtz_components)):
+                
+                if jj==0:
+                    crap = -cosb*tcorr[7]-sinb*tcorr[6]
+                elif jj==1:
+                    crap = sinb*tcorr[7]-cosb*tcorr[6]
+                elif jj==2:
+                    crap = tcorr[8]
+                    continue
+                elif jj==3:
+                    crap = -cosa*cosb*tcorr[4]-cosa*sinb*tcorr[3]-sina*cosb*tcorr[1]-sina*sinb*tcorr[0]
+                elif jj==4:
+                    crap = cosa*sinb*tcorr[4]-cosa*cosb*tcorr[3]+sina*sinb*tcorr[1]-sina*cosb*tcorr[0]
+                elif jj==5:
+                    crap = cosa*tcorr[5]+sina*tcorr[2]
+                elif jj==6:
+                    crap = sina*cosb*tcorr[4]+sina*sinb*tcorr[3]-cosa*cosb*tcorr[1]-cosa*sinb*tcorr[0]
+                elif jj==7:
+                    crap = -sina*sinb*tcorr[4]+sina*cosb*tcorr[3]+cosa*sinb*tcorr[1]-cosa*cosb*tcorr[0]
+                else:
+                    crap = -sina*tcorr[5]+cosa*tcorr[2]
+
+                #------save the time domain cross-correlation functions-----
+                data_type = itype
+                path = rtz_components[jj]
+                st.add_auxiliary_data(data=crap, data_type=data_type, path=path, parameters=parameters)
+
 
 def get_SNR(corr,snr_parameters,parameters):
     '''

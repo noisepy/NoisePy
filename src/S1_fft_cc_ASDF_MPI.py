@@ -44,13 +44,13 @@ tt0=time.time()
 ########################################
 
 #------absolute path parameters-------
-rootpath  = '/Users/chengxin/Documents/NoisePy_example/Kanto'                    # root path for this data processing
+rootpath  = '/Users/chengxin/Documents/SCAL'                    # root path for this data processing
 FFTDIR    = os.path.join(rootpath,'FFT')                        # dir to store FFT data
 CCFDIR    = os.path.join(rootpath,'CCF')                        # dir to store CC data
-DATADIR   = os.path.join(rootpath,'RAW_DATA')                    # dir where noise data is located
+DATADIR   = os.path.join(rootpath,'RAW_DATA')                   # dir where noise data is located
 
 #-------some control parameters--------
-input_fmt   = 'sac'            # string: 'asdf', 'sac','mseed' 
+input_fmt   = 'asdf'            # string: 'asdf', 'sac','mseed' 
 to_whiten   = False             # False (no whitening), or running-mean, one-bit normalization
 time_norm   = False             # False (no time normalization), or running-mean, one-bit normalization
 cc_method   = 'coherency'       # select between raw, deconv and coherency
@@ -58,8 +58,8 @@ save_fft    = False             # True to save fft data, or False
 flag        = True              # print intermediate variables and computing time for debugging purpose
 
 # pre-processing parameters 
-cc_len    = 3600                # basic unit of data length for fft (s)
-step      = 900                 # overlapping between each cc_len (s)
+cc_len    = 1800                # basic unit of data length for fft (s)
+step      = 450                 # overlapping between each cc_len (s)
 smooth_N  = 100                 # moving window length for time/freq domain normalization if selected
 
 # cross-correlation parameters
