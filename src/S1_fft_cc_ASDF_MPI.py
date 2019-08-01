@@ -13,6 +13,7 @@ from mpi4py import MPI
 from scipy.fftpack.helper import next_fast_len
 import matplotlib.pyplot  as plt
 
+# ignore warnings
 if not sys.warnoptions:
     import warnings
     warnings.simplefilter("ignore")
@@ -25,16 +26,17 @@ This main script of NoisePy:
         later cross-correlation;
     3) performs cross-correlation for all station pairs in that time chunck and output the
         sub-stacked (if selected) into ASDF format;
-    4) has the option to read SAC/mseed data stored in local machine. (Jul.8.2019)
+    4) has the option to read SAC/mseed data stored at local machine. (Jul.8.2019)
 
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
          Marine Denolle (mdenolle@fas.harvard.edu)
         
 Note:
     1) to read SAC/mseed files, we assume the users have sorted their data according to the 
-    time chunck they want to break and store them in a folder started with Event_20*
-    2) implement max_kurtosis?
-    3) implements the option to take on the entire number of cores.
+        time chunck they want to break and store them in the folder named after the time chunck.
+        modify L128 to find your local data 
+    2) we provide a script called S0B_SAC_MSEED2ASDF.py to help clean SAC/MSEED data and store
+        them in ASDF format for better NoisePy performance.
 '''
 
 tt0=time.time()
@@ -44,10 +46,10 @@ tt0=time.time()
 ########################################
 
 #------absolute path parameters-------
-rootpath  = '/Users/chengxin/Documents/SCAL'                    # root path for this data processing
+rootpath  = '/Users/chengxin/Documents/NoisePy_example/JAKARTA'                    # root path for this data processing
 FFTDIR    = os.path.join(rootpath,'FFT')                        # dir to store FFT data
 CCFDIR    = os.path.join(rootpath,'CCF')                        # dir to store CC data
-DATADIR   = os.path.join(rootpath,'RAW_DATA')                   # dir where noise data is located
+DATADIR   = os.path.join(rootpath,'CLEANED_DATA')               # dir where noise data is located
 
 #-------some control parameters--------
 input_fmt   = 'asdf'            # string: 'asdf', 'sac','mseed' 
@@ -63,7 +65,7 @@ step      = 450                 # overlapping between each cc_len (s)
 smooth_N  = 100                 # moving window length for time/freq domain normalization if selected
 
 # cross-correlation parameters
-maxlag         = 400            # lags of cross-correlation to save
+maxlag         = 300            # lags of cross-correlation to save
 substack       = True           # sub-stack daily cross-correlation or not
 substack_len   = cc_len         # Time unit in sectons to stack over: need to be integer times of cc_len
 smoothspect_N  = 10             # moving window length to smooth spectrum amplitude
@@ -113,8 +115,6 @@ rank = comm.Get_rank()
 size = comm.Get_size()
 
 if rank == 0:
-#     if save_fft:
-#         if not os.path.isdir(FFTDIR):os.mkdir(FFTDIR)
     if not os.path.isdir(CCFDIR):os.mkdir(CCFDIR)
     
     # save metadata 
@@ -131,7 +131,7 @@ if rank == 0:
         # get nsta by loop through all event folder
         nsta = 0
         for ii in range(len(tdir)):
-            tnsta = len(glob.glob(os.path.join(tdir[ii],'*.sac')))
+            tnsta = len(glob.glob(os.path.join(tdir[ii],'*'+input_fmt)))
             if nsta<tnsta:nsta=tnsta
 
     nchunck = len(tdir)
@@ -146,11 +146,10 @@ else:
 # broadcast the variables
 splits = comm.bcast(splits,root=0)
 tdir  = comm.bcast(tdir,root=0)
-extra = splits % size
 if input_fmt != 'asdf': nsta = comm.bcast(nsta,root=0)
 
 # MPI loop: loop through each user-defined time chunck
-for ick in range (rank,splits+size-extra,size):
+for ick in range (rank,splits,size):
     if ick<splits:
         t10=time.time()   
 
@@ -169,19 +168,19 @@ for ick in range (rank,splits+size-extra,size):
             all_tags.remove('StationXML')
             nsta=len(sta_list) * len(all_tags)
         else:
-            sta_list = glob.glob(os.path.join(tdir[ick],'*.sac'))   
+            sta_list = glob.glob(os.path.join(tdir[ick],'*'+input_fmt))   
         if (len(sta_list)==0):
             print('continue! no data in %s'%tdir[ick]);continue
 
         # crude estimation on memory needs (assume float32)
         nsec_chunck = inc_hours/24*86400
-        nseg_chunck = int(np.floor((nsec_chunck-cc_len)/step))+1
+        nseg_chunck = int(np.floor((nsec_chunck-cc_len)/step))
         npts_chunck = int(nseg_chunck*cc_len*samp_freq)
         memory_size = nsta*npts_chunck*4/1024**3
         if memory_size > MAX_MEM:
             raise ValueError('Require %s G memory (%s GB provided)! Reduce inc_hours as it cannot load %s h all once!' % (memory_size,MAX_MEM,inc_hours))
 
-        nnfft = int(next_fast_len(int(cc_len*samp_freq+1)))
+        nnfft = int(next_fast_len(int(cc_len*samp_freq)))
         # open array to store fft data/info in memory
         fft_array = np.zeros((nsta,nseg_chunck*(nnfft//2)),dtype=np.complex64)
         fft_std   = np.zeros((nsta,nseg_chunck),dtype=np.float32)
@@ -200,7 +199,9 @@ for ick in range (rank,splits+size-extra,size):
                 try:
                     inv1 = ds.waveforms[tmps]['StationXML']
                 except Exception as e:
-                    print(e);raise ValueError('abort! no stationxml for %s in file %s'%(tmps,tdir[ick]))
+                    print(e)
+                    # choose abort or continue here???
+                    raise ValueError('abort! no stationxml for %s in file %s'%(tmps,tdir[ick]))
                 sta,net,lon,lat,elv,loc = noise_module.sta_info_from_inv(inv1)
 
                 #------get day information: works better than just list the tags------
@@ -230,7 +231,8 @@ for ick in range (rank,splits+size-extra,size):
                 clat.append(lat);location.append(loc);elevation.append(elv)
 
                 # cut daily-long data into smaller segments (dataS always in 2D)
-                source_params,dataS_t,dataS = noise_module.cut_trace_make_statis(fc_para,source,flag)
+                #source_params,dataS_t,dataS = noise_module.cut_trace_make_statis(fc_para,source,flag)
+                trace_stdS,dataS_t,dataS = noise_module.optimized_cut_trace_make_statis(fc_para,source,flag)        # optimized version:3-4 times faster
                 if not len(dataS): continue
                 N = dataS.shape[0]
 
@@ -242,9 +244,9 @@ for ick in range (rank,splits+size-extra,size):
                 # load fft data in memory for cross-correlations
                 data = source_white[:,:Nfft2]
                 fft_array[iii] = data.reshape(data.size)
-                fft_std[iii]   = source_params[:,1]
+                fft_std[iii]   = trace_stdS
                 fft_flag[iii]  = 1
-                fft_time[iii]  = dataS_t[:,0]
+                fft_time[iii]  = dataS_t
                 iii+=1
         
         if input_fmt == 'asdf': del ds
@@ -308,8 +310,7 @@ for ick in range (rank,splits+size-extra,size):
                     path_array.append(path)
 
                 t5=time.time()
-                if flag:
-                    print('read S %6.4fs, cc %6.4fs, write cc %6.4fs'% ((t1-t0),(t3-t2),(t4-t3)))
+                if flag:print('read S %6.4fs, cc %6.4fs, write cc %6.4fs'% ((t1-t0),(t3-t2),(t4-t3)))
         
         # create a stamp to show time chunck being done
         ftmp = open(tmpfile,'w')
@@ -318,17 +319,6 @@ for ick in range (rank,splits+size-extra,size):
 
         fft_array=[];fft_std=[];fft_flag=[];fft_time=[]
         n = gc.collect();print('unreadable garbarge',n)
-
-        '''
-        # save the ASDF path info for later stacking use
-        path_para = {'paths':path_array}
-        pfile = os.path.join(CCFDIR,'paths_'+str(rank)+'.lst')
-        if os.path.isfile(pfile):
-            fout = open(pfile,'a')
-        else:
-            fout  = open(pfile,'w')
-        fout.write(str(path_para));fout.close()
-        '''
     
         t11 = time.time()
         print('it takes %6.2fs to process the chunck of %s' % (t11-t10,tdir[ick].split('/')[-1]))

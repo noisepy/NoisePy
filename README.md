@@ -21,11 +21,11 @@ This package contains 3 main python scripts with 1 dependent module (`noise_modu
 
 
 # Functionality
-* download continous noise data based on obspy's [mass download](https://docs.obspy.org/packages/autogen/obspy.clients.fdsn.mass_downloader.html) module and save data in [ASDF](https://asdf-definition.readthedocs.io/en/latest/) format, which convinently assemble meta, wavefrom and auxililary data into one single file
-* perform fast and easy cross-correlation on downloaded seismic data in ASDF format as well as those stored on local machine as SAC/miniSEED format
+* download continous noise data based on obspy's core functions of [get_station](https://docs.obspy.org/packages/autogen/obspy.clients.fdsn.client.Client.get_stations.html) and [get_waveforms](https://docs.obspy.org/packages/autogen/obspy.clients.fdsn.client.Client.get_waveforms.html) and save data in [ASDF](https://asdf-definition.readthedocs.io/en/latest/) format, which convinently assemble meta, wavefrom and auxililary data into one single file
+* perform fast and easy cross-correlation on downloaded seismic data in ASDF format. It also offers great flexibility to deal with messy SAC/miniSEED data stored on local machine
 * options to do/save substacking of the cross-correlation functions 
 * coded with [MPI](https://en.wikipedia.org/wiki/Message_Passing_Interface) functionality to run in parallel
-* a series of functions for ambient noise monitoring applications
+* a series of functions including some new methods (see our papers for more details<sup>**</sup>) for ambient noise monitoring applications
 
 # Short tutorial
 **1. Downloading seismic noise data (`S0_download_MPI.py`)**\
@@ -81,4 +81,5 @@ Marine Denolle (mdenolle@fas.harvard.edu).
 
 **Reference**\
 Seats, K. J., Jesse F. L., and German A. P. "Improved ambient noise correlation functions using Welch′ s method." _Geophysical Journal International_ 188, no. 2 (2012): 513-523.  
-*Jiang, C., Toghramadjian, N., Yuan, C., Clements, T., and Denolle, M. "NoisePy: a new high-performance python tool for seismic ambient noise seismology." In prep for _Seismological Research Letter_.
+*Jiang, C., Toghramadjian, N., Yuan, C., Clements, T., and Denolle, M. "NoisePy: a new high-performance python tool for seismic ambient noise seismology." In prep for _Seismological Research Letter_.  
+**Yuan, C., et al.

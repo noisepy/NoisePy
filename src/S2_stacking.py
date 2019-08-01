@@ -31,7 +31,7 @@ tt0=time.time()
 ########################################
 
 # absolute path parameters
-rootpath  = '/Users/chengxin/Documents/SCAL'                # root path for this data processing
+rootpath  = '/Users/chengxin/Documents/NoisePy_example/JAKARTA'                # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                    # dir where CC data is stored
 STACKDIR  = os.path.join(rootpath,'STACK') 
 
@@ -57,9 +57,9 @@ stack_method = 'linear'                                     # linear, pws
 
 # rotation para
 rotation     = 'False'                                      # rotation from E-N-Z to R-T-Z 
-correction   = 'True'                                       # angle correction due to mis-orientation
+correction   = 'False'                                       # angle correction due to mis-orientation
 if rotation and correction:
-    corrfile = '/Users/chengxin/Documents/SCAL/angles.dat'     # csv file containing angle info to be corrected
+    corrfile = '/Users/chengxin/Documents/NoisePy_example/SCAL/angles.dat'     # csv file containing angle info to be corrected
     locs     = pd.read_csv(corrfile)
 
 # maximum memory allowed per core in GB
@@ -109,101 +109,99 @@ else:
 splits    = comm.bcast(splits,root=0)
 ccfiles   = comm.bcast(ccfiles,root=0)
 paths_all = comm.bcast(paths_all,root=0)
-extra = splits % size
 
 # MPI loop: loop through each user-defined time chunck
-for ipath in range (rank,splits+size-extra,size):
-    if ipath<splits:
-        t0=time.time()
+for ipath in range (rank,splits,size):
+    t0=time.time()
 
-        if flag:print('%dth path for station-pair %s'%(ipath,paths_all[ipath]))
-        # source folder
-        ttr   = paths_all[ipath].split('s')
-        idir  = ttr[0]+'.'+ttr[1]+'.'+ttr[3]
-        outfn = ttr[0]+'.'+ttr[1]+'.'+ttr[3]+'_'+ttr[4]+'.'+ttr[5]+'.'+ttr[7]+'.h5'
-        if flag:print('source %s and output %s'%(idir,outfn))
+    if flag:print('%dth path for station-pair %s'%(ipath,paths_all[ipath]))
+    # source folder
+    ttr   = paths_all[ipath].split('s')
+    idir  = ttr[0]+'.'+ttr[1]+'.'+ttr[3]
+    outfn = ttr[0]+'.'+ttr[1]+'.'+ttr[2]+'_'+ttr[4]+'.'+ttr[5]+'.'+ttr[6]+'.h5'
+    if flag:print('source %s and output %s'%(idir,outfn))
 
-        # crude estimation on memory needs (assume float32)
-        num_chunck  = len(ccfiles)
-        if substack:
-            num_segmts = int(np.floor((inc_hours*3600-cc_len)/step))+1
-        else: 
-            num_segmts = 1
-        npts_segmt  = int(2*maxlag*samp_freq)+1
-        memory_size = num_chunck*num_segmts*npts_segmt*4/1024**3
-        if memory_size > MAX_MEM:
-            raise ValueError('Require %s G memory (%s GB provided)! Cannot load cc data all once!' % (memory_size,MAX_MEM))
-        if flag:
-            print('Good on memory (need %s G and %s G provided)!' % (memory_size,MAX_MEM))
-            
-        # open array to store fft data/info in memory
-        cc_array = np.zeros((num_chunck*num_segmts,npts_segmt),dtype=np.float32)
-        cc_time  = np.zeros(num_chunck*num_segmts,dtype=np.float)
-        cc_ngood = np.zeros(num_chunck*num_segmts,dtype=np.int16)
-
-        # loop through all time-chuncks
-        iseg = 0
-        station_pair = paths_all[ipath]
-        for ifile in range(len(ccfiles)):
-            ds=pyasdf.ASDFDataSet(ccfiles[ifile],mpi=False,mode='r')
-            if not ds.auxiliary_data.list(): continue
-            path_list = ds.auxiliary_data['CCF'].list()            
-            if station_pair not in path_list:
-                if flag:print('continue! no data for %s in %s'%(station_pair,ccfiles[ifile]))
-                continue
-    
-            # load the data by segments
-            tdata = ds.auxiliary_data['CCF'][station_pair].data[:]
-            ttime = ds.auxiliary_data['CCF'][station_pair].parameters['time']
-            tgood = ds.auxiliary_data['CCF'][station_pair].parameters['ngood']
-            tparameters = ds.auxiliary_data['CCF'][station_pair].parameters
-            for ii in range(tdata.shape[0]):
-                cc_array[iseg] = tdata[ii]
-                cc_time[iseg]  = ttime[ii]
-                cc_ngood[iseg] = tgood[ii]
-                iseg+=1
-        t1=time.time()
-        if flag:print('loading CCF data takes %6.2fs'%(t1-t0))
-
-        # continue when there is no data
-        if iseg <= 1: continue
-
-        # do substacking if needed
-        if f_substack:
-            substacks,stime,num_stacks = noise_module.do_stacking(cc_array[:iseg],cc_time[:iseg],cc_ngood[:iseg],f_substack_len,stack_para)
-            t2=time.time()
-            if flag:print('finished substacking, which takes %6.2fs'%(t2-t1))
-            
-            if not len(substacks):print('continue! no substacks done!');continue
-
-            if out_format=='asdf':
-                stack_h5 = os.path.join(STACKDIR,idir+'/'+stack_method+'_'+outfn)
-                with pyasdf.ASDFDataSet(stack_h5,mpi=False) as ds:
-                    for iii in range(substacks.shape[0]):
-                        tparameters['time']  = stime[iii]
-                        tparameters['ngood'] = num_stacks[iii]
-                        tparameters['stack_method'] = stack_method
-                        tpath     = ttr[2][-1]+ttr[6][-1]
-                        data_type = 'T'+str(int(stime[iii]))
-                        ds.add_auxiliary_data(data=substacks[iii], data_type=data_type, path=tpath, parameters=tparameters)
+    # crude estimation on memory needs (assume float32)
+    num_chunck  = len(ccfiles)
+    if substack:
+        num_segmts = int(np.floor((inc_hours*3600-cc_len)/step))+1
+    else: 
+        num_segmts = 1
+    npts_segmt  = int(2*maxlag*samp_freq)+1
+    memory_size = num_chunck*num_segmts*npts_segmt*4/1024**3
+    if memory_size > MAX_MEM:
+        raise ValueError('Require %s G memory (%s GB provided)! Cannot load cc data all once!' % (memory_size,MAX_MEM))
+    if flag:
+        print('Good on memory (need %5.2f G and %s G provided)!' % (memory_size,MAX_MEM))
         
-        # do all stacking
-        t3=time.time()
-        allstacks,alltime,num_stacks = noise_module.do_stacking(cc_array[:iseg],cc_time[:iseg],cc_ngood[:iseg],0,stack_para)
-        t4=time.time()
+    # open array to store fft data/info in memory
+    cc_array = np.zeros((num_chunck*num_segmts,npts_segmt),dtype=np.float32)
+    cc_time  = np.zeros(num_chunck*num_segmts,dtype=np.float)
+    cc_ngood = np.zeros(num_chunck*num_segmts,dtype=np.int16)
+
+    # loop through all time-chuncks
+    iseg = 0
+    station_pair = paths_all[ipath]
+    for ifile in range(len(ccfiles)):
+        ds=pyasdf.ASDFDataSet(ccfiles[ifile],mpi=False,mode='r')
+        if not ds.auxiliary_data.list(): continue
+        path_list = ds.auxiliary_data['CCF'].list()            
+        if station_pair not in path_list:
+            if flag:print('continue! no data for %s in %s'%(station_pair,ccfiles[ifile]))
+            continue
+
+        # load the data by segments
+        tdata = ds.auxiliary_data['CCF'][station_pair].data[:]
+        ttime = ds.auxiliary_data['CCF'][station_pair].parameters['time']
+        tgood = ds.auxiliary_data['CCF'][station_pair].parameters['ngood']
+        tparameters = ds.auxiliary_data['CCF'][station_pair].parameters
+        for ii in range(tdata.shape[0]):
+            cc_array[iseg] = tdata[ii]
+            cc_time[iseg]  = ttime[ii]
+            cc_ngood[iseg] = tgood[ii]
+            iseg+=1
+    t1=time.time()
+    if flag:print('loading CCF data takes %6.2fs'%(t1-t0))
+
+    # continue when there is no data
+    if iseg <= 1: continue
+
+    # do substacking if needed
+    if f_substack:
+        substacks,stime,num_stacks = noise_module.do_stacking(cc_array[:iseg],cc_time[:iseg],cc_ngood[:iseg],f_substack_len,stack_para)
+        t2=time.time()
+        if flag:print('finished substacking, which takes %6.2fs'%(t2-t1))
+        
+        if not len(substacks):print('continue! no substacks done!');continue
 
         if out_format=='asdf':
             stack_h5 = os.path.join(STACKDIR,idir+'/'+stack_method+'_'+outfn)
             with pyasdf.ASDFDataSet(stack_h5,mpi=False) as ds:
-                tparameters['time']  = alltime
-                tparameters['ngood'] = num_stacks
-                tparameters['stack_method'] = stack_method
-                tpath     = ttr[2][-1]+ttr[6][-1]
-                data_type = 'Allstack'
-                ds.add_auxiliary_data(data=allstacks, data_type=data_type, path=tpath, parameters=tparameters)
+                for iii in range(substacks.shape[0]):
+                    tparameters['time']  = stime[iii]
+                    tparameters['ngood'] = num_stacks[iii]
+                    tparameters['stack_method'] = stack_method
+                    tpath     = ttr[2][-1]+ttr[6][-1]
+                    data_type = 'T'+str(int(stime[iii]))
+                    ds.add_auxiliary_data(data=substacks[iii], data_type=data_type, path=tpath, parameters=tparameters)
+    
+    # do all stacking
+    t3=time.time()
+    allstacks,alltime,num_stacks = noise_module.do_stacking(cc_array[:iseg],cc_time[:iseg],cc_ngood[:iseg],0,stack_para)
+    t4=time.time()
 
-        t5 = time.time()
-        if flag:print('takes %6.2fs to process one chunck data, %6.2fs for all stacking' %(t5-t0,t4-t3))
+    if out_format=='asdf':
+        stack_h5 = os.path.join(STACKDIR,idir+'/'+stack_method+'_'+outfn)
+        with pyasdf.ASDFDataSet(stack_h5,mpi=False) as ds:
+            tparameters['time']  = alltime
+            tparameters['ngood'] = num_stacks
+            tparameters['stack_method'] = stack_method
+            tpath     = ttr[2][-1]+ttr[6][-1]
+            data_type = 'Allstack'
+            ds.add_auxiliary_data(data=allstacks, data_type=data_type, path=tpath, parameters=tparameters)
+
+    t5 = time.time()
+    if flag:print('takes %6.2fs to process one chunck data, %6.2fs for all stacking' %(t5-t0,t4-t3))
         
 comm.barrier()
 
@@ -218,12 +216,10 @@ if rotation:
     # broadcast new variables
     splits    = comm.bcast(splits,root=0)
     sfiles    = comm.bcast(sfiles,root=0)
-    extra = splits % size
 
     # MPI loop through each user-defined time chunck
-    for istack in range (rank,splits+size-extra,size):
-        if ipath<splits:
-            noise_module.do_rotation(sfiles[istack],stack_para,locs,flag)
+    for istack in range (rank,splits,size):
+        noise_module.do_rotation(sfiles[istack],stack_para,locs,flag)
 
 tt1 = time.time()
 print('it takes %6.2fs to process step 2 in total' % (tt1-tt0))

@@ -18,7 +18,71 @@ from obspy.signal.invsim import cosine_taper
 import obspy
 from obspy.signal.util import _npts2nfft
 from obspy.core.inventory import Inventory, Network, Station, Channel, Site
+from obspy.core.util.base import _get_function_from_entry_point
 
+
+'''
+assemby of modules to process noise data and make cross-correlations. it includes some functions from
+the noise package by Tim Clements (https://github.com/tclements/noise)
+
+by: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
+    Marine Denolle (mdenolle@fas.harvard.edu)
+'''
+
+def optimized_cut_trace_make_statis(fc_para,source,flag):
+    '''
+    cut continous noise data into user-defined segments, estimate the statistics of 
+    each segment and keep timestamp for later use.
+
+    fft_para: dictionary containing all useful variables for the fft step.
+    source: obspy stream of noise data.
+    flag: boolen variable to output intermediate variables or not.
+    '''
+    # define return variables first
+    source_params=[];dataS_t=[];dataS=[]
+
+    # load parameter from dic
+    inc_hours = fc_para['inc_hours']
+    cc_len    = fc_para['cc_len']
+    step      = fc_para['step']
+
+    # useful parameters for trace sliding
+    nseg = int(np.floor((inc_hours/24*86400-cc_len)/step))
+    sps  = int(source[0].stats.sampling_rate)
+    starttime = source[0].stats.starttime-obspy.UTCDateTime(1970,1,1)
+    # copy data into array
+    data = source[0].data
+
+    # statistic to detect segments that may be associated with earthquakes
+    all_madS = mad(data)	            # median absolute deviation over all noise window
+    all_stdS = np.std(data)	        # standard deviation over all noise window
+    if all_madS==0 or all_stdS==0 or np.isnan(all_madS) or np.isnan(all_stdS):
+        print("continue! madS or stdS equeals to 0 for %s" % source)
+        return source_params,dataS_t,dataS
+
+    # inititialize variables
+    npts = cc_len*sps
+    #trace_madS = np.zeros(nseg,dtype=np.float32)
+    trace_stdS = np.zeros(nseg,dtype=np.float32)
+    dataS    = np.zeros(shape=(nseg,npts),dtype=np.float32)
+    dataS_t  = np.zeros(shape=(nseg,2),dtype=np.float)
+    
+    indx1 = 0
+    for iseg in range(nseg):
+        indx2 = indx1+npts
+        dataS[iseg] = data[indx1:indx2]
+        #trace_madS[iseg] = (np.max(np.abs(dataS[iseg]))/all_madS)
+        trace_stdS[iseg] = (np.max(np.abs(dataS[iseg]))/all_stdS)
+        dataS_t[iseg,0]  = starttime+cc_len*iseg
+        dataS_t[iseg,1]  = starttime+cc_len*(iseg+1)
+        indx1 = indx1+step*sps
+
+    # 2D array processing
+    dataS = demean(dataS)
+    dataS = detrend(dataS)
+    dataS = taper(dataS)
+
+    return trace_stdS,dataS_t,dataS
 
 def cut_trace_make_statis(fft_para,source,flag):
     '''
@@ -226,6 +290,7 @@ def stats2inv(stats,resp=None,filexml=None,locs=None):
             elevation=locs.iloc[ista]["elevation"],
             creation_date=stats.starttime,
             site=Site(name="First station"))
+
         cha = Channel(
             code=stats.channel,
             location_code=stats.location,
@@ -292,6 +357,8 @@ def preprocess_raw(st,inv,prepro_para,date_info):
     st: obspy stream object, containing traces of noise data
     inv: obspy inventory object, containing all information about stations
     prepro_para: dictionary containing all useful fft parameters
+
+    by Chengxin Jiang
     '''
     # load paramters from fft dict
     rm_resp       = prepro_para['rm_resp']
@@ -330,12 +397,13 @@ def preprocess_raw(st,inv,prepro_para,date_info):
         st[ii].data = scipy.signal.detrend(st[ii].data,type='constant')
         st[ii].data = scipy.signal.detrend(st[ii].data,type='linear')
 
+    # merge, taper and filter the data
     if len(st)>1:st.merge(method=1,fill_value=0)
+    st[0].taper(max_percentage=0.05,max_length=20)	# taper window
+    st[0].data = bandpass(st[0].data,pre_filt[0],pre_filt[-1],df=sps,corners=4,zerophase=True)
 
     # make downsampling if needed
     if abs(samp_freq-sps) > 1E-4:
-        st[0].data = bandpass(st[0].data,pre_filt[0],pre_filt[-1],df=sps,corners=4,zerophase=True)
-
         # downsampling here
         st.interpolate(samp_freq,method='weighted_average_slopes')
         delta = st[0].stats.delta
@@ -347,7 +415,7 @@ def preprocess_raw(st,inv,prepro_para,date_info):
             #--reset the time to remove the discrepancy---
             st[0].stats.starttime-=(fric*1E-6)
 
-    # several options to remove instrument response
+    # options to remove instrument response
     if rm_resp:
         if rm_resp != 'inv':
             if (respdir is None) or (not os.path.isdir(respdir)):
@@ -386,10 +454,13 @@ def preprocess_raw(st,inv,prepro_para,date_info):
         else:
             raise ValueError('no such option for rm_resp! please double check!')
 
-    #-----fill gaps, trim data and interpolate to ensure all starts at 00:00:00.0------
-    st = clean_segments(st,date_info)
+    # trim data
+    ntr = obspy.Stream()
+    # trim a continous segment into user-defined sequences
+    st[0].trim(starttime=date_info['starttime'],endtime=date_info['endtime'],pad=True,fill_value=0)
+    ntr.append(st[0])
 
-    return st
+    return ntr
 
 def portion_gaps(stream,date_info):
     '''
@@ -398,6 +469,7 @@ def portion_gaps(stream,date_info):
 
     stream: obspy stream object
     return float: portions of gaps in stream
+    by Chengxin Jiang
     '''
     # ideal duration of data
     starttime = date_info['starttime']
@@ -496,6 +568,78 @@ def clean_segments(tr,date_info):
 
     return ntr
 
+def detrend(data):
+    '''
+    remove the trend of the signal based on QR decomposion
+    '''
+    #ndata = np.zeros(shape=data.shape,dtype=data.dtype)
+    if data.ndim == 1:
+        npts = data.shape[0]
+        X = np.ones((npts,2))
+        X[:,0] = np.arange(0,npts)/npts
+        Q,R = np.linalg.qr(X)
+        rq  = np.dot(np.linalg.inv(R),Q.transpose())
+        coeff = np.dot(rq,data)
+        data = data-np.dot(X,coeff)
+    elif data.ndim == 2:
+        npts = data.shape[1]
+        X = np.ones((npts,2))
+        X[:,0] = np.arange(0,npts)/npts
+        Q,R = np.linalg.qr(X)
+        rq = np.dot(np.linalg.inv(R),Q.transpose())
+        for ii in range(data.shape[0]):
+            coeff = np.dot(rq,data[ii])
+            data[ii] = data[ii] - np.dot(X,coeff)
+    return data
+
+def demean(data):
+    '''
+    remove the mean of the signal
+    '''
+    #ndata = np.zeros(shape=data.shape,dtype=data.dtype)
+    if data.ndim == 1:
+        data = data-np.mean(data)
+    elif data.ndim == 2:
+        for ii in range(data.shape[0]):
+            data[ii] = data[ii]-np.mean(data[ii])
+    return data
+
+def taper(data):
+    '''
+    apply a cosine taper using obspy functions
+    '''
+    #ndata = np.zeros(shape=data.shape,dtype=data.dtype)
+    if data.ndim == 1:
+        npts = data.shape[0]
+        # window length 
+        if npts*0.05>20:wlen = 20
+        else:wlen = npts*0.05
+        # taper values
+        func = _get_function_from_entry_point('taper', 'hann')
+        if 2*wlen == npts:
+            taper_sides = func(2*wlen)
+        else:
+            taper_sides = func(2*wlen+1)
+        # taper window
+        win  = np.hstack((taper_sides[:wlen], np.ones(npts-2*wlen),taper_sides[len(taper_sides) - wlen:]))
+        data *= win
+    elif data.ndim == 2:
+        npts = data.shape[1]
+        # window length 
+        if npts*0.05>20:wlen = 20
+        else:wlen = npts*0.05
+        # taper values
+        func = _get_function_from_entry_point('taper', 'hann')
+        if 2*wlen == npts:
+            taper_sides = func(2*wlen)
+        else:
+            taper_sides = func(2*wlen + 1)
+        # taper window
+        win  = np.hstack((taper_sides[:wlen], np.ones(npts-2*wlen),taper_sides[len(taper_sides) - wlen:]))
+        for ii in range(data.shape[0]):
+            data[ii] *= win
+    return data
+
 def make_stationlist_CSV(inv,path):
     '''
     subfunction to output the station list into a CSV file
@@ -571,25 +715,6 @@ def get_station_pairs(sta):
         for jj in range(ii+1,len(sta)):
             pairs.append((sta[ii],sta[jj]))
     return pairs
-
-@jit('float32(float32,float32,float32,float32)') 
-def get_distance(lon1,lat1,lon2,lat2):
-    '''
-    calculate distance between two points on earth
-    
-    lon:longitude in degrees
-    lat:latitude in degrees
-    '''
-    R = 6372800  # Earth radius in meters
-    pi = 3.1415926536
-    
-    phi1    = lat1*pi/180
-    phi2    = lat2*pi/180
-    dphi    = (lat2 - lat1)*pi/180
-    dlambda = (lon2 - lon1)*pi/180
-    
-    a = np.sin(dphi/2)**2+np.cos(phi1)*np.cos(phi2)*np.sin(dlambda/2)**2
-    return 2*R*np.arctan2(np.sqrt(a), np.sqrt(1 - a))/1000
 
 def get_coda_window(dist,vmin,maxlag,dt,wcoda):
     '''
@@ -774,38 +899,6 @@ def optimized_cc_parameters(cc_para,coor,tcorr,ncorr):
         'cc_method':cc_method,
         'time':tcorr}
     return parameters
-
-def optimized_correlate1(fft1_smoothed_abs,fft2,maxlag,dt,Nfft,nwin,method="cross-correlation"):
-    '''
-    Optimized version of the correlation functions: put the smoothed 
-    source spectrum amplitude out of the inner for loop. 
-    It also takes advantage of the linear relationship of ifft, so that
-    stacking in spectrum first to reduce the total number of times for ifft,
-    which is the most time consuming steps in the previous correlate function  
-    '''
-
-    #------convert all 2D arrays into 1D to speed up--------
-    corr = np.zeros(nwin*(Nfft//2),dtype=np.complex64)
-    corr = fft1_smoothed_abs.reshape(fft1_smoothed_abs.size,) * fft2.reshape(fft2.size,)
-
-    if method == "coherence":
-        temp = moving_ave(np.abs(fft2.reshape(fft2.size,)),10)
-        try:
-            corr /= temp
-        except ValueError:
-            raise ValueError('smoothed spectrum has zero values')
-
-    corr  = corr.reshape(nwin,Nfft//2)
-    ncorr = np.zeros(shape=Nfft,dtype=np.complex64)
-    ncorr[:Nfft//2] = np.mean(corr,axis=0)
-    ncorr[-(Nfft//2)+1:]=np.flip(np.conj(ncorr[1:(Nfft//2)]),axis=0)
-    ncorr = np.real(np.fft.ifftshift(scipy.fftpack.ifft(ncorr, Nfft, axis=0)))
-
-    tcorr = np.arange(-Nfft//2 + 1, Nfft//2)*dt
-    ind   = np.where(np.abs(tcorr) <= maxlag)[0]
-    ncorr = ncorr[ind]
-    
-    return ncorr
 
 def optimized_correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
     '''
