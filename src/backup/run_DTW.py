@@ -27,7 +27,7 @@ dt = 0.05       # time intervals
 b = 5           # b-value to limit strain
 
 #------load u0 and u1---------
-h5file = '/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/STACK1/E.ABHM/E.ABHM_E.OHSM.h5'
+h5file = '/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/STACK/E.ABHM/E.ABHM_E.OHSM.h5'
 comp   = 'ZZ'
 fmin   = 0.1
 fmax   = 0.3

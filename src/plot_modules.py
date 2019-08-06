@@ -91,7 +91,7 @@ def plot_waveform(sfile,net,sta,freqmin,freqmax):
 ###############PLOTTING FUNCTIONS FOR FILES FROM S1##########################
 #############################################################################
 
-def plot_substack_cc(sfile,freqmin,freqmax,disp_lag=None,savefig=False,sdir=None):
+def plot_substack_cc(sfile,spair,freqmin,freqmax,disp_lag=None,savefig=False,sdir=None):
     '''
     display the 2D matrix of the cross-correlation functions for a time-chunck. 
 
@@ -110,13 +110,12 @@ def plot_substack_cc(sfile,freqmin,freqmax,disp_lag=None,savefig=False,sdir=None
     if savefig:
         if sdir==None:print('no path selected! save figures in the default path')
 
-    dtype = 'CCF'
     try:
         ds = pyasdf.ASDFDataSet(sfile,mode='r')
         # extract common variables
-        path_lists = ds.auxiliary_data[dtype].list()
-        dt     = ds.auxiliary_data[dtype][path_lists[0]].parameters['dt']
-        maxlag = ds.auxiliary_data[dtype][path_lists[0]].parameters['maxlag']
+        path_lists = ds.auxiliary_data[spair].list()
+        dt     = ds.auxiliary_data[spair][path_lists[0]].parameters['dt']
+        maxlag = ds.auxiliary_data[spair][path_lists[0]].parameters['maxlag']
     except Exception:
         print("exit! cannot open %s to read"%sfile);sys.exit()
 
@@ -129,15 +128,15 @@ def plot_substack_cc(sfile,freqmin,freqmax,disp_lag=None,savefig=False,sdir=None
 
     for ipath in path_lists:
         net1,sta1,chan1,loc1,net2,sta2,chan2,loc2 = ipath.split('s')
-        dist = ds.auxiliary_data[dtype][ipath].parameters['dist']
-        ngood= ds.auxiliary_data[dtype][ipath].parameters['ngood']
-        ttime= ds.auxiliary_data[dtype][ipath].parameters['time']
+        dist = ds.auxiliary_data[spair][ipath].parameters['dist']
+        ngood= ds.auxiliary_data[spair][ipath].parameters['ngood']
+        ttime= ds.auxiliary_data[spair][ipath].parameters['time']
         timestamp = np.empty(ttime.size,dtype='datetime64[s]')
         #if len(ngood)==1:
         #    raise ValueError('seems no substacks have been done! not suitable for this plotting function')
         
         # cc matrix
-        data = ds.auxiliary_data[dtype][ipath].data[:,indx1:indx2]
+        data = ds.auxiliary_data[spair][ipath].data[:,indx1:indx2]
         nwin = data.shape[0]
         amax = np.zeros(nwin,dtype=np.float32)
         if nwin==0 or len(ngood)==1: print('continue! no enough substacks!');continue
@@ -224,17 +223,20 @@ def plot_substack_all(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=False,sd
     amax = np.zeros(nwin,dtype=np.float32)
 
     for ii,itype in enumerate(dtype_lists[1:]):
-        ngood[ii] = ds.auxiliary_data[itype][paths].parameters['ngood']
-        ttime[ii] = ds.auxiliary_data[itype][paths].parameters['time']
-        timestamp[ii] = obspy.UTCDateTime(ttime[ii])
+        try:
+            ngood[ii] = ds.auxiliary_data[itype][paths].parameters['ngood']
+            ttime[ii] = ds.auxiliary_data[itype][paths].parameters['time']
+            timestamp[ii] = obspy.UTCDateTime(ttime[ii])
+            # cc matrix
+            data[ii] = ds.auxiliary_data[itype][paths].data[indx1:indx2]
+            data[ii] = bandpass(data[ii],freqmin,freqmax,int(1/dt),corners=4, zerophase=True)
+            amax[ii] = np.max(data[ii])
+            data[ii] /= amax[ii]
+        except Exception as e:
+            print(e);continue
+
         if len(ngood)==1:
             raise ValueError('seems no substacks have been done! not suitable for this plotting function')
-        
-        # cc matrix
-        data[ii] = ds.auxiliary_data[itype][paths].data[:,indx1:indx2]
-        data[ii] = bandpass(data[ii],freqmin,freqmax,int(1/dt),corners=4, zerophase=True)
-        amax[ii] = np.max(data[ii])
-        data[ii] /= amax[ii]
         
     # plotting
     tick_inc = 20
@@ -247,7 +249,7 @@ def plot_substack_all(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=False,sd
     ax[0].set_yticks(np.arange(0,nwin,step=tick_inc))
     ax[0].set_yticklabels(timestamp[0:nwin:tick_inc])
     ax[0].xaxis.set_ticks_position('bottom')
-    ax[1].plot(amax/min(amax),'r-')
+    ax[1].plot(amax/max(amax),'r-')
     ax[1].plot(ngood,'b-')
     ax[1].set_xlabel('waveform number')
     ax[1].set_xticks(np.arange(0,nwin,nwin//15))

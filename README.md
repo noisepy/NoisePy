@@ -6,7 +6,7 @@ NoisePy is a Python package designed for fast and easy computation of ambient no
 <img src="/docs/src/logo.png" width="800" height="400">
  
 # Installation
-This package contains 3 main python scripts with 1 dependent module (`noise_module`) and 1 plotting module ( `plot_modules`). The scripts are depended on some common python libraries with a detailed list shown below. We recommend installing them using [conda](https://docs.conda.io/en/latest/) or [pip](https://pypi.org/project/pip/). Due to the availablility of multiple version of dependent libraries, we did not exclusively tested their performance on our package. But the information provided below works well on `macOS Mojave (10.14.5)`. 
+This package contains 4 main python scripts with 2 dependent modules (`core_functions` and `noise_module`) and 1 plotting module ( `plot_modules`). We prefer the script style over the function style mainly because we want to implement the MPI into the package. The scripts are depended on some common python libraries with a detailed list shown below. We recommend installing them using [conda](https://docs.conda.io/en/latest/) or [pip](https://pypi.org/project/pip/). Due to the availablility of multiple version of dependent libraries, we did not exclusively tested their performance on our package. But the information provided below works well on `macOS Mojave (10.14.5)`. 
 
 |  **library**  |  **version**  |
 |:-------------:|:-------------:|
@@ -22,16 +22,17 @@ This package contains 3 main python scripts with 1 dependent module (`noise_modu
 
 # Functionality
 * download continous noise data based on obspy's core functions of [get_station](https://docs.obspy.org/packages/autogen/obspy.clients.fdsn.client.Client.get_stations.html) and [get_waveforms](https://docs.obspy.org/packages/autogen/obspy.clients.fdsn.client.Client.get_waveforms.html) and save data in [ASDF](https://asdf-definition.readthedocs.io/en/latest/) format, which convinently assemble meta, wavefrom and auxililary data into one single file
-* perform fast and easy cross-correlation on downloaded seismic data in ASDF format. It also offers great flexibility to deal with messy SAC/miniSEED data stored on local machine
-* options to do/save substacking of the cross-correlation functions 
+* offers great flexibility to handle messy SAC/miniSEED data stored on local machine and options to convert them into ASDF format
+* perform fast and easy cross-correlation 
+* options to do and save substacking of the cross-correlation functions 
 * coded with [MPI](https://en.wikipedia.org/wiki/Message_Passing_Interface) functionality to run in parallel
-* a series of functions including some new methods (see our papers for more details<sup>**</sup>) for ambient noise monitoring applications
+* a series of monitoring functions including some recently developed methods (see our papers for more details<sup>**</sup>) for ambient noise monitoring applications
 
 # Short tutorial
-**1. Downloading seismic noise data (`S0_download_MPI.py`)**\
+**1A. Downloading seismic noise data (`S0A_download_ASDF_MPI.py`)**\
 The current settings of the script (as located in `src`) allows the users to download all available broadband CI stations operated at 4/Jul/2016 through SCEC data center. 
 
-In the script, short summary is provided for the input parameters so they should be straightforward to understand. For example, we set `inc_hours=24` to download continous noise data of every 24-h long, and store the daily data from all stations into one ASDF file. In order to increase the signal-to-noise (SNR) of the final cross-correlation functions (see Seats et al.,2012 for more details), we further break the 24-h long data into smaller segments of `cc_len` long with some overlapping defined by `step`. `down_list` is set to `False` because no prior station info is used, and the script relies on the geographic information at L63 to find targeted station info. `flag` should be `True` if intermediate outputs/operational time is needed during the downloading process. To run the code on a single core, go to your terminal with a python environment of required libraries and run following command. 
+In the script, short summary is provided for the input parameters so they should be straightforward to understand. For example, we set `inc_hours=24` to download continous noise data of every 24-h long, and store the daily data from all stations into one ASDF file. In order to increase the signal-to-noise (SNR) of the final cross-correlation functions (see Seats et al.,2012 for more details), we further break the 24-h long data into smaller segments of `cc_len` long with some overlapping defined by `step`. `down_list` is set to `False` because no prior station info is used, and the script relies on the geographic information at L63 to find targeted station info. `flag` should be `True` if intermediate outputs/operational time is needed during the downloading process. To run the code on a single core, go to your terminal with a python environment of required libraries and run following command. (Things may go completely different if you want to run NoisePy on a cluster. Better check it out first!!) 
 
 ```python
 python S0_download_ASDF_MPI.py
@@ -53,7 +54,10 @@ plot_modules.plot_waveform(sfile,'CI','USC',0.01,0.4)
 ```
 <img src="/docs/src/waveform.png" width="800" height="250">
 
-Note that the script also offers the flexibility to download data from an existing station list with a format same to the outputed CSV file. In this case, the variable of `down_list` should be set to `True` in the script.   
+Note that the script also offers the flexibility to download data from an existing station list with a format same to the outputed CSV file. In this case, the variable of `down_list` should be set to `True` in the script. 
+
+**1B. DEAL SAC or miniseed files on your local disk (`S0A_download_MPI.py`)**\
+If you just want to deal with the local data stored as SAC/miniseed format on your own disk, you should use this script. Most of the variables are pretty straighforward to understand. What this script essentially do is to prepare the SAC/miniseed files for the NoisePy package. In this script, it preprocess the data to cut, trim and downsample it into your targeted range. (choose when you have messy data! Trust me, this script is a better choice compared to the `S1_fft_cc_MPI.py`). Based on our test, this script could handles seismic data that is broken into small pieces and have messy format such as overlapping time for the broken pieces etc.   
 
 **2. Perform cross correlations (`S1_fft_cc_MPI.py`)**\
 This is the core script of NoisePy, which performs [Fourier transform](https://en.wikipedia.org/wiki/Fourier_transform) to all noise data first before they are further cross-correlated. This means that we are performing [cross-correlation](https://en.wikipedia.org/wiki/Cross-correlation) in the frequency domain. In the script, several options are provided to calculate the cross correlation in different ways, including `raw`, `coherency` and `deconv` (see our paper<sup>*</sup> for detailed definition). We choose `decon` as an example when running the script, and it will create a new folder called `CCF` along with a new ASDF file of the same name as the downloaded file. The new ASFD file in the `CCF` folder contains cross-correlation functions between all small time segments of `cc_len` long for all station pairs, and you can show their temporal variation by using the following command lines that calls `plot_substack_cc` function in `plot_modules`. 
