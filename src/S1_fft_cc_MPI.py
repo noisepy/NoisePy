@@ -166,9 +166,12 @@ for ick in range (rank,splits,size):
         if input_fmt == 'asdf':
             ds=pyasdf.ASDFDataSet(tdir[ick],mpi=False,mode='r') 
             sta_list = ds.waveforms.list()
-            all_tags = ds.waveforms[sta_list[0]].list()
-            all_tags.remove('StationXML')
-            nsta=len(sta_list) * len(all_tags)
+            nsta=0
+            for tlist in sta_list:
+                all_tags = ds.waveforms[sta_list[0]].list()
+                all_tags.remove('StationXML')
+                nsta+=len(all_tags)
+            print('found %d stations in total'%nsta)
         else:
             sta_list = sorted(glob.glob(os.path.join(tdir[ick],'*'+input_fmt)))
         if (len(sta_list)==0):
