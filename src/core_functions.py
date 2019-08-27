@@ -163,9 +163,6 @@ def preprocess_raw(st,inv,prepro_para,date_info):
             st[0].stats.starttime-=(fric*1E-6)
 
     # remove traces of too small length
-    #if st[0].stats.npts < 0.3*(date_info['endtime']-date_info['starttime'])*st[0].stats.sampling_rate:
-    #    st = []
-    #    return st
 
     # options to remove instrument response
     if rm_resp:
@@ -178,9 +175,13 @@ def preprocess_raw(st,inv,prepro_para,date_info):
             if not inv[0][0][0].response:
                 raise ValueError('no response found in the inventory! abort!')
             else:
-                print('removing response for %s using inv'%st[0])
-                st[0].attach_response(inv)
-                st[0].remove_response(output="VEL",pre_filt=pre_filt,water_level=60)
+                try:
+                    print('removing response for %s using inv'%st[0])
+                    st[0].attach_response(inv)
+                    st[0].remove_response(output="VEL",pre_filt=pre_filt,water_level=60)
+                except Exception:
+                    st = []
+                    return st
 
         elif rm_resp == 'spectrum':
             print('remove response using spectrum')
@@ -345,6 +346,10 @@ def optimized_cut_trace_make_statis(fc_para,source,flag):
     starttime = source[0].stats.starttime-obspy.UTCDateTime(1970,1,1)
     # copy data into array
     data = source[0].data
+
+    # confim data has been correctly pre-processed
+    if data.size < sps*inc_hours*3600:
+        return source_params,dataS_t,dataS
 
     # statistic to detect segments that may be associated with earthquakes
     all_madS = noise_module.mad(data)	            # median absolute deviation over all noise window

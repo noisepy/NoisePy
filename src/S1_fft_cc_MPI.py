@@ -68,8 +68,8 @@ smooth_N  = 100                 # moving window length for time/freq domain norm
 
 # cross-correlation parameters
 maxlag         = 400            # lags of cross-correlation to save (sec)
-substack       = False           # sub-stack daily cross-correlation or not
-substack_len   = cc_len      # Time unit in sectons to stack over: need to be integer times of cc_len
+substack       = True           # sub-stack daily cross-correlation or not
+substack_len   = cc_len         # Time unit in sectons to stack over: need to be integer times of cc_len
 smoothspect_N  = 10             # moving window length to smooth spectrum amplitude (points)
 
 # load useful download info if start from ASDF

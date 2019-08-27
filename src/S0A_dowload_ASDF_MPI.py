@@ -42,13 +42,13 @@ A beginning of NoisePy journey!
 tt0=time.time()
 
 # paths and filenames
-rootpath = '/Users/chengxin/Documents/SCAL' 
+rootpath = '/Users/chengxin/Documents/SEATTLE' 
 if not os.path.isdir(rootpath):os.mkdir(rootpath)
 direc  = os.path.join(rootpath,'RAW_DATA')      # where to store the downloaded data
 dlist  = os.path.join(direc,'station.lst')      # CSV file for station location info
 
 # download parameters
-client    = Client('SCEDC')                     # client/data center. see https://docs.obspy.org/packages/obspy.clients.fdsn.html for a list
+client    = Client('IRIS')                     # client/data center. see https://docs.obspy.org/packages/obspy.clients.fdsn.html for a list
 down_list = False                               # download stations from pre-compiled list
 oput_CSV  = True                                # output station.list to a CSV file to be used in later stacking steps
 flag      = True                                # print progress when running the script
@@ -60,13 +60,13 @@ freqmax   = 0.4                                 # note this cannot exceed Nquist
 outform   = 'asdf'                              
 
 # station information 
-lamin,lomin,lamax,lomax=32.5,-121,36,-114       # regional box: min lat, min lon, max lat, max lon
-dchan= ["BHZ"]                                  # channel if down_list=false
-dnet = ["CI"]                                   # network  
+lamin,lomin,lamax,lomax=47.5,-122.4,47.8,-122.2       # regional box: min lat, min lon, max lat, max lon
+dchan= ["HNZ"]                                  # channel if down_list=false
+dnet = ["UW"]                                   # network  
 dsta = ["*"]                                    # station (do either one station or *)
-start_date = ["2016_07_04_0_0_0"]               # start date of download
-end_date   = ["2016_07_05_0_0_0"]               # end date of download
-inc_hours  = 24                                 # length of data for each request (in hour)
+start_date = ["2019_02_01_0_0_0"]               # start date of download
+end_date   = ["2019_03_30_0_0_0"]               # end date of download
+inc_hours  = 12                                 # length of data for each request (in hour)
 
 # parameters for noise pre-processing: to estimate memory needs
 cc_len    = 3600                                # basic unit of data length for fft (s)
@@ -185,7 +185,9 @@ for ick in range (rank,splits+size-extra,size):
         
         # filename of the ASDF file
         ff=os.path.join(direc,all_chunck[ick]+'T'+all_chunck[ick+1]+'.h5')
-        if not os.path.isfile(ff):
+        if os.path.isfile(ff):
+            raise ValueError('seems file %s already exists! double check before continue'%ff)
+        else:
             with pyasdf.ASDFDataSet(ff,mpi=False,compression="gzip-3",mode='w') as ds:
 
                 # loop through each channel

@@ -3,6 +3,80 @@ import scipy
 import pycwt
 import datetime
 import numpy as np
+from obspy.core.util.base import _get_function_from_entry_point
+
+
+def detrend(data):
+    '''
+    remove the trend of the signal based on QR decomposion
+    '''
+    #ndata = np.zeros(shape=data.shape,dtype=data.dtype)
+    if data.ndim == 1:
+        npts = data.shape[0]
+        X = np.ones((npts,2))
+        X[:,0] = np.arange(0,npts)/npts
+        Q,R = np.linalg.qr(X)
+        rq  = np.dot(np.linalg.inv(R),Q.transpose())
+        coeff = np.dot(rq,data)
+        data = data-np.dot(X,coeff)
+    elif data.ndim == 2:
+        npts = data.shape[1]
+        X = np.ones((npts,2))
+        X[:,0] = np.arange(0,npts)/npts
+        Q,R = np.linalg.qr(X)
+        rq = np.dot(np.linalg.inv(R),Q.transpose())
+        for ii in range(data.shape[0]):
+            coeff = np.dot(rq,data[ii])
+            data[ii] = data[ii] - np.dot(X,coeff)
+    return data
+
+def demean(data):
+    '''
+    remove the mean of the signal
+    '''
+    #ndata = np.zeros(shape=data.shape,dtype=data.dtype)
+    if data.ndim == 1:
+        data = data-np.mean(data)
+    elif data.ndim == 2:
+        for ii in range(data.shape[0]):
+            data[ii] = data[ii]-np.mean(data[ii])
+    return data
+
+def taper(data):
+    '''
+    apply a cosine taper using obspy functions
+    '''
+    #ndata = np.zeros(shape=data.shape,dtype=data.dtype)
+    if data.ndim == 1:
+        npts = data.shape[0]
+        # window length 
+        if npts*0.05>20:wlen = 20
+        else:wlen = npts*0.05
+        # taper values
+        func = _get_function_from_entry_point('taper', 'hann')
+        if 2*wlen == npts:
+            taper_sides = func(2*wlen)
+        else:
+            taper_sides = func(2*wlen+1)
+        # taper window
+        win  = np.hstack((taper_sides[:wlen], np.ones(npts-2*wlen),taper_sides[len(taper_sides) - wlen:]))
+        data *= win
+    elif data.ndim == 2:
+        npts = data.shape[1]
+        # window length 
+        if npts*0.05>20:wlen = 20
+        else:wlen = npts*0.05
+        # taper values
+        func = _get_function_from_entry_point('taper', 'hann')
+        if 2*wlen == npts:
+            taper_sides = func(2*wlen)
+        else:
+            taper_sides = func(2*wlen + 1)
+        # taper window
+        win  = np.hstack((taper_sides[:wlen], np.ones(npts-2*wlen),taper_sides[len(taper_sides) - wlen:]))
+        for ii in range(data.shape[0]):
+            data[ii] *= win
+    return data
 
 
 def smooth(x, window='boxcar', half_win=3):

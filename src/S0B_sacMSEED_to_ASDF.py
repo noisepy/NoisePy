@@ -59,8 +59,8 @@ outform   = 'asdf'                                                      # output
 flag      = False                                                        # print intermediate variables and computing time
 
 # targeted time range
-start_date = ['2010_12_07_0_0_0']                                       # start date of local data
-end_date   = ['2010_12_08_0_0_0']                                       # end date of local data
+start_date = ['2010_12_06_0_0_0']                                       # start date of local data
+end_date   = ['2010_12_16_0_0_0']                                       # end date of local data
 inc_hours  = 8                                                          # sac/mseed file length for a continous recording
 
 # parameters for later cross-correlations: ONLY used to estimate memory needs here

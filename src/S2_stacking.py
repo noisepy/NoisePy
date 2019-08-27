@@ -36,7 +36,7 @@ tt0=time.time()
 ########################################
 
 # absolute path parameters
-rootpath  = '/Users/chengxin/Documents/NoisePy_example/Kanto'          # root path for this data processing
+rootpath  = '/Volumes/Chengxin/KANTO'          # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                    # dir where CC data is stored
 STACKDIR  = os.path.join(rootpath,'STACK') 
 
@@ -59,7 +59,7 @@ f_substack = True                                           # whether to do sub-
 f_substack_len = substack_len                               # length for sub-stacking to output
 out_format   = 'asdf'                                       # ASDF or SAC format for output
 flag         = False                                        # output intermediate args for debugging
-stack_method = 'linear'                                     # linear, pws
+stack_method = 'pws'                                        # linear, pws
 
 # cross component info
 if ncomp==1:enz_system = ['ZZ']
@@ -102,7 +102,7 @@ if rank == 0:
     ccfiles   = sorted(glob.glob(os.path.join(CCFDIR,'*.h5')))
 
     # load all station-pair info (now station with same name but different channels is regarded as one station)
-    pairs_all = core_functions.load_pfiles(ccfiles)
+    pairs_all = sorted(core_functions.load_pfiles(ccfiles[2:10]))
     splits  = len(pairs_all)
     if len(ccfiles)==0 or splits==0:
         raise IOError('Abort! no available CCF data for stacking')
@@ -128,6 +128,11 @@ for ipair in range (rank,splits,size):
     # source folder
     ttr   = pairs_all[ipair].split('s')
     idir  = ttr[0]+'.'+ttr[1]
+
+    # continue when file is done
+    toutfn = os.path.join(STACKDIR,idir+'/'+stack_method+'_'+ttr[0]+'.'+ttr[1]+'_'+ttr[2]+'.'+ttr[3]+'.tmp')   
+    if os.path.isfile(toutfn):
+        continue        
 
     # crude estimation on memory needs (assume float32)
     nccomp  = ncomp*ncomp
@@ -190,7 +195,7 @@ for ipair in range (rank,splits,size):
     if iseg <= 1: continue
     ttr = path_list[0].split('s')
     outfn = ttr[0]+'.'+ttr[1]+'_'+ttr[4]+'.'+ttr[5]+'.h5'         
-    if flag:print('ready to output to %s'%(outfn))                               
+    if flag:print('ready to output to %s'%(outfn))                     
 
     # loop through cross-component for stacking
     for icomp in range(nccomp):
@@ -236,6 +241,10 @@ for ipair in range (rank,splits,size):
     # do rotation if needed
     if rotation:
         core_functions.do_rotation(stack_h5,stack_para,locs,flag)
+    
+    ftmp = open(toutfn,'w')
+    ftmp.write('done')
+    ftmp.close()
 
 tt1 = time.time()
 print('it takes %6.2fs to process step 2 in total' % (tt1-tt0))

@@ -2,10 +2,12 @@ import os
 import sys
 import glob
 import obspy
+import scipy
 import pyasdf
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+from scipy.fftpack import next_fast_len
 from obspy.signal.filter import bandpass
 
 '''
@@ -175,6 +177,104 @@ def plot_substack_cc(sfile,spair,freqmin,freqmax,disp_lag=None,savefig=False,sdi
         else:
             fig.show()
 
+
+def plot_substack_cc_spect(sfile,spair,freqmin,freqmax,disp_lag=None,savefig=False,sdir=None):
+    '''
+    display the 2D matrix of the cross-correlation functions for a time-chunck. 
+
+    INPUT parameters:
+    sfile: cross-correlation functions outputed by S1
+    spair: station-pair named as net1+'s'+sta1+'s'+chan1+'s'+loc1+'s'+net2+'s'+sta2+'s'+chan2+'s'+loc2
+    freqmin: min frequency to be filtered
+    freqmax: max frequency to be filtered
+    disp_lag: time ranges for display
+
+    USAGE: plot_substack_cc('temp.h5',0.1,1)
+
+    Note: IMPORTANT!!!! this script only works for the cross-correlation with sub-stacks in S1.
+    '''
+    # open data for read
+    if savefig:
+        if sdir==None:print('no path selected! save figures in the default path')
+
+    try:
+        ds = pyasdf.ASDFDataSet(sfile,mode='r')
+        # extract common variables
+        path_lists = ds.auxiliary_data[spair].list()
+        dt     = ds.auxiliary_data[spair][path_lists[0]].parameters['dt']
+        maxlag = ds.auxiliary_data[spair][path_lists[0]].parameters['maxlag']
+    except Exception:
+        print("exit! cannot open %s to read"%sfile);sys.exit()
+
+    # lags for display   
+    if not disp_lag:disp_lag=maxlag
+    if disp_lag>maxlag:raise ValueError('lag excceds maxlag!')
+    t = np.arange(-int(disp_lag),int(disp_lag)+dt,step=int(2*int(disp_lag)/4)) 
+    indx1 = int((maxlag-disp_lag)/dt)
+    indx2 = indx1+2*int(disp_lag/dt)+1
+    nfft  = int(next_fast_len(indx2-indx1))
+    freq  = scipy.fftpack.fftfreq(nfft,d=dt)[:nfft//2]
+
+
+    for ipath in path_lists:
+        net1,sta1,chan1,loc1,net2,sta2,chan2,loc2 = ipath.split('s')
+        dist = ds.auxiliary_data[spair][ipath].parameters['dist']
+        ngood= ds.auxiliary_data[spair][ipath].parameters['ngood']
+        ttime= ds.auxiliary_data[spair][ipath].parameters['time']
+        timestamp = np.empty(ttime.size,dtype='datetime64[s]')
+        #if len(ngood)==1:
+        #    raise ValueError('seems no substacks have been done! not suitable for this plotting function')
+        
+        # cc matrix
+        data = ds.auxiliary_data[spair][ipath].data[:,indx1:indx2]
+        nwin = data.shape[0]
+        amax = np.zeros(nwin,dtype=np.float32)
+        spec = np.zeros(shape=(nwin,nfft//2),dtype=np.complex64)
+        if nwin==0 or len(ngood)==1: print('continue! no enough substacks!');continue
+
+        # load cc for each station-pair
+        for ii in range(nwin):
+            spec[ii] = scipy.fftpack.fft(data[ii],nfft,axis=0)[:nfft//2]
+            spec[ii] /= np.max(np.abs(spec[ii]),axis=0)
+            data[ii] = bandpass(data[ii],freqmin,freqmax,int(1/dt),corners=4, zerophase=True)
+            amax[ii] = max(data[ii])
+            data[ii] /= amax[ii]
+            timestamp[ii] = obspy.UTCDateTime(ttime[ii])
+        
+        # plotting
+        tick_inc = 20
+        fig,ax = plt.subplots(3,sharex=False)
+        ax[0].matshow(data,cmap='seismic',extent=[-disp_lag,disp_lag,nwin,0],aspect='auto')
+        ax[0].set_title('%s.%s.%s  %s.%s.%s  dist:%5.2f km' % (net1,sta1,chan1,net2,sta2,chan2,dist))
+        ax[0].set_xlabel('time [s]')
+        ax[0].set_xticks(t)
+        ax[0].set_yticks(np.arange(0,nwin,step=tick_inc))
+        ax[0].set_yticklabels(timestamp[0:-1:tick_inc])
+        ax[0].xaxis.set_ticks_position('bottom')
+        ax[1].matshow(np.abs(spec),cmap='seismic',extent=[freq[0],freq[-1],nwin,0],aspect='auto')
+        ax[1].set_xlabel('freq [Hz]')
+        ax[1].set_ylabel('amplitudes')
+        ax[1].set_yticks(np.arange(0,nwin,step=tick_inc))
+        ax[1].set_yticklabels(timestamp[0:nwin:tick_inc])
+        ax[1].xaxis.set_ticks_position('bottom')
+        ax[2].plot(amax/min(amax),'r-')
+        ax[2].plot(ngood,'b-')
+        ax[2].set_xlabel('waveform number')
+        #ax[1].set_xticks(np.arange(0,nwin,int(nwin/5)))
+        ax[2].legend(['relative amp','ngood'],loc='upper right')
+        fig.tight_layout()
+
+        # save figure or just show
+        if savefig:
+            if sdir==None:sdir = sfile.split('.')[0]
+            if not os.path.isdir(sdir):os.mkdir(sdir)
+            outfname = sdir+'/{0:s}{1:s}_{2:s}_{3:s}{4:s}_{5:s}.pdf'.format(net1,sta1,chan1,net2,sta2,chan2)
+            fig.savefig(outfname, format='pdf', dpi=400)
+            plt.close()
+        else:
+            fig.show()
+
+
 #############################################################################
 ###############PLOTTING FUNCTIONS FOR FILES FROM S2##########################
 #############################################################################
@@ -200,12 +300,15 @@ def plot_substack_all(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=False,sd
     try:
         ds = pyasdf.ASDFDataSet(sfile,mode='r')
         # extract common variables
-        dtype_lists = ds.auxiliary_data.list()[1:]
+        dtype_lists = ds.auxiliary_data.list()
         dt     = ds.auxiliary_data[dtype_lists[0]][paths].parameters['dt']
         dist   = ds.auxiliary_data[dtype_lists[0]][paths].parameters['dist']
         maxlag = ds.auxiliary_data[dtype_lists[0]][paths].parameters['maxlag']
     except Exception:
         print("exit! cannot open %s to read"%sfile);sys.exit()
+
+    if len(dtype_lists)==1:
+        raise ValueError('Abort! seems no substacks have been done')
 
     # lags for display   
     if not disp_lag:disp_lag=maxlag
@@ -223,10 +326,11 @@ def plot_substack_all(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=False,sd
     amax = np.zeros(nwin,dtype=np.float32)
 
     for ii,itype in enumerate(dtype_lists[1:]):
+        timestamp[ii] = obspy.UTCDateTime(np.float(itype[1:]))
         try:
             ngood[ii] = ds.auxiliary_data[itype][paths].parameters['ngood']
             ttime[ii] = ds.auxiliary_data[itype][paths].parameters['time']
-            timestamp[ii] = obspy.UTCDateTime(ttime[ii])
+            #timestamp[ii] = obspy.UTCDateTime(ttime[ii])
             # cc matrix
             data[ii] = ds.auxiliary_data[itype][paths].data[indx1:indx2]
             data[ii] = bandpass(data[ii],freqmin,freqmax,int(1/dt),corners=4, zerophase=True)
@@ -254,6 +358,107 @@ def plot_substack_all(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=False,sd
     ax[1].set_xlabel('waveform number')
     ax[1].set_xticks(np.arange(0,nwin,nwin//15))
     ax[1].legend(['relative amp','ngood'],loc='upper right')
+    # save figure or just show
+    if savefig:
+        if sdir==None:sdir = sfile.split('.')[0]
+        if not os.path.isdir(sdir):os.mkdir(sdir)
+        outfname = sdir+'/{0:s}.pdf'.format(sfile.split('/')[-1])
+        fig.savefig(outfname, format='pdf', dpi=400)
+        plt.close()
+    else:
+        fig.show()
+
+
+def plot_substack_all_spect(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=False,sdir=None):
+    '''
+    display the 2D matrix of the cross-correlation functions stacked for all time windows.
+
+    INPUT parameters:
+    sfile: cross-correlation functions outputed by S2
+    freqmin: min frequency to be filtered
+    freqmax: max frequency to be filtered
+    disp_lag: time ranges for display
+    ccomp: cross component of the targeted cc functions
+
+    USAGE: plot_substack_all('temp.h5',0.1,1,'ZZ',50,True,'./')
+    '''
+    # open data for read
+    if savefig:
+        if sdir==None:print('no path selected! save figures in the default path')
+
+    paths = ccomp
+    try:
+        ds = pyasdf.ASDFDataSet(sfile,mode='r')
+        # extract common variables
+        dtype_lists = ds.auxiliary_data.list()
+        dt     = ds.auxiliary_data[dtype_lists[0]][paths].parameters['dt']
+        dist   = ds.auxiliary_data[dtype_lists[0]][paths].parameters['dist']
+        maxlag = ds.auxiliary_data[dtype_lists[0]][paths].parameters['maxlag']
+    except Exception:
+        print("exit! cannot open %s to read"%sfile);sys.exit()
+
+    if len(dtype_lists)==1:
+        raise ValueError('Abort! seems no substacks have been done')
+
+    # lags for display   
+    if not disp_lag:disp_lag=maxlag
+    if disp_lag>maxlag:raise ValueError('lag excceds maxlag!')
+    t = np.arange(-int(disp_lag),int(disp_lag)+dt,step=int(2*int(disp_lag)/4)) 
+    indx1 = int((maxlag-disp_lag)/dt)
+    indx2 = indx1+2*int(disp_lag/dt)+1
+    nfft  = int(next_fast_len(indx2-indx1))
+    freq  = scipy.fftpack.fftfreq(nfft,d=dt)[:nfft//2]
+
+    # other parameters to keep
+    nwin = len(dtype_lists)-1
+    data = np.zeros(shape=(nwin,indx2-indx1),dtype=np.float32)
+    spec = np.zeros(shape=(nwin,nfft//2),dtype=np.complex64)
+    ngood= np.zeros(nwin,dtype=np.int16)
+    ttime= np.zeros(nwin,dtype=np.int)
+    timestamp = np.empty(ttime.size,dtype='datetime64[s]')
+    amax = np.zeros(nwin,dtype=np.float32)
+
+    for ii,itype in enumerate(dtype_lists[1:]):
+        timestamp[ii] = obspy.UTCDateTime(np.float(itype[1:]))
+        try:
+            ngood[ii] = ds.auxiliary_data[itype][paths].parameters['ngood']
+            ttime[ii] = ds.auxiliary_data[itype][paths].parameters['time']
+            #timestamp[ii] = obspy.UTCDateTime(ttime[ii])
+            # cc matrix
+            tdata = ds.auxiliary_data[itype][paths].data[indx1:indx2]
+            spec[ii] = scipy.fftpack.fft(tdata,nfft,axis=0)[:nfft//2]
+            spec[ii] /= np.max(np.abs(spec[ii]))
+            data[ii] = bandpass(tdata,freqmin,freqmax,int(1/dt),corners=4, zerophase=True)
+            amax[ii] = np.max(data[ii])
+            data[ii] /= amax[ii]
+        except Exception as e:
+            print(e);continue
+
+        if len(ngood)==1:
+            raise ValueError('seems no substacks have been done! not suitable for this plotting function')
+        
+    # plotting
+    tick_inc = 50
+    fig,ax = plt.subplots(3,sharex=False)
+    ax[0].matshow(data,cmap='seismic',extent=[-disp_lag,disp_lag,nwin,0],aspect='auto')
+    ax[0].set_title('%s dist:%5.2f km' % (sfile.split('/')[-1],dist))
+    ax[0].set_xlabel('time [s]')
+    ax[0].set_ylabel('wavefroms')
+    ax[0].set_xticks(t)
+    ax[0].set_yticks(np.arange(0,nwin,step=tick_inc))
+    ax[0].set_yticklabels(timestamp[0:nwin:tick_inc])
+    ax[0].xaxis.set_ticks_position('bottom')
+    ax[1].matshow(np.abs(spec),cmap='seismic',extent=[freq[0],freq[-1],nwin,0],aspect='auto')
+    ax[1].set_xlabel('freq [Hz]')
+    ax[1].set_ylabel('amplitudes')
+    ax[1].set_yticks(np.arange(0,nwin,step=tick_inc))
+    ax[1].set_yticklabels(timestamp[0:nwin:tick_inc])
+    ax[1].xaxis.set_ticks_position('bottom')
+    ax[2].plot(amax/max(amax),'r-')
+    ax[2].plot(ngood,'b-')
+    ax[2].set_xlabel('waveform number')
+    ax[2].set_xticks(np.arange(0,nwin,nwin//15))
+    ax[2].legend(['relative amp','ngood'],loc='upper right')
     # save figure or just show
     if savefig:
         if sdir==None:sdir = sfile.split('.')[0]
