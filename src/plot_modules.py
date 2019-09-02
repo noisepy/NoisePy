@@ -28,13 +28,16 @@ def plot_waveform(sfile,net,sta,freqmin,freqmax):
     '''
     display the downloaded waveform for station A
 
-    Input parameters:
+    PARAMETERS:
+    -----------------------
     sfile: containing all wavefrom data for a time-chunck in ASDF format
     net,sta,comp: network, station name and component 
     freqmin: min frequency to be filtered
     freqmax: max frequency to be filtered
 
-    USAGE: plot_waveform('temp.h5','CC','A05',0.01,0.5)
+    USAGE: 
+    -----------------------
+    plot_waveform('temp.h5','CC','A05',0.01,0.5)
     '''
     # open pyasdf file to read
     try:
@@ -97,14 +100,17 @@ def plot_substack_cc(sfile,spair,freqmin,freqmax,disp_lag=None,savefig=False,sdi
     '''
     display the 2D matrix of the cross-correlation functions for a time-chunck. 
 
-    INPUT parameters:
+    PARAMETERS:
+    --------------------------
     sfile: cross-correlation functions outputed by S1
     spair: station-pair named as net1+'s'+sta1+'s'+chan1+'s'+loc1+'s'+net2+'s'+sta2+'s'+chan2+'s'+loc2
     freqmin: min frequency to be filtered
     freqmax: max frequency to be filtered
     disp_lag: time ranges for display
 
-    USAGE: plot_substack_cc('temp.h5',0.1,1)
+    USAGE: 
+    --------------------------
+    plot_substack_cc('temp.h5',0.1,1)
 
     Note: IMPORTANT!!!! this script only works for the cross-correlation with sub-stacks in S1.
     '''
@@ -182,14 +188,17 @@ def plot_substack_cc_spect(sfile,spair,freqmin,freqmax,disp_lag=None,savefig=Fal
     '''
     display the 2D matrix of the cross-correlation functions for a time-chunck. 
 
-    INPUT parameters:
+    PARAMETERS:
+    -----------------------
     sfile: cross-correlation functions outputed by S1
     spair: station-pair named as net1+'s'+sta1+'s'+chan1+'s'+loc1+'s'+net2+'s'+sta2+'s'+chan2+'s'+loc2
     freqmin: min frequency to be filtered
     freqmax: max frequency to be filtered
     disp_lag: time ranges for display
 
-    USAGE: plot_substack_cc('temp.h5',0.1,1)
+    USAGE: 
+    -----------------------
+    plot_substack_cc('temp.h5',0.1,1)
 
     Note: IMPORTANT!!!! this script only works for the cross-correlation with sub-stacks in S1.
     '''
@@ -283,14 +292,17 @@ def plot_substack_all(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=False,sd
     '''
     display the 2D matrix of the cross-correlation functions stacked for all time windows.
 
-    INPUT parameters:
+    PARAMETERS:
+    ---------------------
     sfile: cross-correlation functions outputed by S2
     freqmin: min frequency to be filtered
     freqmax: max frequency to be filtered
     disp_lag: time ranges for display
     ccomp: cross component of the targeted cc functions
 
-    USAGE: plot_substack_all('temp.h5',0.1,1,'ZZ',50,True,'./')
+    USAGE: 
+    ----------------------
+    plot_substack_all('temp.h5',0.1,1,'ZZ',50,True,'./')
     '''
     # open data for read
     if savefig:
@@ -325,7 +337,7 @@ def plot_substack_all(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=False,sd
     timestamp = np.empty(ttime.size,dtype='datetime64[s]')
     amax = np.zeros(nwin,dtype=np.float32)
 
-    for ii,itype in enumerate(dtype_lists[1:]):
+    for ii,itype in enumerate(dtype_lists[2:]):
         timestamp[ii] = obspy.UTCDateTime(np.float(itype[1:]))
         try:
             ngood[ii] = ds.auxiliary_data[itype][paths].parameters['ngood']
@@ -373,14 +385,17 @@ def plot_substack_all_spect(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=Fa
     '''
     display the 2D matrix of the cross-correlation functions stacked for all time windows.
 
-    INPUT parameters:
+    PARAMETERS:
+    -----------------------
     sfile: cross-correlation functions outputed by S2
     freqmin: min frequency to be filtered
     freqmax: max frequency to be filtered
     disp_lag: time ranges for display
     ccomp: cross component of the targeted cc functions
 
-    USAGE: plot_substack_all('temp.h5',0.1,1,'ZZ',50,True,'./')
+    USAGE: 
+    -----------------------
+    plot_substack_all('temp.h5',0.1,1,'ZZ',50,True,'./')
     '''
     # open data for read
     if savefig:
@@ -470,12 +485,14 @@ def plot_substack_all_spect(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=Fa
         fig.show()
 
 
-def plot_all_moveout(sfiles,freqmin,freqmax,ccomp,dist_inc,disp_lag=None,savefig=False,sdir=None):
+def plot_all_moveout(sfiles,dtype,freqmin,freqmax,ccomp,dist_inc,disp_lag=None,savefig=False,sdir=None):
     '''
     display the moveout of the cross-correlation functions stacked for all time chuncks.
 
-    INPUT parameters:
+    PARAMETERS:
+    ---------------------
     sfile: cross-correlation functions outputed by S2
+    dtype: datatype either 'Allstack0pws' or 'Allstack0linear'
     freqmin: min frequency to be filtered
     freqmax: max frequency to be filtered
     ccomp:   cross component
@@ -484,13 +501,14 @@ def plot_all_moveout(sfiles,freqmin,freqmax,ccomp,dist_inc,disp_lag=None,savefig
     savefig: set True to save the figures (in pdf format)
     sdir: diresied directory to save the figure (if not provided, save to default dir)
 
-    USAGE: plot_substack_moveout('temp.h5',0.1,0.2,1,'ZZ',200,True,'./temp')
+    USAGE: 
+    ----------------------
+    plot_substack_moveout('temp.h5','Allstack0pws',0.1,0.2,1,'ZZ',200,True,'./temp')
     '''
     # open data for read
     if savefig:
         if sdir==None:print('no path selected! save figures in the default path')
     
-    dtype = 'Allstack'
     path  = ccomp
 
     # extract common variables
@@ -498,7 +516,7 @@ def plot_all_moveout(sfiles,freqmin,freqmax,ccomp,dist_inc,disp_lag=None,savefig
         ds    = pyasdf.ASDFDataSet(sfiles[0],mode='r')
         dt    = ds.auxiliary_data[dtype][path].parameters['dt']
         maxlag= ds.auxiliary_data[dtype][path].parameters['maxlag']
-        stack_method = ds.auxiliary_data[dtype][path].parameters['stack_method']
+        stack_method = dtype.split('0')[-1]
     except Exception:
         print("exit! cannot open %s to read"%sfiles[0]);sys.exit()
     
@@ -534,8 +552,8 @@ def plot_all_moveout(sfiles,freqmin,freqmax,ccomp,dist_inc,disp_lag=None,savefig
     ntrace = int(np.round(np.max(dist)+0.51)/dist_inc)
     ndata  = np.zeros(shape=(ntrace,indx2-indx1),dtype=np.float32)
     ndist  = np.zeros(ntrace,dtype=np.float32)
-    for td in range(0,ntrace):
-        tindx = np.where((dist<=td+dist_inc)&(dist>td))[0]
+    for td in range(0,ntrace-1):
+        tindx = np.where((dist>=td*dist_inc)&(dist<(td+1)*dist_inc))[0]
         if len(tindx):
             ndata[td] = np.mean(data[tindx],axis=0)
             ndist[td] = (td+0.5)*dist_inc
@@ -545,6 +563,7 @@ def plot_all_moveout(sfiles,freqmin,freqmax,ccomp,dist_inc,disp_lag=None,savefig
     ndata = ndata[indx]
     ndist = ndist[indx]
     for ii in range(ndata.shape[0]):
+        print(ii,np.max(np.abs(ndata[ii])))
         ndata[ii] /= np.max(np.abs(ndata[ii]))
 
     # plotting figures

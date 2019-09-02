@@ -8,7 +8,7 @@ import datetime
 import os, glob
 import numpy as np
 import pandas as pd
-import core_functions
+import noise_module
 from mpi4py import MPI
 from scipy.fftpack.helper import next_fast_len
 import matplotlib.pyplot  as plt
@@ -26,17 +26,17 @@ This main script of NoisePy:
         later cross-correlation;
     3) performs cross-correlation for all station pairs in that time chunck and output the
         sub-stacked (if selected) into ASDF format;
-    4) has the option to read SAC/mseed data stored at local machine. (Jul.8.2019)
+    4) provides the option to deal with tidy SAC/mseed data at local machine. (Jul.8.2019)
 
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
          Marine Denolle (mdenolle@fas.harvard.edu)
         
 Note:
-    1) to read SAC/mseed files, we assume the users have sorted their data according to the 
-        time chunck they want to break and store them in the folder named after the time chunck.
-        modify L128 to find your local data 
-    2) we provide a script called S0B_SAC_MSEED2ASDF.py to help clean SAC/MSEED data and store
-        them in ASDF format for better NoisePy performance.
+    1) to read SAC/mseed files, we assume the users have sorted the data by the time chunck they prefer (e.g., 1day) 
+        and store them in folders named after the time chunck (e.g, 2010_10_1). modify L135 to find your local data 
+    2) a script of S0B_sacMSEED_to_ASDF.py is provided to help clean messy SAC/MSEED data and transfer
+        them into ASDF format. the script takes minor time compared to that for cross-correlation times. so we recommend 
+        to use this script to deal with SAC/mseed data for better NoisePy performance. 
 '''
 
 tt0=time.time()
@@ -47,10 +47,10 @@ tt0=time.time()
 
 #------absolute path parameters-------
 # rootpath = '/n/scratchssdlfs/denolle_lab/CCFs_Kanto'
-rootpath  = '/Users/chengxin/Documents/NoisePy_example/Kanto'                    # root path for this data processing
+rootpath  = '/Volumes/Chengxin/Kanto'                          # root path for this data processing
 FFTDIR    = os.path.join(rootpath,'FFT')                        # dir to store FFT data
 CCFDIR    = os.path.join(rootpath,'CCF')                        # dir to store CC data
-DATADIR   = os.path.join(rootpath,'CLEANED_DATA')                 # dir where noise data is located
+DATADIR   = os.path.join(rootpath,'RAW_DATA')                   # dir where noise data is located
 
 #-------some control parameters--------
 input_fmt   = 'asdf'             # string: 'asdf', 'sac','mseed' 
@@ -59,7 +59,12 @@ time_norm   = False             # False (no time normalization), or running-mean
 cc_method   = 'coherency'       # select between raw and coherency (decon is not symmetric!)
 save_fft    = False             # True to save fft data, or False
 flag        = False             # print intermediate variables and computing time for debugging purpose
-ncomp       = 3                 # 1 or 3 component data (needed to decide whether do rotation)
+ncomp       = 1                 # 1 or 3 component data (needed to decide whether do rotation)
+
+# station/instrument info for input_fmt=='sac' or 'mseed'
+stationxml = False              # station.XML file exists or not
+rm_resp    = 'no'               # 'no','inv','spectrum','RESP','polozeros'
+respdir    = 'none'     
 
 # pre-processing parameters 
 cc_len    = 1800                # basic unit of data length for fft (sec)
@@ -67,9 +72,9 @@ step      = 450                 # overlapping between each cc_len (sec)
 smooth_N  = 100                 # moving window length for time/freq domain normalization if selected (points)
 
 # cross-correlation parameters
-maxlag         = 400            # lags of cross-correlation to save (sec)
+maxlag         = 150            # lags of cross-correlation to save (sec)
 substack       = True           # sub-stack daily cross-correlation or not
-substack_len   = cc_len         # Time unit in sectons to stack over: need to be integer times of cc_len
+substack_len   = 4*cc_len         # Time unit in sectons to stack over: need to be integer times of cc_len
 smoothspect_N  = 10             # moving window length to smooth spectrum amplitude (points)
 
 # load useful download info if start from ASDF
@@ -103,7 +108,8 @@ fc_para={'samp_freq':samp_freq,'dt':dt,'cc_len':cc_len,'step':step,'freqmin':fre
     'to_whiten':to_whiten,'time_norm':time_norm,'cc_method':cc_method,'smooth_N':smooth_N,'data_format':\
     input_fmt,'rootpath':rootpath,'CCFDIR':CCFDIR,'start_date':start_date[0],'end_date':end_date[0],\
     'inc_hours':inc_hours,'substack':substack,'substack_len':substack_len,'smoothspect_N':smoothspect_N,\
-    'maxlag':maxlag,'max_over_std':max_over_std,'max_kurtosis':max_kurtosis,'MAX_MEM':MAX_MEM,'ncomp':ncomp}
+    'maxlag':maxlag,'max_over_std':max_over_std,'max_kurtosis':max_kurtosis,'MAX_MEM':MAX_MEM,'ncomp':ncomp,\
+    'stationxml':stationxml,'rm_resp':rm_resp,'respdir':respdir}
 # save fft metadata for future reference
 fc_metadata  = os.path.join(CCFDIR,'fft_cc_data.txt')       
 
@@ -125,10 +131,10 @@ if rank == 0:
 
     # set variables to broadcast
     if input_fmt == 'asdf':
-        tdir = sorted(glob.glob(os.path.join(DATADIR,'*.h5')))
+        tdir = sorted(glob.glob(os.path.join(DATADIR,'2010*.h5')))
         if len(tdir)==0: raise ValueError('No data file in %s',DATADIR)
     else:
-        tdir = sorted(glob.glob(os.path.join(DATADIR,'Event_2010_35[12]')))
+        tdir = sorted(glob.glob(os.path.join(DATADIR,'Event_2010_*')))
         if len(tdir)==0: raise ValueError('No data file in %s',DATADIR)
         # get nsta by loop through all event folder
         nsta = 0
@@ -207,7 +213,7 @@ for ick in range (rank,splits,size):
                     print(e)
                     # choose abort or continue here???
                     raise ValueError('abort! no stationxml for %s in file %s'%(tmps,tdir[ick]))
-                sta,net,lon,lat,elv,loc = core_functions.sta_info_from_inv(inv1)
+                sta,net,lon,lat,elv,loc = noise_module.sta_info_from_inv(inv1)
 
                 #------get day information: works better than just list the tags------
                 all_tags = ds.waveforms[tmps].list()
@@ -227,20 +233,20 @@ for ick in range (rank,splits,size):
                     source = ds.waveforms[tmps][all_tags[itag]]
                 else:
                     source = obspy.read(tmps)
-                    inv1   = core_functions.stats2inv(source[0].stats)
-                    sta,net,lon,lat,elv,loc = core_functions.sta_info_from_inv(inv1)
+                    inv1   = noise_module.stats2inv(source[0].stats,fc_para)
+                    sta,net,lon,lat,elv,loc = noise_module.sta_info_from_inv(inv1)
 
                 comp = source[0].stats.channel
                 if len(source)==0:continue
 
                 # cut daily-long data into smaller segments (dataS always in 2D)
                 #source_params,dataS_t,dataS = noise_module.cut_trace_make_statis(fc_para,source,flag)
-                trace_stdS,dataS_t,dataS = core_functions.optimized_cut_trace_make_statis(fc_para,source,flag)        # optimized version:3-4 times faster
+                trace_stdS,dataS_t,dataS = noise_module.cut_trace_make_statis(fc_para,source)        # optimized version:3-4 times faster
                 if not len(dataS): continue
                 N = dataS.shape[0]
 
                 # do normalization if needed
-                source_white = core_functions.noise_processing(fc_para,dataS,flag)
+                source_white = noise_module.noise_processing(fc_para,dataS)
                 Nfft = source_white.shape[1];Nfft2 = Nfft//2
                 if flag:print('N and Nfft are %d (proposed %d),%d (proposed %d)' %(N,nseg_chunck,Nfft,nnfft))
 
@@ -270,7 +276,7 @@ for ick in range (rank,splits,size):
                     
             t0=time.time()
             #-----------get the smoothed source spectrum for decon later----------
-            sfft1 = core_functions.smooth_source_spect(fc_para,fft1)
+            sfft1 = noise_module.smooth_source_spect(fc_para,fft1)
             sfft1 = sfft1.reshape(N,Nfft2)
             t1=time.time()
             if flag: 
@@ -291,7 +297,7 @@ for ick in range (rank,splits,size):
                 if len(bb)==0:continue
 
                 t2=time.time()
-                corr,tcorr,ncorr=core_functions.optimized_correlate(sfft1[bb,:],sfft2[bb,:],fc_para,Nfft,fft_time[iiR][bb])
+                corr,tcorr,ncorr=noise_module.correlate(sfft1[bb,:],sfft2[bb,:],fc_para,Nfft,fft_time[iiR][bb])
                 t3=time.time()
 
                 #---------------keep daily cross-correlation into a hdf5 file--------------
@@ -304,7 +310,7 @@ for ick in range (rank,splits,size):
 
                 with pyasdf.ASDFDataSet(cc_h5,mpi=False) as ccf_ds:
                     coor = {'lonS':clon[iiS],'latS':clat[iiS],'lonR':clon[iiR],'latR':clat[iiR]}
-                    parameters = core_functions.optimized_cc_parameters(fc_para,coor,tcorr,ncorr)
+                    parameters = noise_module.cc_parameters(fc_para,coor,tcorr,ncorr)
 
                     # source-receiver pair
                     data_type = network[iiS]+'s'+station[iiS]+'s'+network[iiR]+'s'+station[iiR]

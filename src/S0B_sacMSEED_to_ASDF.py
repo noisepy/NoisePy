@@ -5,7 +5,7 @@ import obspy
 import time
 import pyasdf
 import numpy as np
-import core_functions
+import noise_module
 import pandas as pd
 from mpi4py import MPI
 
@@ -45,18 +45,20 @@ if not os.path.isfile(locations):
     raise ValueError('Abort! station info is needed for this script')
 locs = pd.read_csv(locations)
 
-# having this file saves a tons of time: see L90-116 for why
-wiki_file = os.path.join(rootpath,'allfiles_time.lst')                  # file containing the path+name for all sac/mseed files and its start-end time         
+# having this file saves a tons of time: see L95-126 for why
+wiki_file = os.path.join(rootpath,'allfiles_time.lst')                  # file containing the path+name for all sac/mseed files and its start-end time 
+messydata = False                                                       # set this to False when daily noise data is well sorted and stored in a folder named after the date        
 
 # useful parameters for cleaning the data
 input_fmt = 'mseed'                                                     # input file format between 'sac' and 'mseed' 
 samp_freq = 10                                                          # targeted sampling rate
-rm_resp   = False                                                       # False to not remove, True to remove, and select 'inv' to remove with inventory
-respdir   = 'none'                                                      # output response directory (required if rm_resp is not 'inv')
+stationxml= False                                                       # station.XML file exists or not
+rm_resp   = 'no'                                                        # 'no','inv','spectrum','RESP','polozeros'
+respdir   = 'none'                                                      # directory containing instrument response files (required if rm_resp is neither 'inv' nor 'no)
 freqmin   = 0.02                                                        # pre filtering frequency bandwidth
 freqmax   = 4                                                           # note this cannot exceed Nquist freq
 outform   = 'asdf'                                                      # output file formats
-flag      = False                                                        # print intermediate variables and computing time
+flag      = False                                                       # print intermediate variables and computing time
 
 # targeted time range
 start_date = ['2010_12_06_0_0_0']                                       # start date of local data
@@ -69,8 +71,8 @@ step      = 450                                                         # overla
 MAX_MEM   = 4.0                                                         # maximum memory allowed per core in GB
 
 # assemble parameters for data pre-processing
-prepro_para = {'rm_resp':rm_resp,'respdir':respdir,'freqmin':freqmin,'freqmax':freqmax,'samp_freq':samp_freq,'inc_hours':inc_hours,\
-    'start_date':start_date,'end_date':end_date}
+prepro_para = {'input_fmt':input_fmt,'stationxml':stationxml,'rm_resp':rm_resp,'respdir':respdir,'freqmin':freqmin,\
+    'freqmax':freqmax,'samp_freq':samp_freq,'inc_hours':inc_hours,'start_date':start_date,'end_date':end_date}
 metadata = os.path.join(DATADIR,'download_info.txt') 
 
 ##########################################################
@@ -110,13 +112,23 @@ if rank == 0:
         nfiles   = len(allfiles)
         if not nfiles: raise ValueError('Abort! no data found in subdirectory of %s'%RAWDATA)
         all_stimes = np.zeros(shape=(nfiles,2),dtype=np.float)
-        for ii in range(nfiles):
-            try:
-                tr = obspy.read(allfiles[ii])
-                all_stimes[ii,0] = tr[0].stats.starttime-obspy.UTCDateTime(1970,1,1)
-                all_stimes[ii,1] = tr[0].stats.endtime-obspy.UTCDateTime(1970,1,1)
-            except Exception as e:
-                print(e);continue
+
+        if messydata:
+            # get VERY precise trace-time from the header
+            for ii in range(nfiles):
+                try:
+                    tr = obspy.read(allfiles[ii])
+                    all_stimes[ii,0] = tr[0].stats.starttime-obspy.UTCDateTime(1970,1,1)
+                    all_stimes[ii,1] = tr[0].stats.endtime-obspy.UTCDateTime(1970,1,1)
+                except Exception as e:
+                    print(e);continue
+        else:
+            # get rough estimates of the time based on the folder: need modified to accommodate your data
+            for ii in range(nfiles):
+                year  = int(allfiles[ii].split('/')[-2].split('_')[1])
+                julia = int(allfiles[ii].split('/')[-2].split('_')[2])
+                all_stimes[ii,0] = obspy.UTCDateTime(year=year,julday=julia)-obspy.UTCDateTime(year=1970,month=1,day=1)
+                all_stimes[ii,1] = all_stimes[ii,0]+86400
         
         # save name and time info for later use
         wiki_info = {'names':allfiles,'starttime':all_stimes[:,0],'endtime':all_stimes[:,1]}
@@ -126,7 +138,7 @@ if rank == 0:
         print('it takes '+str(t1-t0)+' s to collect sac files and time info')
 
     # all time chunck for output: loop for MPI
-    all_chunck = core_functions.get_event_list(start_date[0],end_date[0],inc_hours)   
+    all_chunck = noise_module.get_event_list(start_date[0],end_date[0],inc_hours)   
     splits     = len(all_chunck)-1
     if splits<1:raise ValueError('Abort! no chunck found between %s-%s with inc %s'%(start_date[0],end_date[0],inc_hours))
 else:
@@ -191,9 +203,9 @@ for ick in range(rank,splits,size):
 
         # make inventory to save into ASDF file
         t1=time.time()
-        inv1   = core_functions.stats2inv(source[0].stats,locs=locs)
-        tr = core_functions.preprocess_raw(source,inv1,prepro_para,date_info)
-        t2=time.time()
+        inv1   = noise_module.stats2inv(source[0].stats,prepro_para,locs=locs)          # locs is needed for mseed files
+        tr = noise_module.preprocess_raw(source,inv1,prepro_para,date_info)
+        t2 = time.time()
         if flag:print('pre-processing takes %6.2fs'%(t2-t1))
 
         # jump if no good data left

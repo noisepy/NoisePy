@@ -5,7 +5,7 @@ import pyasdf
 import os, glob
 import numpy as np
 import pandas as pd
-import core_functions
+import noise_module
 from mpi4py import MPI
 from obspy import UTCDateTime
 from obspy.clients.fdsn import Client
@@ -157,13 +157,13 @@ if rank==0:
     if not os.path.isdir(direc):os.mkdir(direc)
     # output station list
     if not down_list:     
-        if oput_CSV:core_functions.make_stationlist_CSV(inv,direc)
+        if oput_CSV:noise_module.make_stationlist_CSV(inv,direc)
     # save parameters for future reference
     fout = open(metadata,'w')
     fout.write(str(prepro_para));fout.close()
 
     # get MPI variables ready 
-    all_chunck = core_functions.get_event_list(start_date[0],end_date[0],inc_hours)
+    all_chunck = noise_module.get_event_list(start_date[0],end_date[0],inc_hours)
     if len(all_chunck)<1:
         raise ValueError('Abort! no data chunck between %s and %s' % (start_date[0],end_date[0]))
     splits = len(all_chunck)-1
@@ -175,7 +175,7 @@ splits = comm.bcast(splits,root=0)
 all_chunck  = comm.bcast(all_chunck,root=0)
 extra = splits % size
 
-#--------MPI: loop through each time chunck--------
+# MPI: loop through each time chunck 
 for ick in range (rank,splits+size-extra,size):
     if ick<splits:
 
@@ -185,10 +185,12 @@ for ick in range (rank,splits+size-extra,size):
         
         # filename of the ASDF file
         ff=os.path.join(direc,all_chunck[ick]+'T'+all_chunck[ick+1]+'.h5')
-        if os.path.isfile(ff):
-            raise ValueError('seems file %s already exists! double check before continue'%ff)
-        else:
+        if not os.path.isfile(ff):
             with pyasdf.ASDFDataSet(ff,mpi=False,compression="gzip-3",mode='w') as ds:
+                pass
+            #raise ValueError('seems file %s already exists! double check before continue'%ff)
+        else:
+            with pyasdf.ASDFDataSet(ff,mpi=False,compression="gzip-3",mode='a') as ds:
 
                 # loop through each channel
                 for ista in range(nsta):
@@ -221,7 +223,7 @@ for ick in range (rank,splits+size-extra,size):
                         print(e,'for',sta[ista]);continue
                         
                     # preprocess to clean data  
-                    tr = core_functions.preprocess_raw(tr,sta_inv,prepro_para,date_info)
+                    tr = noise_module.preprocess_raw(tr,sta_inv,prepro_para,date_info)
                     t2 = time.time()
 
                     if len(tr):
