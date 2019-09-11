@@ -108,7 +108,7 @@ if rank == 0:
     # have to read each sac/mseed data one by one
     else:
         t0 = time.time()
-        allfiles = glob.glob(os.path.join(RAWDATA,'*/*.*',input_fmt))             # make sure sac/mseed files can be found through this path
+        allfiles = glob.glob(os.path.join(RAWDATA,'*/*.*'+input_fmt))             # make sure sac/mseed files can be found through this path
         nfiles   = len(allfiles)
         if not nfiles: raise ValueError('Abort! no data found in subdirectory of %s'%RAWDATA)
         all_stimes = np.zeros(shape=(nfiles,2),dtype=np.float)
