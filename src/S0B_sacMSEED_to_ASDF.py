@@ -66,9 +66,9 @@ end_date   = ['2010_12_16_0_0_0']                                       # end da
 inc_hours  = 8                                                          # sac/mseed file length for a continous recording
 
 # parameters for later cross-correlations: ONLY used to estimate memory needs here
-cc_len    = 1800                                                        # basic unit of data length for fft (s)
-step      = 450                                                         # overlapping between each cc_len (s)
-MAX_MEM   = 4.0                                                         # maximum memory allowed per core in GB
+#cc_len    = 1800                                                        # basic unit of data length for fft (s)
+#step      = 450                                                         # overlapping between each cc_len (s)
+#MAX_MEM   = 4.0                                                         # maximum memory allowed per core in GB
 
 # assemble parameters for data pre-processing
 prepro_para = {'input_fmt':input_fmt,'stationxml':stationxml,'rm_resp':rm_resp,'respdir':respdir,'freqmin':freqmin,\
@@ -108,7 +108,7 @@ if rank == 0:
     # have to read each sac/mseed data one by one
     else:
         t0 = time.time()
-        allfiles = glob.glob(os.path.join(RAWDATA,'*/E*.sac'))             # make sure sac/mseed files can be found through this path
+        allfiles = glob.glob(os.path.join(RAWDATA,'*/*.*',input_fmt))             # make sure sac/mseed files can be found through this path
         nfiles   = len(allfiles)
         if not nfiles: raise ValueError('Abort! no data found in subdirectory of %s'%RAWDATA)
         all_stimes = np.zeros(shape=(nfiles,2),dtype=np.float)
