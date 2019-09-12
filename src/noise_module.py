@@ -509,18 +509,21 @@ def smooth_source_spect(cc_para,fft1):
         temp = moving_ave(np.abs(fft1),smoothspect_N)
         try:
             sfft1 = np.conj(fft1)/temp**2
-        except ValueError:
+        except Exception:
             raise ValueError('smoothed spectrum has zero values')
 
     elif cc_method == 'coherency':
         temp = moving_ave(np.abs(fft1),smoothspect_N)
         try:
             sfft1 = np.conj(fft1)/temp
-        except ValueError:
+        except Exception:
             raise ValueError('smoothed spectrum has zero values')
 
     elif cc_method == 'raw':
         sfft1 = np.conj(fft1)
+    
+    else:
+        raise ValueError('no correction correlation method is selected at L59')
     
     return sfft1
 
@@ -552,8 +555,6 @@ def correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
     '''
     #----load paramters----
     dt      = D['dt']
-    freqmin = D['freqmin']
-    freqmax = D['freqmax']
     maxlag  = D['maxlag']
     method  = D['cc_method']
     cc_len  = D['cc_len'] 
@@ -573,21 +574,6 @@ def correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
         corr /= temp
     corr  = corr.reshape(nwin,Nfft2)
 
-    #--------------- remove outliers in frequency domain -------------------
-    # [reduce the number of IFFT by pre-selecting good windows before substack]
-    freq = scipy.fftpack.fftfreq(Nfft, d=dt)[:Nfft2]
-    i1 = np.where( (freq>=freqmin) & (freq <= freqmax))[0]
-
-    # this creates the residuals between each window and their median
-    med = np.log10(np.median(corr[:,i1],axis=0))
-    r   = np.log10(corr[:,i1]) - med
-    ik  = np.zeros(nwin,dtype=np.int)
-    # find time window of good data
-    for i in range(nwin):
-        if np.any( (r[i,:]>=med-10) & (r[i,:]<=med+10) ):ik[i]=i
-    ik1 = np.nonzero(ik)
-    ik=ik[ik1]
-
     if substack:
         if substack_len == cc_len:
             # choose to keep all fft data for a day
@@ -596,13 +582,13 @@ def correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
             n_corr = np.zeros(nwin,dtype=np.int16)                  # number of correlations for each substack
             t_corr = dataS_t                                        # timestamp
             crap   = np.zeros(Nfft,dtype=np.complex64)
-            for i in range(len(ik)): 
-                n_corr[ik[i]]= 1           
-                crap[:Nfft2] = corr[ik[i],:]
+            for i in range(nwin): 
+                n_corr[i]= 1           
+                crap[:Nfft2] = corr[i,:]
                 crap[:Nfft2] = crap[:Nfft2]-np.mean(crap[:Nfft2])   # remove the mean in freq domain (spike at t=0)
                 crap[-(Nfft2)+1:] = np.flip(np.conj(crap[1:(Nfft2)]),axis=0)
                 crap[0]=complex(0,0)
-                s_corr[ik[i],:] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
+                s_corr[i,:] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
 
             # remove abnormal data
             ampmax = np.max(s_corr,axis=1)
@@ -625,15 +611,15 @@ def correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
 
             for istack in range(nstack):                                                                   
                 # find the indexes of all of the windows that start or end within 
-                itime = np.where( (dataS_t[ik] >= tstart) & (dataS_t[ik] < tstart+substack_len) )[0]  
-                if len(ik[itime])==0:tstart+=substack_len;continue
+                itime = np.where( (dataS_t >= tstart) & (dataS_t < tstart+substack_len) )[0]  
+                if len(itime)==0:tstart+=substack_len;continue
                 
-                crap[:Nfft2] = np.mean(corr[ik[itime],:],axis=0)   # linear average of the correlation 
+                crap[:Nfft2] = np.mean(corr[itime,:],axis=0)   # linear average of the correlation 
                 crap[:Nfft2] = crap[:Nfft2]-np.mean(crap[:Nfft2])   # remove the mean in freq domain (spike at t=0)
                 crap[-(Nfft2)+1:]=np.flip(np.conj(crap[1:(Nfft2)]),axis=0)
                 crap[0]=complex(0,0)
                 s_corr[istack,:] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
-                n_corr[istack] = len(ik[itime])           # number of windows stacks
+                n_corr[istack] = len(itime)               # number of windows stacks
                 t_corr[istack] = tstart                   # save the time stamps
                 tstart += substack_len
                 #print('correlation done and stacked at time %s' % str(t_corr[istack]))
@@ -647,11 +633,11 @@ def correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
 
     else:
         # average daily cross correlation functions
-        n_corr = len(ik)
+        n_corr = nwin
         s_corr = np.zeros(Nfft,dtype=np.float32)
         t_corr = dataS_t[0]
         crap   = np.zeros(Nfft,dtype=np.complex64)
-        crap[:Nfft2] = np.mean(corr[ik,:],axis=0)
+        crap[:Nfft2] = np.mean(corr,axis=0)
         crap[:Nfft2] = crap[:Nfft2]-np.mean(crap[:Nfft2],axis=0)
         crap[-(Nfft2)+1:]=np.flip(np.conj(crap[1:(Nfft2)]),axis=0)
         s_corr = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
@@ -781,9 +767,9 @@ def rotation2(bigstack,parameters,locs,flag):
     staS  = parameters['station_source']
     staR  = parameters['station_receiver']
 
-    if locs:
-        sta_list = list(locs.iloc[:]['station'])
-        angles   = list(locs.iloc[:]['angle'])
+    if len(locs):
+        sta_list = list(locs['station'])
+        angles   = list(locs['angle'])
         # get station info from the name of ASDF file
         ind   = sta_list.index(staS)
         acorr = angles[ind]
@@ -791,7 +777,7 @@ def rotation2(bigstack,parameters,locs,flag):
         bcorr = angles[ind]
 
     #---angles to be corrected----
-    if locs:
+    if len(locs):
         cosa = np.cos((azi+acorr)*pi/180)
         sina = np.sin((azi+acorr)*pi/180)
         cosb = np.cos((baz+bcorr)*pi/180)

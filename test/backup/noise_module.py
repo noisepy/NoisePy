@@ -207,5 +207,146 @@ def NCF_denoising(img_to_denoise,Mdate,Ntau,NSV):
 
 	return denoised_img
 
+def correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
+    '''
+    this function does the cross-correlation in freq domain and has the option to keep sub-stacks of 
+    the cross-correlation if needed. it takes advantage of the linear relationship of ifft, so that 
+    stacking is performed in spectrum domain first to reduce the total number of ifft. (used in S1)
+
+    PARAMETERS:
+    ---------------------
+    fft1_smoothed_abs: smoothed power spectral density of the FFT for the source station
+    fft2: raw FFT spectrum of the receiver station
+    D: dictionary containing following parameters:
+        maxlag:  maximum lags to keep in the cross correlation
+        dt:      sampling rate (in s)
+        nwin:    number of segments in the 2D matrix
+        method:  cross-correlation methods selected by the user
+        freqmin: minimum frequency (Hz)
+        freqmax: maximum frequency (Hz)
+    Nfft:    number of frequency points for ifft
+    dataS_t: matrix of datetime object.
+
+    RETURNS:
+    ---------------------
+    s_corr: 1D or 2D matrix of the averaged or sub-stacks of cross-correlation functions in time domain
+    t_corr: timestamp for each sub-stack or averaged function
+    n_corr: number of included segments for each sub-stack or averaged function
+    '''
+    #----load paramters----
+    dt      = D['dt']
+    freqmin = D['freqmin']
+    freqmax = D['freqmax']
+    maxlag  = D['maxlag']
+    method  = D['cc_method']
+    cc_len  = D['cc_len'] 
+    substack= D['substack']                                                          
+    substack_len  = D['substack_len']
+    smoothspect_N = D['smoothspect_N']
+
+    nwin  = fft1_smoothed_abs.shape[0]
+    Nfft2 = fft1_smoothed_abs.shape[1]
+
+    #------convert all 2D arrays into 1D to speed up--------
+    corr = np.zeros(nwin*Nfft2,dtype=np.complex64)
+    corr = fft1_smoothed_abs.reshape(fft1_smoothed_abs.size,)*fft2.reshape(fft2.size,)
+
+    if method == "coherency":
+        temp = moving_ave(np.abs(fft2.reshape(fft2.size,)),smoothspect_N)             
+        corr /= temp
+    corr  = corr.reshape(nwin,Nfft2)
+
+    #--------------- remove outliers in frequency domain -------------------
+    # [reduce the number of IFFT by pre-selecting good windows before substack]
+    freq = scipy.fftpack.fftfreq(Nfft, d=dt)[:Nfft2]
+    i1 = np.where( (freq>=freqmin) & (freq <= freqmax))[0]
+
+    # this creates the residuals between each window and their median
+    med = np.log10(np.median(corr[:,i1],axis=0))
+    r   = np.log10(corr[:,i1]) - med
+    ik  = np.zeros(nwin,dtype=np.int)
+    # find time window of good data
+    for i in range(nwin):
+        if np.any( (r[i,:]>=med-10) & (r[i,:]<=med+10) ):ik[i]=i
+    ik1 = np.nonzero(ik)
+    ik=ik[ik1]
+
+    if substack:
+        if substack_len == cc_len:
+            # choose to keep all fft data for a day
+            s_corr = np.zeros(shape=(nwin,Nfft),dtype=np.float32)   # stacked correlation
+            ampmax = np.zeros(nwin,dtype=np.float32)
+            n_corr = np.zeros(nwin,dtype=np.int16)                  # number of correlations for each substack
+            t_corr = dataS_t                                        # timestamp
+            crap   = np.zeros(Nfft,dtype=np.complex64)
+            for i in range(len(ik)): 
+                n_corr[ik[i]]= 1           
+                crap[:Nfft2] = corr[ik[i],:]
+                crap[:Nfft2] = crap[:Nfft2]-np.mean(crap[:Nfft2])   # remove the mean in freq domain (spike at t=0)
+                crap[-(Nfft2)+1:] = np.flip(np.conj(crap[1:(Nfft2)]),axis=0)
+                crap[0]=complex(0,0)
+                s_corr[ik[i],:] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
+
+            # remove abnormal data
+            ampmax = np.max(s_corr,axis=1)
+            tindx  = np.where( (ampmax<20*np.median(ampmax)) & (ampmax>0))[0]
+            s_corr = s_corr[tindx,:]
+            t_corr = t_corr[tindx]
+            n_corr = n_corr[tindx]
+        
+        else:     
+            # get time information
+            Ttotal = dataS_t[-1]-dataS_t[0]             # total duration of what we have now
+            tstart = dataS_t[0]
+
+            nstack = int(np.round(Ttotal/substack_len))
+            ampmax = np.zeros(nstack,dtype=np.float32)
+            s_corr = np.zeros(shape=(nstack,Nfft),dtype=np.float32)
+            n_corr = np.zeros(nstack,dtype=np.int)
+            t_corr = np.zeros(nstack,dtype=np.float)
+            crap   = np.zeros(Nfft,dtype=np.complex64)                                              
+
+            for istack in range(nstack):                                                                   
+                # find the indexes of all of the windows that start or end within 
+                itime = np.where( (dataS_t[ik] >= tstart) & (dataS_t[ik] < tstart+substack_len) )[0]  
+                if len(ik[itime])==0:tstart+=substack_len;continue
+                
+                crap[:Nfft2] = np.mean(corr[ik[itime],:],axis=0)   # linear average of the correlation 
+                crap[:Nfft2] = crap[:Nfft2]-np.mean(crap[:Nfft2])   # remove the mean in freq domain (spike at t=0)
+                crap[-(Nfft2)+1:]=np.flip(np.conj(crap[1:(Nfft2)]),axis=0)
+                crap[0]=complex(0,0)
+                s_corr[istack,:] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
+                n_corr[istack] = len(ik[itime])           # number of windows stacks
+                t_corr[istack] = tstart                   # save the time stamps
+                tstart += substack_len
+                #print('correlation done and stacked at time %s' % str(t_corr[istack]))
+            
+            # remove abnormal data
+            ampmax = np.max(s_corr,axis=1)
+            tindx  = np.where( (ampmax<20*np.median(ampmax)) & (ampmax>0))[0]
+            s_corr = s_corr[tindx,:]
+            t_corr = t_corr[tindx]
+            n_corr = n_corr[tindx]
+
+    else:
+        # average daily cross correlation functions
+        n_corr = len(ik)
+        s_corr = np.zeros(Nfft,dtype=np.float32)
+        t_corr = dataS_t[0]
+        crap   = np.zeros(Nfft,dtype=np.complex64)
+        crap[:Nfft2] = np.mean(corr[ik,:],axis=0)
+        crap[:Nfft2] = crap[:Nfft2]-np.mean(crap[:Nfft2],axis=0)
+        crap[-(Nfft2)+1:]=np.flip(np.conj(crap[1:(Nfft2)]),axis=0)
+        s_corr = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
+
+    # trim the CCFs in [-maxlag maxlag] 
+    t = np.arange(-Nfft2+1, Nfft2)*dt
+    ind = np.where(np.abs(t) <= maxlag)[0]
+    if s_corr.ndim==1:
+        s_corr = s_corr[ind]
+    elif s_corr.ndim==2:
+        s_corr = s_corr[:,ind]
+    return s_corr,t_corr,n_corr
+
 if __name__ == "__main__":
     pass

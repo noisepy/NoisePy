@@ -487,7 +487,7 @@ def plot_substack_all_spect(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=Fa
 
 def plot_all_moveout(sfiles,dtype,freqmin,freqmax,ccomp,dist_inc,disp_lag=None,savefig=False,sdir=None):
     '''
-    display the moveout of the cross-correlation functions stacked for all time chuncks.
+    display the moveout (2D matrix) of the cross-correlation functions stacked for all time chuncks.
 
     PARAMETERS:
     ---------------------
@@ -584,3 +584,184 @@ def plot_all_moveout(sfiles,dtype,freqmin,freqmax,ccomp,dist_inc,disp_lag=None,s
     else:
         fig.show()
 
+
+def plot_all_moveout_1D_1comp(sfiles,sta,dtype,freqmin,freqmax,ccomp,disp_lag=None,savefig=False,sdir=None):
+    '''
+    display the moveout waveforms of the cross-correlation functions stacked for all time chuncks.
+
+    PARAMETERS:
+    ---------------------
+    sfile: cross-correlation functions outputed by S2
+    sta: source station name
+    dtype: datatype either 'Allstack0pws' or 'Allstack0linear'
+    freqmin: min frequency to be filtered
+    freqmax: max frequency to be filtered
+    ccomp:   cross component
+    disp_lag: lag times for displaying
+    savefig: set True to save the figures (in pdf format)
+    sdir: diresied directory to save the figure (if not provided, save to default dir)
+
+    USAGE: 
+    ----------------------
+    plot_substack_moveout('temp.h5','Allstack0pws',0.1,0.2,'ZZ',200,True,'./temp')
+    '''
+    # open data for read
+    if savefig:
+        if sdir==None:print('no path selected! save figures in the default path')
+    
+    receiver = sta+'.h5'
+    stack_method = dtype.split('0')[-1]
+
+    # extract common variables
+    try:
+        ds    = pyasdf.ASDFDataSet(sfiles[0],mode='r')
+        dt    = ds.auxiliary_data[dtype][ccomp].parameters['dt']
+        maxlag= ds.auxiliary_data[dtype][ccomp].parameters['maxlag']
+    except Exception:
+        print("exit! cannot open %s to read"%sfiles[0]);sys.exit()
+    
+    # lags for display   
+    if not disp_lag:disp_lag=maxlag
+    if disp_lag>maxlag:raise ValueError('lag excceds maxlag!')
+    tt = np.arange(-int(disp_lag),int(disp_lag)+dt,dt)
+    indx1 = int((maxlag-disp_lag)/dt)
+    indx2 = indx1+2*int(disp_lag/dt)+1
+
+    # load cc and parameter matrix
+    mdist = 0
+    for ii in range(len(sfiles)):
+        sfile = sfiles[ii]
+        iflip = 0
+        treceiver = sfile.split('_')[-1]
+        if treceiver == receiver:
+            iflip = 1
+
+        ds = pyasdf.ASDFDataSet(sfile,mode='r')
+        try:
+            # load data to variables
+            dist = ds.auxiliary_data[dtype][ccomp].parameters['dist']
+            ngood= ds.auxiliary_data[dtype][ccomp].parameters['ngood']
+            tdata  = ds.auxiliary_data[dtype][ccomp].data[indx1:indx2]
+
+        except Exception:
+            print("continue! cannot read %s "%sfile);continue
+
+        tdata = bandpass(tdata,freqmin,freqmax,int(1/dt),corners=4, zerophase=True)
+        tdata /= np.max(tdata,axis=0)
+
+        if iflip:
+            plt.plot(tt,np.flip(tdata,axis=0)+dist,'k',linewidth=0.8)
+        else:
+            plt.plot(tt,tdata+dist,'k',linewidth=0.8)
+        plt.title('%s %s filtered @%4.1f-%4.1f Hz' % (sta,ccomp,freqmin,freqmax))
+        plt.xlabel('time (s)')
+        plt.ylabel('offset (km)')
+        plt.text(maxlag*0.9,dist+0.5,receiver,fontsize=6)
+
+        #----use to plot o times------
+        if mdist < dist:
+            mdist = dist
+    plt.plot([0,0],[0,mdist],'r--',linewidth=1)
+
+    # save figure or show
+    if savefig:
+        outfname = sdir+'/moveout_'+sta+'_1D_'+str(stack_method)+'.pdf'
+        plt.savefig(outfname, format='pdf', dpi=400)
+        plt.close()
+    else:
+        plt.show()
+
+
+def plot_all_moveout_1D_9comp(sfiles,sta,dtype,freqmin,freqmax,disp_lag=None,savefig=False,sdir=None):
+    '''
+    display the moveout waveforms of the cross-correlation functions stacked for all time chuncks.
+
+    PARAMETERS:
+    ---------------------
+    sfile: cross-correlation functions outputed by S2
+    sta: source station name
+    dtype: datatype either 'Allstack0pws' or 'Allstack0linear'
+    freqmin: min frequency to be filtered
+    freqmax: max frequency to be filtered
+    disp_lag: lag times for displaying
+    savefig: set True to save the figures (in pdf format)
+    sdir: diresied directory to save the figure (if not provided, save to default dir)
+
+    USAGE: 
+    ----------------------
+    plot_substack_moveout('temp.h5','Allstack0pws',0.1,0.2,'ZZ',200,True,'./temp')
+    '''
+    # open data for read
+    if savefig:
+        if sdir==None:print('no path selected! save figures in the default path')
+    
+    receiver = sta+'.h5'
+    stack_method = dtype.split('0')[-1]
+    ccomp = ['ZR','ZT','ZZ','RR','RT','RZ','TR','TT','TZ']
+
+    # extract common variables
+    try:
+        ds    = pyasdf.ASDFDataSet(sfiles[0],mode='r')
+        dt    = ds.auxiliary_data[dtype][ccomp[0]].parameters['dt']
+        maxlag= ds.auxiliary_data[dtype][ccomp[0]].parameters['maxlag']
+    except Exception:
+        print("exit! cannot open %s to read"%sfiles[0]);sys.exit()
+    
+    # lags for display   
+    if not disp_lag:disp_lag=maxlag
+    if disp_lag>maxlag:raise ValueError('lag excceds maxlag!')
+    tt = np.arange(-int(disp_lag),int(disp_lag)+dt,dt)
+    indx1 = int((maxlag-disp_lag)/dt)
+    indx2 = indx1+2*int(disp_lag/dt)+1
+
+    # load cc and parameter matrix
+    mdist = 90
+    plt.figure(figsize=(14,10.5))
+    for ic in range(len(ccomp)):
+        comp = ccomp[ic]
+        tmp  = '33'+str(ic+1)
+        plt.subplot(tmp)
+
+        for ii in range(len(sfiles)):
+            sfile = sfiles[ii]
+            iflip = 0
+            treceiver = sfile.split('_')[-1]
+            if treceiver == receiver:
+                iflip = 1
+
+            ds = pyasdf.ASDFDataSet(sfile,mode='r')
+            try:
+                # load data to variables
+                dist = ds.auxiliary_data[dtype][comp].parameters['dist']
+                ngood= ds.auxiliary_data[dtype][comp].parameters['ngood']
+                tdata  = ds.auxiliary_data[dtype][comp].data[indx1:indx2]
+
+            except Exception:
+                print("continue! cannot read %s "%sfile);continue
+            
+            if dist>mdist:continue
+            tdata = bandpass(tdata,freqmin,freqmax,int(1/dt),corners=4, zerophase=True)
+            tdata /= np.max(tdata,axis=0)
+
+            if iflip:
+                plt.plot(tt,np.flip(tdata,axis=0)+dist,'k',linewidth=0.8)
+            else:
+                plt.plot(tt,tdata+dist,'k',linewidth=0.8)
+            if ic==2:
+                plt.title('%s filtered @%4.1f-%4.1f Hz' % (sta,freqmin,freqmax))
+            plt.xlabel('time (s)')
+            plt.ylabel('offset (km)')
+            #plt.text(maxlag*0.9,dist+0.5,receiver,fontsize=6)
+
+        plt.plot([0,0],[0,mdist],'b--',linewidth=1)
+        font = {'family': 'serif', 'color':  'red', 'weight': 'bold','size': 16}
+        plt.text(disp_lag*0.65,90,comp,fontdict=font)
+    plt.tight_layout()
+
+    # save figure or show
+    if savefig:
+        outfname = sdir+'/moveout_'+sta+'_1D_'+str(stack_method)+'.pdf'
+        plt.savefig(outfname, format='pdf', dpi=300)
+        plt.close()
+    else:
+        plt.show()
