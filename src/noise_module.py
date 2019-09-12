@@ -21,10 +21,8 @@ from obspy.core.inventory import Inventory, Network, Station, Channel, Site
 this noise module includes
 1) core functions called by the main NoisePy scripts directly;
 2) utility functions used by the core functions.
-
 by: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
     Marine Denolle (mdenolle@fas.harvard.edu)
-
 several utility functions are copied from https://github.com/tclements/noise
 '''
 
@@ -79,13 +77,11 @@ def get_event_list(str1,str2,inc_hours):
     '''
     this function calculates the event list between time1 and time2 by increment of inc_hours
     in the formate of %Y_%m_%d_%H_%M_%S' (used in S0A & S0B)
-
     PARAMETERS:
     ----------------    
     str1: string of the starting time -> 2010_01_01_0_0
     str2: string of the ending time -> 2010_10_11_0_0
     inc_hours: integer of incremental hours
-
     RETURNS:
     ----------------
     event: a numpy character list 
@@ -123,14 +119,12 @@ def preprocess_raw(st,inv,prepro_para,date_info):
             "polezeros"  -> use pole/zero info for a crude correction of response
         5) trim data to a day-long sequence and interpolate it to ensure starting at 00:00:00.000
     (used in S0A & S0B)
-
     PARAMETERS:
     -----------------------
     st:  obspy stream object, containing noise data to be processed
     inv: obspy inventory object, containing stations info
     prepro_para: dict containing fft parameters, such as frequency bands and selection for instrument response removal etc. 
     date_info:   dict of start and end time of the stream data
-
     RETURNS:
     -----------------------
     ntr: obspy stream object of cleaned, merged and filtered noise data 
@@ -247,13 +241,11 @@ def stats2inv(stats,prepro_para,locs=None):
     '''
     this function creates inventory given the stats parameters in an obspy stream or a station list.
     (used in S0B)
-
     PARAMETERS:
     ------------------------
     stats: obspy trace stats object containing all station header info
     prepro_para: dict containing fft parameters, such as frequency bands and selection for instrument response removal etc. 
     locs:  panda data frame of the station list. it is needed for convering miniseed files into ASDF
-
     RETURNS:
     ------------------------
     inv: obspy inventory object of all station info to be used later
@@ -349,11 +341,9 @@ def sta_info_from_inv(inv):
     '''
     this function outputs station info from the obspy inventory object
     (used in S0B)
-
     PARAMETERS:
     ----------------------
     inv: obspy inventory object
-
     RETURNS:
     ----------------------
     sta: station name
@@ -383,12 +373,10 @@ def cut_trace_make_statis(fc_para,source):
     '''
     this function cuts continous noise data into user-defined segments, estimate the statistics of 
     each segment and keep timestamp of each segment for later use. (used in S1)
-
     PARAMETERS:
     ----------------------
     fft_para: A dictionary containing all fft and cc parameters.
     source: obspy stream object
-
     RETURNS:
     ----------------------
     trace_stdS: standard deviation of the noise amplitude of each segment
@@ -449,12 +437,10 @@ def noise_processing(fft_para,dataS):
     '''
     this function performs time domain and frequency domain normalization if needed. in real case, we prefer use include
     the normalization in the cross-correaltion steps by selecting coherency or decon (Prieto et al, 2008, 2009; Denolle et al, 2013) 
-
     PARMAETERS:
     ------------------------
     fft_para: dictionary containing all useful variables used for fft and cc
     dataS: 2D matrix of all segmented noise data
-
     # OUTPUT VARIABLES:
     source_white: 2D matrix of data spectra
     '''
@@ -490,7 +476,6 @@ def noise_processing(fft_para,dataS):
 def smooth_source_spect(cc_para,fft1):
     '''
     this function smoothes amplitude spectrum of the 2D spectral matrix. (used in S1)
-
     PARAMETERS:
     ---------------------
     cc_para: dictionary containing useful cc parameters
@@ -532,7 +517,6 @@ def correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
     this function does the cross-correlation in freq domain and has the option to keep sub-stacks of 
     the cross-correlation if needed. it takes advantage of the linear relationship of ifft, so that 
     stacking is performed in spectrum domain first to reduce the total number of ifft. (used in S1)
-
     PARAMETERS:
     ---------------------
     fft1_smoothed_abs: smoothed power spectral density of the FFT for the source station
@@ -546,7 +530,6 @@ def correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
         freqmax: maximum frequency (Hz)
     Nfft:    number of frequency points for ifft
     dataS_t: matrix of datetime object.
-
     RETURNS:
     ---------------------
     s_corr: 1D or 2D matrix of the averaged or sub-stacks of cross-correlation functions in time domain
@@ -651,18 +634,16 @@ def correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
         s_corr = s_corr[:,ind]
     return s_corr,t_corr,n_corr
 
-def cc_parameters(cc_para,coor,tcorr,ncorr):
+def cc_parameters(cc_para,coor,tcorr,ncorr,comp):
     '''
     this function assembles the parameters for the cc function, which is used 
     when writing them into ASDF files
-
     PARAMETERS:
     ---------------------
     cc_para: dict containing parameters used in the fft_cc step
     coor:    dict containing coordinates info of the source and receiver stations
     tcorr:   timestamp matrix
     ncorr:   matrix of number of good segments for each sub-stack/final stack
-
     RETURNS:
     ------------------
     parameters: dict containing above info used for later stacking/plotting
@@ -687,20 +668,19 @@ def cc_parameters(cc_para,coor,tcorr,ncorr):
         'latR':np.float32(latR),
         'ngood':ncorr,
         'cc_method':cc_method,
-        'time':tcorr}
+        'time':tcorr,
+        'comp',comp}
     return parameters
 
 def stacking(cc_array,cc_time,cc_ngood,stack_para):
     '''
     this function stacks the cross correlation data according to the user-defined substack_len parameter
-
     PARAMETERS:
     ----------------------
     cc_array: 2D numpy float32 matrix containing all segmented cross-correlation data
     cc_time:  1D numpy array of timestamps for each segment of cc_array
     cc_ngood: 1D numpy int16 matrix showing the number of segments for each sub-stack and/or full stack
     stack_para: a dict containing all stacking parameters
-
     RETURNS:
     ----------------------
     cc_array, cc_ngood, cc_time: same to the input parameters but with abnormal cross-correaltions removed
@@ -741,7 +721,7 @@ def stacking(cc_array,cc_time,cc_ngood,stack_para):
     else:
         return cc_array,cc_ngood,cc_time,allstacks1,allstacks2,nstacks
 
-def rotation2(bigstack,parameters,locs,flag):
+def rotation(bigstack,parameters,locs,flag):
     '''
     this function transfers the Green's tensor from a E-N-Z system into a R-T-Z one
     
@@ -750,7 +730,6 @@ def rotation2(bigstack,parameters,locs,flag):
     bigstack:   9 component Green's tensor in E-N-Z system
     parameters: dict containing all parameters saved in ASDF file
     locs:       dict containing station angle info for correction purpose
-
     RETURNS:
     -------------------
     tcorr: 9 component Green's tensor in R-T-Z system
@@ -810,7 +789,6 @@ def rotation2(bigstack,parameters,locs,flag):
 def check_sample_gaps(stream,date_info):
     """
     this function checks sampling rate and find gaps of all traces in stream.
-
     PARAMETERS:
     -----------------
     stream: obspy stream object. 
@@ -819,7 +797,6 @@ def check_sample_gaps(stream,date_info):
     RETURENS:
     -----------------
     stream: List of good traces in the stream
-
     """
     # remove empty/big traces
     if len(stream)==0 or len(stream)>100:
@@ -846,15 +823,14 @@ def portion_gaps(stream,date_info):
     '''
     this function tracks the gaps (npts) from the accumulated difference between starttime and endtime
     of each stream trace. it removes trace with gap length > 30% of trace size. 
-
     PARAMETERS:
     -------------------
     stream: obspy stream object
     date_info: dict of starting and ending time of the stream
     
-    RETURENS:
+    RETURNS:
     -----------------
-    PGAPS: proportion of gaps/all_pts in stream
+    pgaps: proportion of gaps/all_pts in stream
     '''
     # ideal duration of data
     starttime = date_info['starttime']
@@ -875,12 +851,10 @@ def segment_interpolate(sig1,nfric):
     '''
     this function interpolates the data to ensure all points located on interger times of the
     sampling rate (e.g., starttime = 00:00:00.015, delta = 0.05.)
-
     PARAMETERS:
     ----------------------
     sig1:  seismic recordings in a 1D array
     nfric: the amount of time difference between the point and the adjacent assumed samples
-
     RETURNS:
     ----------------------
     sig2:  interpolated seismic recordings on the sampling points
@@ -906,14 +880,12 @@ def resp_spectrum(source,resp_file,downsamp_freq,pre_filt=None):
     the response spectrum is evaluated based on RESP/PZ files before inverted using the obspy
     function of invert_spectrum. a module of create_resp.py is provided in directory of 'additional_modules'
     to create the response spectrum
-
     PARAMETERS:
     ----------------------
     source: obspy stream object of targeted noise data
     resp_file: numpy data file of response spectrum
     downsamp_freq: sampling rate of the source data
     pre_filt: pre-defined filter parameters
-
     RETURNS:
     ----------------------
     source: obspy stream object of noise data with instrument response removed
@@ -951,11 +923,9 @@ def resp_spectrum(source,resp_file,downsamp_freq,pre_filt=None):
 def mad(arr):
     """ 
     Median Absolute Deviation: MAD = median(|Xi- median(X)|)
-
     PARAMETERS:
     -------------------
     arr: numpy.ndarray, seismic trace data array
-
     RETURNS:
     data: Median Absolute Deviation of data
     """
@@ -971,11 +941,11 @@ def mad(arr):
 def detrend(data):
     '''
     this function removes the signal trend based on QR decomposion
-
+    NOTE: QR is a lot faster than the least square inversion used by 
+    scipy (also in obspy).
     PARAMETERS:
     ---------------------
     data: input data matrix
-
     RETURNS:
     ---------------------
     data: data matrix with trend removed
@@ -1003,11 +973,9 @@ def detrend(data):
 def demean(data):
     '''
     this function remove the mean of the signal
-
     PARAMETERS:
     ---------------------
     data: input data matrix
-
     RETURNS:
     ---------------------
     data: data matrix with mean removed
@@ -1023,11 +991,9 @@ def demean(data):
 def taper(data):
     '''
     this function applies a cosine taper using obspy functions
-
     PARAMETERS:
     ---------------------
     data: input data matrix
-
     RETURNS:
     ---------------------
     data: data matrix with taper applied
@@ -1069,7 +1035,6 @@ def taper(data):
 def moving_ave(A,N):
     '''
     this Numba compiled function does running smooth average for an array.
-
     PARAMETERS:
     ---------------------
     A: 1-D array of data to be smoothed
@@ -1101,7 +1066,6 @@ def whiten(data, fft_para):
     This function takes 1-dimensional timeseries array, transforms to frequency domain using fft, 
     whitens the amplitude of the spectrum in frequency domain between *freqmin* and *freqmax*
     and returns the whitened fft.
-
     PARAMETERS:
     ----------------------
     data: numpy.ndarray contains the 1D time series to whiten
@@ -1111,7 +1075,6 @@ def whiten(data, fft_para):
         freqmax: The upper frequency bound
         smooth_N: integer, it defines the half window length to smooth
         to_whiten: whitening method between 'one-bit' and 'running-mean'
-
     RETURNS:
     ----------------------
     FFTRawSign: numpy.ndarray contains the FFT of the whitened input trace between the frequency bounds
@@ -1192,40 +1155,3 @@ def whiten(data, fft_para):
 
 
 def pws(arr,sampling_rate,power=2,pws_timegate=5.):
-    '''
-    Performs phase-weighted stack on array of time series. Modified on the noise function by Tim Climents.
-
-    Follows methods of Schimmel and Paulssen, 1997. 
-    If s(t) is time series data (seismogram, or cross-correlation),
-    S(t) = s(t) + i*H(s(t)), where H(s(t)) is Hilbert transform of s(t)
-    S(t) = s(t) + i*H(s(t)) = A(t)*exp(i*phi(t)), where
-    A(t) is envelope of s(t) and phi(t) is phase of s(t)
-    Phase-weighted stack, g(t), is then:
-    g(t) = 1/N sum j = 1:N s_j(t) * | 1/N sum k = 1:N exp[i * phi_k(t)]|^v
-    where N is number of traces used, v is sharpness of phase-weighted stack
-
-    PARAMETERS:
-    ---------------------
-    arr: N length array of time series data (numpy.ndarray)
-    sampling_rate: sampling rate of time series arr (int)
-    power: exponent for phase stack (int)
-    pws_timegate: number of seconds to smooth phase stack (float)
-    
-    RETURNS:
-    ---------------------
-    weighted: Phase weighted stack of time series data (numpy.ndarray)
-    '''
-
-    if arr.ndim == 1:
-        return arr
-    N,M = arr.shape
-    analytic = hilbert(arr,axis=1, N=next_fast_len(M))[:,:M]
-    phase = np.angle(analytic)
-    phase_stack = np.mean(np.exp(1j*phase),axis=0)
-    phase_stack = np.abs(phase_stack)**(power)
-
-    # smoothing 
-    #timegate_samples = int(pws_timegate * sampling_rate)
-    #phase_stack = moving_ave(phase_stack,timegate_samples)
-    weighted = np.multiply(arr,phase_stack)
-    return np.mean(weighted,axis=0)
