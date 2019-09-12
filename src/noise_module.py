@@ -644,6 +644,7 @@ def cc_parameters(cc_para,coor,tcorr,ncorr,comp):
     coor:    dict containing coordinates info of the source and receiver stations
     tcorr:   timestamp matrix
     ncorr:   matrix of number of good segments for each sub-stack/final stack
+    comp:    2 character strings for the cross correlation component
     RETURNS:
     ------------------
     parameters: dict containing above info used for later stacking/plotting
