@@ -670,7 +670,7 @@ def cc_parameters(cc_para,coor,tcorr,ncorr,comp):
         'ngood':ncorr,
         'cc_method':cc_method,
         'time':tcorr,
-        'comp',comp}
+        'comp':comp}
     return parameters
 
 def stacking(cc_array,cc_time,cc_ngood,stack_para):
