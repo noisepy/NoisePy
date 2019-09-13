@@ -259,7 +259,7 @@ def stats2inv(stats,prepro_para,locs=None):
             raise ValueError('Abort! staxml is selected but no directory is given to access the files')
         else:
             invfile = glob.glob(os.path.join(respdir,'*'+stats.station+'*'))
-            if os.path.isfile(invfile):
+            if os.path.isfile(str(invfile)):
                 inv = obspy.read_inventory(invfile)
                 return inv
 	
