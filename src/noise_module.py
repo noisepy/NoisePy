@@ -406,7 +406,7 @@ def cut_trace_make_statis(fc_para,source):
     all_madS = mad(data)	            # median absolute deviation over all noise window
     all_stdS = np.std(data)	        # standard deviation over all noise window
     if all_madS==0 or all_stdS==0 or np.isnan(all_madS) or np.isnan(all_stdS):
-        print("continue! madS or stdS equeals to 0 for %s" % source)
+        print("continue! madS or stdS equals to 0 for %s" % source)
         return source_params,dataS_t,dataS
 
     # initialize variables
