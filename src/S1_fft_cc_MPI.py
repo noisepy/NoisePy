@@ -50,7 +50,6 @@ tt0=time.time()
 #------absolute path parameters-------
 # rootpath = '/n/scratchssdlfs/denolle_lab/CCFs_Kanto'
 rootpath  = '/Users/chengxin/Documents/NoisePy_example/Kanto'                      # root path for this data processing
-FFTDIR    = os.path.join(rootpath,'FFT')                        # dir to store FFT data
 CCFDIR    = os.path.join(rootpath,'CCF')                        # dir to store CC data
 DATADIR   = os.path.join(rootpath,'CLEANED_DATA')                   # dir where noise data is located
 
