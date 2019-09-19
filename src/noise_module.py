@@ -1155,4 +1155,52 @@ def whiten(data, fft_para):
     return FFTRawSign
 
 
+
 def pws(arr,sampling_rate,power=2,pws_timegate=5.):
+    '''
+    Performs phase-weighted stack on array of time series. Modified on the noise function by Tim Climents.
+    Follows methods of Schimmel and Paulssen, 1997. 
+    If s(t) is time series data (seismogram, or cross-correlation),
+    S(t) = s(t) + i*H(s(t)), where H(s(t)) is Hilbert transform of s(t)
+    S(t) = s(t) + i*H(s(t)) = A(t)*exp(i*phi(t)), where
+    A(t) is envelope of s(t) and phi(t) is phase of s(t)
+    Phase-weighted stack, g(t), is then:
+    g(t) = 1/N sum j = 1:N s_j(t) * | 1/N sum k = 1:N exp[i * phi_k(t)]|^v
+    where N is number of traces used, v is sharpness of phase-weighted stack
+    PARAMETERS:
+    ---------------------
+    arr: N length array of time series data (numpy.ndarray)
+    sampling_rate: sampling rate of time series arr (int)
+    power: exponent for phase stack (int)
+    pws_timegate: number of seconds to smooth phase stack (float)
+    
+    RETURNS:
+    ---------------------
+    weighted: Phase weighted stack of time series data (numpy.ndarray)
+    '''
+
+    if arr.ndim == 1:
+        return arr
+    N,M = arr.shape
+    analytic = hilbert(arr,axis=1, N=next_fast_len(M))[:,:M]
+    phase = np.angle(analytic)
+    phase_stack = np.mean(np.exp(1j*phase),axis=0)
+    phase_stack = np.abs(phase_stack)**(power)
+
+    # smoothing 
+    #timegate_samples = int(pws_timegate * sampling_rate)
+    #phase_stack = moving_ave(phase_stack,timegate_samples)
+    weighted = np.multiply(arr,phase_stack)
+    return np.mean(weighted,axis=0)
+
+
+	
+def get_cc(s1,s_ref):
+    # returns the correlation coefficient between waveforms in s1 against reference
+    # waveform s_ref.
+    # 
+    cc=np.zeros(s1.shape[0])
+    s_ref_norm = np.linalg.norm(s_ref)
+    for i in range(s1.shape[0]):
+        cc[i]=np.sum(np.multiply(s1[i,:],s_ref))/np.linalg.norm(s1[i,:])/s_ref_norm
+    return cc
