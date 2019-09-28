@@ -20,7 +20,7 @@ by Chengxin Jiang
 ####### generate synthetic data ######
 ######################################
 
-synth = 'real_syn'              # choose between pure and real synthetic data
+synth = 'time_syn'              # choose between pure and real synthetic data
 
 #########PURELY SYNTHETIC INPUT#########
 if synth == 'time_syn':

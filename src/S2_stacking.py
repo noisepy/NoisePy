@@ -14,18 +14,19 @@ if not sys.warnoptions:
     warnings.simplefilter("ignore")
 
 '''
-Stacking script of NoisePy:
-    1) read the saved cross-correlation data to do sub-stacks (if needed) and all-time averaging;
-    2) two options for the stacking process: linear and phase weighted stacking (pws);
+Stacking script of NoisePy to:
+    1) load cross-correlation data for sub-stacking (if needed) and all-time average;
+    2) stack data with either linear or phase weighted stacking (pws) methods (or both);
     3) save outputs in ASDF or SAC format depend on user's choice;
-    4) rotation from a E-N-Z to R-T-Z system if needed.
+    4) rotate from a E-N-Z to R-T-Z system if needed.
 
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
          Marine Denolle (mdenolle@fas.harvard.edu)
 
 Note: 
-    1) assuming 3 components are E-N-Z 
-    2) auto-correlation is not kept in the stacking due to the fact that it has only 6 cross-component.
+    0. MOST occasions you just need to change parameters followed with detailed explanations to run the script. 
+    1. assuming 3 components are E-N-Z 
+    2. auto-correlation is not kept in the stacking due to the fact that it has only 6 cross-component.
     this tends to mess up the orders of matrix that stores the CCFs data
 '''
 
@@ -36,12 +37,31 @@ tt0=time.time()
 ########################################
 
 # absolute path parameters
-rootpath  = '/Volumes/Chengxin/LV_monitor'                       # root path for this data processing
-CCFDIR    = os.path.join(rootpath,'CCF')                    # dir where CC data is stored
-STACKDIR  = os.path.join(rootpath,'STACK') 
-locations = os.path.join(rootpath,'station.lst')            # station info including network,station,channel,latitude,longitude,elevation
+rootpath  = '/Users/chengxin/Documents/NoisePy_example/SCAL'        # root path for this data processing
+CCFDIR    = os.path.join(rootpath,'CCF')                            # dir where CC data is stored
+STACKDIR  = os.path.join(rootpath,'STACK')                          # dir where stacked data is going to be
+locations = os.path.join(rootpath,'station.txt')                    # station info including network,station,channel,latitude,longitude,elevation
 if not os.path.isfile(locations): 
     raise ValueError('Abort! station info is needed for this script')
+
+# define new stacking para
+keep_substack= True                                                 # keep all sub-stacks in final ASDF file
+flag         = False                                                # output intermediate args for debugging
+stack_method = 'both'                                               # linear, pws or both
+
+# new rotation para
+rotation     = False                                                # rotation from E-N-Z to R-T-Z 
+correction   = False                                                # angle correction due to mis-orientation
+if rotation and correction:
+    corrfile = os.path.join(rootpath,'meso_angles.txt')             # csv file containing angle info to be corrected
+    locs     = pd.read_csv(corrfile)
+else: locs = []
+
+# maximum memory allowed per core in GB
+MAX_MEM = 4.0
+
+##################################################
+# we expect no parameters need to be changed below
 
 # load fc_para parameters from Step1
 fc_metadata = os.path.join(CCFDIR,'fft_cc_data.txt')
@@ -57,26 +77,10 @@ maxlag      = fc_para['maxlag']
 substack    = fc_para['substack']
 substack_len= fc_para['substack_len']
 
-# define new stacking para
-keep_substack= True                                         # keep all sub-stacks in final ASDF file
-flag         = False                                        # output intermediate args for debugging
-stack_method = 'both'                                        # linear, pws or both
-
 # cross component info
 if ncomp==1:enz_system = ['ZZ']
 else: enz_system = ['EE','EN','EZ','NE','NN','NZ','ZE','ZN','ZZ']
 rtz_components = ['ZR','ZT','ZZ','RR','RT','RZ','TR','TT','TZ']
-
-# new rotation para
-rotation     = False                                        # rotation from E-N-Z to R-T-Z 
-correction   = False                                        # angle correction due to mis-orientation
-if rotation and correction:
-    corrfile = os.path.join(rootpath,'meso_angles.dat')          # csv file containing angle info to be corrected
-    locs     = pd.read_csv(corrfile)
-else: locs = []
-
-# maximum memory allowed per core in GB
-MAX_MEM = 4.0
 
 # make a dictionary to store all variables: also for later cc
 stack_para={'samp_freq':samp_freq,'cc_len':cc_len,'step':step,'rootpath':rootpath,'STACKDIR':\
@@ -157,7 +161,7 @@ for ipair in range (rank,splits,size):
     memory_size = num_chunck*num_segmts*npts_segmt*4/1024**3
 
     if memory_size > MAX_MEM:
-        raise ValueError('Require %s G memory (%s GB provided)! Cannot load cc data all once!' % (memory_size,MAX_MEM))
+        raise ValueError('Require %5.3fG memory but only %5.3fG provided)! Cannot load cc data all once!' % (memory_size,MAX_MEM))
     if flag:
         print('Good on memory (need %5.2f G and %s G provided)!' % (memory_size,MAX_MEM))
         
@@ -190,8 +194,6 @@ for ipair in range (rank,splits,size):
             cmp1 = tpath.split('s')[0]
             cmp2 = tpath.split('s')[1]
             tcmp1 = cmp1[-1];tcmp2 = cmp2[-1]
-            if cmp1[-1] == 'U':tcmp1 = 'Z'
-            if cmp2[-1] == 'U':tcmp2 = 'Z'
 
             # read data and parameter matrix
             tdata = ds.auxiliary_data[dtype][tpath].data[:]
@@ -279,7 +281,7 @@ for ipair in range (rank,splits,size):
         tparameters['station_source'] = ssta
         tparameters['station_receiver'] = rsta
         if stack_method!='both':
-            bigstack_rotated = noise_module.rotation2(bigstack,tparameters,locs,flag)
+            bigstack_rotated = noise_module.rotation(bigstack,tparameters,locs,flag)
 
             # write to file
             for icomp in range(nccomp):
@@ -290,8 +292,8 @@ for ipair in range (rank,splits,size):
                 with pyasdf.ASDFDataSet(stack_h5,mpi=False) as ds2:
                     ds2.add_auxiliary_data(data=bigstack_rotated[icomp], data_type=data_type, path=tpath, parameters=tparameters)
         else:
-            bigstack_rotated  = noise_module.rotation2(bigstack,tparameters,locs,flag)
-            bigstack_rotated1 = noise_module.rotation2(bigstack1,tparameters,locs,flag)
+            bigstack_rotated  = noise_module.rotation(bigstack,tparameters,locs,flag)
+            bigstack_rotated1 = noise_module.rotation(bigstack1,tparameters,locs,flag)
 
             # write to file
             for icomp in range(nccomp):
@@ -303,7 +305,7 @@ for ipair in range (rank,splits,size):
                     ds2.add_auxiliary_data(data=bigstack_rotated1[icomp], data_type='Allstack0pws', path=comp, parameters=tparameters)
 
     t4 = time.time()
-    if flag:print('takes %6.2fs to stack/rotate station pair %s' %(t4-t1,pairs_all[ipair]))
+    if flag:print('takes %6.2fs to stack/rotate all station pairs %s' %(t4-t1,pairs_all[ipair]))
 
     # write file stamps 
     ftmp = open(toutfn,'w');ftmp.write('done');ftmp.close()

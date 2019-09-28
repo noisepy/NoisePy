@@ -15,63 +15,65 @@ if not sys.warnoptions:
     warnings.simplefilter("ignore")
 
 '''
-This downloading script:
-    1) downloads data chunck on your choice of length and Client or pre-compiled station list;
-    2) cleans up the traces including gaps, removing instrumental response, downsampling and trim;
-    3) saves data into ASDF format;
-    4) use MPI to speep up downloading process.
+This script:
+    1) downloads sesimic data located in a broad region defined or using a pre-compiled station list;
+    2) cleans up raw traces by removing gaps, instrumental response, downsampling and trimming to a day length;
+    3) saves data into ASDF format (see Krischer et al., 2016 for more details);
+    4) uses MPI to speep up downloading process.
 
 Authors: Marine Denolle (mdenolle@fas.harvard.edu) - 11/16/18,06/08/19
          Chengxin Jiang (chengxin_jiang@fas.harvard.edu) - 02/22/19,07/01/19
          
-Note: 1. to avoid segmentation fault due to too large data in memory: a rough estimation is made
-     in the beginning of the code for the memory needs. reduce the value of inc_hours if the memory
-     on your machine is not enough to load proposed (x) hours of noise data all at once. 
-      2. if choose to download stations from an existing CSV files, station with the same name but 
-     different channel is regarded as different stations
-      3. including the location code of the station sometime result in no-data during feteching pro-
-     cessing, thus we recommend setting location code to "*" in the request setting when it is con-
-     firmed by the users that no station with the same name but different location codes occurs
+NOTE: 
+    0. MOST occasions you just need to change parameters followed with detailed explanations to run the script. 
+    1. to avoid segmentation fault later in cross-correlation calculations due to too large data in memory,
+    a rough estimation of the memory needs is made in the beginning of the code. you can reduce the value of
+    inc_hours if memory on your machine is not enough to load proposed (x) hours of noise data all at once;
+    2. if choose to download stations from an existing CSV files, stations with the same name but different
+    channel is regarded as different stations;
+    3. including station location code during feteching process sometime result in no-data (not sure what
+    happens exactly). we recommend setting location code to "*" in the request setting (L105 & 134) when it 
+    is confirmed by the users that no station with the same name but different location codes occurs.
 
-A beginning of NoisePy journey! 
+Enjoy the NoisePy journey! 
 '''
 
-#######################################################
-################PARAMETER SECTION######################
-#######################################################
+#########################################################
+################ PARAMETER SECTION ######################
+#########################################################
 tt0=time.time()
 
 # paths and filenames
-rootpath = '/Users/chengxin/Documents/SEATTLE' 
-if not os.path.isdir(rootpath):os.mkdir(rootpath)
-direc  = os.path.join(rootpath,'RAW_DATA')      # where to store the downloaded data
-dlist  = os.path.join(direc,'station.lst')      # CSV file for station location info
+rootpath = '/Users/chengxin/Documents/NoisePy_example/TA'     # roothpath for the project
+direc  = os.path.join(rootpath,'RAW_DATA')                      # where to store the downloaded data
+dlist  = os.path.join(direc,'station.txt')                      # CSV file for station location info
 
 # download parameters
-client    = Client('IRIS')                     # client/data center. see https://docs.obspy.org/packages/obspy.clients.fdsn.html for a list
-down_list = False                               # download stations from pre-compiled list
-oput_CSV  = True                                # output station.list to a CSV file to be used in later stacking steps
-flag      = True                                # print progress when running the script
-samp_freq   = 1                                 # resampling at X samples per seconds 
-rm_resp   = False                               # False to not remove, True to remove, and 'inv' to remove with inventory
-respdir   = 'none'                              # output response directory (required if rm_resp is neither 'False' nor 'inv')
-freqmin   = 0.01                                # pre filtering frequency bandwidth
-freqmax   = 0.4                                 # note this cannot exceed Nquist freq
-outform   = 'asdf'                              
+client    = Client('IRIS')                                     # client/data center. see https://docs.obspy.org/packages/obspy.clients.fdsn.html for a list
+down_list = False                                                # download stations from a pre-compiled list or not
+flag      = False                                                # print progress when running the script; recommend to use it at the begining
+samp_freq = 20                                                  # targeted sampling rate at X samples per seconds 
+rm_resp   = 'no'                                                # select 'no' to not remove response and use 'inv','spectrum','RESP', or 'polozeros' to remove response
+respdir   = os.path.join(rootpath,'resp')                       # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
+freqmin   = 0.05                                                # pre filtering frequency bandwidth
+freqmax   = 2                                                   # note this cannot exceed Nquist freq                         
 
-# station information 
-lamin,lomin,lamax,lomax=47.5,-122.4,47.8,-122.2       # regional box: min lat, min lon, max lat, max lon
-dchan= ["HNZ"]                                  # channel if down_list=false
-dnet = ["UW"]                                   # network  
-dsta = ["*"]                                    # station (do either one station or *)
-start_date = ["2019_02_01_0_0_0"]               # start date of download
-end_date   = ["2019_03_30_0_0_0"]               # end date of download
-inc_hours  = 12                                 # length of data for each request (in hour)
+# targeted region/station information 
+lamin,lamax,lomin,lomax=36.2,42.8,-124.5,-117.5                 # regional box: min lat, min lon, max lat, max lon (-114.0)
+dchan= ["BH?"]                                                  # channel if down_list=false
+dnet = ["TA"]                                                   # network  
+dsta = ["*"]                                                    # station (do either one station or *)
+start_date = ["2006_03_01_0_0_0"]                               # start date of download
+end_date   = ["2006_03_03_0_0_0"]                               # end date of download
+inc_hours  = 24                                                 # length of data for each request (in hour)
 
-# parameters for noise pre-processing: to estimate memory needs
-cc_len    = 3600                                # basic unit of data length for fft (s)
-step      = 1800                                # overlapping between each cc_len (s)
-MAX_MEM   = 3.0                                 # maximum memory allowed per core in GB
+# get rough estimate of memory needs to ensure it now below up in S1
+cc_len    = 1800                                                # basic unit of data length for fft (s)
+step      = 450                                                 # overlapping between each cc_len (s)
+MAX_MEM   = 5.0                                                 # maximum memory allowed per core in GB
+
+##################################################
+# we expect no parameters need to be changed below
 
 # time tags
 starttime = obspy.UTCDateTime(start_date[0])       
@@ -79,9 +81,9 @@ endtime   = obspy.UTCDateTime(end_date[0])
 if flag:
     print('station.list selected [%s] for data from %s to %s with %sh interval'%(down_list,starttime,endtime,inc_hours))
 
-# assemble parameters for pre-processing
-prepro_para = {'rm_resp':rm_resp,'respdir':respdir,'freqmin':freqmin,'freqmax':freqmax,\
-    'samp_freq':samp_freq,'start_date':start_date,'end_date':end_date,'inc_hours':inc_hours}
+# assemble parameters used for pre-processing
+prepro_para = {'rm_resp':rm_resp,'respdir':respdir,'freqmin':freqmin,'freqmax':freqmax,'samp_freq':samp_freq,'start_date':\
+    start_date,'end_date':end_date,'inc_hours':inc_hours,'cc_len':cc_len,'step':step,'MAX_MEM':MAX_MEM}
 metadata = os.path.join(direc,'download_info.txt') 
 
 # prepare station info (existing station list vs. fetching from client)
@@ -117,7 +119,7 @@ else:
             endtime=endtime,location='*') 
         if flag:print(inv1)
     except Exception as e:
-        print('Abort! '+str(e))
+        print('Abort at L120! '+str(e))
         sys.exit()
 
     # calculate the total number of channels to download
@@ -135,13 +137,13 @@ else:
                 nsta+=1
     prepro_para['nsta'] = nsta
 
-# crude estimation on memory needs (assume float32)
-nsec_chunck = inc_hours/24*86400
-nseg_chunck = int(np.floor((nsec_chunck-cc_len)/step))+1
-npts_chunck = int(nseg_chunck*cc_len*samp_freq)
-memory_size = nsta*npts_chunck*4/1024**3
+# rough estimation on memory needs (assume float32 dtype)
+nsec_chunk = inc_hours/24*86400
+nseg_chunk = int(np.floor((nsec_chunk-cc_len)/step))+1
+npts_chunk = int(nseg_chunk*cc_len*samp_freq)
+memory_size = nsta*npts_chunk*4/1024**3
 if memory_size > MAX_MEM:
-    raise ValueError('Require %s G memory (%s GB provided)! Reduce inc_hours as it cannot load %s h all once!' % (memory_size,MAX_MEM,inc_hours))
+    raise ValueError('Require %5.3fG memory but only %5.3fG provided)! Reduce inc_hours to avoid this issue!' % (memory_size,MAX_MEM))
 
 
 ########################################################
@@ -154,88 +156,86 @@ rank = comm.Get_rank()
 size = comm.Get_size()
 
 if rank==0:
+    if not os.path.isdir(rootpath):os.mkdir(rootpath)
     if not os.path.isdir(direc):os.mkdir(direc)
     # output station list
     if not down_list:     
-        if oput_CSV:noise_module.make_stationlist_CSV(inv,direc)
+        noise_module.make_stationlist_CSV(inv,direc)
     # save parameters for future reference
     fout = open(metadata,'w')
     fout.write(str(prepro_para));fout.close()
 
     # get MPI variables ready 
-    all_chunck = noise_module.get_event_list(start_date[0],end_date[0],inc_hours)
-    if len(all_chunck)<1:
-        raise ValueError('Abort! no data chunck between %s and %s' % (start_date[0],end_date[0]))
-    splits = len(all_chunck)-1
+    all_chunk = noise_module.get_event_list(start_date[0],end_date[0],inc_hours)
+    if len(all_chunk)<1:
+        raise ValueError('Abort! no data chunk between %s and %s' % (start_date[0],end_date[0]))
+    splits = len(all_chunk)-1
 else:
-    splits,all_chunck = [None for _ in range(2)]
+    splits,all_chunk = [None for _ in range(2)]
 
 # broadcast the variables
 splits = comm.bcast(splits,root=0)
-all_chunck  = comm.bcast(all_chunck,root=0)
+all_chunk  = comm.bcast(all_chunk,root=0)
 extra = splits % size
 
-# MPI: loop through each time chunck 
-for ick in range (rank,splits+size-extra,size):
-    if ick<splits:
+# MPI: loop through each time chunk 
+for ick in range (rank,splits,size):
 
-        s1=obspy.UTCDateTime(all_chunck[ick])
-        s2=obspy.UTCDateTime(all_chunck[ick+1]) 
-        date_info = {'starttime':s1,'endtime':s2} 
-        
-        # filename of the ASDF file
-        ff=os.path.join(direc,all_chunck[ick]+'T'+all_chunck[ick+1]+'.h5')
-        if not os.path.isfile(ff):
-            with pyasdf.ASDFDataSet(ff,mpi=False,compression="gzip-3",mode='w') as ds:
-                pass
-            #raise ValueError('seems file %s already exists! double check before continue'%ff)
-        else:
-            with pyasdf.ASDFDataSet(ff,mpi=False,compression="gzip-3",mode='a') as ds:
+    s1=obspy.UTCDateTime(all_chunk[ick])
+    s2=obspy.UTCDateTime(all_chunk[ick+1]) 
+    date_info = {'starttime':s1,'endtime':s2} 
+    
+    # filename of the ASDF file
+    ff=os.path.join(direc,all_chunk[ick]+'T'+all_chunk[ick+1]+'.h5')
+    if not os.path.isfile(ff):
+        with pyasdf.ASDFDataSet(ff,mpi=False,compression="gzip-3",mode='w') as ds:
+            pass
 
-                # loop through each channel
-                for ista in range(nsta):
+    # appending when file exists
+    with pyasdf.ASDFDataSet(ff,mpi=False,compression="gzip-3",mode='a') as ds:
 
-                    # select from existing inventory database
-                    if down_list:
-                        try:
-                            sta_inv = client.get_stations(network=net[ista],station=sta[ista],\
-                                location=location[ista],starttime=s1,endtime=s2,level="response")
-                        except Exception as e:
-                            print(e);continue
-                        #if sta_inv[0][0][0].location_code:
-                        #    location[ista] = sta_inv[0][0][0].location_code
-                    else:
-                        sta_inv = inv1.select(network=net[ista],station=sta[ista],location=location[ista]) 
-                        if not sta_inv:
-                            continue 
+        # loop through each channel
+        for ista in range(nsta):
 
-                    # add the inventory for all components + all time of this tation         
-                    try:ds.add_stationxml(sta_inv) 
-                    except Exception: pass   
+            # select from existing inventory database
+            if down_list:
+                try:
+                    sta_inv = client.get_stations(network=net[ista],station=sta[ista],\
+                        location=location[ista],starttime=s1,endtime=s2,level="response")
+                except Exception as e:
+                    print(e);continue
+            else:
+                sta_inv = inv1.select(network=net[ista],station=sta[ista],location=location[ista]) 
+                if not sta_inv:
+                    continue 
 
-                    try:
-                        # get data
-                        t0=time.time()
-                        tr = client.get_waveforms(network=net[ista],station=sta[ista],\
-                            channel=chan[ista],location=location[ista],starttime=s1,endtime=s2)
-                        t1=time.time()
-                    except Exception as e:
-                        print(e,'for',sta[ista]);continue
-                        
-                    # preprocess to clean data  
-                    tr = noise_module.preprocess_raw(tr,sta_inv,prepro_para,date_info)
-                    t2 = time.time()
+            # add the inventory for all components + all time of this tation         
+            try:ds.add_stationxml(sta_inv) 
+            except Exception: pass   
 
-                    if len(tr):
-                        if location[ista] == '*':
-                            tlocation = str('00')
-                        else:
-                            tlocation = location[ista]
-                        new_tags = '{0:s}_{1:s}'.format(chan[ista].lower(),tlocation.lower())
-                        ds.add_waveforms(tr,tag=new_tags)
+            try:
+                # get data
+                t0=time.time()
+                tr = client.get_waveforms(network=net[ista],station=sta[ista],\
+                    channel=chan[ista],location=location[ista],starttime=s1,endtime=s2)
+                t1=time.time()
+            except Exception as e:
+                print(e,'for',sta[ista]);continue
+                
+            # preprocess to clean data  
+            tr = noise_module.preprocess_raw(tr,sta_inv,prepro_para,date_info)
+            t2 = time.time()
 
-                    if flag:
-                        print(ds,new_tags);print('downloading data %6.2f s; pre-process %6.2f s' % ((t1-t0),(t2-t1)))
+            if len(tr):
+                if location[ista] == '*':
+                    tlocation = str('00')
+                else:
+                    tlocation = location[ista]
+                new_tags = '{0:s}_{1:s}'.format(chan[ista].lower(),tlocation.lower())
+                ds.add_waveforms(tr,tag=new_tags)
+
+            if flag:
+                print(ds,new_tags);print('downloading data %6.2f s; pre-process %6.2f s' % ((t1-t0),(t2-t1)))
 
 tt1=time.time()
 print('downloading step takes %6.2f s' %(tt1-tt0))
