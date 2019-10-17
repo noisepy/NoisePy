@@ -42,7 +42,7 @@ mpirun -n 4 python S0_download_ASDF_MPI.py
 The outputted files from S0A include ASDF files containing daily-long (24h) continous noise data, a parameter file recording all used parameters in the script of S0A and a CSV file of all station information (more details on reading the ASDF files with downloaded data can be found in docs/src/ASDF.md). The continous waveforms data stored in the ASDF file can be displayed using the plotting modules named as `plotting_modules` in the directory of `src` as shown below.
 
 ```python
-import plotting_modules (cd to your source file directory first before loading this module)
+import plotting_modules #(cd to your source file directory first before loading this module)
 sfile = '/Users/chengxin/Documents/SCAL/RAW_DATA/2016_07_01_00_00_00T2016_07_02_00_00_00.h5'
 plotting_modules.plot_waveform(sfile,'CI','BLC',0.01,0.4)                                                          
 ```
