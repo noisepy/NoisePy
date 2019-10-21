@@ -110,7 +110,7 @@ def make_timestamps(prepro_para):
                 try:
                     tr = obspy.read(allfiles[ii])
                     all_stimes[ii,0] = tr[0].stats.starttime-obspy.UTCDateTime(1970,1,1)
-                    all_stimes[ii,1] = tr[0].stats.endtime-obspy.UTCDateTime(1970,1,1)
+                    all_stimes[ii,1] = tr[-1].stats.endtime-obspy.UTCDateTime(1970,1,1)
                 except Exception as e:
                     print(e);continue
         else:
