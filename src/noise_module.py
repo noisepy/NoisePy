@@ -110,7 +110,7 @@ def make_timestamps(prepro_para):
                 try:
                     tr = obspy.read(allfiles[ii])
                     all_stimes[ii,0] = tr[0].stats.starttime-obspy.UTCDateTime(1970,1,1)
-                    all_stimes[ii,1] = tr[-1].stats.endtime-obspy.UTCDateTime(1970,1,1)
+                    all_stimes[ii,1] = tr[0].stats.endtime-obspy.UTCDateTime(1970,1,1)
                 except Exception as e:
                     print(e);continue
         else:
@@ -1192,6 +1192,7 @@ def pws(arr,sampling_rate,power=2,pws_timegate=5.):
     Phase-weighted stack, g(t), is then:
     g(t) = 1/N sum j = 1:N s_j(t) * | 1/N sum k = 1:N exp[i * phi_k(t)]|^v
     where N is number of traces used, v is sharpness of phase-weighted stack
+    
     PARAMETERS:
     ---------------------
     arr: N length array of time series data (numpy.ndarray)

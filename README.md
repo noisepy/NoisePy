@@ -5,7 +5,7 @@ NoisePy is a Python package designed for fast and easy computation of ambient no
 [![Build Status](https://travis-ci.com/kura-okubo/SeisDownload.jl.svg?branch=master)](https://travis-ci.com/kura-okubo/SeisDownload.jl)
 [![Codecov](https://codecov.io/gh/kura-okubo/SeisDownload.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/kura-okubo/SeisDownload.jl)
 
-<img src="/docs/src/logo.png" width="800" height="400">
+<img src="/docs/figures/logo.png" width="800" height="400">
  
 # Installation
 The nature of NoisePy being composed of python scripts allows flexiable package installation, which is essentially to build dependented libraries the scripts and related functions live upon. We recommand to use [conda](https://docs.conda.io/en/latest/) and [pip](https://pypi.org/project/pip/) to install the library due to their convinence. Below are command lines we have tested that would create a python environment to run NoisePy. Note that the test is performed on `macOS Mojave (10.14.5)`, so it could be slightly different for other OS. 
@@ -46,7 +46,7 @@ import plotting_modules #(cd to your source file directory first before loading 
 sfile = '/Users/chengxin/Documents/SCAL/RAW_DATA/2016_07_01_00_00_00T2016_07_02_00_00_00.h5'
 plotting_modules.plot_waveform(sfile,'CI','BLC',0.01,0.4)                                                          
 ```
-<img src="/docs/src/waveform3.png" width="600" height="400">
+<img src="/docs/figures/waveform3.png" width="600" height="400">
 
 Note that the script also offers the option to download data from an existing station list in a format same to the outputed CSV file. In this case, `down_list` should be set to `True` at L53. In reality, the downloading speed is dependent on many factors such as the original sampling rate of targeted data, the networks, the data center where it is hosted and the general structure you want to store on your machine etc. We tested a bunch of the parameters to evaluate their performance and the readers are referred to our paper for more details (Jiang et al., 2019). 
 
@@ -64,7 +64,7 @@ import plotting_modules
 sfile = '/Users/chengxin/Documents/SCAL/CCF/2016_07_01_00_00_00T2016_07_02_00_00_00.h5'
 plot_modules.plot_substack_cc(sfile,0.1,0.2,200,True,'/Users/chengxin/Documents/SCAL/CCF/figures')     
 ```
-<img src="/docs/src/substack_cc_NN.png" width="400" height="190"><img src="/docs/src/substack_cc_ZZ.png" width="400" height="190">
+<img src="/docs/figures/substack_cc_NN.png" width="400" height="190"><img src="/docs/figures/substack_cc_ZZ.png" width="400" height="190">
 
 
 ### 2. Do stacking with `S2_stacking.py`\
@@ -76,7 +76,7 @@ sfiles = glob.glob('/Users/chengxin/Documents/SCAL/STACK/*/*.h5')
 plot_modules.plot_all_moveout(sfiles,'Allstack0linear'0.1,0.2,'ZZ',1,300,True,'/Users/chengxin/Documents/SCAL/STACK') #(move-out for linear stacking)
 plot_modules.plot_all_moveout(sfiles,'Allstack0pws'0.1,0.2,'ZZ',1,300,True,'/Users/chengxin/Documents/SCAL/STACK')    #(move-out for pws)
 ```
-<img src="/docs/src/linear_stack1.png" width="400" height="300"><img src="/docs/src/pws_stack1.png" width="400" height="300">
+<img src="/docs/figures/linear_stack1.png" width="400" height="300"><img src="/docs/figures/pws_stack1.png" width="400" height="300">
 
 Anyway, here just presents one simple example of how NoisePy might work! We strongly encourage you to download the NoisePy package and play it on your own! If you have any  comments and/or suggestions during running the codes, please do not hesitate to contact us through email or open an issue in this github page!  
 
