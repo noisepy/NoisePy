@@ -24,7 +24,7 @@ Specifically, this plotting module includes functions of:
 #############################################################################
 ###############PLOTTING FUNCTIONS FOR FILES FROM S0##########################
 #############################################################################
-def plot_waveform(sfile,net,sta,freqmin,freqmax):
+def plot_waveform(sfile,net,sta,freqmin,freqmax,savefig=False,sdir=None):
     '''
     display the downloaded waveform for station A
 
@@ -89,7 +89,14 @@ def plot_waveform(sfile,net,sta,freqmin,freqmax):
         plt.legend([tcomp[2].split('_')[0].upper()],loc='upper left')
         plt.xlabel('Time [s]') 
         plt.tight_layout()
-        plt.show() 
+
+        if savefig:
+            if not os.path.isdir(sdir):os.mkdir(sdir)
+            outfname = sdir+'/{0:s}_{1:s}.{2:s}.pdf'.format(sfile.split('.')[0],net,sta)
+            plt.savefig(outfname, format='pdf', dpi=400)
+            plt.close()
+        else:
+            plt.show() 
                       
 
 #############################################################################
@@ -143,13 +150,19 @@ def plot_substack_cc(sfile,freqmin,freqmax,disp_lag=None,savefig=True,sdir='./')
     indx2 = indx1+2*int(disp_lag/dt)+1
 
     for spair in spairs:
-        net1,sta1,net2,sta2 = spair.split('s')
+        ttr = spair.split('_')
+        net1,sta1 = ttr[0].split('.')
+        net2,sta2 = ttr[1].split('.')
         for ipath in path_lists:
-            chan1,chan2 = ipath.split('s')
-            dist = ds.auxiliary_data[spair][ipath].parameters['dist']
-            ngood= ds.auxiliary_data[spair][ipath].parameters['ngood']
-            ttime= ds.auxiliary_data[spair][ipath].parameters['time']
-            timestamp = np.empty(ttime.size,dtype='datetime64[s]')
+            chan1,chan2 = ipath.split('_')
+            try:
+                dist = ds.auxiliary_data[spair][ipath].parameters['dist']
+                ngood= ds.auxiliary_data[spair][ipath].parameters['ngood']
+                ttime= ds.auxiliary_data[spair][ipath].parameters['time']
+                timestamp = np.empty(ttime.size,dtype='datetime64[s]')
+            except Exception:
+                print('continue! something wrong with %s %s'%(spair,ipath))
+                continue
             
             # cc matrix
             data = ds.auxiliary_data[spair][ipath].data[:,indx1:indx2]
@@ -252,13 +265,19 @@ def plot_substack_cc_spect(sfile,freqmin,freqmax,disp_lag=None,savefig=True,sdir
     freq  = scipy.fftpack.fftfreq(nfft,d=dt)[:nfft//2]
 
     for spair in spairs:
-        net1,sta1,net2,sta2 = spair.split('s')
+        ttr = spair.split('_')
+        net1,sta1 = ttr[0].split('.')
+        net2,sta2 = ttr[1].split('.')
         for ipath in path_lists:
-            chan1,chan2 = ipath.split('s')
-            dist = ds.auxiliary_data[spair][ipath].parameters['dist']
-            ngood= ds.auxiliary_data[spair][ipath].parameters['ngood']
-            ttime= ds.auxiliary_data[spair][ipath].parameters['time']
-            timestamp = np.empty(ttime.size,dtype='datetime64[s]')
+            chan1,chan2 = ipath.split('_')
+            try:
+                dist = ds.auxiliary_data[spair][ipath].parameters['dist']
+                ngood= ds.auxiliary_data[spair][ipath].parameters['ngood']
+                ttime= ds.auxiliary_data[spair][ipath].parameters['time']
+                timestamp = np.empty(ttime.size,dtype='datetime64[s]')
+            except Exception:
+                print('continue! something wrong with %s %s'%(spair,ipath))
+                continue
 
             # cc matrix
             data = ds.auxiliary_data[spair][ipath].data[:,indx1:indx2]
@@ -391,7 +410,7 @@ def plot_substack_all(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=False,sd
         tick_inc = 2
     fig,ax = plt.subplots(2,sharex=False)
     ax[0].matshow(data,cmap='seismic',extent=[-disp_lag,disp_lag,nwin,0],aspect='auto')
-    ax[0].set_title('%s dist:%5.2f km' % (sfile.split('/')[-1],dist))
+    ax[0].set_title('%s dist:%5.2f km filtered at %4.2f-%4.2fHz' % (sfile.split('/')[-1],dist,freqmin,freqmax))
     ax[0].set_xlabel('time [s]')
     ax[0].set_ylabel('wavefroms')
     ax[0].set_xticks(t)
@@ -407,7 +426,7 @@ def plot_substack_all(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=False,sd
     if savefig:
         if sdir==None:sdir = sfile.split('.')[0]
         if not os.path.isdir(sdir):os.mkdir(sdir)
-        outfname = sdir+'/{0:s}.pdf'.format(sfile.split('/')[-1])
+        outfname = sdir+'/{0:s}_{1:4.2f}_{2:4.2f}Hz.pdf'.format(sfile.split('/')[-1],freqmin,freqmax)
         fig.savefig(outfname, format='pdf', dpi=400)
         plt.close()
     else:
@@ -643,7 +662,7 @@ def plot_all_moveout_1D_1comp(sfiles,sta,dtype,freqmin,freqmax,ccomp,disp_lag=No
         if sdir==None:print('no path selected! save figures in the default path')
     
     receiver = sta+'.h5'
-    stack_method = dtype.split('0')[-1]
+    stack_method = dtype.split('_')[-1]
 
     # extract common variables
     try:
@@ -729,7 +748,7 @@ def plot_all_moveout_1D_9comp(sfiles,sta,dtype,freqmin,freqmax,disp_lag=None,sav
         if sdir==None:print('no path selected! save figures in the default path')
     
     receiver = sta+'.h5'
-    stack_method = dtype.split('0')[-1]
+    stack_method = dtype.split('_')[-1]
     ccomp = ['ZR','ZT','ZZ','RR','RT','RZ','TR','TT','TZ']
 
     # extract common variables

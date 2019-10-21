@@ -23,7 +23,7 @@ Stacking script of NoisePy to:
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
          Marine Denolle (mdenolle@fas.harvard.edu)
 
-Note: 
+NOTE: 
     0. MOST occasions you just need to change parameters followed with detailed explanations to run the script. 
     1. assuming 3 components are E-N-Z 
     2. auto-correlation is not kept in the stacking due to the fact that it has only 6 cross-component.
@@ -37,10 +37,10 @@ tt0=time.time()
 ########################################
 
 # absolute path parameters
-rootpath  = '/Users/chengxin/Documents/NoisePy_example/SCAL'        # root path for this data processing
+rootpath  = '/Users/chengxin/Documents/NoisePy_example/BP'         # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                            # dir where CC data is stored
-STACKDIR  = os.path.join(rootpath,'STACK')                          # dir where stacked data is going to be
-locations = os.path.join(rootpath,'station.txt')                    # station info including network,station,channel,latitude,longitude,elevation
+STACKDIR  = os.path.join(rootpath,'STACK')                          # dir where stacked data is going to
+locations = os.path.join(rootpath,'RAW_DATA/station.txt')                    # station info including network,station,channel,latitude,longitude,elevation
 if not os.path.isfile(locations): 
     raise ValueError('Abort! station info is needed for this script')
 
@@ -119,7 +119,7 @@ if rank == 0:
     pairs_all = []
     for ii in range(len(sta)-1):
         for jj in range(ii,len(sta)):
-            pairs_all.append(sta[ii].replace('.','s')+'s'+sta[jj].replace('.','s'))
+            pairs_all.append(sta[ii]+'_'+sta[jj])
 
     splits  = len(pairs_all)
     if len(ccfiles)==0 or splits==0:
@@ -139,13 +139,13 @@ for ipair in range (rank,splits,size):
 
     if flag:print('%dth path for station-pair %s'%(ipair,pairs_all[ipair]))
     # source folder
-    ttr   = pairs_all[ipair].split('s')
-    snet  = ttr[0];ssta = ttr[1]
-    rnet  = ttr[2];rsta = ttr[3]
-    idir  = snet+'.'+ssta
+    ttr   = pairs_all[ipair].split('_')
+    snet,ssta = ttr[0].split('.')
+    rnet,rsta = ttr[1].split('.')
+    idir  = ttr[0]
 
     # continue when file is done
-    toutfn = os.path.join(STACKDIR,idir+'/'+snet+'.'+ssta+'_'+rnet+'.'+rsta+'.tmp')   
+    toutfn = os.path.join(STACKDIR,idir+'/'+pairs_all[ipair]+'.tmp')   
     if os.path.isfile(toutfn):continue        
 
     # crude estimation on memory needs (assume float32)
@@ -188,11 +188,14 @@ for ipair in range (rank,splits,size):
         if ncomp==3 and len(path_list)<9:
             if flag:print('continue! not enough cross components for %s in %s'%(dtype,ifile))
             continue
+
+        if len(path_list) >9:
+            raise ValueError('more than 9 cross-component exists for %s %s! please double check'%(ifile,dtype))
                    
         # load the 9-component data, which is in order in the ASDF
         for tpath in path_list:
-            cmp1 = tpath.split('s')[0]
-            cmp2 = tpath.split('s')[1]
+            cmp1 = tpath.split('_')[0]
+            cmp2 = tpath.split('_')[1]
             tcmp1 = cmp1[-1];tcmp2 = cmp2[-1]
 
             # read data and parameter matrix
@@ -218,7 +221,7 @@ for ipair in range (rank,splits,size):
 
     # continue when there is no data
     if iseg <= 1: continue
-    outfn = snet+'.'+ssta+'_'+rnet+'.'+rsta+'.h5'         
+    outfn = pairs_all[ipair]+'.h5'         
     if flag:print('ready to output to %s'%(outfn))                     
 
     # matrix used for rotation
@@ -247,7 +250,7 @@ for ipair in range (rank,splits,size):
             with pyasdf.ASDFDataSet(stack_h5,mpi=False) as ds:
                 tparameters['time']  = stamps_final[0]
                 tparameters['ngood'] = nstacks
-                data_type = 'Allstack0'+stack_method
+                data_type = 'Allstack_'+stack_method
                 ds.add_auxiliary_data(data=allstacks, data_type=data_type, path=comp, parameters=tparameters)
         else:
             cc_final,ngood_final,stamps_final,allstacks1,allstacks2,nstacks = noise_module.stacking(cc_array[indx],cc_time[indx],cc_ngood[indx],stack_para)
@@ -260,8 +263,8 @@ for ipair in range (rank,splits,size):
             with pyasdf.ASDFDataSet(stack_h5,mpi=False) as ds:
                 tparameters['time']  = stamps_final[0]
                 tparameters['ngood'] = nstacks
-                ds.add_auxiliary_data(data=allstacks1, data_type='Allstack0linear', path=comp, parameters=tparameters)
-                ds.add_auxiliary_data(data=allstacks2, data_type='Allstack0pws', path=comp, parameters=tparameters)
+                ds.add_auxiliary_data(data=allstacks1, data_type='Allstack_linear', path=comp, parameters=tparameters)
+                ds.add_auxiliary_data(data=allstacks2, data_type='Allstack_pws', path=comp, parameters=tparameters)
 
         # keep a track of all sub-stacked data from S1
         if keep_substack:
@@ -288,7 +291,7 @@ for ipair in range (rank,splits,size):
                 comp  = rtz_components[icomp]
                 tparameters['time']  = stamps_final[0]
                 tparameters['ngood'] = nstacks
-                data_type = 'Allstack0'+stack_method
+                data_type = 'Allstack_'+stack_method
                 with pyasdf.ASDFDataSet(stack_h5,mpi=False) as ds2:
                     ds2.add_auxiliary_data(data=bigstack_rotated[icomp], data_type=data_type, path=tpath, parameters=tparameters)
         else:
@@ -301,8 +304,8 @@ for ipair in range (rank,splits,size):
                 tparameters['time']  = stamps_final[0]
                 tparameters['ngood'] = nstacks
                 with pyasdf.ASDFDataSet(stack_h5,mpi=False) as ds2:
-                    ds2.add_auxiliary_data(data=bigstack_rotated[icomp], data_type='Allstack0linear', path=comp, parameters=tparameters)    
-                    ds2.add_auxiliary_data(data=bigstack_rotated1[icomp], data_type='Allstack0pws', path=comp, parameters=tparameters)
+                    ds2.add_auxiliary_data(data=bigstack_rotated[icomp], data_type='Allstack_linear', path=comp, parameters=tparameters)    
+                    ds2.add_auxiliary_data(data=bigstack_rotated1[icomp], data_type='Allstack_pws', path=comp, parameters=tparameters)
 
     t4 = time.time()
     if flag:print('takes %6.2fs to stack/rotate all station pairs %s' %(t4-t1,pairs_all[ipair]))

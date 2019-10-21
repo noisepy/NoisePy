@@ -47,16 +47,16 @@ tt0=time.time()
 ########################################
 
 #------absolute path parameters-------
-rootpath  = '/Users/chengxin/Documents/NoisePy_example/SCAL'                # root path for this data processing
+rootpath  = '/Users/chengxin/Documents/NoisePy_example/BP'                # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                                    # dir to store CC data
 DATADIR   = os.path.join(rootpath,'RAW_DATA')                               # dir where noise data is located
 local_data_path = os.path.join(rootpath,'Event_*/*')                        # absolute dir where SAC files are stored: this para is VERY IMPORTANT and has to be RIGHT if input_fmt is not asdf!!!
 
 #-------some control parameters--------
 input_fmt   = 'asdf'                                                        # string: 'asdf', 'sac','mseed' 
-to_whiten   = 'no'                                                          # 'no' for no whitening, or 'running-mean', 'one-bit' for normalization
-time_norm   = 'no'                                                          # 'no' for no normalization, or 'running-mean', 'one-bit' for normalization
-cc_method   = 'coherency'                                                   # select between 'raw', 'decon' and 'coherency'
+to_whiten   = 'no'                                                          # 'no' for no whitening, or 'running_mean', 'one_bit' for normalization
+time_norm   = 'no'                                                         # 'no' for no normalization, or 'running_mean', 'one_bit' for normalization
+cc_method   = 'coherency'                                                   # select between 'raw', 'deconv' and 'coherency'
 flag        = False                                                         # print intermediate variables and computing time for debugging purpose
 acorr_only  = False                                                         # only perform auto-correlation 
 xcorr_only  = False                                                         # only perform cross-correlation or not
@@ -70,7 +70,7 @@ respdir   = os.path.join(rootpath,'resp')                                   # di
 # pre-processing parameters 
 cc_len    = 1800                                                            # basic unit of data length for fft (sec)
 step      = 450                                                             # overlapping between each cc_len (sec)
-smooth_N  = 100                                                             # moving window length for time/freq domain normalization if selected (points)
+smooth_N  = 10                                                              # moving window length for time/freq domain normalization if selected (points)
 
 # cross-correlation parameters
 maxlag         = 400                                                        # lags of cross-correlation to save (sec)
@@ -94,7 +94,8 @@ if input_fmt == 'asdf':
     freqmax   = down_info['freqmax']
     start_date = down_info['start_date']
     end_date   = down_info['end_date']
-    inc_hours  = down_info['inc_hours']   
+    inc_hours  = down_info['inc_hours']  
+    #ncomp      = down_info['ncomp'] 
 else:   # sac or mseed format
     samp_freq = 20
     freqmin   = 0.05
@@ -135,7 +136,7 @@ if rank == 0:
 
     # set variables to broadcast
     if input_fmt == 'asdf':
-        tdir = sorted(glob.glob(os.path.join(DATADIR,'*.h5')))
+        tdir = sorted(glob.glob(os.path.join(DATADIR,'2004_0*.h5')))
     else:
         tdir = sorted(glob.glob(local_data_path))
         if len(tdir)==0: raise ValueError('No data file in %s',DATADIR)
@@ -329,8 +330,8 @@ for ick in range (rank,splits,size):
                 parameters = noise_module.cc_parameters(fc_para,coor,tcorr,ncorr,comp)
 
                 # source-receiver pair
-                data_type = network[iiS]+'s'+station[iiS]+'s'+network[iiR]+'s'+station[iiR]
-                path = channel[iiS]+'s'+channel[iiR]
+                data_type = network[iiS]+'.'+station[iiS]+'_'+network[iiR]+'.'+station[iiR]
+                path = channel[iiS]+'_'+channel[iiR]
                 crap[:] = corr[:]
                 ccf_ds.add_auxiliary_data(data=crap, data_type=data_type, path=path, parameters=parameters)
                 ftmp.write(network[iiS]+'.'+station[iiS]+'.'+channel[iiS]+'_'+network[iiR]+'.'+station[iiR]+'.'+channel[iiR]+'\n')

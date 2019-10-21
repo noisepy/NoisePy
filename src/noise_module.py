@@ -39,49 +39,6 @@ several utility functions are modified based on https://github.com/tclements/noi
 ############## CORE FUNCTIONS ######################
 ####################################################
 
-def make_stationlist_CSV(inv,path):
-    '''
-    this function outputs station info collected by the obspy module of get_station into a CSV file
-    (used in S0A_download_ASDF_MPI)
-    
-    PARAMETERS:
-    ----------------
-    inv:  obspy inventory from IRIS server
-    path: absolute path to output the CSV file
-    '''
-    #----to hold all variables-----
-    netlist = []
-    stalist = []
-    lonlist = []
-    latlist = []
-    elvlist = []
-    chalist = []
-
-    #-----silly inventory structures----
-    nnet = len(inv)
-    for ii in range(nnet):
-        net = inv[ii]
-        nsta = len(net)
-        for jj in range(nsta):
-            sta = net[jj]
-            ncha = len(sta)
-            for kk in range(ncha):
-                chan = sta[kk]
-                netlist.append(net.code)
-                stalist.append(sta.code)
-                chalist.append(chan.code)
-                lonlist.append(sta.longitude)
-                latlist.append(sta.latitude)
-                elvlist.append(sta.elevation)
-
-    #------------dictionary for a pandas frame------------
-    dict = {'network':netlist,'station':stalist,'channel':chalist,'latitude':latlist,'longitude':lonlist,'elevation':elvlist}
-    locs = pd.DataFrame(dict)
-
-    #----------write into a csv file---------------            
-    locs.to_csv(os.path.join(path,'station.txt'),index=False)
-
-
 def get_event_list(str1,str2,inc_hours):
     '''
     this function calculates the event list between time1 and time2 by increment of inc_hours
@@ -233,7 +190,7 @@ def preprocess_raw(st,inv,prepro_para,date_info):
 
     # merge, taper and filter the data
     if len(st)>1:st.merge(method=1,fill_value=0)
-    st[0].taper(max_percentage=0.05,max_length=20)	# taper window
+    st[0].taper(max_percentage=0.05,max_length=50)	# taper window
     st[0].data = np.float32(bandpass(st[0].data,pre_filt[0],pre_filt[-1],df=sps,corners=4,zerophase=True))
 
     # make downsampling if needed
@@ -870,7 +827,7 @@ def check_sample_gaps(stream,date_info):
     if len(stream)==0 or len(stream)>100:
         stream = []
         return stream
-    
+
     # remove traces with big gaps
     if portion_gaps(stream,date_info)>0.3:
         stream = []
@@ -882,6 +839,8 @@ def check_sample_gaps(stream,date_info):
     freq = max(freqs)
     for tr in stream:
         if int(tr.stats.sampling_rate) != freq:
+            stream.remove(tr)
+        if tr.stats.npts < 10:
             stream.remove(tr)
 
     return stream			
@@ -1185,9 +1144,9 @@ def whiten(data, fft_para):
             np.linspace(np.pi / 2., np.pi, left - low)) ** 2 * np.exp(
             1j * np.angle(FFTRawSign[:,low:left]))
         # Pass band:
-        if to_whiten=='one-bit':
+        if to_whiten=='one_bit':
             FFTRawSign[:,left:right] = np.exp(1j * np.angle(FFTRawSign[:,left:right]))
-        elif to_whiten == 'running-mean':
+        elif to_whiten == 'running_mean':
             for ii in range(data.shape[0]):
                 tave = moving_ave(np.abs(FFTRawSign[ii,left:right]),smooth_N)
                 FFTRawSign[ii,left:right] = FFTRawSign[ii,left:right]/tave
@@ -1416,13 +1375,16 @@ def dtw_dvv(ref, cur, para, maxLag, b, direction):
     stbar = backtrackDistanceFunction( -1*direction, dist, err, -maxLag, b )
     stbarTime = stbar * dt   # convert from samples to time
     
+    # cut the first and last 5% for better regression
+    indx = np.where((tvect>=0.05*npts*dt) & (tvect<=0.95*npts*dt))[0]
+
     # linear regression to get dv/v
     if npts >2:
 
         # weights
         w = np.ones(npts)
         #m, a, em, ea = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=False)
-        m0, em0 = linear_regression(tvect.flatten(), stbarTime.flatten(), w.flatten(), intercept_origin=True)
+        m0, em0 = linear_regression(tvect.flatten()[indx], stbarTime.flatten()[indx], w.flatten()[indx], intercept_origin=True)
 
     else:
         print('not enough points to estimate dv/v for dtw')
@@ -1592,7 +1554,7 @@ def mwcs_dvv(ref, cur, moving_window_length, slide_step, para, smoothing_half_wi
         m0, em0 = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=True)
     
     else:
-        print('not enough points to estimate dv/v')
+        print('not enough points to estimate dv/v for mwcs')
         m0=0;em0=0
 
     return -m0*100,em0*100
@@ -1688,13 +1650,13 @@ def WCC_dvv(ref, cur, moving_window_length, slide_step, para):
         m0, em0 = linear_regression(time_axis.flatten(), delta_t.flatten(), w.flatten(),intercept_origin=True)
     
     else:
-        print('not enough points to estimate dv/v')
+        print('not enough points to estimate dv/v for wcc')
         m0=0;em0=0
 
     return -m0*100,em0*100
 
 
-def wxs_allfreq(ref,cur,allfreq,para,dj=1/12, s0=-1, J=-1, sig=False, wvn='morlet',unwrapflag=False):
+def wxs_dvv(ref,cur,allfreq,para,dj=1/12, s0=-1, J=-1, sig=False, wvn='morlet',unwrapflag=False):
     """
     Compute dt or dv/v in time and frequency domain from wavelet cross spectrum (wxs).
     for all frequecies in an interest range
@@ -1715,6 +1677,7 @@ def wxs_allfreq(ref,cur,allfreq,para,dj=1/12, s0=-1, J=-1, sig=False, wvn='morle
 
     Originally written by Tim Clements (1 March, 2019)
     Modified by Congcong Yuan (30 June, 2019) based on (Mao et al. 2019).
+    Updated by Chengxin Jiang (10 Oct, 2019) to merge the functionality for mesurements across all frequency and one freq range 
     """
     # common variables
     twin = para['twin']
@@ -1725,56 +1688,76 @@ def wxs_allfreq(ref,cur,allfreq,para,dj=1/12, s0=-1, J=-1, sig=False, wvn='morle
     fmin = np.min(freq)
     fmax = np.max(freq)    
     tvec = np.arange(tmin,tmax,dt)
+    npts = len(tvec)
     
     # perform cross coherent analysis, modified from function 'wavelet.cwt'
-    WCT, aWCT, coi, freq, sig = pycwt.wct(cur, ref, dt, dj=dj, s0=s0, J=J, sig=sig, wavelet=wvn, normalize=True)
+    WCT, aWCT, coi, freq, sig = pycwt.wct(ref, cur, dt, dj=dj, s0=s0, J=J, sig=sig, wavelet=wvn, normalize=True)
     
     if unwrapflag:
         phase = np.unwrap(aWCT,axis=-1) # axis=0, upwrap along time; axis=-1, unwrap along frequency
     else:
-        phase=aWCT
+        phase = aWCT
     
-    # convert phase delay to time delay
-    delta_t = phase / (2*np.pi*freq[:,None]) # normalize phase by (2*pi*frequency) 
-
     # zero out data outside frequency band
     if (fmax> np.max(freq)) | (fmax <= fmin):
         raise ValueError('Abort: input frequency out of limits!')
     else:
         freq_indin = np.where((freq >= fmin) & (freq <= fmax))[0]
-        
-    # initialize arrays for dv/v measurements
-    dvv, err = np.zeros(freq_indin.shape), np.zeros(freq_indin.shape)
-         
-    # loop through freq for linear regression
-    for ii, ifreq in enumerate(freq_indin):
-        if len(tvec)>2:
-            if not np.any(delta_t[ifreq]):
-                continue
-            #---- use WXA as weight for regression----
-            # w = 1.0 / (1.0 / (WCT[ifreq,:] ** 2) - 1.0)
-            # w[WCT[ifreq,time_ind] >= 0.99] = 1.0 / (1.0 / 0.9801 - 1.0)
-            # w = np.sqrt(w * np.sqrt(WXA[ifreq,time_ind]))
-            # w = np.real(w)
-            w = 1/WCT[ifreq]
-            w[~np.isfinite(w)] = 1.0
-            
-            #m, a, em, ea = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=False)
-            m, em = linear_regression(tvec, delta_t[ifreq], w, intercept_origin=True)
-            dvv[ii], err[ii] = -m, em
-        else:
-            print('not enough points to estimate dv/v')
-            dvv[ii], err[ii]=np.nan, np.nan    
 
-    del WCT, aWCT, coi, sig, phase, delta_t
-    del tvec, w, m, em
-
+    # follow MWCS to do two steps of linear regression
     if not allfreq:
-        return np.mean(dvv)*100,np.mean(err)*100
-    else:        
+        
+        delta_t_m, delta_t_unc = np.zeros(npts,dtype=np.float32),np.zeros(npts,dtype=np.float32)
+        # assume the tvec is the time window to measure dt
+        for it in range(npts):
+            w = 1/WCT[freq_indin,it]
+            w[~np.isfinite(w)] = 1.
+            delta_t_m[it],delta_t_unc[it] = linear_regression(freq[freq_indin]*2*np.pi, phase[freq_indin,it], w)
+
+        # new weights for regression
+        w2 = 1/np.mean(WCT[freq_indin,:],axis=0)
+        w2[~np.isfinite(w2)] = 1.
+        
+        # now use dt and t to get dv/v
+        if len(w2)>2:
+            if not np.any(delta_t_m):
+                dvv, err = np.nan,np.nan
+            m, em = linear_regression(tvec, delta_t_m, w2, intercept_origin=True)
+            dvv, err = -m, em
+        else:
+            print('not enough points to estimate dv/v for wts')
+            dvv, err=np.nan, np.nan    
+        
+        return dvv*100,err*100
+
+    # convert phase directly to delta_t for all frequencies
+    else:
+
+        # convert phase delay to time delay
+        delta_t = phase / (2*np.pi*freq[:,None]) # normalize phase by (2*pi*frequency) 
+        dvv, err = np.zeros(freq_indin.shape), np.zeros(freq_indin.shape)
+            
+        # loop through freq for linear regression
+        for ii, ifreq in enumerate(freq_indin):
+            if len(tvec)>2:
+                if not np.any(delta_t[ifreq]):
+                    continue
+
+                # how to better approach the uncertainty of delta_t
+                w = 1/WCT[ifreq]
+                w[~np.isfinite(w)] = 1.0
+                
+                #m, a, em, ea = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=False)
+                m, em = linear_regression(tvec, delta_t[ifreq], w, intercept_origin=True)
+                dvv[ii], err[ii] = -m, em
+            else:
+                print('not enough points to estimate dv/v for wts')
+                dvv[ii], err[ii]=np.nan, np.nan    
+
         return freq[freq_indin], dvv*100, err*100
 
-def wts_allfreq(ref,cur,allfreq,para,dv_range,nbtrial,dj=1/12,s0=-1,J=-1,wvn='morlet',normalize=True):
+
+def wts_dvv(ref,cur,allfreq,para,dv_range,nbtrial,dj=1/12,s0=-1,J=-1,wvn='morlet',normalize=True):
     """
     Apply stretching method to continuous wavelet transformation (CWT) of signals
     for all frequecies in an interest range
@@ -1820,6 +1803,30 @@ def wts_allfreq(ref,cur,allfreq,para,dv_range,nbtrial,dj=1/12,s0=-1,J=-1,wvn='mo
     else:
         freq_indin = np.where((freq >= fmin) & (freq <= fmax))[0]
 
+    # convert wavelet domain back to time domain (~filtering)
+    if not allfreq:
+
+        # inverse cwt to time domain
+        icwt1 = pycwt.icwt(cwt1[freq_indin], sj[freq_indin], dt, dj, wvn)
+        icwt2 = pycwt.icwt(cwt2[freq_indin], sj[freq_indin], dt, dj, wvn)
+                
+        # assume all time window is used
+        wcwt1, wcwt2 = np.real(icwt1), np.real(icwt2)
+                        
+        # Normalizes both signals, if appropriate.
+        if normalize:
+            ncwt1 = (wcwt1 - wcwt1.mean()) / wcwt1.std()
+            ncwt2 = (wcwt2 - wcwt2.mean()) / wcwt2.std()
+        else:
+            ncwt1 = wcwt1
+            ncwt2 = wcwt2
+                
+        # run stretching
+        dvv, err, cc, cdp = stretching(ncwt2, ncwt1, dv_range, nbtrial, para)
+        return dvv, err            
+
+    # directly take advantage of the 
+    else:
         # initialize variable
         nfreq=len(freq_indin)
         dvv, cc, cdp, err = np.zeros(nfreq,dtype=np.float32), np.zeros(nfreq,dtype=np.float32),\
@@ -1842,12 +1849,7 @@ def wts_allfreq(ref,cur,allfreq,para,dv_range,nbtrial,dj=1/12,s0=-1,J=-1,wvn='mo
             # run stretching
             dv, error, c1, c2 = stretching(ncwt2, ncwt1, dv_range, nbtrial, para)
             dvv[ii], cc[ii], cdp[ii], err[ii]=dv, c1, c2, error     
-    
-    del cwt1, cwt2, rcwt1, rcwt2, ncwt1, ncwt2, wcwt1, wcwt2, coi, sj
-    
-    if not allfreq:
-        return np.mean(dvv),np.mean(err)
-    else:        
+        
         return freq[freq_indin], dvv, err
 
 
@@ -2214,3 +2216,49 @@ def backtrackDistanceFunction(dir, d, err, lmin, b):
                     stbar[ii] = ll + lmin  # constant lag over that time
 
     return stbar
+
+
+################################################################
+################ DISPERSION EXTRACTION FUNCTIONS ###############
+################################################################
+
+# function to extract the dispersion from the image
+def extract_dispersion(amp,per,vel):
+    '''
+    this function takes the dispersion image from CWT as input, tracks the global maxinum on
+    the wavelet spectrum amplitude and extract the sections with continous and high quality data
+
+    PARAMETERS:
+    ----------------    
+    amp: 2D amplitude matrix of the wavelet spectrum
+    phase: 2D phase matrix of the wavelet spectrum
+    per:  period vector for the 2D matrix
+    vel:  vel vector of the 2D matrix
+    RETURNS:
+    ----------------
+    per:  central frequency of each wavelet scale with good data
+    gv:   group velocity vector at each frequency
+    '''
+    maxgap = 5
+    nper = amp.shape[0]
+    gv   = np.zeros(nper,dtype=np.float32)
+    dvel = vel[1]-vel[0]
+
+    # find global maximum
+    for ii in range(nper):
+        maxvalue = np.max(amp[ii],axis=0)
+        indx = list(amp[ii]).index(maxvalue)
+        gv[ii] = vel[indx]
+
+    # check the continuous of the dispersion
+    for ii in range(1,nper-15):
+        # 15 is the minumum length needed for output
+        for jj in range(15):
+            if np.abs(gv[ii+jj]-gv[ii+1+jj])>maxgap*dvel:
+                gv[ii] = 0
+                break
+    
+    # remove the bad ones
+    indx = np.where(gv>0)[0]
+
+    return per[indx],gv[indx]
