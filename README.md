@@ -1,7 +1,7 @@
 # About NoisePy
 NoisePy is a Python package designed for fast and easy computation of ambient noise cross-correlation functions. It provides additional functionality for noise monitoring and surface wave dispersion analysis. 
 
-Detailed documentation can be found at https://github.com/mdenolle/NoisePy/tree/master/docs/_build/html/index.html
+Detailed documentation can be found at https://noise-python.readthedocs.io/en/latest/
 
 [![Documentation Status](https://readthedocs.org/projects/noise-python/badge/?version=latest)](https://noise-python.readthedocs.io/en/latest/?badge=latest)
 [![Build Status](https://travis-ci.com/chengxinjiang/Noise_python.svg?token=jimdAXcrUt4ngV6Dy3s7&branch=master)](https://travis-ci.com/chengxinjiang/Noise_python)
