@@ -45,7 +45,7 @@ Enjoy the NoisePy journey!
 tt0=time.time()
 
 # paths and filenames
-rootpath = '/Volumes/Chengxin/CCSE'                          # roothpath for the project
+rootpath = '/Volumes/Chengxin/SH'                          # roothpath for the project
 direc  = os.path.join(rootpath,'RAW_DATA')                      # where to store the downloaded data
 dlist  = os.path.join(direc,'station.txt')                      # CSV file for station location info
 
@@ -54,9 +54,9 @@ client    = Client('IRIS')                                      # client/data ce
 down_list = True                                               # download stations from a pre-compiled list or not
 flag      = False                                               # print progress when running the script; recommend to use it at the begining
 samp_freq = 2                                                  # targeted sampling rate at X samples per seconds 
-rm_resp   = 'no'                                                # select 'no' to not remove response and use 'inv','spectrum','RESP', or 'polozeros' to remove response
+rm_resp   = 'inv'                                                # select 'no' to not remove response and use 'inv','spectrum','RESP', or 'polozeros' to remove response
 respdir   = os.path.join(rootpath,'resp')                       # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
-freqmin   = 0.02                                                # pre filtering frequency bandwidth
+freqmin   = 0.01                                                # pre filtering frequency bandwidth
 freqmax   = 1                                                   # note this cannot exceed Nquist freq                         
 
 # targeted region/station information: only needed when down_list is False
@@ -64,8 +64,8 @@ lamin,lamax,lomin,lomax= 36.5,37.5,-104.5,-105.5                # regional box: 
 chan_list = ["HHE","HHN","HHZ"]                                 # channel if down_list=false (format like "HN?" not work here)
 net_list  = ["TO"]                                              # network list 
 sta_list  = ["*"]                                               # station (using a station list is way either compared to specifying stations one by one)
-start_date = ["2015_02_25_0_0_0"]                               # start date of download
-end_date   = ["2015_10_31_0_0_0"]                               # end date of download
+start_date = ["2015_01_01_0_0_0"]                               # start date of download
+end_date   = ["2015_01_02_0_0_0"]                               # end date of download
 inc_hours  = 24                                                 # length of data for each request (in hour)
 ncomp      = len(chan_list)
 

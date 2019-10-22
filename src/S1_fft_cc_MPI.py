@@ -47,7 +47,7 @@ tt0=time.time()
 ########################################
 
 #------absolute path parameters-------
-rootpath  = '/Users/chengxin/Documents/NoisePy_example/BP'                # root path for this data processing
+rootpath  = '/Volumes/Chengxin/SH'                # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                                    # dir to store CC data
 DATADIR   = os.path.join(rootpath,'RAW_DATA')                               # dir where noise data is located
 local_data_path = os.path.join(rootpath,'Event_*/*')                        # absolute dir where SAC files are stored: this para is VERY IMPORTANT and has to be RIGHT if input_fmt is not asdf!!!
@@ -74,7 +74,7 @@ smooth_N  = 10                                                              # mo
 
 # cross-correlation parameters
 maxlag         = 400                                                        # lags of cross-correlation to save (sec)
-substack       = True                                                       # sub-stack daily cross-correlation or not
+substack       = False                                                       # sub-stack daily cross-correlation or not
 substack_len   = cc_len                                                     # how long to stack over: need to be multiples of cc_len
 smoothspect_N  = 10                                                         # moving window length to smooth spectrum amplitude (points)
 
@@ -136,7 +136,7 @@ if rank == 0:
 
     # set variables to broadcast
     if input_fmt == 'asdf':
-        tdir = sorted(glob.glob(os.path.join(DATADIR,'2004_0*.h5')))
+        tdir = sorted(glob.glob(os.path.join(DATADIR,'*.h5')))
     else:
         tdir = sorted(glob.glob(local_data_path))
         if len(tdir)==0: raise ValueError('No data file in %s',DATADIR)

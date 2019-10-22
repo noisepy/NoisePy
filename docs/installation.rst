@@ -9,7 +9,7 @@ installation. What you need to do is essentially build dependented libraries the
 scripts and related functions live upon. 
 
 ``NoisePy`` supports Python version 3.5, 3.6, and 3.7 and it depends on the
-following Python modules: ``NumPy``, ``ObsPy``, ``pyasdf``, ``mpi4py``,``numba``,
+following Python modules: ``NumPy``, ``ObsPy``, ``pyasdf``, ``mpi4py``, ``numba``,
 ``pycwt``. We recommand to use `conda <https://docs.conda.io/en/latest/>`_ 
 and `pip <https://pypi.org/project/pip/>`_ to install the library due to their convinence. 
 Below are command lines we have tested that would create a python environment to run NoisePy. 
@@ -36,3 +36,5 @@ To assert that your installation is working properly, execute
     $ python S2_stacking.py
 
 and make sure the scripts all pass successfully. Otherwise please report issues on the github page or contact the developers.
+
+Github repository of *NoisePy* can be found here: https://github.com/mdenolle/NoisePy

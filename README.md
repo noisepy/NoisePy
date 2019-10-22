@@ -3,9 +3,9 @@ NoisePy is a Python package designed for fast and easy computation of ambient no
 
 Detailed documentation can be found at https://github.com/mdenolle/NoisePy/tree/master/docs/_build/html/index.html
 
-[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://kura-okubo.github.io/SeisDownload.jl/dev)
-[![Build Status](https://travis-ci.com/kura-okubo/SeisDownload.jl.svg?branch=master)](https://travis-ci.com/kura-okubo/SeisDownload.jl)
-[![Codecov](https://codecov.io/gh/kura-okubo/SeisDownload.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/kura-okubo/SeisDownload.jl)
+[![Documentation Status](https://readthedocs.org/projects/noise-python/badge/?version=latest)](https://noise-python.readthedocs.io/en/latest/?badge=latest)
+[![Build Status](https://travis-ci.com/chengxinjiang/Noise_python.svg?token=jimdAXcrUt4ngV6Dy3s7&branch=master)](https://travis-ci.com/chengxinjiang/Noise_python)
+[![Codecov](https://codecov.io/gh/chengxinjiang/Noise_python/branch/master/graph/badge.svg)](https://codecov.io/gh/chengxinjiang/Noise_python)
 
 <img src="/docs/figures/logo.png" width="800" height="400">
  
