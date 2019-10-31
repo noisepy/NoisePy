@@ -55,7 +55,7 @@ freq    = [0.1,0.2,0.3,0.5]                                                   # 
 nfreq   = len(freq)-1
 onelag  = False                                                             # make measurement one one lag or two 
 norm_flag  = True                                                           # whether to normalize the cross-correlation waveforms
-do_strecth = True                                                           # use strecthing method or not
+do_stretch = True                                                           # use strecthing method or not
 do_dtw     = False                                                          # use dynamic time warping method or not
 do_mwcs    = True                                                           # use moving-window cross spectrum method or not
 do_mwcc    = False                                                          # use moving-window cross correlation method or not
@@ -222,7 +222,7 @@ with pyasdf.ASDFDataSet(sfile,mode='r') as ds:
             nref = tref[nwin_indx]
 
             # functions working in time domain
-            if do_strecth:
+            if do_stretch:
                 dvv_stretch[ii,0],dvv_stretch[ii,1],cc,cdp = noise_module.stretching(pref,pcur,epsilon,nbtrial,para)
                 dvv_stretch[ii,2],dvv_stretch[ii,3],cc,cdp = noise_module.stretching(nref,ncur,epsilon,nbtrial,para)
             if do_dtw:
@@ -268,38 +268,38 @@ with pyasdf.ASDFDataSet(sfile,mode='r') as ds:
 
         # dv/v at each filtered frequency band
         ax3 = plt.subplot(313)
-        lengend_mark = []
-        if do_strecth:
+        legend_mark = []
+        if do_stretch:
             ax3.plot(timestamp[:igood],dvv_stretch[:,0],'yo-',markersize=6,linewidth=0.5)
             ax3.plot(timestamp[:igood],dvv_stretch[:,2],'co-',markersize=6,linewidth=0.5)
-            lengend_mark.append('str+')
-            lengend_mark.append('str-')
+            legend_mark.append('str+')
+            legend_mark.append('str-')
         if do_dtw:
             ax3.plot(timestamp[:igood],dvv_dtw[:,0],'yv-',markersize=6,linewidth=0.5)
             ax3.plot(timestamp[:igood],dvv_dtw[:,2],'cv-',markersize=6,linewidth=0.5)
-            lengend_mark.append('dtw+')
-            lengend_mark.append('dtw-')
+            legend_mark.append('dtw+')
+            legend_mark.append('dtw-')
         if do_mwcs:
             ax3.plot(timestamp[:igood],dvv_mwcs[:,0],'ys-',markersize=6,linewidth=0.5)
             ax3.plot(timestamp[:igood],dvv_mwcs[:,2],'cs-',markersize=6,linewidth=0.5)
-            lengend_mark.append('mwcs+')
-            lengend_mark.append('mwcs-')
+            legend_mark.append('mwcs+')
+            legend_mark.append('mwcs-')
         if do_mwcc:
             ax3.plot(timestamp[:igood],dvv_wcc[:,0],'y*-',markersize=6,linewidth=0.5)
             ax3.plot(timestamp[:igood],dvv_wcc[:,2],'c*-',markersize=6,linewidth=0.5)
-            lengend_mark.append('wcc+')
-            lengend_mark.append('wcc-')
+            legend_mark.append('wcc+')
+            legend_mark.append('wcc-')
         if do_wts:
             ax3.plot(timestamp[:igood],dvv_wts[:,0],'yx-',markersize=6,linewidth=0.5)
             ax3.plot(timestamp[:igood],dvv_wts[:,2],'cx-',markersize=6,linewidth=0.5)
-            lengend_mark.append('wts+')
-            lengend_mark.append('wts-')
+            legend_mark.append('wts+')
+            legend_mark.append('wts-')
         if do_wxs:
             ax3.plot(timestamp[:igood],dvv_wxs[:,0],'yp-',markersize=6,linewidth=0.5)
             ax3.plot(timestamp[:igood],dvv_wxs[:,2],'cp-',markersize=6,linewidth=0.5)
-            lengend_mark.append('wxs+')
-            lengend_mark.append('wxs-')
-        ax3.legend(lengend_mark,loc='upper right')
+            legend_mark.append('wxs+')
+            legend_mark.append('wxs-')
+        ax3.legend(legend_mark,loc='upper right')
         #ax3.grid('true')
         ax3.set_ylabel('dv/v [%]')
 
