@@ -46,26 +46,32 @@ tt0=time.time()
 #########PARAMETER SECTION##############
 ########################################
 
-#------absolute path parameters-------
-rootpath  = '/Users/chengxin/Documents/NoisePy_example/BP'                # root path for this data processing
+# absolute path parameters
+rootpath  = '/Users/chengxin/Documents/NoisePy_example/'                    # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                                    # dir to store CC data
-DATADIR   = os.path.join(rootpath,'RAW_DATA')                               # dir where noise data is located
-local_data_path = os.path.join(rootpath,'Event_*/*')                        # absolute dir where SAC files are stored: this para is VERY IMPORTANT and has to be RIGHT if input_fmt is not asdf!!!
+DATADIR   = os.path.join(rootpath,'RAW)DATA')                               # dir where noise data is located
+local_data_path = os.path.join(rootpath,'2004_*')                           # absolute dir where SAC files are stored: this para is VERY IMPORTANT and has to be RIGHT if input_fmt is not asdf!!!
+locations = os.path.join(rootpath,'station.txt')                            # station info including network,station,channel,latitude,longitude,elevation: only needed when input_fmt is not asdf
 
-#-------some control parameters--------
+# some control parameters
 input_fmt   = 'asdf'                                                        # string: 'asdf', 'sac','mseed' 
-to_whiten   = 'no'                                                          # 'no' for no whitening, or 'running_mean', 'one_bit' for normalization
-time_norm   = 'no'                                                         # 'no' for no normalization, or 'running_mean', 'one_bit' for normalization
-cc_method   = 'coherency'                                                   # select between 'raw', 'deconv' and 'coherency'
+freq_norm   = 'phase_only'                                                  # 'no' for no whitening, or 'rma' for running-mean average, 'phase' for sign-bit normalization in freq domain
+time_norm   = 'no'                                                          # 'no' for no normalization, or 'rma', 'one_bit' for normalization in time domain
+cc_method   = 'xcorr'                                                       # 'xcorr' for pure cross correlation, 'deconv' for deconvolution and 'coherency' 
 flag        = False                                                         # print intermediate variables and computing time for debugging purpose
 acorr_only  = False                                                         # only perform auto-correlation 
-xcorr_only  = False                                                         # only perform cross-correlation or not
-ncomp       = 3                                                             # 1 or 3 component data (needed to decide whether do rotation)
+xcorr_only  = True                                                          # only perform cross-correlation or not
+ncomp       = 1                                                             # 1 or 3 component data (needed to decide whether do rotation)
 
 # station/instrument info for input_fmt=='sac' or 'mseed'
 stationxml = False                                                          # station.XML file used to remove instrument response for SAC/miniseed data
 rm_resp   = 'no'                                                            # select 'no' to not remove response and use 'inv','spectrum','RESP', or 'polozeros' to remove response
 respdir   = os.path.join(rootpath,'resp')                                   # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
+# read station list
+if input_fmt != 'asdf':
+    if not os.path.isfile(locations): 
+        raise ValueError('Abort! station info is needed for this script')   
+    locs = pd.read_csv(locations)
 
 # pre-processing parameters 
 cc_len    = 1800                                                            # basic unit of data length for fft (sec)
@@ -73,13 +79,13 @@ step      = 450                                                             # ov
 smooth_N  = 10                                                              # moving window length for time/freq domain normalization if selected (points)
 
 # cross-correlation parameters
-maxlag         = 400                                                        # lags of cross-correlation to save (sec)
-substack       = False                                                       # sub-stack daily cross-correlation or not
-substack_len   = cc_len                                                     # how long to stack over: need to be multiples of cc_len
+maxlag         = 120                                                        # lags of cross-correlation to save (sec)
+substack       = False                                                      # sub-stack daily cross-correlation or not
+substack_len   = 12*cc_len                                                  # how long to stack over: need to be multiples of cc_len
 smoothspect_N  = 10                                                         # moving window length to smooth spectrum amplitude (points)
 
 # criteria for data selection
-max_over_std = 10                                                           # threahold to remove window of bad signals
+max_over_std = 10*9                                                         # threahold to remove window of bad signals: set it to 10*9 if prefer not to remove them
 max_kurtosis = 10                                                           # max kurtosis allowed, TO BE ADDED!
 
 # maximum memory allowed per core in GB
@@ -98,11 +104,11 @@ if input_fmt == 'asdf':
     #ncomp      = down_info['ncomp'] 
 else:   # sac or mseed format
     samp_freq = 20
-    freqmin   = 0.05
-    freqmax   = 4
-    start_date = ["2010_12_06_0_0_0"]
-    end_date   = ["2010_12_15_0_0_0"]
-    inc_hours  = 12
+    freqmin   = 0.02
+    freqmax   = 5
+    start_date = ["2004_01_01_0_0_0"]
+    end_date   = ["2004_06_30_0_0_0"]
+    inc_hours  = 24
 dt = 1/samp_freq
 
 ##################################################
@@ -110,11 +116,11 @@ dt = 1/samp_freq
 
 # make a dictionary to store all variables: also for later cc
 fc_para={'samp_freq':samp_freq,'dt':dt,'cc_len':cc_len,'step':step,'freqmin':freqmin,'freqmax':freqmax,\
-    'to_whiten':to_whiten,'time_norm':time_norm,'cc_method':cc_method,'smooth_N':smooth_N,'data_format':\
+    'freq_norm':freq_norm,'time_norm':time_norm,'cc_method':cc_method,'smooth_N':smooth_N,'data_format':\
     input_fmt,'rootpath':rootpath,'CCFDIR':CCFDIR,'start_date':start_date[0],'end_date':end_date[0],\
     'inc_hours':inc_hours,'substack':substack,'substack_len':substack_len,'smoothspect_N':smoothspect_N,\
     'maxlag':maxlag,'max_over_std':max_over_std,'max_kurtosis':max_kurtosis,'MAX_MEM':MAX_MEM,'ncomp':ncomp,\
-    'stationxml':stationxml,'rm_resp':rm_resp,'respdir':respdir}
+    'stationxml':stationxml,'rm_resp':rm_resp,'respdir':respdir,'input_fmt':input_fmt}
 # save fft metadata for future reference
 fc_metadata  = os.path.join(CCFDIR,'fft_cc_data.txt')       
 
@@ -136,7 +142,7 @@ if rank == 0:
 
     # set variables to broadcast
     if input_fmt == 'asdf':
-        tdir = sorted(glob.glob(os.path.join(DATADIR,'2004_0*.h5')))
+        tdir = sorted(glob.glob(os.path.join(DATADIR,'*.h5')))
     else:
         tdir = sorted(glob.glob(local_data_path))
         if len(tdir)==0: raise ValueError('No data file in %s',DATADIR)
@@ -241,9 +247,10 @@ for ick in range (rank,splits,size):
                 source = ds.waveforms[tmps][all_tags[itag]]
             else:
                 source = obspy.read(tmps)
-                inv1   = noise_module.stats2inv(source[0].stats,fc_para)
+                inv1   = noise_module.stats2inv(source[0].stats,fc_para,locs)
                 sta,net,lon,lat,elv,loc = noise_module.sta_info_from_inv(inv1)
 
+            # channel info 
             comp = source[0].stats.channel
             if comp[-1] =='U': comp.replace('U','Z')
             if len(source)==0:continue

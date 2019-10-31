@@ -287,7 +287,7 @@ def stats2inv(stats,prepro_para,locs=None):
 	
     inv = Inventory(networks=[],source="homegrown")
 
-    if input_fmt=='sac':
+    if input_fmt=='check':
         net = Network(
             # This is the network code according to the SEED standard.
             code=stats.network,
@@ -318,7 +318,7 @@ def stats2inv(stats,prepro_para,locs=None):
             dip=stats.sac["cmpinc"],
             sample_rate=stats.sampling_rate)
 
-    elif input_fmt == 'mseed':
+    elif input_fmt == 'sac':
         ista=locs[locs['station']==stats.station].index.values.astype('int64')[0]
 
         net = Network(
@@ -468,7 +468,7 @@ def noise_processing(fft_para,dataS):
     '''
     # load parameters first
     time_norm   = fft_para['time_norm']
-    to_whiten   = fft_para['to_whiten']
+    freq_norm   = fft_para['freq_norm']
     smooth_N    = fft_para['smooth_N']
     N = dataS.shape[0]
 
@@ -477,7 +477,7 @@ def noise_processing(fft_para,dataS):
 
         if time_norm == 'one_bit': 	# sign normalization
             white = np.sign(dataS)
-        elif time_norm == 'running_mean': # running mean: normalization over smoothed absolute average           
+        elif time_norm == 'rma': # running mean: normalization over smoothed absolute average           
             white = np.zeros(shape=dataS.shape,dtype=dataS.dtype)
             for kkk in range(N):
                 white[kkk,:] = dataS[kkk,:]/moving_ave(np.abs(dataS[kkk,:]),smooth_N)
@@ -486,7 +486,7 @@ def noise_processing(fft_para,dataS):
         white = dataS
 
     #-----to whiten or not------
-    if to_whiten != 'no':
+    if freq_norm != 'no':
         source_white = whiten(white,fft_para)	# whiten and return FFT
     else:
         Nfft = int(next_fast_len(int(dataS.shape[1])))
@@ -526,7 +526,7 @@ def smooth_source_spect(cc_para,fft1):
         except Exception:
             raise ValueError('smoothed spectrum has zero values')
 
-    elif cc_method == 'raw':
+    elif cc_method == 'xcorr':
         sfft1 = np.conj(fft1)
     
     else:
@@ -638,11 +638,13 @@ def correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
 
     else:
         # average daily cross correlation functions
+        ampmax = np.max(corr,axis=1)
+        tindx  = np.where( (ampmax<20*np.median(ampmax)) & (ampmax>0))[0]
         n_corr = nwin
         s_corr = np.zeros(Nfft,dtype=np.float32)
         t_corr = dataS_t[0]
         crap   = np.zeros(Nfft,dtype=np.complex64)
-        crap[:Nfft2] = np.mean(corr,axis=0)
+        crap[:Nfft2] = np.mean(corr[tindx],axis=0)
         crap[:Nfft2] = crap[:Nfft2]-np.mean(crap[:Nfft2],axis=0)
         crap[-(Nfft2)+1:]=np.flip(np.conj(crap[1:(Nfft2)]),axis=0)
         s_corr = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
@@ -1088,6 +1090,47 @@ def moving_ave(A,N):
     return B[N:-N]
 
 
+def robust_stack(cc_array,epsilon):
+    """ 
+    this is a robust stacking algorithm described in Palvis and Vernon 2010
+
+    PARAMETERS:
+    ----------------------
+    cc_array: numpy.ndarray contains the 2D cross correlation matrix
+    epsilon: residual threhold to quit the iteration
+    RETURNS:
+    ----------------------
+    newstack: numpy vector contains the stacked cross correlation
+
+    Written by Marine Denolle 
+    """
+    res  = 9E9  # residuals
+    w = np.ones(cc_array.shape[0])
+    nstep=0
+    while res > epsilon:
+        stack = np.mean((w*cc_array.T).T,axis=0)
+        for i in range(cc_array.shape[0]):
+            crap = np.multiply(stack,cc_array[i,:].T)
+            crap_dot = np.sum(crap)
+            di_norm = np.linalg.norm(cc_array[i,:])
+            ri = cc_array[i,:] -  crap_dot*stack
+            ri_norm = np.linalg.norm(ri)
+            w[i]  = np.abs(crap_dot) / di_norm/ri_norm#/len(cc_array[:,1])
+        # print(w)
+        w =w /np.sum(w)
+        newstack =np.sum( (w*cc_array.T).T,axis=0)#/len(cc_array[:,1])
+        # print(newstack)
+        # plt.plot(newstack)
+        # plt.show()
+        res = np.linalg.norm(newstack-stack,ord=1)/np.linalg.norm(newstack)/len(cc_array[:,1])
+        nstep +=1
+        # print(res)
+        # print('nstep',nstep)
+        if nstep>10:
+            return newstack
+    return newstack
+
+
 def whiten(data, fft_para):
     '''
     This function takes 1-dimensional timeseries array, transforms to frequency domain using fft, 
@@ -1101,7 +1144,7 @@ def whiten(data, fft_para):
         freqmin: The lower frequency bound
         freqmax: The upper frequency bound
         smooth_N: integer, it defines the half window length to smooth
-        to_whiten: whitening method between 'one-bit' and 'running-mean'
+        freq_norm: whitening method between 'one-bit' and 'RMA'
     RETURNS:
     ----------------------
     FFTRawSign: numpy.ndarray contains the FFT of the whitened input trace between the frequency bounds
@@ -1112,7 +1155,7 @@ def whiten(data, fft_para):
     freqmin = fft_para['freqmin']
     freqmax = fft_para['freqmax']
     smooth_N  = fft_para['smooth_N']
-    to_whiten = fft_para['to_whiten']
+    freq_norm = fft_para['freq_norm']
 
     # Speed up FFT by padding to optimal size for FFTPACK
     if data.ndim == 1:
@@ -1144,9 +1187,9 @@ def whiten(data, fft_para):
             np.linspace(np.pi / 2., np.pi, left - low)) ** 2 * np.exp(
             1j * np.angle(FFTRawSign[:,low:left]))
         # Pass band:
-        if to_whiten=='one_bit':
+        if freq_norm == 'phase_only':
             FFTRawSign[:,left:right] = np.exp(1j * np.angle(FFTRawSign[:,left:right]))
-        elif to_whiten == 'running_mean':
+        elif freq_norm == 'rma':
             for ii in range(data.shape[0]):
                 tave = moving_ave(np.abs(FFTRawSign[ii,left:right]),smooth_N)
                 FFTRawSign[ii,left:right] = FFTRawSign[ii,left:right]/tave
@@ -1164,9 +1207,9 @@ def whiten(data, fft_para):
             np.linspace(np.pi / 2., np.pi, left - low)) ** 2 * np.exp(
             1j * np.angle(FFTRawSign[low:left]))
         # Pass band:
-        if to_whiten == 'one-bit':
+        if freq_norm == 'phase_only':
             FFTRawSign[left:right] = np.exp(1j * np.angle(FFTRawSign[left:right]))
-        elif to_whiten == 'running-mean':
+        elif freq_norm == 'rma':
             tave = moving_ave(np.abs(FFTRawSign[left:right]),smooth_N)
             FFTRawSign[left:right] = FFTRawSign[left:right]/tave
         # Right tapering:
@@ -1180,6 +1223,52 @@ def whiten(data, fft_para):
  
     return FFTRawSign
 
+def adaptive_filter(arr,g):
+    '''
+    the adaptive covariance filter to enhance coherent signals. Fellows the method of
+    Nakata et al., 2015 (Appendix B)
+
+    the filtered signal [x1] is given by x1 = ifft(P*x1(w)) where x1 is the ffted spectra 
+    and P is the filter. P is constructed by using the temporal covariance matrix. 
+
+    PARAMETERS:
+    ----------------------
+    arr: numpy.ndarray contains the 2D traces of daily/hourly cross-correlation functions
+    g: a positive number to adjust the filter harshness
+    RETURNS:
+    ----------------------
+    narr: numpy vector contains the stacked cross correlation function
+    '''
+    if arr.ndim == 1:
+        return arr
+    N,M = arr.shape
+    Nfft = next_fast_len(M)
+
+    # fft the 2D array
+    spec = scipy.fftpack.fft(arr,axis=1,n=Nfft)[:,:M]
+
+    # make cross-spectrm matrix
+    cspec = np.zeros(shape=(N*N,M),dtype=np.complex64)
+    for ii in range(N):
+        for jj in range(N):
+            kk = ii*N+jj
+            cspec[kk] = spec[ii]*np.conjugate(spec[jj])
+        
+    S1 = np.zeros(M,dtype=np.complex64)
+    S2 = np.zeros(M,dtype=np.complex64)
+    # construct the filter P
+    for ii in range(N):
+        mm = ii*N+ii
+        S2 += cspec[mm]
+        for jj in range(N):
+            kk = ii*N+jj
+            S1 += cspec[kk]
+    
+    p = np.power((S1-S2)/(S2*(N-1)),g)
+
+    # make ifft
+    narr = np.real(scipy.fftpack.ifft(np.multiply(p,spec),Nfft,axis=1)[:,:M])
+    return np.mean(narr,axis=0)
 
 def pws(arr,sampling_rate,power=2,pws_timegate=5.):
     '''
@@ -1692,7 +1781,7 @@ def wxs_dvv(ref,cur,allfreq,para,dj=1/12, s0=-1, J=-1, sig=False, wvn='morlet',u
     npts = len(tvec)
     
     # perform cross coherent analysis, modified from function 'wavelet.cwt'
-    WCT, aWCT, coi, freq, sig = pycwt.wct(ref, cur, dt, dj=dj, s0=s0, J=J, sig=sig, wavelet=wvn, normalize=True)
+    WCT, aWCT, coi, freq, sig = wct_modified(ref, cur, dt, dj=dj, s0=s0, J=J, sig=sig, wavelet=wvn, normalize=True)
     
     if unwrapflag:
         phase = np.unwrap(aWCT,axis=-1) # axis=0, upwrap along time; axis=-1, unwrap along frequency
@@ -2217,6 +2306,106 @@ def backtrackDistanceFunction(dir, d, err, lmin, b):
                     stbar[ii] = ll + lmin  # constant lag over that time
 
     return stbar
+
+
+def wct_modified(y1, y2, dt, dj=1/12, s0=-1, J=-1, sig=True,
+        significance_level=0.95, wavelet='morlet', normalize=True, **kwargs):
+    """Wavelet coherence transform (WCT).
+​
+    The WCT finds regions in time frequency space where the two time
+    series co-vary, but do not necessarily have high power.
+​
+    Parameters
+    ----------
+    y1, y2 : numpy.ndarray, list
+        Input signals.
+    dt : float
+        Sample spacing.
+    dj : float, optional
+        Spacing between discrete scales. Default value is 1/12.
+        Smaller values will result in better scale resolution, but
+        slower calculation and plot.
+    s0 : float, optional
+        Smallest scale of the wavelet. Default value is 2*dt.
+    J : float, optional
+        Number of scales less one. Scales range from s0 up to
+        s0 * 2**(J * dj), which gives a total of (J + 1) scales.
+        Default is J = (log2(N*dt/so))/dj.
+    significance_level (float, optional) :
+        Significance level to use. Default is 0.95.
+    normalize (boolean, optional) :
+        If set to true, normalizes CWT by the standard deviation of
+        the signals.
+​
+    Returns
+    -------
+    TODO: Something TBA and TBC
+​
+    See also
+    --------
+    cwt, xwt
+​
+    """
+    wavelet = pycwt.wavelet._check_parameter_wavelet(wavelet)
+​
+    # Checking some input parameters
+    if s0 == -1:
+        # Number of scales
+        s0 = 2 * dt / wavelet.flambda()
+    if J == -1:
+        # Number of scales
+        J = np.int(np.round(np.log2(y1.size * dt / s0) / dj))
+​
+    # Makes sure input signals are numpy arrays.
+    y1 = np.asarray(y1)
+    y2 = np.asarray(y2)
+    # Calculates the standard deviation of both input signals.
+    std1 = y1.std()
+    std2 = y2.std()
+    # Normalizes both signals, if appropriate.
+    if normalize:
+        y1_normal = (y1 - y1.mean()) / std1
+        y2_normal = (y2 - y2.mean()) / std2
+    else:
+        y1_normal = y1
+        y2_normal = y2
+​
+    # Calculates the CWT of the time-series making sure the same parameters
+    # are used in both calculations.
+    _kwargs = dict(dj=dj, s0=s0, J=J, wavelet=wavelet)
+    W1, sj, freq, coi, _, _ = pycwt.cwt(y1_normal, dt, **_kwargs)
+    W2, sj, freq, coi, _, _ = pycwt.cwt(y2_normal, dt, **_kwargs)
+​
+    scales1 = np.ones([1, y1.size]) * sj[:, None]
+    scales2 = np.ones([1, y2.size]) * sj[:, None]
+​
+    # Smooth the wavelet spectra before truncating.
+    S1 = wavelet.smooth(np.abs(W1) ** 2 / scales1, dt, dj, sj)
+    S2 = wavelet.smooth(np.abs(W2) ** 2 / scales2, dt, dj, sj)
+​
+    # Now the wavelet transform coherence
+    W12 = W1 * W2.conj()
+    scales = np.ones([1, y1.size]) * sj[:, None]
+    S12 = wavelet.smooth(W12 / scales, dt, dj, sj)
+    WCT = np.abs(S12) ** 2 / (S1 * S2)
+    aWCT = np.angle(W12)
+    
+    # Calculate cross spectrum & its amplitude
+    WXS, WXA = W12, np.abs(S12)
+​
+    # Calculates the significance using Monte Carlo simulations with 95%
+    # confidence as a function of scale.
+​
+    if sig:
+        a1, b1, c1 = pycwt.ar1(y1)
+        a2, b2, c2 = pycwt.ar1(y2)
+        sig = pycwt.wct_significance(a1, a2, dt=dt, dj=dj, s0=s0, J=J,
+                               significance_level=significance_level,
+                               wavelet=wavelet, **kwargs)
+    else:
+        sig = np.asarray([0])
+​
+    return WXS, WXA, WCT, aWCT, coi, freq, sig
 
 
 ################################################################

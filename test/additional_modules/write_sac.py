@@ -13,12 +13,12 @@ add an option to output the CCFs into txt files for image transform analysis
 '''
 
 #------absolute path to output data-------
-STACKDIR = '/Volumes/Chengxin/CCSE/STACK'
-ALLFILES = glob.glob(os.path.join(STACKDIR,'*/*.h5'))
+STACKDIR = '/Volumes/Chengxin/SH/STACK'
+ALLFILES = glob.glob(os.path.join(STACKDIR,'TAsF04D/*.h5'))
 #COMP_OUT = ['ZZ','TT','RR']
-#COMP_OUT = ['ZR','ZT','ZZ','TR','TT','TZ','RR','RT','RZ']
-COMP_OUT = ['EE','EN','EZ','NE','NN','NZ','ZE','ZN','ZZ']
-dtype    = 'Allstack0linear'
+COMP_OUT = ['ZR','ZT','ZZ','TR','TT','TZ','RR','RT','RZ']
+#COMP_OUT = ['EE','EN','EZ','NE','NN','NZ','ZE','ZN','ZZ']
+dtype    = 'Allstack_linear'
 
 #---output file format-----
 out_SAC = True
@@ -38,10 +38,10 @@ for ii in range(nfiles):
         
         #-----get station info from file name-----
         fname = ALLFILES[ii].split('/')[-1]
-        staS = fname.split('_')[0].split('.')[1]
-        netS = fname.split('_')[0].split('.')[0]
-        staR = fname.split('_')[1].split('.')[1]
-        netR = fname.split('_')[1].split('.')[0]
+        staS = fname.split('s')[0]
+        netS = fname.split('s')[1]
+        staR = fname.split('s')[2]
+        netR = fname.split('s')[3]
 
         #-----read data information-------
         slist = ds.auxiliary_data.list()

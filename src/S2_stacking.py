@@ -37,17 +37,18 @@ tt0=time.time()
 ########################################
 
 # absolute path parameters
-rootpath  = '/Users/chengxin/Documents/NoisePy_example/BP'         # root path for this data processing
+rootpath  = '/Users/chengxin/Documents/NoisePy_example'             # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                            # dir where CC data is stored
 STACKDIR  = os.path.join(rootpath,'STACK')                          # dir where stacked data is going to
-locations = os.path.join(rootpath,'RAW_DATA/station.txt')                    # station info including network,station,channel,latitude,longitude,elevation
+locations = os.path.join(rootpath,'RAW_DATA/station.txt')           # station info including network,station,channel,latitude,longitude,elevation
+locations = os.path.join(rootpath,'station.txt') 
 if not os.path.isfile(locations): 
     raise ValueError('Abort! station info is needed for this script')
 
 # define new stacking para
-keep_substack= True                                                 # keep all sub-stacks in final ASDF file
+keep_substack= False                                                # keep all sub-stacks in final ASDF file
 flag         = False                                                # output intermediate args for debugging
-stack_method = 'both'                                               # linear, pws or both
+stack_method = 'linear'                                             # linear, pws or both
 
 # new rotation para
 rotation     = False                                                # rotation from E-N-Z to R-T-Z 

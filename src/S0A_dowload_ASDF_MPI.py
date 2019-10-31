@@ -45,27 +45,27 @@ Enjoy the NoisePy journey!
 tt0=time.time()
 
 # paths and filenames
-rootpath = '/Volumes/Chengxin/SH'                          # roothpath for the project
+rootpath = '/Users/chengxin/Documents/NoisePy_example/AZ'       # roothpath for the project
 direc  = os.path.join(rootpath,'RAW_DATA')                      # where to store the downloaded data
 dlist  = os.path.join(direc,'station.txt')                      # CSV file for station location info
 
 # download parameters
-client    = Client('IRIS')                                      # client/data center. see https://docs.obspy.org/packages/obspy.clients.fdsn.html for a list
-down_list = True                                               # download stations from a pre-compiled list or not
+client    = Client('SCEDC')                                     # client/data center. see https://docs.obspy.org/packages/obspy.clients.fdsn.html for a list
+down_list = True                                                # download stations from a pre-compiled list or not
 flag      = False                                               # print progress when running the script; recommend to use it at the begining
-samp_freq = 2                                                  # targeted sampling rate at X samples per seconds 
-rm_resp   = 'inv'                                                # select 'no' to not remove response and use 'inv','spectrum','RESP', or 'polozeros' to remove response
+samp_freq = 20                                                  # targeted sampling rate at X samples per seconds 
+rm_resp   = 'no'                                                # select 'no' to not remove response and use 'inv','spectrum','RESP', or 'polozeros' to remove response
 respdir   = os.path.join(rootpath,'resp')                       # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
-freqmin   = 0.01                                                # pre filtering frequency bandwidth
-freqmax   = 1                                                   # note this cannot exceed Nquist freq                         
+freqmin   = 0.05                                                # pre filtering frequency bandwidth
+freqmax   = 2                                                   # note this cannot exceed Nquist freq                         
 
 # targeted region/station information: only needed when down_list is False
-lamin,lamax,lomin,lomax= 36.5,37.5,-104.5,-105.5                # regional box: min lat, min lon, max lat, max lon (-114.0)
+lamin,lamax,lomin,lomax= 33.4,33.8,-117.0,-116.5                # regional box: min lat, min lon, max lat, max lon (-114.0)
 chan_list = ["HHE","HHN","HHZ"]                                 # channel if down_list=false (format like "HN?" not work here)
-net_list  = ["TO"]                                              # network list 
+net_list  = ["AZ"]                                              # network list 
 sta_list  = ["*"]                                               # station (using a station list is way either compared to specifying stations one by one)
-start_date = ["2015_01_01_0_0_0"]                               # start date of download
-end_date   = ["2015_01_02_0_0_0"]                               # end date of download
+start_date = ["2014_01_11_0_0_0"]                               # start date of download
+end_date   = ["2014_01_21_0_0_0"]                               # end date of download
 inc_hours  = 24                                                 # length of data for each request (in hour)
 ncomp      = len(chan_list)
 
@@ -188,6 +188,7 @@ splits = comm.bcast(splits,root=0)
 all_chunk  = comm.bcast(all_chunk,root=0)
 extra = splits % size
 
+tp = 0
 # MPI: loop through each time chunk 
 for ick in range(rank,splits,size):
 
@@ -247,6 +248,7 @@ for ick in range(rank,splits,size):
             print(sta[ista])
             tr = noise_module.preprocess_raw(tr,sta_inv,prepro_para,date_info)
             t2 = time.time()
+            tp += t2-t1
 
             if len(tr):
                 if location[ista] == '*':
@@ -256,11 +258,11 @@ for ick in range(rank,splits,size):
                 new_tags = '{0:s}_{1:s}'.format(chan[ista].lower(),tlocation.lower())
                 ds.add_waveforms(tr,tag=new_tags)
 
-            if flag:
-                print(ds,new_tags);print('downloading data %6.2f s; pre-process %6.2f s' % ((t1-t0),(t2-t1)))
+            #if flag:
+            print(ds,new_tags);print('downloading data %6.2f s; pre-process %6.2f s' % ((t1-t0),(t2-t1)))
 
 tt1=time.time()
-print('downloading step takes %6.2f s' %(tt1-tt0))
+print('downloading step takes %6.2f s with %6.2f for preprocess' %(tt1-tt0, tp))
 
 comm.barrier()
 if rank == 0:

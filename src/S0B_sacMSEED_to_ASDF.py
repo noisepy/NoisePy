@@ -39,7 +39,7 @@ tt0=time.time()
 # data/file paths
 rootpath  = '/Users/chengxin/Documents/NoisePy_example/Kanto'           # absolute path for your project
 RAWDATA   = os.path.join(rootpath,'RAW_DATA')                           # dir where mseed/SAC files are located
-DATADIR   = os.path.join(rootpath,'CLEANED_DATA')                       # dir where cleaned data in ASDF format are going to be outputted
+DATADIR   = os.path.join(rootpath,'CLEAN_DATA')                         # dir where cleaned data in ASDF format are going to be outputted
 locations = os.path.join(rootpath,'station.txt')                        # station info including network,station,channel,latitude,longitude,elevation
 if not os.path.isfile(locations): 
     raise ValueError('Abort! station info is needed for this script')
@@ -47,7 +47,7 @@ locs = pd.read_csv(locations)
 nsta = len(locs)
 
 # useful parameters for cleaning the data
-input_fmt = 'mseed'                                                     # input file format between 'sac' and 'mseed' 
+input_fmt = 'asdf'                                                      # input file format between 'sac' and 'mseed' 
 samp_freq = 10                                                          # targeted sampling rate
 stationxml= False                                                       # station.XML file exists or not
 rm_resp   = 'no'                                                        # select 'no' to not remove response and use 'inv','spectrum','RESP', or 'polozeros' to remove response
@@ -58,7 +58,7 @@ flag      = False                                                       # print 
 
 # having this file saves a tons of time: see L95-126 for why
 wiki_file = os.path.join(rootpath,'allfiles_time.txt')                  # file containing the path+name for all sac/mseed files and its start-end time      
-allfiles_path = os.path.join(RAWDATA,'*/*'+input_fmt)                   # make sure all sac/mseed files can be found through this format
+allfiles_path = os.path.join(DATADIR,'*/*'+input_fmt)                   # make sure all sac/mseed files can be found through this format
 messydata = False                                                       # set this to False when daily noise data is well sorted 
 
 # targeted time range
@@ -138,8 +138,9 @@ for ick in range(rank,splits,size):
     # find all data pieces having data of the time-chunk
     indx1 = np.where((time1>=all_stimes[:,0]) & (time1<all_stimes[:,1]))[0]
     indx2 = np.where((time2>all_stimes[:,0]) & (time2<=all_stimes[:,1]))[0]
-    indx3 = np.concatenate((indx1,indx2))
-    indx  = np.unique(indx3)
+    indx3 = np.where((time1<=all_stimes[:,0]) & (time2>=all_stimes[:,1]))[0]
+    indx4 = np.concatenate((indx1,indx2,indx3))
+    indx  = np.unique(indx4)
     if not len(indx): print('continue! no data found between %s-%s'%(s1,s2));continue
 
     # trim down the sac/mseed file list with time in time-chunk
