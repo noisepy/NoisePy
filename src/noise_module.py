@@ -2308,9 +2308,9 @@ def backtrackDistanceFunction(dir, d, err, lmin, b):
     return stbar
 
 
-def wct_modified(y1, y2, dt, dj=1/12, s0=-1, J=-1, sig=True,
-        significance_level=0.95, wavelet='morlet', normalize=True, **kwargs):
-    """Wavelet coherence transform (WCT).
+def wct_modified(y1, y2, dt, dj=1/12, s0=-1, J=-1, sig=True, significance_level=0.95, wavelet='morlet', normalize=True, **kwargs):
+    '''
+    Wavelet coherence transform (WCT).
 ​
     The WCT finds regions in time frequency space where the two time
     series co-vary, but do not necessarily have high power.
@@ -2345,9 +2345,9 @@ def wct_modified(y1, y2, dt, dj=1/12, s0=-1, J=-1, sig=True,
     --------
     cwt, xwt
 ​
-    """
+    '''
+    
     wavelet = pycwt.wavelet._check_parameter_wavelet(wavelet)
-​
     # Checking some input parameters
     if s0 == -1:
         # Number of scales
@@ -2355,7 +2355,7 @@ def wct_modified(y1, y2, dt, dj=1/12, s0=-1, J=-1, sig=True,
     if J == -1:
         # Number of scales
         J = np.int(np.round(np.log2(y1.size * dt / s0) / dj))
-​
+
     # Makes sure input signals are numpy arrays.
     y1 = np.asarray(y1)
     y2 = np.asarray(y2)
@@ -2369,20 +2369,20 @@ def wct_modified(y1, y2, dt, dj=1/12, s0=-1, J=-1, sig=True,
     else:
         y1_normal = y1
         y2_normal = y2
-​
+
     # Calculates the CWT of the time-series making sure the same parameters
     # are used in both calculations.
     _kwargs = dict(dj=dj, s0=s0, J=J, wavelet=wavelet)
     W1, sj, freq, coi, _, _ = pycwt.cwt(y1_normal, dt, **_kwargs)
     W2, sj, freq, coi, _, _ = pycwt.cwt(y2_normal, dt, **_kwargs)
-​
+    
     scales1 = np.ones([1, y1.size]) * sj[:, None]
     scales2 = np.ones([1, y2.size]) * sj[:, None]
-​
+
     # Smooth the wavelet spectra before truncating.
     S1 = wavelet.smooth(np.abs(W1) ** 2 / scales1, dt, dj, sj)
     S2 = wavelet.smooth(np.abs(W2) ** 2 / scales2, dt, dj, sj)
-​
+
     # Now the wavelet transform coherence
     W12 = W1 * W2.conj()
     scales = np.ones([1, y1.size]) * sj[:, None]
@@ -2392,10 +2392,10 @@ def wct_modified(y1, y2, dt, dj=1/12, s0=-1, J=-1, sig=True,
     
     # Calculate cross spectrum & its amplitude
     WXS, WXA = W12, np.abs(S12)
-​
+
     # Calculates the significance using Monte Carlo simulations with 95%
     # confidence as a function of scale.
-​
+
     if sig:
         a1, b1, c1 = pycwt.ar1(y1)
         a2, b2, c2 = pycwt.ar1(y2)
@@ -2404,7 +2404,7 @@ def wct_modified(y1, y2, dt, dj=1/12, s0=-1, J=-1, sig=True,
                                wavelet=wavelet, **kwargs)
     else:
         sig = np.asarray([0])
-​
+
     return WXS, WXA, WCT, aWCT, coi, freq, sig
 
 
