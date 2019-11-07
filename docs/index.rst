@@ -19,6 +19,8 @@ The monitoring modules are a compilation of published Python scripts and include
 * Yuan, C., Jiang, C., Bryan, J., Clements, C.T., Okubo, K., Denolle, M.A.: Comparing approaches to measuring time- and frequency-dependent seismic phase variations for coda wave interferometry. In prep for Geophysical Journal International
 Please cite this paper if using the monitoring module
 
+The stacking subroutines have been compiled from various published methods. Please cite appropriate article when using a particular stacking routine (references are listed in the documentation).
+
 We gratefully acknowledge support from the Packard Fundation (`www.packard.org <http://www.packard.org>`_).
 
 
