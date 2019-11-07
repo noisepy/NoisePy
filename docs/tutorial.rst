@@ -82,17 +82,15 @@ The script of `S2_stacking.py` is used to assemble and/or stack all cross-correl
 the pws produces waveforms with high SNR, and the snapshot below shows the waveform comparison from the two stacking methods. We use the folloing commend lines to make the move-out plot.
 
 NoisePy compiles a suite of stacking routines. Please cite appropriate manuscript when using them:
-Markup : ```javascript
-         ```
-Markup : *  Phase-weighted stacking: Schimmel et al, 1997
-Markup : * Selective stack with amp threshold: NoisePy paper
-Markup : * Selective stack with a CC threshold: NoisePy paper
-Markup : * Time-frequency PWS (Zeng and Thurber 2016)
-Markup : * auto-covariance filter (Nakata et al, 2016)
-Markup : *  Robust stack (Xiaotao - Pavlis & Vernon, 2010), Yang et al, 2020
-Markup : *  Robust stacking with CC threshold, Yang et al, 2020
-Markup : *  Nth-root stack (Rost and Thomas?)
-Markup : *  Denoise with SVD+Wiener (Moreau et al, 2017)
+    *  Phase-weighted stacking: Schimmel et al, 1997
+    * Selective stack with amp threshold: NoisePy paper
+    * Selective stack with a CC threshold: NoisePy paper
+    * Time-frequency PWS (Zeng and Thurber 2016)
+    * auto-covariance filter (Nakata et al, 2016)
+    *  Robust stack (Xiaotao - Pavlis & Vernon, 2010), Yang et al, 2020
+    *  Robust stacking with CC threshold, Yang et al, 2020
+    *  Nth-root stack (Rost and Thomas?)
+    *  Denoise with SVD+Wiener (Moreau et al, 2017)
 
 
 .. code-block:: python
