@@ -45,11 +45,10 @@ using the plotting modules named as *plotting_modules* in the directory of *src*
     and the general structure you want to store on your machine etc. We tested a bunch of the parameters to evaluate their performance and the readers are referred to our paper for more 
     details (Jiang et al., 2019). 
 
-S0B. Deal with local SAC/miniseed data
+S0B. Deal with local data
 --------------------------------------
-The script of `S0B_sacMSEED_to_ASDF.py` is developed for the users to handle local data in SAC/miniseed format stored on your own disk. Most of the variables are the same as those for 
-S0A and thus should be pretty straighforward to follow and change. In this script, it preprocesses the data by merging, detrending, demeaning, downsampling and then trimming before 
-saving them into ASDF format for later NoisePy processing. In particular, we expect the script to deal with very messydata, by which we mean that, seismic data is broken into small 
+The script of `S0B_sacMSEED_to_ASDF.py` is developed for the users to handle local data in any format that ObsPy can read  stored on your own disk. Most of the variables are the same as those for 
+S0A and thus should be pretty straighforward to follow and change. In this script, it preprocesses the data by merging, detrending, demeaning, downsampling, and then trimming before saving them into ASDF format for later NoisePy processing. In particular, we expect the script to deal with very messydata, by which we mean that, seismic data is broken into small 
 pieces and of messy time info such as overlapping time. REMEMBER to set *messydata* at L62 to *True* when you have messy data! (Tutorials on removing instrument response)
 
 
