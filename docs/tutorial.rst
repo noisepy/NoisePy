@@ -80,18 +80,16 @@ S2. Do stacking
 The script of `S2_stacking.py` is used to assemble and/or stack all cross-correlation functions computed for the staion pairs in S1 and save them into ASDF files for future analysis 
 (e.g., temporal variation and/or dispersion extraction). In particular, there are two options for the stacking process, including linear and phase weighted stacking (pws). In general, 
 the pws produces waveforms with high SNR, and the snapshot below shows the waveform comparison from the two stacking methods. We use the folloing commend lines to make the move-out plot.
-
-
- NoisePy compiles a suite of stacking routines. Please cite appropriate manuscript when using them:
- - Phase-weighted stacking: Schimmel et al, 1997
- - Selective stack with amp threshold: NoisePy paper
- - Selective stack with a CC threshold: NoisePy paper
- - Time-frequency PWS (Zeng and Thurber 2016)
- - auto-covariance filter (Nakata et al, 2016)
- - Robust stack (Xiaotao - Pavlis & Vernon, 2010), Yang et al, 2020
- - Robust stacking with CC threshold, Yang et al, 2020
- - Nth-root stack (Rost and Thomas?)
- - Denoise with SVD+Wiener (Moreau et al, 2017)
+NoisePy compiles a suite of stacking routines. Please cite appropriate manuscript when using them:
+- Phase-weighted stacking: Schimmel et al, 1997
+- Selective stack with amp threshold: NoisePy paper
+- Selective stack with a CC threshold: NoisePy paper
+- Time-frequency PWS (Zeng and Thurber 2016)
+- auto-covariance filter (Nakata et al, 2016)
+- Robust stack (Xiaotao - Pavlis & Vernon, 2010), Yang et al, 2020
+- Robust stacking with CC threshold, Yang et al, 2020
+- Nth-root stack (Rost and Thomas?)
+- Denoise with SVD+Wiener (Moreau et al, 2017)
 
 
 .. code-block:: python
