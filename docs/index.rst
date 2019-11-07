@@ -13,7 +13,7 @@ see below website:
 
 If you use NoisePy for your research and prepare publications, please consider citing **NoisePy**: 
 
-* Jiang, C., Yuan, C., and Denolle, M. NoisePy: a new high-performance python tool for seismic ambient noise seismology. In prep for Seismological Research Letter.
+* Jiang, C. and Denolle, M. NoisePy: A new high-performance python tool for seismic ambient noise seismology. In prep for Seismological Research Letter.
 
 We gratefully acknowledge support from the Packard Fundation (`www.packard.org <http://www.packard.org>`_).
 
