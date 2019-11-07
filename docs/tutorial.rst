@@ -94,3 +94,15 @@ the pws produces waveforms with high SNR, and the snapshot below shows the wavef
 .. image:: figures/pws_stack1.png
     :width: 100%
     :align: center
+    
+ NoisePy compiles a suite of stacking routines. Please cite appropriate manuscript when using them:
+ - Phase-weighted stacking: Schimmel et al, 1997
+ - Selective stack with amp threshold: NoisePy paper
+ - Selective stack with a CC threshold: NoisePy paper
+ - Time-frequency PWS (Zeng and Thurber 2016)
+ - auto-covariance filter (Nakata et al, 2016)
+ - Robust stack (Xiaotao - Pavlis & Vernon, 2010), Yang et al, 2020
+ - Robust stacking with CC threshold, Yang et al, 2020
+ - Nth-root stack (Rost and Thomas?)
+ - Denoise with SVD+Wiener (Moreau et al, 2017)
+
