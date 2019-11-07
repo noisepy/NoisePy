@@ -15,6 +15,10 @@ If you use NoisePy for your research and prepare publications, please consider c
 
 * Jiang, C. and Denolle, M. NoisePy: A new high-performance python tool for seismic ambient noise seismology. In prep for Seismological Research Letter.
 
+The monitoring modules are a compilation of published Python scripts and include the new approach described in:
+* Yuan, C., Jiang, C., Bryan, J., Clements, C.T., Okubo, K., Denolle, M.A.: Comparing approaches to measuring time- and frequency-dependent seismic phase variations for coda wave interferometry. In prep for Geophysical Journal International
+Please cite this paper if using the monitoring module
+
 We gratefully acknowledge support from the Packard Fundation (`www.packard.org <http://www.packard.org>`_).
 
 
