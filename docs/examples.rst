@@ -1,12 +1,13 @@
-Pyasdf examples
+NoisePy ASDF file architecture
 ===========================
 
-The pyasdf format is developed by the **Theoretical and Computation Seismology Group** at Princeton University, and 
+The ASDF format is developed by the **Theoretical and Computation Seismology Group** at Princeton University, and 
 combines the capability to create comprehensive data sets including all necessary meta information with 
 high-performance parallel I/O for the most demanding use cases. The users who are interested in the details of this 
 format are referred to the following publication.
 
 * Krischer, L., Smith, J., Lei, W., Lefebvre, M., Ruan, Y., de Andrade, E.S., Podhorszki, N., Bozdağ, E. and Tromp, J., 2016. An adaptable seismic data format. Geophysical Supplements to the Monthly Notices of the Royal Astronomical Society, 207(2), 1003-1011.
+
 
 To better show the pyasdf format, we use the default examples downloaded from the pyasdf Github repository 
 https://github.com/SeismicData/pyasdf for creating, processing and writing ``pyasdf`` format data.
