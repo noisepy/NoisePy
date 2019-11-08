@@ -90,5 +90,5 @@ Marine Denolle (mdenolle@fas.harvard.edu).
 
 #### Reference
 Seats, K. J., Jesse F. L., and German A. P. "Improved ambient noise correlation functions using Welch′ s method." _Geophysical Journal International_ 188, no. 2 (2012): 513-523.  
-*Jiang, C., Yuan, C., and Denolle, M. "NoisePy: a new high-performance python tool for seismic ambient noise seismology." In prep for _Seismological Research Letter_.  
+*Jiang, C. and Denolle, M. "NoisePy: a new high-performance python tool for seismic ambient noise seismology." In prep for _Seismological Research Letter_.  
 **Yuan, C., et al.
