@@ -45,11 +45,10 @@ using the plotting modules named as *plotting_modules* in the directory of *src*
     and the general structure you want to store on your machine etc. We tested a bunch of the parameters to evaluate their performance and the readers are referred to our paper for more 
     details (Jiang et al., 2019). 
 
-S0B. Deal with local SAC/miniseed data
+S0B. Deal with local data
 --------------------------------------
-The script of `S0B_sacMSEED_to_ASDF.py` is developed for the users to handle local data in SAC/miniseed format stored on your own disk. Most of the variables are the same as those for 
-S0A and thus should be pretty straighforward to follow and change. In this script, it preprocesses the data by merging, detrending, demeaning, downsampling and then trimming before 
-saving them into ASDF format for later NoisePy processing. In particular, we expect the script to deal with very messydata, by which we mean that, seismic data is broken into small 
+The script of `S0B_sacMSEED_to_ASDF.py` is developed for the users to handle local data in any format that ObsPy can read  stored on your own disk. Most of the variables are the same as those for 
+S0A and thus should be pretty straighforward to follow and change. In this script, it preprocesses the data by merging, detrending, demeaning, downsampling, and then trimming before saving them into ASDF format for later NoisePy processing. In particular, we expect the script to deal with very messydata, by which we mean that, seismic data is broken into small 
 pieces and of messy time info such as overlapping time. REMEMBER to set *messydata* at L62 to *True* when you have messy data! (Tutorials on removing instrument response)
 
 
@@ -81,6 +80,18 @@ The script of `S2_stacking.py` is used to assemble and/or stack all cross-correl
 (e.g., temporal variation and/or dispersion extraction). In particular, there are two options for the stacking process, including linear and phase weighted stacking (pws). In general, 
 the pws produces waveforms with high SNR, and the snapshot below shows the waveform comparison from the two stacking methods. We use the folloing commend lines to make the move-out plot.
 
+NoisePy compiles a suite of stacking routines. Please cite appropriate manuscript when using them:
+    *  Phase-weighted stacking: Schimmel et al, 1997
+    * Selective stack with amp threshold: NoisePy paper
+    * Selective stack with a CC threshold: NoisePy paper
+    * Time-frequency PWS (Zeng and Thurber 2016)
+    * auto-covariance filter (Nakata et al, 2016)
+    *  Robust stack (Xiaotao - Pavlis & Vernon, 2010), Yang et al, 2020
+    *  Robust stacking with CC threshold, Yang et al, 2020
+    *  Nth-root stack (Rost and Thomas?)
+    *  Denoise with SVD+Wiener (Moreau et al, 2017)
+
+
 .. code-block:: python
 
     >>> import plotting_modules,glob
@@ -94,3 +105,4 @@ the pws produces waveforms with high SNR, and the snapshot below shows the wavef
 .. image:: figures/pws_stack1.png
     :width: 100%
     :align: center
+   

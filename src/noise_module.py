@@ -420,7 +420,7 @@ def cut_trace_make_statis(fc_para,source):
     # copy data into array
     data = source[0].data
 
-    # confim data has been correctly pre-processed
+    # if the data is shorter than the tim chunck, return zero values
     if data.size < sps*inc_hours*3600:
         return source_params,dataS_t,dataS
 
