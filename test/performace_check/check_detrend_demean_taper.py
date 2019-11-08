@@ -173,7 +173,7 @@ def test_2d(sacfile):
     print('2D: it takes %6.3f (%d traces) in total with new'%(t3-t2,dataS.shape[0]))
 
 def main():
-    sfiles = glob.glob('/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/noise_data/Event_2010_340/*.sac')
+    sfiles = glob.glob('/Users/chengxin/Documents/NoisePy_example/Kanto/CLEAN_DATA//Event_2010_352/*.sac')
 
     for sacfile in sfiles:
         #test_1d(sacfile)

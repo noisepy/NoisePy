@@ -33,11 +33,10 @@ NOTE:
     0. MOST occasions you just need to change parameters followed with detailed explanations to run the script. 
     1. To read SAC/mseed files, we assume the users have sorted the data by the time chunk they prefer (e.g., 1day) 
         and store them in folders named after the time chunk (e.g, 2010_10_1). modify L135 to find your local data; 
-    2. A script of S0B_sacMSEED_to_ASDF.py is provided to help clean messy SAC/MSEED data and convert them into ASDF 
-        format. the script takes minor time compared to that for cross-correlation. so we recommend to use S0B script 
-        for better NoisePy performance. the downside is that it duplicates the continuous noise data on your machine;
-    3. When whitening is applied, we recommend to use 'raw' method for cross-correlation, because whitening is essisenly
-        equavilent to coherency cross-correlation.
+    2. A script of S0B_to_ASDF.py is provided to help clean messy SAC/MSEED data and convert them into ASDF format.
+        the script takes minor time compared to that for cross-correlation. so we recommend to use S0B script for
+        better NoisePy performance. the downside is that it duplicates the continuous noise data on your machine;
+    3. When "coherency" is preferred, please set "freq_norm" to "rma" and "time_norm" to "no" for better performance.
 '''
 
 tt0=time.time()
@@ -47,9 +46,9 @@ tt0=time.time()
 ########################################
 
 # absolute path parameters
-rootpath  = '/Users/chengxin/Documents/NoisePy_example/'                    # root path for this data processing
+rootpath  = '/Volumes/Chengxin/LV_monitor'                    # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                                    # dir to store CC data
-DATADIR   = os.path.join(rootpath,'RAW)DATA')                               # dir where noise data is located
+DATADIR   = os.path.join(rootpath,'RAW_DATA')                               # dir where noise data is located
 local_data_path = os.path.join(rootpath,'2004_*')                           # absolute dir where SAC files are stored: this para is VERY IMPORTANT and has to be RIGHT if input_fmt is not asdf!!!
 locations = os.path.join(rootpath,'station.txt')                            # station info including network,station,channel,latitude,longitude,elevation: only needed when input_fmt is not asdf
 
@@ -57,7 +56,7 @@ locations = os.path.join(rootpath,'station.txt')                            # st
 input_fmt   = 'asdf'                                                        # string: 'asdf', 'sac','mseed' 
 freq_norm   = 'phase_only'                                                  # 'no' for no whitening, or 'rma' for running-mean average, 'phase' for sign-bit normalization in freq domain
 time_norm   = 'no'                                                          # 'no' for no normalization, or 'rma', 'one_bit' for normalization in time domain
-cc_method   = 'xcorr'                                                       # 'xcorr' for pure cross correlation, 'deconv' for deconvolution and 'coherency' 
+cc_method   = 'xcorr'                                                       # 'xcorr' for pure cross correlation, 'deconv' for deconvolution; FOR "COHERENCY" PLEASE set freq_norm to "rma" and time_norm to "no"
 flag        = False                                                         # print intermediate variables and computing time for debugging purpose
 acorr_only  = False                                                         # only perform auto-correlation 
 xcorr_only  = True                                                          # only perform cross-correlation or not
