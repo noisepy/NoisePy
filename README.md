@@ -12,8 +12,10 @@ Detailed documentation can be found at https://noise-python.readthedocs.io/en/la
 # Installation
 The nature of NoisePy being composed of python scripts allows flexiable package installation, which is essentially to build dependented libraries the scripts and related functions live upon. We recommand to use [conda](https://docs.conda.io/en/latest/) and [pip](https://pypi.org/project/pip/) to install the library due to their convinence. Below are command lines we have tested that would create a python environment to run NoisePy. Note that the test is performed on `macOS Mojave (10.14.5)`, so it could be slightly different for other OS. 
 
+### Note the order of the command lines (lines 1-3) below matters ###
+
 ```python
-conda create -n noisepy -c conda-forge python=3.7.3 numpy=1.16.2 numba pandas pycwt mpi4py=3.0.1
+conda create -n noisepy -c conda-forge python=3.7.3 numpy=1.16.2 numba pandas pycwt jupyter mpi4py=3.0.1
 conda activate noisepy
 pip install obspy pyasdf
 git clone https://github.com/mdenolle/NoisePy.git
