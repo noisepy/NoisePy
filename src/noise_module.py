@@ -117,8 +117,11 @@ def make_timestamps(prepro_para):
             # get rough estimates of the time based on the folder: need modified to accommodate your data
             for ii in range(nfiles):
                 year  = int(allfiles[ii].split('/')[-2].split('_')[1])
-                julia = int(allfiles[ii].split('/')[-2].split('_')[2])
-                all_stimes[ii,0] = obspy.UTCDateTime(year=year,julday=julia)-obspy.UTCDateTime(year=1970,month=1,day=1)
+                #julia = int(allfiles[ii].split('/')[-2].split('_')[2])
+                #all_stimes[ii,0] = obspy.UTCDateTime(year=year,julday=julia)-obspy.UTCDateTime(year=1970,month=1,day=1)
+                month = int(allfiles[ii].split('/')[-2].split('_')[2])
+                day   = int(allfiles[ii].split('/')[-2].split('_')[3])
+                all_stimes[ii,0] = obspy.UTCDateTime(year=year,month=month,day=day)-obspy.UTCDateTime(year=1970,month=1,day=1)
                 all_stimes[ii,1] = all_stimes[ii,0]+86400
         
         # save name and time info for later use if the file not exist
@@ -236,9 +239,10 @@ def preprocess_raw(st,inv,prepro_para,date_info):
 
         elif rm_resp == 'RESP':
             print('remove response using RESP files')
-            seedresp = glob.glob(os.path.join(respdir,'RESP.'+station+'*'))
-            if len(seedresp)==0:
+            resp = glob.glob(os.path.join(respdir,'RESP.'+station+'*'))
+            if len(resp)==0:
                 raise ValueError('no RESP files found for %s' % station)
+            seedresp = {'filename':resp[0],'date':date_info['starttime','units':'DIS']}
             st.simulate(paz_remove=None,pre_filt=pre_filt,seedresp=seedresp[0])
 
         elif rm_resp == 'polozeros':
@@ -848,7 +852,9 @@ def stacking(cc_array,cc_time,cc_ngood,stack_para):
     '''
     # load useful parameters from dict
     samp_freq = stack_para['samp_freq']
-    smethod   = stack_para['stack_method']
+    smethod   = stack_para['stack_method']                                         
+    start_date   = stack_para['start_date']
+    end_date     = stack_para['end_date']                                              
     npts = cc_array.shape[1]
 
     # remove abnormal data     
@@ -856,7 +862,11 @@ def stacking(cc_array,cc_time,cc_ngood,stack_para):
     tindx  = np.where( (ampmax<20*np.median(ampmax)) & (ampmax>0))[0]
     if not len(tindx):
         allstacks1=[];allstacks2=[];nstacks=0
+        cc_array=[];cc_ngood=[];cc_time=[]
+        return cc_array,cc_ngood,cc_time,allstacks1,allstacks2,nstacks
     else:
+
+        # remove ones with bad amplitude
         cc_array = cc_array[tindx,:]
         cc_time  = cc_time[tindx]
         cc_ngood = cc_ngood[tindx]
@@ -864,23 +874,114 @@ def stacking(cc_array,cc_time,cc_ngood,stack_para):
         # do stacking
         allstacks1 = np.zeros(npts,dtype=np.float32)
         allstacks2 = np.zeros(npts,dtype=np.float32)
+        allstacks3 = np.zeros(npts,dtype=np.float32)
 
         if smethod == 'linear':
             allstacks1 = np.mean(cc_array,axis=0)
         elif smethod == 'pws':
             allstacks1 = pws(cc_array,samp_freq) 
         elif smethod == 'robust':
-            allstacks1 = robust_stack
-        elif smethod == 'both':
+            allstacks1 = robust_stack(cc_array,0.001)
+        elif smethod == 'all':
             allstacks1 = np.mean(cc_array,axis=0)
             allstacks2 = pws(cc_array,samp_freq) 
+            allstacks3 = robust_stack(cc_array,0.001)
+        nstacks = np.sum(cc_ngood)
+
+    # good to return
+    return cc_array,cc_ngood,cc_time,allstacks1,allstacks2,allstacks3,nstacks
+
+
+def stacking_rma(cc_array,cc_time,cc_ngood,stack_para):
+    '''
+    this function stacks the cross correlation data according to the user-defined substack_len parameter
+    PARAMETERS:
+    ----------------------
+    cc_array: 2D numpy float32 matrix containing all segmented cross-correlation data
+    cc_time:  1D numpy array of timestamps for each segment of cc_array
+    cc_ngood: 1D numpy int16 matrix showing the number of segments for each sub-stack and/or full stack
+    stack_para: a dict containing all stacking parameters
+    RETURNS:
+    ----------------------
+    cc_array, cc_ngood, cc_time: same to the input parameters but with abnormal cross-correaltions removed
+    allstacks1: 1D matrix of stacked cross-correlation functions over all the segments
+    nstacks:    number of overall segments for the final stacks
+    '''
+    # load useful parameters from dict
+    samp_freq = stack_para['samp_freq']
+    smethod   = stack_para['stack_method']                                         
+    rma_substack = stack_para['rma_substack']                                                
+    rma_step     = stack_para['rma_step']
+    start_date   = stack_para['start_date']
+    end_date     = stack_para['end_date']                                              
+    npts = cc_array.shape[1]
+
+    # remove abnormal data     
+    ampmax = np.max(cc_array,axis=1)
+    tindx  = np.where( (ampmax<20*np.median(ampmax)) & (ampmax>0))[0]
+    if not len(tindx):
+        allstacks1=[];allstacks2=[];nstacks=0
+        cc_array=[];cc_ngood=[];cc_time=[]
+        return cc_array,cc_ngood,cc_time,allstacks1,allstacks2,nstacks
+    else:
+
+        # remove ones with bad amplitude
+        cc_array = cc_array[tindx,:]
+        cc_time  = cc_time[tindx]
+        cc_ngood = cc_ngood[tindx]
+
+        # do substacks
+        if rma_substack:
+            tstart = obspy.UTCDateTime(start_date)-obspy.UTCDateTime(1970,1,1)
+            tend   = obspy.UTCDateTime(end_date)-obspy.UTCDateTime(1970,1,1)
+            ttime  = tstart
+            nstack = int(np.round((tend-tstart)/(rma_step*3600)))
+            ncc_array = np.zeros(shape=(nstack,npts),dtype=np.float32)
+            ncc_time  = np.zeros(nstack,dtype=np.float)
+            ncc_ngood = np.zeros(nstack,dtype=np.int)
+
+            # loop through each time
+            for ii in range(nstack):
+                sindx = np.where((cc_time>=ttime) & (cc_time<ttime+rma_substack*3600))[0]
+                
+                # when there are data in the time window
+                if len(sindx):
+                    ncc_array[ii] = np.mean(cc_array[sindx],axis=0)
+                    ncc_time[ii]  = ttime
+                    ncc_ngood[ii] = np.sum(cc_ngood[sindx],axis=0)
+                ttime += rma_step*3600
+
+            # remove bad ones
+            tindx = np.where(ncc_ngood>0)[0]
+            ncc_array = ncc_array[tindx]
+            ncc_time  = ncc_time[tindx]
+            ncc_ngood  = ncc_ngood[tindx]
+        
+        # do stacking
+        allstacks1 = np.zeros(npts,dtype=np.float32)
+        allstacks2 = np.zeros(npts,dtype=np.float32)
+        allstacks3 = np.zeros(npts,dtype=np.float32)
+
+        if smethod == 'linear':
+            allstacks1 = np.mean(cc_array,axis=0)
+        elif smethod == 'pws':
+            allstacks1 = pws(cc_array,samp_freq) 
+        elif smethod == 'robust':
+            allstacks1 = robust_stack(cc_array,0.001)
+        elif smethod == 'all':
+            allstacks1 = np.mean(cc_array,axis=0)
+            allstacks2 = pws(cc_array,samp_freq) 
+            allstacks3 = robust_stack(cc_array,0.001)
         nstacks = np.sum(cc_ngood)
     
+    # replace the array for substacks
+    if rma_substack:
+        cc_array = ncc_array
+        cc_time  = ncc_time
+        cc_ngood = ncc_ngood
+
     # good to return
-    if smethod != 'both':
-        return cc_array,cc_ngood,cc_time,allstacks1,nstacks
-    else:
-        return cc_array,cc_ngood,cc_time,allstacks1,allstacks2,nstacks
+    return cc_array,cc_ngood,cc_time,allstacks1,allstacks2,allstacks3,nstacks
 
 def rotation(bigstack,parameters,locs,flag):
     '''
@@ -1225,46 +1326,6 @@ def moving_ave(A,N):
 
 
 def robust_stack(cc_array,epsilon):
-    """ 
-    this is a robust stacking algorithm described in Palvis and Vernon 2010
-
-    PARAMETERS:
-    ----------------------
-    cc_array: numpy.ndarray contains the 2D cross correlation matrix
-    epsilon: residual threhold to quit the iteration
-    RETURNS:
-    ----------------------
-    newstack: numpy vector contains the stacked cross correlation
-
-    Written by Marine Denolle 
-    """
-    res  = 9E9  # residuals
-    w = np.ones(cc_array.shape[0])
-    nstep=0
-    while res > epsilon:
-        stack = np.median((w*cc_array.T).T,axis=0)
-        for i in range(cc_array.shape[0]):
-            crap = np.multiply(stack,cc_array[i,:].T)
-            crap_dot = np.sum(crap)
-            di_norm = np.linalg.norm(cc_array[i,:])
-            ri = cc_array[i,:] -  crap_dot*stack
-            ri_norm = np.linalg.norm(ri)
-            w[i]  = np.abs(crap_dot) / di_norm/ri_norm#/len(cc_array[:,1])
-        # print(w)
-        w =w /np.sum(w)
-        newstack =np.sum( (w*cc_array.T).T,axis=0)#/len(cc_array[:,1])
-        # print(newstack)
-        # plt.plot(newstack)
-        # plt.show()
-        res = np.linalg.norm(newstack-stack,ord=1)/np.linalg.norm(newstack)/len(cc_array[:,1])
-        nstep +=1
-        # print(res)
-        # print('nstep',nstep)
-        if nstep>10:
-            return newstack, w
-    return newstack, w
-
-def robust_stack1(cc_array,epsilon):
     """ 
     this is a robust stacking algorithm described in Palvis and Vernon 2010
 

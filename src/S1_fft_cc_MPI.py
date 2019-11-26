@@ -46,7 +46,7 @@ tt0=time.time()
 ########################################
 
 # absolute path parameters
-rootpath  = '/Volumes/Chengxin/LV_monitor'                    # root path for this data processing
+rootpath  = '/Volumes/Chengxin/monitor'                                     # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                                    # dir to store CC data
 DATADIR   = os.path.join(rootpath,'RAW_DATA')                               # dir where noise data is located
 local_data_path = os.path.join(rootpath,'2004_*')                           # absolute dir where SAC files are stored: this para is VERY IMPORTANT and has to be RIGHT if input_fmt is not asdf!!!
@@ -78,13 +78,13 @@ step      = 450                                                             # ov
 smooth_N  = 10                                                              # moving window length for time/freq domain normalization if selected (points)
 
 # cross-correlation parameters
-maxlag         = 120                                                        # lags of cross-correlation to save (sec)
+maxlag         = 400                                                        # lags of cross-correlation to save (sec)
 substack       = False                                                      # sub-stack daily cross-correlation or not
-substack_len   = 12*cc_len                                                  # how long to stack over: need to be multiples of cc_len
+substack_len   = 12*cc_len                                                  # how long to stack over (for monitoring purpose): need to be multiples of cc_len
 smoothspect_N  = 10                                                         # moving window length to smooth spectrum amplitude (points)
 
 # criteria for data selection
-max_over_std = 10*9                                                         # threahold to remove window of bad signals: set it to 10*9 if prefer not to remove them
+max_over_std = 10                                                           # threahold to remove window of bad signals: set it to 10*9 if prefer not to remove them
 max_kurtosis = 10                                                           # max kurtosis allowed, TO BE ADDED!
 
 # maximum memory allowed per core in GB
