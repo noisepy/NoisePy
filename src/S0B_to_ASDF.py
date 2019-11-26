@@ -37,9 +37,9 @@ NOTE:
 tt0=time.time()
 
 # data/file paths
-rootpath  = '/Users/chengxin/Documents/NoisePy_example/Kanto'           # absolute path for your project
+rootpath  = '/Users/chengxin/Documents/Kanto'                           # absolute path for your project
 RAWDATA   = os.path.join(rootpath,'RAW_DATA')                           # dir where mseed/SAC files are located
-DATADIR   = os.path.join(rootpath,'CLEAN_DATA')                         # dir where cleaned data in ASDF format are going to be outputted
+DATADIR   = os.path.join(rootpath,'Kanto_sac')                          # dir where cleaned data in ASDF format are going to be outputted
 locations = os.path.join(rootpath,'station.txt')                        # station info including network,station,channel,latitude,longitude,elevation
 if not os.path.isfile(locations): 
     raise ValueError('Abort! station info is needed for this script')
