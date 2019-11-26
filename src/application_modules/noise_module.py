@@ -117,8 +117,11 @@ def make_timestamps(prepro_para):
             # get rough estimates of the time based on the folder: need modified to accommodate your data
             for ii in range(nfiles):
                 year  = int(allfiles[ii].split('/')[-2].split('_')[1])
-                julia = int(allfiles[ii].split('/')[-2].split('_')[2])
-                all_stimes[ii,0] = obspy.UTCDateTime(year=year,julday=julia)-obspy.UTCDateTime(year=1970,month=1,day=1)
+                #julia = int(allfiles[ii].split('/')[-2].split('_')[2])
+                #all_stimes[ii,0] = obspy.UTCDateTime(year=year,julday=julia)-obspy.UTCDateTime(year=1970,month=1,day=1)
+                month = int(allfiles[ii].split('/')[-2].split('_')[2])
+                day   = int(allfiles[ii].split('/')[-2].split('_')[3])
+                all_stimes[ii,0] = obspy.UTCDateTime(year=year,month=month,day=day)-obspy.UTCDateTime(year=1970,month=1,day=1)
                 all_stimes[ii,1] = all_stimes[ii,0]+86400
         
         # save name and time info for later use if the file not exist
@@ -236,9 +239,10 @@ def preprocess_raw(st,inv,prepro_para,date_info):
 
         elif rm_resp == 'RESP':
             print('remove response using RESP files')
-            seedresp = glob.glob(os.path.join(respdir,'RESP.'+station+'*'))
-            if len(seedresp)==0:
+            resp = glob.glob(os.path.join(respdir,'RESP.'+station+'*'))
+            if len(resp)==0:
                 raise ValueError('no RESP files found for %s' % station)
+            seedresp = {'filename':resp[0],'date':date_info['starttime','units':'DIS']}
             st.simulate(paz_remove=None,pre_filt=pre_filt,seedresp=seedresp[0])
 
         elif rm_resp == 'polozeros':
@@ -287,7 +291,7 @@ def stats2inv(stats,prepro_para,locs=None):
 	
     inv = Inventory(networks=[],source="homegrown")
 
-    if input_fmt=='check':
+    if input_fmt=='sac':
         net = Network(
             # This is the network code according to the SEED standard.
             code=stats.network,
@@ -318,7 +322,7 @@ def stats2inv(stats,prepro_para,locs=None):
             dip=stats.sac["cmpinc"],
             sample_rate=stats.sampling_rate)
 
-    elif input_fmt == 'sac':
+    elif input_fmt == 'mseed':
         ista=locs[locs['station']==stats.station].index.values.astype('int64')[0]
 
         net = Network(
@@ -420,7 +424,7 @@ def cut_trace_make_statis(fc_para,source):
     # copy data into array
     data = source[0].data
 
-    # confim data has been correctly pre-processed
+    # if the data is shorter than the tim chunck, return zero values
     if data.size < sps*inc_hours*3600:
         return source_params,dataS_t,dataS
 
@@ -658,6 +662,138 @@ def correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
         s_corr = s_corr[:,ind]
     return s_corr,t_corr,n_corr
 
+def correlate_nonlinear_stack(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
+    '''
+    this function does the cross-correlation in freq domain and has the option to keep sub-stacks of 
+    the cross-correlation if needed. it takes advantage of the linear relationship of ifft, so that 
+    stacking is performed in spectrum domain first to reduce the total number of ifft. (used in S1)
+    PARAMETERS:
+    ---------------------
+    fft1_smoothed_abs: smoothed power spectral density of the FFT for the source station
+    fft2: raw FFT spectrum of the receiver station
+    D: dictionary containing following parameters:
+        maxlag:  maximum lags to keep in the cross correlation
+        dt:      sampling rate (in s)
+        nwin:    number of segments in the 2D matrix
+        method:  cross-correlation methods selected by the user
+        freqmin: minimum frequency (Hz)
+        freqmax: maximum frequency (Hz)
+    Nfft:    number of frequency points for ifft
+    dataS_t: matrix of datetime object.
+    RETURNS:
+    ---------------------
+    s_corr: 1D or 2D matrix of the averaged or sub-stacks of cross-correlation functions in time domain
+    t_corr: timestamp for each sub-stack or averaged function
+    n_corr: number of included segments for each sub-stack or averaged function
+    '''
+    #----load paramters----
+    dt      = D['dt']
+    maxlag  = D['maxlag']
+    method  = D['cc_method']
+    cc_len  = D['cc_len'] 
+    substack= D['substack']     
+    stack_method  = D['stack_method']                                                     
+    substack_len  = D['substack_len']
+    smoothspect_N = D['smoothspect_N']
+
+    nwin  = fft1_smoothed_abs.shape[0]
+    Nfft2 = fft1_smoothed_abs.shape[1]
+
+    #------convert all 2D arrays into 1D to speed up--------
+    corr = np.zeros(nwin*Nfft2,dtype=np.complex64)
+    corr = fft1_smoothed_abs.reshape(fft1_smoothed_abs.size,)*fft2.reshape(fft2.size,)
+
+    # normalize by receiver spectral for coherency
+    if method == "coherency":
+        temp = moving_ave(np.abs(fft2.reshape(fft2.size,)),smoothspect_N)             
+        corr /= temp
+    corr  = corr.reshape(nwin,Nfft2)
+
+    # transform back to time domain waveforms
+    s_corr = np.zeros(shape=(nwin,Nfft),dtype=np.float32)   # stacked correlation
+    ampmax = np.zeros(nwin,dtype=np.float32)
+    n_corr = np.zeros(nwin,dtype=np.int16)                  # number of correlations for each substack
+    t_corr = dataS_t                                        # timestamp
+    crap   = np.zeros(Nfft,dtype=np.complex64)
+    for i in range(nwin): 
+        n_corr[i]= 1           
+        crap[:Nfft2] = corr[i,:]
+        crap[:Nfft2] = crap[:Nfft2]-np.mean(crap[:Nfft2])   # remove the mean in freq domain (spike at t=0)
+        crap[-(Nfft2)+1:] = np.flip(np.conj(crap[1:(Nfft2)]),axis=0)
+        crap[0]=complex(0,0)
+        s_corr[i,:] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
+
+    ns_corr = s_corr
+    for iii in range(ns_corr.shape[0]):
+        ns_corr[iii] /= np.max(np.abs(ns_corr[iii]))
+
+    if substack:
+        if substack_len == cc_len:
+
+            # remove abnormal data
+            ampmax = np.max(s_corr,axis=1)
+            tindx  = np.where( (ampmax<20*np.median(ampmax)) & (ampmax>0))[0]
+            s_corr = s_corr[tindx,:]
+            t_corr = t_corr[tindx]
+            n_corr = n_corr[tindx]
+        
+        else:     
+            # get time information
+            Ttotal = dataS_t[-1]-dataS_t[0]             # total duration of what we have now
+            tstart = dataS_t[0]
+
+            nstack = int(np.round(Ttotal/substack_len))
+            ampmax = np.zeros(nstack,dtype=np.float32)
+            s_corr = np.zeros(shape=(nstack,Nfft),dtype=np.float32)
+            n_corr = np.zeros(nstack,dtype=np.int)
+            t_corr = np.zeros(nstack,dtype=np.float)
+            crap   = np.zeros(Nfft,dtype=np.complex64)                                              
+
+            for istack in range(nstack):                                                                   
+                # find the indexes of all of the windows that start or end within 
+                itime = np.where( (dataS_t >= tstart) & (dataS_t < tstart+substack_len) )[0]  
+                if len(itime)==0:tstart+=substack_len;continue
+                
+                crap[:Nfft2] = np.mean(corr[itime,:],axis=0)   # linear average of the correlation 
+                crap[:Nfft2] = crap[:Nfft2]-np.mean(crap[:Nfft2])   # remove the mean in freq domain (spike at t=0)
+                crap[-(Nfft2)+1:]=np.flip(np.conj(crap[1:(Nfft2)]),axis=0)
+                crap[0]=complex(0,0)
+                s_corr[istack,:] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
+                n_corr[istack] = len(itime)               # number of windows stacks
+                t_corr[istack] = tstart                   # save the time stamps
+                tstart += substack_len
+                #print('correlation done and stacked at time %s' % str(t_corr[istack]))
+            
+            # remove abnormal data
+            ampmax = np.max(s_corr,axis=1)
+            tindx  = np.where( (ampmax<20*np.median(ampmax)) & (ampmax>0))[0]
+            s_corr = s_corr[tindx,:]
+            t_corr = t_corr[tindx]
+            n_corr = n_corr[tindx]
+
+    else:
+        # average daily cross correlation functions
+        if stack_method == 'linear':
+            ampmax = np.max(s_corr,axis=1)
+            tindx  = np.where( (ampmax<20*np.median(ampmax)) & (ampmax>0))[0]
+            s_corr = np.mean(s_corr[tindx],axis=0)
+            t_corr = dataS_t[0]
+            n_corr = len(tindx)
+        else:
+            print('do robust stacking for a day')
+            s_corr = robust_stack(s_corr,0.001)
+            t_corr = dataS_t[0]
+            n_corr = nwin       
+
+    # trim the CCFs in [-maxlag maxlag] 
+    t = np.arange(-Nfft2+1, Nfft2)*dt
+    ind = np.where(np.abs(t) <= maxlag)[0]
+    if s_corr.ndim==1:
+        s_corr = s_corr[ind]
+    elif s_corr.ndim==2:
+        s_corr = s_corr[:,ind]
+    return s_corr,t_corr,n_corr,ns_corr[:,ind]
+
 def cc_parameters(cc_para,coor,tcorr,ncorr,comp):
     '''
     this function assembles the parameters for the cc function, which is used 
@@ -716,7 +852,9 @@ def stacking(cc_array,cc_time,cc_ngood,stack_para):
     '''
     # load useful parameters from dict
     samp_freq = stack_para['samp_freq']
-    smethod   = stack_para['stack_method']
+    smethod   = stack_para['stack_method']                                         
+    start_date   = stack_para['start_date']
+    end_date     = stack_para['end_date']                                              
     npts = cc_array.shape[1]
 
     # remove abnormal data     
@@ -724,7 +862,11 @@ def stacking(cc_array,cc_time,cc_ngood,stack_para):
     tindx  = np.where( (ampmax<20*np.median(ampmax)) & (ampmax>0))[0]
     if not len(tindx):
         allstacks1=[];allstacks2=[];nstacks=0
+        cc_array=[];cc_ngood=[];cc_time=[]
+        return cc_array,cc_ngood,cc_time,allstacks1,allstacks2,nstacks
     else:
+
+        # remove ones with bad amplitude
         cc_array = cc_array[tindx,:]
         cc_time  = cc_time[tindx]
         cc_ngood = cc_ngood[tindx]
@@ -732,21 +874,114 @@ def stacking(cc_array,cc_time,cc_ngood,stack_para):
         # do stacking
         allstacks1 = np.zeros(npts,dtype=np.float32)
         allstacks2 = np.zeros(npts,dtype=np.float32)
+        allstacks3 = np.zeros(npts,dtype=np.float32)
 
         if smethod == 'linear':
             allstacks1 = np.mean(cc_array,axis=0)
         elif smethod == 'pws':
             allstacks1 = pws(cc_array,samp_freq) 
-        elif smethod == 'both':
+        elif smethod == 'robust':
+            allstacks1 = robust_stack(cc_array,0.001)
+        elif smethod == 'all':
             allstacks1 = np.mean(cc_array,axis=0)
             allstacks2 = pws(cc_array,samp_freq) 
+            allstacks3 = robust_stack(cc_array,0.001)
+        nstacks = np.sum(cc_ngood)
+
+    # good to return
+    return cc_array,cc_ngood,cc_time,allstacks1,allstacks2,allstacks3,nstacks
+
+
+def stacking_rma(cc_array,cc_time,cc_ngood,stack_para):
+    '''
+    this function stacks the cross correlation data according to the user-defined substack_len parameter
+    PARAMETERS:
+    ----------------------
+    cc_array: 2D numpy float32 matrix containing all segmented cross-correlation data
+    cc_time:  1D numpy array of timestamps for each segment of cc_array
+    cc_ngood: 1D numpy int16 matrix showing the number of segments for each sub-stack and/or full stack
+    stack_para: a dict containing all stacking parameters
+    RETURNS:
+    ----------------------
+    cc_array, cc_ngood, cc_time: same to the input parameters but with abnormal cross-correaltions removed
+    allstacks1: 1D matrix of stacked cross-correlation functions over all the segments
+    nstacks:    number of overall segments for the final stacks
+    '''
+    # load useful parameters from dict
+    samp_freq = stack_para['samp_freq']
+    smethod   = stack_para['stack_method']                                         
+    rma_substack = stack_para['rma_substack']                                                
+    rma_step     = stack_para['rma_step']
+    start_date   = stack_para['start_date']
+    end_date     = stack_para['end_date']                                              
+    npts = cc_array.shape[1]
+
+    # remove abnormal data     
+    ampmax = np.max(cc_array,axis=1)
+    tindx  = np.where( (ampmax<20*np.median(ampmax)) & (ampmax>0))[0]
+    if not len(tindx):
+        allstacks1=[];allstacks2=[];nstacks=0
+        cc_array=[];cc_ngood=[];cc_time=[]
+        return cc_array,cc_ngood,cc_time,allstacks1,allstacks2,nstacks
+    else:
+
+        # remove ones with bad amplitude
+        cc_array = cc_array[tindx,:]
+        cc_time  = cc_time[tindx]
+        cc_ngood = cc_ngood[tindx]
+
+        # do substacks
+        if rma_substack:
+            tstart = obspy.UTCDateTime(start_date)-obspy.UTCDateTime(1970,1,1)
+            tend   = obspy.UTCDateTime(end_date)-obspy.UTCDateTime(1970,1,1)
+            ttime  = tstart
+            nstack = int(np.round((tend-tstart)/(rma_step*3600)))
+            ncc_array = np.zeros(shape=(nstack,npts),dtype=np.float32)
+            ncc_time  = np.zeros(nstack,dtype=np.float)
+            ncc_ngood = np.zeros(nstack,dtype=np.int)
+
+            # loop through each time
+            for ii in range(nstack):
+                sindx = np.where((cc_time>=ttime) & (cc_time<ttime+rma_substack*3600))[0]
+                
+                # when there are data in the time window
+                if len(sindx):
+                    ncc_array[ii] = np.mean(cc_array[sindx],axis=0)
+                    ncc_time[ii]  = ttime
+                    ncc_ngood[ii] = np.sum(cc_ngood[sindx],axis=0)
+                ttime += rma_step*3600
+
+            # remove bad ones
+            tindx = np.where(ncc_ngood>0)[0]
+            ncc_array = ncc_array[tindx]
+            ncc_time  = ncc_time[tindx]
+            ncc_ngood  = ncc_ngood[tindx]
+        
+        # do stacking
+        allstacks1 = np.zeros(npts,dtype=np.float32)
+        allstacks2 = np.zeros(npts,dtype=np.float32)
+        allstacks3 = np.zeros(npts,dtype=np.float32)
+
+        if smethod == 'linear':
+            allstacks1 = np.mean(cc_array,axis=0)
+        elif smethod == 'pws':
+            allstacks1 = pws(cc_array,samp_freq) 
+        elif smethod == 'robust':
+            allstacks1 = robust_stack(cc_array,0.001)
+        elif smethod == 'all':
+            allstacks1 = np.mean(cc_array,axis=0)
+            allstacks2 = pws(cc_array,samp_freq) 
+            allstacks3 = robust_stack(cc_array,0.001)
         nstacks = np.sum(cc_ngood)
     
+    # replace the array for substacks
+    if rma_substack:
+        cc_array = ncc_array
+        cc_time  = ncc_time
+        cc_ngood = ncc_ngood
+
     # good to return
-    if smethod != 'both':
-        return cc_array,cc_ngood,cc_time,allstacks1,nstacks
-    else:
-        return cc_array,cc_ngood,cc_time,allstacks1,allstacks2,nstacks
+    return cc_array,cc_ngood,cc_time,allstacks1,allstacks2,allstacks3,nstacks
 
 def rotation(bigstack,parameters,locs,flag):
     '''
@@ -1107,28 +1342,25 @@ def robust_stack(cc_array,epsilon):
     res  = 9E9  # residuals
     w = np.ones(cc_array.shape[0])
     nstep=0
+    newstack = np.median(cc_array,axis=0)
     while res > epsilon:
-        stack = np.mean((w*cc_array.T).T,axis=0)
+        stack = newstack
         for i in range(cc_array.shape[0]):
             crap = np.multiply(stack,cc_array[i,:].T)
             crap_dot = np.sum(crap)
             di_norm = np.linalg.norm(cc_array[i,:])
             ri = cc_array[i,:] -  crap_dot*stack
             ri_norm = np.linalg.norm(ri)
-            w[i]  = np.abs(crap_dot) / di_norm/ri_norm#/len(cc_array[:,1])
+            w[i]  = np.abs(crap_dot) /di_norm/ri_norm#/len(cc_array[:,1])
         # print(w)
         w =w /np.sum(w)
         newstack =np.sum( (w*cc_array.T).T,axis=0)#/len(cc_array[:,1])
-        # print(newstack)
-        # plt.plot(newstack)
-        # plt.show()
         res = np.linalg.norm(newstack-stack,ord=1)/np.linalg.norm(newstack)/len(cc_array[:,1])
         nstep +=1
-        # print(res)
-        # print('nstep',nstep)
         if nstep>10:
-            return newstack
-    return newstack
+            return newstack, w, nstep
+    return newstack, w, nstep
+
 
 
 def whiten(data, fft_para):
@@ -2308,9 +2540,9 @@ def backtrackDistanceFunction(dir, d, err, lmin, b):
     return stbar
 
 
-def wct_modified(y1, y2, dt, dj=1/12, s0=-1, J=-1, sig=True,
-        significance_level=0.95, wavelet='morlet', normalize=True, **kwargs):
-    """Wavelet coherence transform (WCT).
+def wct_modified(y1, y2, dt, dj=1/12, s0=-1, J=-1, sig=True, significance_level=0.95, wavelet='morlet', normalize=True, **kwargs):
+    '''
+    Wavelet coherence transform (WCT).
 ​
     The WCT finds regions in time frequency space where the two time
     series co-vary, but do not necessarily have high power.
@@ -2345,9 +2577,9 @@ def wct_modified(y1, y2, dt, dj=1/12, s0=-1, J=-1, sig=True,
     --------
     cwt, xwt
 ​
-    """
+    '''
+    
     wavelet = pycwt.wavelet._check_parameter_wavelet(wavelet)
-​
     # Checking some input parameters
     if s0 == -1:
         # Number of scales
@@ -2355,7 +2587,7 @@ def wct_modified(y1, y2, dt, dj=1/12, s0=-1, J=-1, sig=True,
     if J == -1:
         # Number of scales
         J = np.int(np.round(np.log2(y1.size * dt / s0) / dj))
-​
+
     # Makes sure input signals are numpy arrays.
     y1 = np.asarray(y1)
     y2 = np.asarray(y2)
@@ -2369,20 +2601,20 @@ def wct_modified(y1, y2, dt, dj=1/12, s0=-1, J=-1, sig=True,
     else:
         y1_normal = y1
         y2_normal = y2
-​
+
     # Calculates the CWT of the time-series making sure the same parameters
     # are used in both calculations.
     _kwargs = dict(dj=dj, s0=s0, J=J, wavelet=wavelet)
     W1, sj, freq, coi, _, _ = pycwt.cwt(y1_normal, dt, **_kwargs)
     W2, sj, freq, coi, _, _ = pycwt.cwt(y2_normal, dt, **_kwargs)
-​
+    
     scales1 = np.ones([1, y1.size]) * sj[:, None]
     scales2 = np.ones([1, y2.size]) * sj[:, None]
-​
+
     # Smooth the wavelet spectra before truncating.
     S1 = wavelet.smooth(np.abs(W1) ** 2 / scales1, dt, dj, sj)
     S2 = wavelet.smooth(np.abs(W2) ** 2 / scales2, dt, dj, sj)
-​
+
     # Now the wavelet transform coherence
     W12 = W1 * W2.conj()
     scales = np.ones([1, y1.size]) * sj[:, None]
@@ -2392,10 +2624,10 @@ def wct_modified(y1, y2, dt, dj=1/12, s0=-1, J=-1, sig=True,
     
     # Calculate cross spectrum & its amplitude
     WXS, WXA = W12, np.abs(S12)
-​
+
     # Calculates the significance using Monte Carlo simulations with 95%
     # confidence as a function of scale.
-​
+
     if sig:
         a1, b1, c1 = pycwt.ar1(y1)
         a2, b2, c2 = pycwt.ar1(y2)
@@ -2404,8 +2636,8 @@ def wct_modified(y1, y2, dt, dj=1/12, s0=-1, J=-1, sig=True,
                                wavelet=wavelet, **kwargs)
     else:
         sig = np.asarray([0])
-​
-    return WXS, WXA, WCT, aWCT, coi, freq, sig
+
+    return WCT, aWCT, coi, freq, sig
 
 
 ################################################################
