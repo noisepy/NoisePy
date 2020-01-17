@@ -9,6 +9,10 @@ Detailed documentation can be found at https://noise-python.readthedocs.io/en/la
 
 <img src="/docs/figures/logo.png" width="800" height="400">
  
+# Citation:
+Please cite the following reference if you use the code for your publication:
+Jiang, C. and Denolle, M. "NoisePy: a new high-performance python tool for seismic ambient noise seismology." In review in Seismological Research Letter.
+
 # Installation
 The nature of NoisePy being composed of python scripts allows flexiable package installation, which is essentially to build dependented libraries the scripts and related functions live upon. We recommand to use [conda](https://docs.conda.io/en/latest/) and [pip](https://pypi.org/project/pip/) to install the library due to their convinence. Below are command lines we have tested that would create a python environment to run NoisePy. Note that the test is performed on `macOS Mojave (10.14.5)`, so it could be slightly different for other OS. 
 
