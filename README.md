@@ -82,8 +82,8 @@ This script is used to assemble and/or stack all cross-correlation functions com
 ```python
 import plotting_modules,glob
 sfiles = glob.glob('/Users/chengxin/Documents/SCAL/STACK/*/*.h5')
-plot_modules.plot_all_moveout(sfiles,'Allstack0linear'0.1,0.2,'ZZ',1,300,True,'/Users/chengxin/Documents/SCAL/STACK') #(move-out for linear stacking)
-plot_modules.plot_all_moveout(sfiles,'Allstack0pws'0.1,0.2,'ZZ',1,300,True,'/Users/chengxin/Documents/SCAL/STACK')    #(move-out for pws)
+plot_modules.plot_all_moveout(sfiles,'Allstack_linear'0.1,0.2,'ZZ',1,300,True,'/Users/chengxin/Documents/SCAL/STACK') #(move-out for linear stacking)
+plot_modules.plot_all_moveout(sfiles,'Allstack_pws'0.1,0.2,'ZZ',1,300,True,'/Users/chengxin/Documents/SCAL/STACK')    #(move-out for pws)
 ```
 <img src="/docs/figures/linear_stack1.png" width="400" height="300"><img src="/docs/figures/pws_stack1.png" width="400" height="300">
 
@@ -94,5 +94,5 @@ Marine Denolle (mdenolle@fas.harvard.edu).
 
 #### Reference
 Seats, K. J., Jesse F. L., and German A. P. "Improved ambient noise correlation functions using Welch′ s method." _Geophysical Journal International_ 188, no. 2 (2012): 513-523.  
-*Jiang, C. and Denolle, M. "NoisePy: a new high-performance python tool for seismic ambient noise seismology." In prep for _Seismological Research Letter_.  
+*Jiang, C. and Denolle, M. "NoisePy: a new high-performance python tool for seismic ambient noise seismology." In revision for _Seismological Research Letter_.  
 **Yuan, C., et al.
