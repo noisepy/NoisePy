@@ -779,11 +779,16 @@ def correlate_nonlinear_stack(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
             s_corr = np.mean(s_corr[tindx],axis=0)
             t_corr = dataS_t[0]
             n_corr = len(tindx)
-        else:
-            print('do robust stacking for a day')
+        elif stack_method == 'robust':
+            print('do robust substacking')
             s_corr = robust_stack(s_corr,0.001)
             t_corr = dataS_t[0]
             n_corr = nwin       
+      #  elif stack_method == 'selective':
+      #      print('do selective substacking')
+      #      s_corr = selective_stack(s_corr,0.001)
+      #      t_corr = dataS_t[0]
+      #      n_corr = nwin     
 
     # trim the CCFs in [-maxlag maxlag] 
     t = np.arange(-Nfft2+1, Nfft2)*dt
@@ -961,6 +966,7 @@ def stacking_rma(cc_array,cc_time,cc_ngood,stack_para):
         allstacks1 = np.zeros(npts,dtype=np.float32)
         allstacks2 = np.zeros(npts,dtype=np.float32)
         allstacks3 = np.zeros(npts,dtype=np.float32)
+        allstacks4 = np.zeros(npts,dtype=np.float32)
 
         if smethod == 'linear':
             allstacks1 = np.mean(cc_array,axis=0)
@@ -968,10 +974,13 @@ def stacking_rma(cc_array,cc_time,cc_ngood,stack_para):
             allstacks1 = pws(cc_array,samp_freq) 
         elif smethod == 'robust':
             allstacks1 = robust_stack(cc_array,0.001)
+        #elif smethod == 'selective':
+        #    allstacks1 = selective_stack(cc_array,0.001)
         elif smethod == 'all':
             allstacks1 = np.mean(cc_array,axis=0)
             allstacks2 = pws(cc_array,samp_freq) 
             allstacks3 = robust_stack(cc_array,0.001)
+            allstacks4 = selective_stack(cc_array,0.001)
         nstacks = np.sum(cc_ngood)
     
     # replace the array for substacks
@@ -981,7 +990,7 @@ def stacking_rma(cc_array,cc_time,cc_ngood,stack_para):
         cc_ngood = ncc_ngood
 
     # good to return
-    return cc_array,cc_ngood,cc_time,allstacks1,allstacks2,allstacks3,nstacks
+    return cc_array,cc_ngood,cc_time,allstacks1,allstacks2,allstacks3,allstacks4,nstacks
 
 def rotation(bigstack,parameters,locs,flag):
     '''
@@ -1360,6 +1369,32 @@ def robust_stack(cc_array,epsilon):
         if nstep>10:
             return newstack, w, nstep
     return newstack, w, nstep
+
+
+def selective_stack(cc_array,epsilon):
+    """ 
+    this is a selective stacking algorithm developed by Jared Bryan.
+
+    PARAMETERS:
+    ----------------------
+    cc_array: numpy.ndarray contains the 2D cross correlation matrix
+    epsilon: residual threhold to quit the iteration
+    RETURNS:
+    ----------------------
+    newstack: numpy vector contains the stacked cross correlation
+
+    Written by Marine Denolle 
+    """
+    res  = 9E9  # residuals
+    cc = np.ones(cc_array.shape[0])
+    nstep=0
+    newstack = np.mean(cc_array,axis=0)
+    for i in range(cc_array.shape[0]):
+    	CC[i] = np.sum(np.multiply(stack,cc_array[i,:].T))
+    ik = np.where(CC>=epsilon)
+    newstack = np.mean(cc_array[ik,:],axis=0)
+	
+    return newstack, cc
 
 
 
