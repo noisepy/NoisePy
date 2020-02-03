@@ -32,6 +32,7 @@ outdir    = os.path.join(rootpath,'figures/dispersion')                     # di
 
 # data type and cross-component
 stack_method = 'linear'                                                     # which stacked data to measure dispersion info
+lag_type = 'sym'                                                            # options to do measurements on the 'neg', 'pos' or 'sym' lag (average of neg and pos)
 ncomp = 3
 if ncomp==1:
     rtz_system = ['ZZ']    
@@ -97,7 +98,15 @@ for comp in rtz_system:
     # stack positive and negative lags
     npts = int(1/dt)*2*maxlag+1
     indx = npts//2
-    data = 0.5*tdata[indx:]+0.5*np.flip(tdata[:indx+1],axis=0)
+
+    if lag_type == 'neg':
+        data = tdata[:indx+1]
+    elif lag_type == 'pos':
+        data = tdata[indx:]
+    elif lag_type == 'sym':
+        data = 0.5*tdata[indx:]+0.5*np.flip(tdata[:indx+1],axis=0)
+    else:
+        raise ValueError('parameter of lag_type (L35) is not right! please double check')
 
     # trim the data according to vel window
     pt1 = int(dist/vmax/dt)
@@ -168,7 +177,7 @@ for comp in rtz_system:
         plt.tight_layout()
         
 # save figures
-outfname = outdir+'/{0:s}.pdf'.format(spair)
+outfname = outdir+'/{0:s}_{1:s}.pdf'.format(spair,lag_type)
 if ncomp==3:
     fig.tight_layout()
     fig.savefig(outfname, format='pdf', dpi=400)
