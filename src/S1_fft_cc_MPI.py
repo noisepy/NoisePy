@@ -302,7 +302,7 @@ for ick in range (rank,splits,size):
 
         # get index right for auto/cross correlation
         istart=iiS;iend=iii
-        if acorr_only:iend=np.minimum(iiS+3,iii)
+        if acorr_only:iend=np.minimum(iiS+ncomp,iii)
         if xcorr_only:istart=np.minimum(iiS+ncomp,iii)
 
         #-----------now loop III for each receiver B----------
