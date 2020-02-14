@@ -20,7 +20,7 @@ The nature of NoisePy being composed of python scripts allows flexiable package 
 
 ```python
 conda create -n noisepy -c conda-forge python=3.7.3 numpy=1.16.2 numba pandas pycwt jupyter mpi4py=3.0.1
-source activate noisepy
+conda activate noisepy
 pip install obspy pyasdf
 git clone https://github.com/mdenolle/NoisePy.git
 ```
