@@ -15,10 +15,10 @@ and `pip <https://pypi.org/project/pip/>`_ to install the library due to their c
 Below are command lines we have tested that would create a python environment to run NoisePy. 
 
 .. code-block:: bash
-
-    $ conda create -n noisepy -c conda-forge python=3.7.3 numpy=1.16.2 numba pandas pycwt mpi4py=3.0.1
+    $ conda create -n noisepy -c conda-forge python=3.7 numpy=1.16.2 numba pandas pycwt jupyter mpi4py=3.0.1 obspy=1.1 pyasdf
     $ conda activate noisepy
-    $ pip install obspy pyasdf 
+    $ git clone https://github.com/mdenolle/NoisePy.git
+    
 
 .. note:: 
     Please note that the test is performed on *macOS Mojave (10.14.5)*, so it could be slightly different for other OS. 
