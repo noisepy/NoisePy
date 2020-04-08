@@ -323,7 +323,9 @@ def stats2inv(stats,prepro_para,locs=None):
             sample_rate=stats.sampling_rate)
 
     elif input_fmt == 'mseed':
-        ista=locs[locs['station']==stats.station].index.values.astype('int64')[0]
+	ista=locs[locs.astype({'station':'str'})['station']==stats.station].index.values.astype('int64')[0]
+	# the line above make sure that even if a station is labeled as an integer, it's read as a string
+        #ista=locs[locs['station']==stats.station].index.values.astype('int64')[0]
 
         net = Network(
             # This is the network code according to the SEED standard.
