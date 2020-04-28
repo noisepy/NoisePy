@@ -47,10 +47,10 @@ if not os.path.isfile(locations):
 # define new stacking para
 keep_substack= True                                                 # keep all sub-stacks in final ASDF file
 flag         = False                                                # output intermediate args for debugging
-stack_method = 'linear'                                             # linear, pws, robust or all
+stack_method = 'all'                                                # linear, pws, robust or all
 
 # new rotation para
-rotation     = False                                                # rotation from E-N-Z to R-T-Z 
+rotation     = True                                                 # rotation from E-N-Z to R-T-Z 
 correction   = False                                                # angle correction due to mis-orientation
 if rotation and correction:
     corrfile = os.path.join(rootpath,'meso_angles.txt')             # csv file containing angle info to be corrected
@@ -247,8 +247,9 @@ for ipair in range (rank,splits,size):
         if not len(allstacks1):continue
         if rotation:
             bigstack[icomp] =allstacks1
-            bigstack1[icomp]=allstacks2
-            bigstack2[icomp]=allstacks2
+            if stack_method == 'all':
+                bigstack1[icomp]=allstacks2
+                bigstack2[icomp]=allstacks3
 
         # write stacked data into ASDF file
         with pyasdf.ASDFDataSet(stack_h5,mpi=False) as ds:

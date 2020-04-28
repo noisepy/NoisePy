@@ -323,9 +323,7 @@ def stats2inv(stats,prepro_para,locs=None):
             sample_rate=stats.sampling_rate)
 
     elif input_fmt == 'mseed':
-	ista=locs[locs.astype({'station':'str'})['station']==stats.station].index.values.astype('int64')[0]
-	# the line above make sure that even if a station is labeled as an integer, it's read as a string
-        #ista=locs[locs['station']==stats.station].index.values.astype('int64')[0]
+        ista=locs[locs['station']==stats.station].index.values.astype('int64')[0]
 
         net = Network(
             # This is the network code according to the SEED standard.
@@ -888,11 +886,11 @@ def stacking(cc_array,cc_time,cc_ngood,stack_para):
         elif smethod == 'pws':
             allstacks1 = pws(cc_array,samp_freq) 
         elif smethod == 'robust':
-            allstacks1 = robust_stack(cc_array,0.001)
+            allstacks1,w,nstep = robust_stack(cc_array,0.001)
         elif smethod == 'all':
             allstacks1 = np.mean(cc_array,axis=0)
             allstacks2 = pws(cc_array,samp_freq) 
-            allstacks3 = robust_stack(cc_array,0.001)
+            allstacks3,w,nstep = robust_stack(cc_array,0.001)
         nstacks = np.sum(cc_ngood)
 
     # good to return
@@ -975,7 +973,7 @@ def stacking_rma(cc_array,cc_time,cc_ngood,stack_para):
         elif smethod == 'pws':
             allstacks1 = pws(cc_array,samp_freq) 
         elif smethod == 'robust':
-            allstacks1 = robust_stack(cc_array,0.001)
+            allstacks1,w, = robust_stack(cc_array,0.001)
         #elif smethod == 'selective':
         #    allstacks1 = selective_stack(cc_array,0.001)
         elif smethod == 'all':
