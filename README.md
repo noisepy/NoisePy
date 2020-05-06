@@ -16,15 +16,14 @@ Jiang, C. and Denolle, M. "NoisePy: a new high-performance python tool for seism
 # Installation
 The nature of NoisePy being composed of python scripts allows flexiable package installation, which is essentially to build dependented libraries the scripts and related functions live upon. We recommand to use [conda](https://docs.conda.io/en/latest/) and [pip](https://pypi.org/project/pip/) to install the library due to their convinence. Below are command lines we have tested that would create a python environment to run NoisePy. Note that the test is performed on `macOS Mojave (10.14.5)`, so it could be slightly different for other OS. 
 
-### Note the order of the command lines (lines 1-3) below matters ###
+### Note the order of the command lines below matters ###
 
 ```python
-conda create -n noisepy -c conda-forge python=3.7.3 numpy=1.16.2 numba pandas pycwt jupyter mpi4py=3.0.1
+conda create -n noisepy -c conda-forge python=3.7 numpy=1.16.2 numba pandas pycwt jupyter mpi4py=3.0.1 obspy=1.1 pyasdf
 conda activate noisepy
-pip install obspy pyasdf
 git clone https://github.com/mdenolle/NoisePy.git
 ```
-(note that pip and python must match, and that pip is an alias for pip3...)
+
 # Functionality
 * download continous noise data based on obspy's core functions of [get_station](https://docs.obspy.org/packages/autogen/obspy.clients.fdsn.client.Client.get_stations.html) and [get_waveforms](https://docs.obspy.org/packages/autogen/obspy.clients.fdsn.client.Client.get_waveforms.html)
 * save seismic data in [ASDF](https://asdf-definition.readthedocs.io/en/latest/) format, which convinently assembles meta, wavefrom and auxililary data into one single file ([Turtorials](https://github.com/SeismicData/pyasdf/blob/master/doc/tutorial.rst) on reading/writing ASDF files)
