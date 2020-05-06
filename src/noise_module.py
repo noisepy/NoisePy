@@ -44,21 +44,21 @@ def get_event_list(str1,str2,inc_hours):
     this function calculates the event list between time1 and time2 by increment of inc_hours
     in the formate of %Y_%m_%d_%H_%M_%S' (used in S0A & S0B)
     PARAMETERS:
-    ----------------    
+    ----------------
     str1: string of the starting time -> 2010_01_01_0_0
     str2: string of the ending time -> 2010_10_11_0_0
     inc_hours: integer of incremental hours
     RETURNS:
     ----------------
-    event: a numpy character list 
+    event: a numpy character list
     '''
     date1=str1.split('_')
     date2=str2.split('_')
     y1=int(date1[0]);m1=int(date1[1]);d1=int(date1[2])
     h1=int(date1[3]);mm1=int(date1[4]);mn1=int(date1[5])
     y2=int(date2[0]);m2=int(date2[1]);d2=int(date2[2])
-    h2=int(date2[3]);mm2=int(date2[4]);mn2=int(date2[5])    
-  
+    h2=int(date2[3]);mm2=int(date2[4]);mn2=int(date2[5])
+
     d1=datetime.datetime(y1,m1,d1,h1,mm1,mn1)
     d2=datetime.datetime(y2,m2,d2,h2,mm2,mn2)
     dt=datetime.timedelta(hours=inc_hours)
@@ -68,21 +68,21 @@ def get_event_list(str1,str2,inc_hours):
         event.append(d1.strftime('%Y_%m_%d_%H_%M_%S'))
         d1+=dt
     event.append(d2.strftime('%Y_%m_%d_%H_%M_%S'))
-    
+
     return event
 
 def make_timestamps(prepro_para):
     '''
     this function prepares the timestamps of both the starting and ending time of each mseed/sac file that
-    is stored on local machine. this time info is used to search all stations in specific time chunck 
-    when preparing noise data in ASDF format. it creates a csv file containing all timestamp info if the 
+    is stored on local machine. this time info is used to search all stations in specific time chunck
+    when preparing noise data in ASDF format. it creates a csv file containing all timestamp info if the
     file does not exist (used in S0B)f
     PARAMETERS:
     -----------------------
     prepro_para: a dic containing all pre-processing parameters used in S0B
     RETURNS:
     -----------------------
-    all_stimes: numpy float array containing startting and ending time for all SAC/mseed files  
+    all_stimes: numpy float array containing startting and ending time for all SAC/mseed files
     '''
     # load parameters from para dic
     wiki_file = prepro_para['wiki_file']
@@ -96,7 +96,7 @@ def make_timestamps(prepro_para):
         all_stimes = np.zeros(shape=(len(allfiles),2),dtype=np.float)
         all_stimes[:,0] = tmp['starttime']
         all_stimes[:,1] = tmp['endtime']
-    
+
     # have to read each sac/mseed data one by one
     else:
         allfiles = glob.glob(allfiles_path)
@@ -123,7 +123,7 @@ def make_timestamps(prepro_para):
                 day   = int(allfiles[ii].split('/')[-2].split('_')[3])
                 all_stimes[ii,0] = obspy.UTCDateTime(year=year,month=month,day=day)-obspy.UTCDateTime(year=1970,month=1,day=1)
                 all_stimes[ii,1] = all_stimes[ii,0]+86400
-        
+
         # save name and time info for later use if the file not exist
         if not os.path.isfile(wiki_file):
             wiki_info = {'names':allfiles,'starttime':all_stimes[:,0],'endtime':all_stimes[:,1]}
@@ -148,14 +148,18 @@ def preprocess_raw(st,inv,prepro_para,date_info):
     -----------------------
     st:  obspy stream object, containing noise data to be processed
     inv: obspy inventory object, containing stations info
-    prepro_para: dict containing fft parameters, such as frequency bands and selection for instrument response removal etc. 
+    prepro_para: dict containing fft parameters, such as frequency bands and selection for instrument response removal etc.
     date_info:   dict of start and end time of the stream data
     RETURNS:
     -----------------------
-    ntr: obspy stream object of cleaned, merged and filtered noise data 
+    ntr: obspy stream object of cleaned, merged and filtered noise data
     '''
     # load paramters from fft dict
     rm_resp       = prepro_para['rm_resp']
+    if 'rm_resp_out' in prepro_para.keys():
+        rm_resp_out   = prepro_para['rm_resp_out']
+    else:
+        rm_resp_out   = 'VEL'
     respdir       = prepro_para['respdir']
     freqmin       = prepro_para['freqmin']
     freqmax       = prepro_para['freqmax']
@@ -225,7 +229,7 @@ def preprocess_raw(st,inv,prepro_para,date_info):
                 try:
                     print('removing response for %s using inv'%st[0])
                     st[0].attach_response(inv)
-                    st[0].remove_response(output="VEL",pre_filt=pre_filt,water_level=60)
+                    st[0].remove_response(output=rm_resp_out,pre_filt=pre_filt,water_level=60)
                 except Exception:
                     st = []
                     return st
@@ -270,7 +274,7 @@ def stats2inv(stats,prepro_para,locs=None):
     PARAMETERS:
     ------------------------
     stats: obspy trace stats object containing all station header info
-    prepro_para: dict containing fft parameters, such as frequency bands and selection for instrument response removal etc. 
+    prepro_para: dict containing fft parameters, such as frequency bands and selection for instrument response removal etc.
     locs:  panda data frame of the station list. it is needed for convering miniseed files into ASDF
     RETURNS:
     ------------------------
@@ -288,7 +292,7 @@ def stats2inv(stats,prepro_para,locs=None):
             if os.path.isfile(str(invfile)):
                 inv = obspy.read_inventory(invfile)
                 return inv
-	
+
     inv = Inventory(networks=[],source="homegrown")
 
     if input_fmt=='sac':
@@ -360,7 +364,7 @@ def stats2inv(stats,prepro_para,locs=None):
     net.stations.append(sta)
     inv.networks.append(net)
 
-    return inv        
+    return inv
 
 
 def sta_info_from_inv(inv):
@@ -397,7 +401,7 @@ def sta_info_from_inv(inv):
 
 def cut_trace_make_statis(fc_para,source):
     '''
-    this function cuts continous noise data into user-defined segments, estimate the statistics of 
+    this function cuts continous noise data into user-defined segments, estimate the statistics of
     each segment and keep timestamp of each segment for later use. (used in S1)
     PARAMETERS:
     ----------------------
@@ -441,7 +445,7 @@ def cut_trace_make_statis(fc_para,source):
     trace_stdS = np.zeros(nseg,dtype=np.float32)
     dataS    = np.zeros(shape=(nseg,npts),dtype=np.float32)
     dataS_t  = np.zeros(nseg,dtype=np.float)
-    
+
     indx1 = 0
     for iseg in range(nseg):
         indx2 = indx1+npts
@@ -462,7 +466,7 @@ def cut_trace_make_statis(fc_para,source):
 def noise_processing(fft_para,dataS):
     '''
     this function performs time domain and frequency domain normalization if needed. in real case, we prefer use include
-    the normalization in the cross-correaltion steps by selecting coherency or decon (Prieto et al, 2008, 2009; Denolle et al, 2013) 
+    the normalization in the cross-correaltion steps by selecting coherency or decon (Prieto et al, 2008, 2009; Denolle et al, 2013)
     PARMAETERS:
     ------------------------
     fft_para: dictionary containing all useful variables used for fft and cc
@@ -481,7 +485,7 @@ def noise_processing(fft_para,dataS):
 
         if time_norm == 'one_bit': 	# sign normalization
             white = np.sign(dataS)
-        elif time_norm == 'rma': # running mean: normalization over smoothed absolute average           
+        elif time_norm == 'rma': # running mean: normalization over smoothed absolute average
             white = np.zeros(shape=dataS.shape,dtype=dataS.dtype)
             for kkk in range(N):
                 white[kkk,:] = dataS[kkk,:]/moving_ave(np.abs(dataS[kkk,:]),smooth_N)
@@ -495,7 +499,7 @@ def noise_processing(fft_para,dataS):
     else:
         Nfft = int(next_fast_len(int(dataS.shape[1])))
         source_white = scipy.fftpack.fft(white, Nfft, axis=1) # return FFT
-    
+
     return source_white
 
 
@@ -506,7 +510,7 @@ def smooth_source_spect(cc_para,fft1):
     ---------------------
     cc_para: dictionary containing useful cc parameters
     fft1:    source spectrum matrix
-    
+
     RETURNS:
     ---------------------
     sfft1: complex numpy array with normalized spectrum
@@ -532,16 +536,16 @@ def smooth_source_spect(cc_para,fft1):
 
     elif cc_method == 'xcorr':
         sfft1 = np.conj(fft1)
-    
+
     else:
         raise ValueError('no correction correlation method is selected at L59')
-    
+
     return sfft1
 
 def correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
     '''
-    this function does the cross-correlation in freq domain and has the option to keep sub-stacks of 
-    the cross-correlation if needed. it takes advantage of the linear relationship of ifft, so that 
+    this function does the cross-correlation in freq domain and has the option to keep sub-stacks of
+    the cross-correlation if needed. it takes advantage of the linear relationship of ifft, so that
     stacking is performed in spectrum domain first to reduce the total number of ifft. (used in S1)
     PARAMETERS:
     ---------------------
@@ -566,8 +570,8 @@ def correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
     dt      = D['dt']
     maxlag  = D['maxlag']
     method  = D['cc_method']
-    cc_len  = D['cc_len'] 
-    substack= D['substack']                                                          
+    cc_len  = D['cc_len']
+    substack= D['substack']
     substack_len  = D['substack_len']
     smoothspect_N = D['smoothspect_N']
 
@@ -579,7 +583,7 @@ def correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
     corr = fft1_smoothed_abs.reshape(fft1_smoothed_abs.size,)*fft2.reshape(fft2.size,)
 
     if method == "coherency":
-        temp = moving_ave(np.abs(fft2.reshape(fft2.size,)),smoothspect_N)             
+        temp = moving_ave(np.abs(fft2.reshape(fft2.size,)),smoothspect_N)
         corr /= temp
     corr  = corr.reshape(nwin,Nfft2)
 
@@ -591,8 +595,8 @@ def correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
             n_corr = np.zeros(nwin,dtype=np.int16)                  # number of correlations for each substack
             t_corr = dataS_t                                        # timestamp
             crap   = np.zeros(Nfft,dtype=np.complex64)
-            for i in range(nwin): 
-                n_corr[i]= 1           
+            for i in range(nwin):
+                n_corr[i]= 1
                 crap[:Nfft2] = corr[i,:]
                 crap[:Nfft2] = crap[:Nfft2]-np.mean(crap[:Nfft2])   # remove the mean in freq domain (spike at t=0)
                 crap[-(Nfft2)+1:] = np.flip(np.conj(crap[1:(Nfft2)]),axis=0)
@@ -605,8 +609,8 @@ def correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
             s_corr = s_corr[tindx,:]
             t_corr = t_corr[tindx]
             n_corr = n_corr[tindx]
-        
-        else:     
+
+        else:
             # get time information
             Ttotal = dataS_t[-1]-dataS_t[0]             # total duration of what we have now
             tstart = dataS_t[0]
@@ -616,14 +620,14 @@ def correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
             s_corr = np.zeros(shape=(nstack,Nfft),dtype=np.float32)
             n_corr = np.zeros(nstack,dtype=np.int)
             t_corr = np.zeros(nstack,dtype=np.float)
-            crap   = np.zeros(Nfft,dtype=np.complex64)                                              
+            crap   = np.zeros(Nfft,dtype=np.complex64)
 
-            for istack in range(nstack):                                                                   
-                # find the indexes of all of the windows that start or end within 
-                itime = np.where( (dataS_t >= tstart) & (dataS_t < tstart+substack_len) )[0]  
+            for istack in range(nstack):
+                # find the indexes of all of the windows that start or end within
+                itime = np.where( (dataS_t >= tstart) & (dataS_t < tstart+substack_len) )[0]
                 if len(itime)==0:tstart+=substack_len;continue
-                
-                crap[:Nfft2] = np.mean(corr[itime,:],axis=0)   # linear average of the correlation 
+
+                crap[:Nfft2] = np.mean(corr[itime,:],axis=0)   # linear average of the correlation
                 crap[:Nfft2] = crap[:Nfft2]-np.mean(crap[:Nfft2])   # remove the mean in freq domain (spike at t=0)
                 crap[-(Nfft2)+1:]=np.flip(np.conj(crap[1:(Nfft2)]),axis=0)
                 crap[0]=complex(0,0)
@@ -632,7 +636,7 @@ def correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
                 t_corr[istack] = tstart                   # save the time stamps
                 tstart += substack_len
                 #print('correlation done and stacked at time %s' % str(t_corr[istack]))
-            
+
             # remove abnormal data
             ampmax = np.max(s_corr,axis=1)
             tindx  = np.where( (ampmax<20*np.median(ampmax)) & (ampmax>0))[0]
@@ -653,7 +657,7 @@ def correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
         crap[-(Nfft2)+1:]=np.flip(np.conj(crap[1:(Nfft2)]),axis=0)
         s_corr = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
 
-    # trim the CCFs in [-maxlag maxlag] 
+    # trim the CCFs in [-maxlag maxlag]
     t = np.arange(-Nfft2+1, Nfft2)*dt
     ind = np.where(np.abs(t) <= maxlag)[0]
     if s_corr.ndim==1:
@@ -664,8 +668,8 @@ def correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
 
 def correlate_nonlinear_stack(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
     '''
-    this function does the cross-correlation in freq domain and has the option to keep sub-stacks of 
-    the cross-correlation if needed. it takes advantage of the linear relationship of ifft, so that 
+    this function does the cross-correlation in freq domain and has the option to keep sub-stacks of
+    the cross-correlation if needed. it takes advantage of the linear relationship of ifft, so that
     stacking is performed in spectrum domain first to reduce the total number of ifft. (used in S1)
     PARAMETERS:
     ---------------------
@@ -690,9 +694,9 @@ def correlate_nonlinear_stack(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
     dt      = D['dt']
     maxlag  = D['maxlag']
     method  = D['cc_method']
-    cc_len  = D['cc_len'] 
-    substack= D['substack']     
-    stack_method  = D['stack_method']                                                     
+    cc_len  = D['cc_len']
+    substack= D['substack']
+    stack_method  = D['stack_method']
     substack_len  = D['substack_len']
     smoothspect_N = D['smoothspect_N']
 
@@ -705,7 +709,7 @@ def correlate_nonlinear_stack(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
 
     # normalize by receiver spectral for coherency
     if method == "coherency":
-        temp = moving_ave(np.abs(fft2.reshape(fft2.size,)),smoothspect_N)             
+        temp = moving_ave(np.abs(fft2.reshape(fft2.size,)),smoothspect_N)
         corr /= temp
     corr  = corr.reshape(nwin,Nfft2)
 
@@ -715,8 +719,8 @@ def correlate_nonlinear_stack(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
     n_corr = np.zeros(nwin,dtype=np.int16)                  # number of correlations for each substack
     t_corr = dataS_t                                        # timestamp
     crap   = np.zeros(Nfft,dtype=np.complex64)
-    for i in range(nwin): 
-        n_corr[i]= 1           
+    for i in range(nwin):
+        n_corr[i]= 1
         crap[:Nfft2] = corr[i,:]
         crap[:Nfft2] = crap[:Nfft2]-np.mean(crap[:Nfft2])   # remove the mean in freq domain (spike at t=0)
         crap[-(Nfft2)+1:] = np.flip(np.conj(crap[1:(Nfft2)]),axis=0)
@@ -736,8 +740,8 @@ def correlate_nonlinear_stack(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
             s_corr = s_corr[tindx,:]
             t_corr = t_corr[tindx]
             n_corr = n_corr[tindx]
-        
-        else:     
+
+        else:
             # get time information
             Ttotal = dataS_t[-1]-dataS_t[0]             # total duration of what we have now
             tstart = dataS_t[0]
@@ -747,14 +751,14 @@ def correlate_nonlinear_stack(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
             s_corr = np.zeros(shape=(nstack,Nfft),dtype=np.float32)
             n_corr = np.zeros(nstack,dtype=np.int)
             t_corr = np.zeros(nstack,dtype=np.float)
-            crap   = np.zeros(Nfft,dtype=np.complex64)                                              
+            crap   = np.zeros(Nfft,dtype=np.complex64)
 
-            for istack in range(nstack):                                                                   
-                # find the indexes of all of the windows that start or end within 
-                itime = np.where( (dataS_t >= tstart) & (dataS_t < tstart+substack_len) )[0]  
+            for istack in range(nstack):
+                # find the indexes of all of the windows that start or end within
+                itime = np.where( (dataS_t >= tstart) & (dataS_t < tstart+substack_len) )[0]
                 if len(itime)==0:tstart+=substack_len;continue
-                
-                crap[:Nfft2] = np.mean(corr[itime,:],axis=0)   # linear average of the correlation 
+
+                crap[:Nfft2] = np.mean(corr[itime,:],axis=0)   # linear average of the correlation
                 crap[:Nfft2] = crap[:Nfft2]-np.mean(crap[:Nfft2])   # remove the mean in freq domain (spike at t=0)
                 crap[-(Nfft2)+1:]=np.flip(np.conj(crap[1:(Nfft2)]),axis=0)
                 crap[0]=complex(0,0)
@@ -763,7 +767,7 @@ def correlate_nonlinear_stack(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
                 t_corr[istack] = tstart                   # save the time stamps
                 tstart += substack_len
                 #print('correlation done and stacked at time %s' % str(t_corr[istack]))
-            
+
             # remove abnormal data
             ampmax = np.max(s_corr,axis=1)
             tindx  = np.where( (ampmax<20*np.median(ampmax)) & (ampmax>0))[0]
@@ -783,14 +787,14 @@ def correlate_nonlinear_stack(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
             print('do robust substacking')
             s_corr = robust_stack(s_corr,0.001)
             t_corr = dataS_t[0]
-            n_corr = nwin       
+            n_corr = nwin
       #  elif stack_method == 'selective':
       #      print('do selective substacking')
       #      s_corr = selective_stack(s_corr,0.001)
       #      t_corr = dataS_t[0]
-      #      n_corr = nwin     
+      #      n_corr = nwin
 
-    # trim the CCFs in [-maxlag maxlag] 
+    # trim the CCFs in [-maxlag maxlag]
     t = np.arange(-Nfft2+1, Nfft2)*dt
     ind = np.where(np.abs(t) <= maxlag)[0]
     if s_corr.ndim==1:
@@ -801,7 +805,7 @@ def correlate_nonlinear_stack(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
 
 def cc_parameters(cc_para,coor,tcorr,ncorr,comp):
     '''
-    this function assembles the parameters for the cc function, which is used 
+    this function assembles the parameters for the cc function, which is used
     when writing them into ASDF files
     PARAMETERS:
     ---------------------
@@ -857,12 +861,12 @@ def stacking(cc_array,cc_time,cc_ngood,stack_para):
     '''
     # load useful parameters from dict
     samp_freq = stack_para['samp_freq']
-    smethod   = stack_para['stack_method']                                         
+    smethod   = stack_para['stack_method']
     start_date   = stack_para['start_date']
-    end_date     = stack_para['end_date']                                              
+    end_date     = stack_para['end_date']
     npts = cc_array.shape[1]
 
-    # remove abnormal data     
+    # remove abnormal data
     ampmax = np.max(cc_array,axis=1)
     tindx  = np.where( (ampmax<20*np.median(ampmax)) & (ampmax>0))[0]
     if not len(tindx):
@@ -884,12 +888,12 @@ def stacking(cc_array,cc_time,cc_ngood,stack_para):
         if smethod == 'linear':
             allstacks1 = np.mean(cc_array,axis=0)
         elif smethod == 'pws':
-            allstacks1 = pws(cc_array,samp_freq) 
+            allstacks1 = pws(cc_array,samp_freq)
         elif smethod == 'robust':
             allstacks1,w,nstep = robust_stack(cc_array,0.001)
         elif smethod == 'all':
             allstacks1 = np.mean(cc_array,axis=0)
-            allstacks2 = pws(cc_array,samp_freq) 
+            allstacks2 = pws(cc_array,samp_freq)
             allstacks3,w,nstep = robust_stack(cc_array,0.001)
         nstacks = np.sum(cc_ngood)
 
@@ -914,14 +918,14 @@ def stacking_rma(cc_array,cc_time,cc_ngood,stack_para):
     '''
     # load useful parameters from dict
     samp_freq = stack_para['samp_freq']
-    smethod   = stack_para['stack_method']                                         
-    rma_substack = stack_para['rma_substack']                                                
+    smethod   = stack_para['stack_method']
+    rma_substack = stack_para['rma_substack']
     rma_step     = stack_para['rma_step']
     start_date   = stack_para['start_date']
-    end_date     = stack_para['end_date']                                              
+    end_date     = stack_para['end_date']
     npts = cc_array.shape[1]
 
-    # remove abnormal data     
+    # remove abnormal data
     ampmax = np.max(cc_array,axis=1)
     tindx  = np.where( (ampmax<20*np.median(ampmax)) & (ampmax>0))[0]
     if not len(tindx):
@@ -948,7 +952,7 @@ def stacking_rma(cc_array,cc_time,cc_ngood,stack_para):
             # loop through each time
             for ii in range(nstack):
                 sindx = np.where((cc_time>=ttime) & (cc_time<ttime+rma_substack*3600))[0]
-                
+
                 # when there are data in the time window
                 if len(sindx):
                     ncc_array[ii] = np.mean(cc_array[sindx],axis=0)
@@ -961,7 +965,7 @@ def stacking_rma(cc_array,cc_time,cc_ngood,stack_para):
             ncc_array = ncc_array[tindx]
             ncc_time  = ncc_time[tindx]
             ncc_ngood  = ncc_ngood[tindx]
-        
+
         # do stacking
         allstacks1 = np.zeros(npts,dtype=np.float32)
         allstacks2 = np.zeros(npts,dtype=np.float32)
@@ -971,18 +975,18 @@ def stacking_rma(cc_array,cc_time,cc_ngood,stack_para):
         if smethod == 'linear':
             allstacks1 = np.mean(cc_array,axis=0)
         elif smethod == 'pws':
-            allstacks1 = pws(cc_array,samp_freq) 
+            allstacks1 = pws(cc_array,samp_freq)
         elif smethod == 'robust':
             allstacks1,w, = robust_stack(cc_array,0.001)
         #elif smethod == 'selective':
         #    allstacks1 = selective_stack(cc_array,0.001)
         elif smethod == 'all':
             allstacks1 = np.mean(cc_array,axis=0)
-            allstacks2 = pws(cc_array,samp_freq) 
+            allstacks2 = pws(cc_array,samp_freq)
             allstacks3 = robust_stack(cc_array,0.001)
             allstacks4 = selective_stack(cc_array,0.001)
         nstacks = np.sum(cc_ngood)
-    
+
     # replace the array for substacks
     if rma_substack:
         cc_array = ncc_array
@@ -995,7 +999,7 @@ def stacking_rma(cc_array,cc_time,cc_ngood,stack_para):
 def rotation(bigstack,parameters,locs,flag):
     '''
     this function transfers the Green's tensor from a E-N-Z system into a R-T-Z one
-    
+
     PARAMETERS:
     -------------------
     bigstack:   9 component Green's tensor in E-N-Z system
@@ -1049,7 +1053,7 @@ def rotation(bigstack,parameters,locs,flag):
     tcorr[6] = sina*cosb*bigstack[4]+sina*sinb*bigstack[3]-cosa*cosb*bigstack[1]-cosa*sinb*bigstack[0]
     tcorr[7] = -sina*sinb*bigstack[4]+sina*cosb*bigstack[3]+cosa*sinb*bigstack[1]-cosa*cosb*bigstack[0]
     tcorr[8] = -sina*bigstack[5]+cosa*bigstack[2]
-    
+
     return tcorr
 
 
@@ -1062,9 +1066,9 @@ def check_sample_gaps(stream,date_info):
     this function checks sampling rate and find gaps of all traces in stream.
     PARAMETERS:
     -----------------
-    stream: obspy stream object. 
+    stream: obspy stream object.
     date_info: dict of starting and ending time of the stream
-    
+
     RETURENS:
     -----------------
     stream: List of good traces in the stream
@@ -1078,8 +1082,8 @@ def check_sample_gaps(stream,date_info):
     if portion_gaps(stream,date_info)>0.3:
         stream = []
         return stream
-    
-    freqs = []	
+
+    freqs = []
     for tr in stream:
         freqs.append(int(tr.stats.sampling_rate))
     freq = max(freqs)
@@ -1089,18 +1093,18 @@ def check_sample_gaps(stream,date_info):
         if tr.stats.npts < 10:
             stream.remove(tr)
 
-    return stream			
+    return stream
 
 
 def portion_gaps(stream,date_info):
     '''
     this function tracks the gaps (npts) from the accumulated difference between starttime and endtime
-    of each stream trace. it removes trace with gap length > 30% of trace size. 
+    of each stream trace. it removes trace with gap length > 30% of trace size.
     PARAMETERS:
     -------------------
     stream: obspy stream object
     date_info: dict of starting and ending time of the stream
-    
+
     RETURNS:
     -----------------
     pgaps: proportion of gaps/all_pts in stream
@@ -1179,7 +1183,7 @@ def resp_spectrum(source,resp_file,downsamp_freq,pre_filt=None):
         indx = np.where(respz[0]<=0.5*sps)
         nfreq = np.linspace(0,0.5*sps,nfft//2+1)
         nrespz= np.interp(nfreq,np.real(respz[0][indx]),respz[1][indx])
-        
+
     #----do interpolation if necessary-----
     source_spect = np.fft.rfft(source[0].data,n=nfft)
 
@@ -1194,7 +1198,7 @@ def resp_spectrum(source,resp_file,downsamp_freq,pre_filt=None):
 
 
 def mad(arr):
-    """ 
+    """
     Median Absolute Deviation: MAD = median(|Xi- median(X)|)
     PARAMETERS:
     -------------------
@@ -1208,13 +1212,13 @@ def mad(arr):
     else:
         med = np.ma.median(arr)
         data = np.ma.median(np.ma.abs(arr-med))
-    return data	
-    
+    return data
+
 
 def detrend(data):
     '''
     this function removes the signal trend based on QR decomposion
-    NOTE: QR is a lot faster than the least square inversion used by 
+    NOTE: QR is a lot faster than the least square inversion used by
     scipy (also in obspy).
     PARAMETERS:
     ---------------------
@@ -1274,7 +1278,7 @@ def taper(data):
     #ndata = np.zeros(shape=data.shape,dtype=data.dtype)
     if data.ndim == 1:
         npts = data.shape[0]
-        # window length 
+        # window length
         if npts*0.05>20:wlen = 20
         else:wlen = npts*0.05
         # taper values
@@ -1288,7 +1292,7 @@ def taper(data):
         data *= win
     elif data.ndim == 2:
         npts = data.shape[1]
-        # window length 
+        # window length
         if npts*0.05>20:wlen = 20
         else:wlen = npts*0.05
         # taper values
@@ -1312,14 +1316,14 @@ def moving_ave(A,N):
     ---------------------
     A: 1-D array of data to be smoothed
     N: integer, it defines the half window length to smooth
-    
+
     RETURNS:
     ---------------------
     B: 1-D array with smoothed data
     '''
     A = np.concatenate((A[:N],A,A[-N:]),axis=0)
     B = np.zeros(A.shape,A.dtype)
-    
+
     tmp=0.
     for pos in range(N,A.size-N):
         # do summing only once
@@ -1335,7 +1339,7 @@ def moving_ave(A,N):
 
 
 def robust_stack(cc_array,epsilon):
-    """ 
+    """
     this is a robust stacking algorithm described in Palvis and Vernon 2010
 
     PARAMETERS:
@@ -1346,7 +1350,7 @@ def robust_stack(cc_array,epsilon):
     ----------------------
     newstack: numpy vector contains the stacked cross correlation
 
-    Written by Marine Denolle 
+    Written by Marine Denolle
     """
     res  = 9E9  # residuals
     w = np.ones(cc_array.shape[0])
@@ -1372,7 +1376,7 @@ def robust_stack(cc_array,epsilon):
 
 
 def selective_stack(cc_array,epsilon):
-    """ 
+    """
     this is a selective stacking algorithm developed by Jared Bryan.
 
     PARAMETERS:
@@ -1383,7 +1387,7 @@ def selective_stack(cc_array,epsilon):
     ----------------------
     newstack: numpy vector contains the stacked cross correlation
 
-    Written by Marine Denolle 
+    Written by Marine Denolle
     """
     res  = 9E9  # residuals
     cc = np.ones(cc_array.shape[0])
@@ -1393,20 +1397,20 @@ def selective_stack(cc_array,epsilon):
     	CC[i] = np.sum(np.multiply(stack,cc_array[i,:].T))
     ik = np.where(CC>=epsilon)
     newstack = np.mean(cc_array[ik,:],axis=0)
-	
+
     return newstack, cc
 
 
 
 def whiten(data, fft_para):
     '''
-    This function takes 1-dimensional timeseries array, transforms to frequency domain using fft, 
+    This function takes 1-dimensional timeseries array, transforms to frequency domain using fft,
     whitens the amplitude of the spectrum in frequency domain between *freqmin* and *freqmax*
     and returns the whitened fft.
     PARAMETERS:
     ----------------------
     data: numpy.ndarray contains the 1D time series to whiten
-    fft_para: dict containing all fft_cc parameters such as  
+    fft_para: dict containing all fft_cc parameters such as
         dt: The sampling space of the `data`
         freqmin: The lower frequency bound
         freqmax: The upper frequency bound
@@ -1487,7 +1491,7 @@ def whiten(data, fft_para):
 
         # Hermitian symmetry (because the input is real)
         FFTRawSign[-(Nfft//2)+1:] = FFTRawSign[1:(Nfft//2)].conjugate()[::-1]
- 
+
     return FFTRawSign
 
 def adaptive_filter(arr,g):
@@ -1495,8 +1499,8 @@ def adaptive_filter(arr,g):
     the adaptive covariance filter to enhance coherent signals. Fellows the method of
     Nakata et al., 2015 (Appendix B)
 
-    the filtered signal [x1] is given by x1 = ifft(P*x1(w)) where x1 is the ffted spectra 
-    and P is the filter. P is constructed by using the temporal covariance matrix. 
+    the filtered signal [x1] is given by x1 = ifft(P*x1(w)) where x1 is the ffted spectra
+    and P is the filter. P is constructed by using the temporal covariance matrix.
 
     PARAMETERS:
     ----------------------
@@ -1520,7 +1524,7 @@ def adaptive_filter(arr,g):
         for jj in range(N):
             kk = ii*N+jj
             cspec[kk] = spec[ii]*np.conjugate(spec[jj])
-        
+
     S1 = np.zeros(M,dtype=np.complex64)
     S2 = np.zeros(M,dtype=np.complex64)
     # construct the filter P
@@ -1530,7 +1534,7 @@ def adaptive_filter(arr,g):
         for jj in range(N):
             kk = ii*N+jj
             S1 += cspec[kk]
-    
+
     p = np.power((S1-S2)/(S2*(N-1)),g)
 
     # make ifft
@@ -1540,7 +1544,7 @@ def adaptive_filter(arr,g):
 def pws(arr,sampling_rate,power=2,pws_timegate=5.):
     '''
     Performs phase-weighted stack on array of time series. Modified on the noise function by Tim Climents.
-    Follows methods of Schimmel and Paulssen, 1997. 
+    Follows methods of Schimmel and Paulssen, 1997.
     If s(t) is time series data (seismogram, or cross-correlation),
     S(t) = s(t) + i*H(s(t)), where H(s(t)) is Hilbert transform of s(t)
     S(t) = s(t) + i*H(s(t)) = A(t)*exp(i*phi(t)), where
@@ -1548,14 +1552,14 @@ def pws(arr,sampling_rate,power=2,pws_timegate=5.):
     Phase-weighted stack, g(t), is then:
     g(t) = 1/N sum j = 1:N s_j(t) * | 1/N sum k = 1:N exp[i * phi_k(t)]|^v
     where N is number of traces used, v is sharpness of phase-weighted stack
-    
+
     PARAMETERS:
     ---------------------
     arr: N length array of time series data (numpy.ndarray)
     sampling_rate: sampling rate of time series arr (int)
     power: exponent for phase stack (int)
     pws_timegate: number of seconds to smooth phase stack (float)
-    
+
     RETURNS:
     ---------------------
     weighted: Phase weighted stack of time series data (numpy.ndarray)
@@ -1569,7 +1573,7 @@ def pws(arr,sampling_rate,power=2,pws_timegate=5.):
     phase_stack = np.mean(np.exp(1j*phase),axis=0)
     phase_stack = np.abs(phase_stack)**(power)
 
-    # smoothing 
+    # smoothing
     #timegate_samples = int(pws_timegate * sampling_rate)
     #phase_stack = moving_ave(phase_stack,timegate_samples)
     weighted = np.multiply(arr,phase_stack)
@@ -1579,7 +1583,7 @@ def pws(arr,sampling_rate,power=2,pws_timegate=5.):
 def get_cc(s1,s_ref):
     # returns the correlation coefficient between waveforms in s1 against reference
     # waveform s_ref.
-    # 
+    #
     cc=np.zeros(s1.shape[0])
     s_ref_norm = np.linalg.norm(s_ref)
     for i in range(s1.shape[0]):
@@ -1605,11 +1609,11 @@ quick index of dv/v methods:
 '''
 
 def stretching(ref, cur, dv_range, nbtrial, para):
-    
+
     """
     This function compares the Reference waveform to stretched/compressed current waveforms to get the relative seismic velocity variation (and associated error).
     It also computes the correlation coefficient between the Reference waveform and the current waveform.
-    
+
     PARAMETERS:
     ----------------
     ref: Reference waveform (np.ndarray, size N)
@@ -1620,8 +1624,8 @@ def stretching(ref, cur, dv_range, nbtrial, para):
     For error computation, we need parameters:
         fmin: minimum frequency of the data
         fmax: maximum frequency of the data
-        tmin: minimum time window where the dv/v is computed 
-        tmax: maximum time window where the dv/v is computed 
+        tmin: minimum time window where the dv/v is computed
+        tmax: maximum time window where the dv/v is computed
     RETURNS:
     ----------------
     dv: Relative velocity change dv/v (in %)
@@ -1629,12 +1633,12 @@ def stretching(ref, cur, dv_range, nbtrial, para):
     cdp: correlation coefficient between the reference waveform and the initial current waveform
     error: Errors in the dv/v measurements based on Weaver et al (2011), On the precision of noise-correlation interferometry, Geophys. J. Int., 185(3)
 
-    Note: The code first finds the best correlation coefficient between the Reference waveform and the stretched/compressed current waveform among the "nbtrial" values. 
+    Note: The code first finds the best correlation coefficient between the Reference waveform and the stretched/compressed current waveform among the "nbtrial" values.
     A refined analysis is then performed around this value to obtain a more precise dv/v measurement .
 
     Originally by L. Viens 04/26/2018 (Viens et al., 2018 JGR)
     modified by Chengxin Jiang
-    """ 
+    """
     # load common variables from dictionary
     twin = para['twin']
     freq = para['freq']
@@ -1695,25 +1699,25 @@ def stretching(ref, cur, dv_range, nbtrial, para):
 def dtw_dvv(ref, cur, para, maxLag, b, direction):
     """
     Dynamic time warping for dv/v estimation.
-    
+
     PARAMETERS:
     ----------------
     ref : reference signal (np.array, size N)
     cur : current signal (np.array, size N)
     para: dict containing useful parameters about the data window and targeted frequency
-    maxLag : max number of points to search forward and backward. 
+    maxLag : max number of points to search forward and backward.
             Suggest setting it larger if window is set larger.
-    b : b-value to limit strain, which is to limit the maximum velocity perturbation. 
+    b : b-value to limit strain, which is to limit the maximum velocity perturbation.
             See equation 11 in (Mikesell et al. 2015)
     direction: direction to accumulate errors (1=forward, -1=backward)
     RETURNS:
     ------------------
     -m0 : estimated dv/v
     em0 : error of dv/v estimation
-    
+
     Original by Di Yang
     Last modified by Dylan Mikesell (25 Feb. 2015)
-    Translated to python by Tim Clements (17 Aug. 2018)    
+    Translated to python by Tim Clements (17 Aug. 2018)
     """
     twin = para['twin']
     dt   = para['dt']
@@ -1723,15 +1727,15 @@ def dtw_dvv(ref, cur, para, maxLag, b, direction):
 
     # setup other parameters
     npts = len(ref) # number of time samples
-    
+
     # compute error function over lags, which is independent of strain limit 'b'.
-    err = computeErrorFunction( cur, ref, npts, maxLag ) 
-    
+    err = computeErrorFunction( cur, ref, npts, maxLag )
+
     # direction to accumulate errors (1=forward, -1=backward)
     dist  = accumulateErrorFunction( direction, err, npts, maxLag, b )
     stbar = backtrackDistanceFunction( -1*direction, dist, err, -maxLag, b )
     stbarTime = stbar * dt   # convert from samples to time
-    
+
     # cut the first and last 5% for better regression
     indx = np.where((tvect>=0.05*npts*dt) & (tvect<=0.95*npts*dt))[0]
 
@@ -1746,7 +1750,7 @@ def dtw_dvv(ref, cur, para, maxLag, b, direction):
     else:
         print('not enough points to estimate dv/v for dtw')
         m0=0;em0=0
-    
+
     return m0*100,em0*100,dist
 
 
@@ -1760,20 +1764,20 @@ def mwcs_dvv(ref, cur, moving_window_length, slide_step, para, smoothing_half_wi
     cur: Current waveform (np.ndarray, size N)
     moving_window_length: moving window length to calculate cross-spectrum (np.float, in sec)
     slide_step: steps in time to shift the moving window (np.float, in seconds)
-    para: a dict containing parameters about input data window and frequency info, including 
+    para: a dict containing parameters about input data window and frequency info, including
         delta->The sampling rate of the input timeseries (in Hz)
         window-> The target window for measuring dt/t
         freq-> The frequency bound to compute the dephasing (in Hz)
         tmin: The leftmost time lag (used to compute the "time lags array")
     smoothing_half_win: If different from 0, defines the half length of the smoothing hanning window.
-    
+
     RETURNS:
     ------------------
-    time_axis: the central times of the windows. 
+    time_axis: the central times of the windows.
     delta_t: dt
-    delta_err:error 
+    delta_err:error
     delta_mcoh: mean coherence
-    
+
     Copied from MSNoise (https://github.com/ROBelgium/MSNoise/tree/master/msnoise)
     Modified by Chengxin Jiang
     """
@@ -1909,7 +1913,7 @@ def mwcs_dvv(ref, cur, moving_window_length, slide_step, para, smoothing_half_wi
         #---------do linear regression-----------
         #m, a, em, ea = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=False)
         m0, em0 = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=True)
-    
+
     else:
         print('not enough points to estimate dv/v for mwcs')
         m0=0;em0=0
@@ -1935,9 +1939,9 @@ def WCC_dvv(ref, cur, moving_window_length, slide_step, para):
     delta_t: dt
     delta_err: error
     delta_mcoh: mean coherence for each window
-        
+
     Written by Congcong Yuan (1 July, 2019)
-    """ 
+    """
     # common variables
     twin = para['twin']
     dt   = para['dt']
@@ -1973,19 +1977,19 @@ def WCC_dvv(ref, cur, moving_window_length, slide_step, para):
         # normalize signals before cross correlation
         cci = (cci - cci.mean()) / cci.std()
         cri = (cri - cri.mean()) / cri.std()
-        
+
         # get maximum correlation coefficient and its index
         cc2 = np.correlate(cci, cri, mode='same')
         cc2 = cc2 / np.sqrt((cci**2).sum() * (cri**2).sum())
-            
+
         imaxcc2 = np.where(cc2==np.max(cc2))[0]
         maxcc2 = np.max(cc2)
-        
+
         # get the time shift
         m = (imaxcc2-((maxind-minind)//2))*dt
         delta_t.append(m)
         delta_t_coef.append(maxcc2)
-       
+
         time_axis.append(tmin+moving_window_length/2.+count*slide_step)
         count += 1
 
@@ -2005,7 +2009,7 @@ def WCC_dvv(ref, cur, moving_window_length, slide_step, para):
         w = np.ones(count)
         #m, a, em, ea = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=False)
         m0, em0 = linear_regression(time_axis.flatten(), delta_t.flatten(), w.flatten(),intercept_origin=True)
-    
+
     else:
         print('not enough points to estimate dv/v for wcc')
         m0=0;em0=0
@@ -2017,7 +2021,7 @@ def wxs_dvv(ref,cur,allfreq,para,dj=1/12, s0=-1, J=-1, sig=False, wvn='morlet',u
     """
     Compute dt or dv/v in time and frequency domain from wavelet cross spectrum (wxs).
     for all frequecies in an interest range
-    
+
     Parameters
     --------------
     ref: The "Reference" timeseries (numpy.ndarray)
@@ -2026,7 +2030,7 @@ def wxs_dvv(ref,cur,allfreq,para,dj=1/12, s0=-1, J=-1, sig=False, wvn='morlet',u
     para: a dict containing freq/time info of the data matrix
     dj, s0, J, sig, wvn: common parameters used in 'wavelet.wct'
     unwrapflag: True - unwrap phase delays. Default is False
-    
+
     RETURNS:
     ------------------
     dvv*100 : estimated dv/v in %
@@ -2034,7 +2038,7 @@ def wxs_dvv(ref,cur,allfreq,para,dj=1/12, s0=-1, J=-1, sig=False, wvn='morlet',u
 
     Originally written by Tim Clements (1 March, 2019)
     Modified by Congcong Yuan (30 June, 2019) based on (Mao et al. 2019).
-    Updated by Chengxin Jiang (10 Oct, 2019) to merge the functionality for mesurements across all frequency and one freq range 
+    Updated by Chengxin Jiang (10 Oct, 2019) to merge the functionality for mesurements across all frequency and one freq range
     """
     # common variables
     twin = para['twin']
@@ -2043,18 +2047,18 @@ def wxs_dvv(ref,cur,allfreq,para,dj=1/12, s0=-1, J=-1, sig=False, wvn='morlet',u
     tmin = np.min(twin)
     tmax = np.max(twin)
     fmin = np.min(freq)
-    fmax = np.max(freq)    
+    fmax = np.max(freq)
     tvec = np.arange(tmin,tmax,dt)
     npts = len(tvec)
-    
+
     # perform cross coherent analysis, modified from function 'wavelet.cwt'
     WCT, aWCT, coi, freq, sig = wct_modified(ref, cur, dt, dj=dj, s0=s0, J=J, sig=sig, wavelet=wvn, normalize=True)
-    
+
     if unwrapflag:
         phase = np.unwrap(aWCT,axis=-1) # axis=0, upwrap along time; axis=-1, unwrap along frequency
     else:
         phase = aWCT
-    
+
     # zero out data outside frequency band
     if (fmax> np.max(freq)) | (fmax <= fmin):
         raise ValueError('Abort: input frequency out of limits!')
@@ -2063,7 +2067,7 @@ def wxs_dvv(ref,cur,allfreq,para,dj=1/12, s0=-1, J=-1, sig=False, wvn='morlet',u
 
     # follow MWCS to do two steps of linear regression
     if not allfreq:
-        
+
         delta_t_m, delta_t_unc = np.zeros(npts,dtype=np.float32),np.zeros(npts,dtype=np.float32)
         # assume the tvec is the time window to measure dt
         for it in range(npts):
@@ -2074,7 +2078,7 @@ def wxs_dvv(ref,cur,allfreq,para,dj=1/12, s0=-1, J=-1, sig=False, wvn='morlet',u
         # new weights for regression
         w2 = 1/np.mean(WCT[freq_indin,:],axis=0)
         w2[~np.isfinite(w2)] = 1.
-        
+
         # now use dt and t to get dv/v
         if len(w2)>2:
             if not np.any(delta_t_m):
@@ -2083,17 +2087,17 @@ def wxs_dvv(ref,cur,allfreq,para,dj=1/12, s0=-1, J=-1, sig=False, wvn='morlet',u
             dvv, err = -m, em
         else:
             print('not enough points to estimate dv/v for wts')
-            dvv, err=np.nan, np.nan    
-        
+            dvv, err=np.nan, np.nan
+
         return dvv*100,err*100
 
     # convert phase directly to delta_t for all frequencies
     else:
 
         # convert phase delay to time delay
-        delta_t = phase / (2*np.pi*freq[:,None]) # normalize phase by (2*pi*frequency) 
+        delta_t = phase / (2*np.pi*freq[:,None]) # normalize phase by (2*pi*frequency)
         dvv, err = np.zeros(freq_indin.shape), np.zeros(freq_indin.shape)
-            
+
         # loop through freq for linear regression
         for ii, ifreq in enumerate(freq_indin):
             if len(tvec)>2:
@@ -2103,13 +2107,13 @@ def wxs_dvv(ref,cur,allfreq,para,dj=1/12, s0=-1, J=-1, sig=False, wvn='morlet',u
                 # how to better approach the uncertainty of delta_t
                 w = 1/WCT[ifreq]
                 w[~np.isfinite(w)] = 1.0
-                
+
                 #m, a, em, ea = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=False)
                 m, em = linear_regression(tvec, delta_t[ifreq], w, intercept_origin=True)
                 dvv[ii], err[ii] = -m, em
             else:
                 print('not enough points to estimate dv/v for wts')
-                dvv[ii], err[ii]=np.nan, np.nan    
+                dvv[ii], err[ii]=np.nan, np.nan
 
         return freq[freq_indin], dvv*100, err*100
 
@@ -2118,7 +2122,7 @@ def wts_dvv(ref,cur,allfreq,para,dv_range,nbtrial,dj=1/12,s0=-1,J=-1,wvn='morlet
     """
     Apply stretching method to continuous wavelet transformation (CWT) of signals
     for all frequecies in an interest range
-    
+
     Parameters
     --------------
     ref: The "Reference" timeseries (numpy.ndarray)
@@ -2129,103 +2133,7 @@ def wts_dvv(ref,cur,allfreq,para,dv_range,nbtrial,dj=1/12,s0=-1,J=-1,wvn='morlet
     nbtrial: number of stretching coefficient between dvmin and dvmax, no need to be higher than 100  (float)
     dj, s0, J, sig, wvn: common parameters used in 'wavelet.wct'
     normalize: normalize the wavelet spectrum or not. Default is True
-    
-    RETURNS:
-    ------------------
-    dvv: estimated dv/v
-    err: error of dv/v estimation
-    
-    Written by Congcong Yuan (30 Jun, 2019)  
-    """
-    # common variables
-    twin = para['twin']
-    freq = para['freq']
-    dt   = para['dt']
-    tmin = np.min(twin)
-    tmax = np.max(twin)
-    fmin = np.min(freq)
-    fmax = np.max(freq)    
-    tvec = np.arange(tmin,tmax,dt)
-    
-    # apply cwt on two traces
-    cwt1, sj, freq, coi, _, _ = pycwt.cwt(cur, dt, dj, s0, J, wvn)
-    cwt2, sj, freq, coi, _, _ = pycwt.cwt(ref, dt, dj, s0, J, wvn)
-    
-    # extract real values of cwt
-    rcwt1, rcwt2 = np.real(cwt1), np.real(cwt2)
-    
-    # zero out data outside frequency band
-    if (fmax> np.max(freq)) | (fmax <= fmin):
-        raise ValueError('Abort: input frequency out of limits!')
-    else:
-        freq_indin = np.where((freq >= fmin) & (freq <= fmax))[0]
 
-    # convert wavelet domain back to time domain (~filtering)
-    if not allfreq:
-
-        # inverse cwt to time domain
-        icwt1 = pycwt.icwt(cwt1[freq_indin], sj[freq_indin], dt, dj, wvn)
-        icwt2 = pycwt.icwt(cwt2[freq_indin], sj[freq_indin], dt, dj, wvn)
-                
-        # assume all time window is used
-        wcwt1, wcwt2 = np.real(icwt1), np.real(icwt2)
-                        
-        # Normalizes both signals, if appropriate.
-        if normalize:
-            ncwt1 = (wcwt1 - wcwt1.mean()) / wcwt1.std()
-            ncwt2 = (wcwt2 - wcwt2.mean()) / wcwt2.std()
-        else:
-            ncwt1 = wcwt1
-            ncwt2 = wcwt2
-                
-        # run stretching
-        dvv, err, cc, cdp = stretching(ncwt2, ncwt1, dv_range, nbtrial, para)
-        return dvv, err            
-
-    # directly take advantage of the 
-    else:
-        # initialize variable
-        nfreq=len(freq_indin)
-        dvv, cc, cdp, err = np.zeros(nfreq,dtype=np.float32), np.zeros(nfreq,dtype=np.float32),\
-            np.zeros(nfreq,dtype=np.float32),np.zeros(nfreq,dtype=np.float32)  
-        
-        # loop through each freq
-        for ii, ifreq in enumerate(freq_indin):
-
-            # prepare windowed data                
-            wcwt1, wcwt2 = rcwt1[ifreq], rcwt2[ifreq] 
-
-            # Normalizes both signals, if appropriate.
-            if normalize:
-                ncwt1 = (wcwt1 - wcwt1.mean()) / wcwt1.std()
-                ncwt2 = (wcwt2 - wcwt2.mean()) / wcwt2.std()
-            else:
-                ncwt1 = wcwt1
-                ncwt2 = wcwt2
-                
-            # run stretching
-            dv, error, c1, c2 = stretching(ncwt2, ncwt1, dv_range, nbtrial, para)
-            dvv[ii], cc[ii], cdp[ii], err[ii]=dv, c1, c2, error     
-        
-        return freq[freq_indin], dvv, err
-
-
-def wtdtw_allfreq(ref,cur,allfreq,para,maxLag,b,direction,dj=1/12,s0=-1,J=-1,wvn='morlet',normalize=True):
-    """
-    Apply dynamic time warping method to continuous wavelet transformation (CWT) of signals
-    for all frequecies in an interest range
-
-    Parameters
-    --------------
-    ref: The "Reference" timeseries (numpy.ndarray)
-    cur: The "Current" timeseries (numpy.ndarray)
-    allfreq: a boolen variable to make measurements on all frequency range or not
-    maxLag: max number of points to search forward and backward. 
-    b: b-value to limit strain, which is to limit the maximum velocity perturbation. See equation 11 in (Mikesell et al. 2015)
-    direction: direction to accumulate errors (1=forward, -1=backward)
-    dj, s0, J, sig, wvn: common parameters used in 'wavelet.wct'
-    normalize: normalize the wavelet spectrum or not. Default is True
-    
     RETURNS:
     ------------------
     dvv: estimated dv/v
@@ -2240,29 +2148,125 @@ def wtdtw_allfreq(ref,cur,allfreq,para,maxLag,b,direction,dj=1/12,s0=-1,J=-1,wvn
     tmin = np.min(twin)
     tmax = np.max(twin)
     fmin = np.min(freq)
-    fmax = np.max(freq)    
-    tvec = np.arange(tmin,tmax)*dt
- 
+    fmax = np.max(freq)
+    tvec = np.arange(tmin,tmax,dt)
+
     # apply cwt on two traces
     cwt1, sj, freq, coi, _, _ = pycwt.cwt(cur, dt, dj, s0, J, wvn)
     cwt2, sj, freq, coi, _, _ = pycwt.cwt(ref, dt, dj, s0, J, wvn)
-    
+
     # extract real values of cwt
     rcwt1, rcwt2 = np.real(cwt1), np.real(cwt2)
-    
+
+    # zero out data outside frequency band
+    if (fmax> np.max(freq)) | (fmax <= fmin):
+        raise ValueError('Abort: input frequency out of limits!')
+    else:
+        freq_indin = np.where((freq >= fmin) & (freq <= fmax))[0]
+
+    # convert wavelet domain back to time domain (~filtering)
+    if not allfreq:
+
+        # inverse cwt to time domain
+        icwt1 = pycwt.icwt(cwt1[freq_indin], sj[freq_indin], dt, dj, wvn)
+        icwt2 = pycwt.icwt(cwt2[freq_indin], sj[freq_indin], dt, dj, wvn)
+
+        # assume all time window is used
+        wcwt1, wcwt2 = np.real(icwt1), np.real(icwt2)
+
+        # Normalizes both signals, if appropriate.
+        if normalize:
+            ncwt1 = (wcwt1 - wcwt1.mean()) / wcwt1.std()
+            ncwt2 = (wcwt2 - wcwt2.mean()) / wcwt2.std()
+        else:
+            ncwt1 = wcwt1
+            ncwt2 = wcwt2
+
+        # run stretching
+        dvv, err, cc, cdp = stretching(ncwt2, ncwt1, dv_range, nbtrial, para)
+        return dvv, err
+
+    # directly take advantage of the
+    else:
+        # initialize variable
+        nfreq=len(freq_indin)
+        dvv, cc, cdp, err = np.zeros(nfreq,dtype=np.float32), np.zeros(nfreq,dtype=np.float32),\
+            np.zeros(nfreq,dtype=np.float32),np.zeros(nfreq,dtype=np.float32)
+
+        # loop through each freq
+        for ii, ifreq in enumerate(freq_indin):
+
+            # prepare windowed data
+            wcwt1, wcwt2 = rcwt1[ifreq], rcwt2[ifreq]
+
+            # Normalizes both signals, if appropriate.
+            if normalize:
+                ncwt1 = (wcwt1 - wcwt1.mean()) / wcwt1.std()
+                ncwt2 = (wcwt2 - wcwt2.mean()) / wcwt2.std()
+            else:
+                ncwt1 = wcwt1
+                ncwt2 = wcwt2
+
+            # run stretching
+            dv, error, c1, c2 = stretching(ncwt2, ncwt1, dv_range, nbtrial, para)
+            dvv[ii], cc[ii], cdp[ii], err[ii]=dv, c1, c2, error
+
+        return freq[freq_indin], dvv, err
+
+
+def wtdtw_allfreq(ref,cur,allfreq,para,maxLag,b,direction,dj=1/12,s0=-1,J=-1,wvn='morlet',normalize=True):
+    """
+    Apply dynamic time warping method to continuous wavelet transformation (CWT) of signals
+    for all frequecies in an interest range
+
+    Parameters
+    --------------
+    ref: The "Reference" timeseries (numpy.ndarray)
+    cur: The "Current" timeseries (numpy.ndarray)
+    allfreq: a boolen variable to make measurements on all frequency range or not
+    maxLag: max number of points to search forward and backward.
+    b: b-value to limit strain, which is to limit the maximum velocity perturbation. See equation 11 in (Mikesell et al. 2015)
+    direction: direction to accumulate errors (1=forward, -1=backward)
+    dj, s0, J, sig, wvn: common parameters used in 'wavelet.wct'
+    normalize: normalize the wavelet spectrum or not. Default is True
+
+    RETURNS:
+    ------------------
+    dvv: estimated dv/v
+    err: error of dv/v estimation
+
+    Written by Congcong Yuan (30 Jun, 2019)
+    """
+    # common variables
+    twin = para['twin']
+    freq = para['freq']
+    dt   = para['dt']
+    tmin = np.min(twin)
+    tmax = np.max(twin)
+    fmin = np.min(freq)
+    fmax = np.max(freq)
+    tvec = np.arange(tmin,tmax)*dt
+
+    # apply cwt on two traces
+    cwt1, sj, freq, coi, _, _ = pycwt.cwt(cur, dt, dj, s0, J, wvn)
+    cwt2, sj, freq, coi, _, _ = pycwt.cwt(ref, dt, dj, s0, J, wvn)
+
+    # extract real values of cwt
+    rcwt1, rcwt2 = np.real(cwt1), np.real(cwt2)
+
     # zero out cone of influence and data outside frequency band
     if (fmax> np.max(freq)) | (fmax <= fmin):
         raise ValueError('Abort: input frequency out of limits!')
     else:
         freq_indin = np.where((freq >= fmin) & (freq <= fmax))[0]
-        
+
         # Use DTW method to extract dvv
         nfreq=len(freq_indin)
-        dvv, err = np.zeros(nfreq,dtype=np.float32), np.zeros(nfreq,dtype=np.float32)   
-        
+        dvv, err = np.zeros(nfreq,dtype=np.float32), np.zeros(nfreq,dtype=np.float32)
+
         for ii,ifreq in enumerate(freq_indin):
 
-            # prepare windowed data 
+            # prepare windowed data
             wcwt1, wcwt2 = rcwt1[ifreq], rcwt2[ifreq]
             # Normalizes both signals, if appropriate.
             if normalize:
@@ -2271,16 +2275,16 @@ def wtdtw_allfreq(ref,cur,allfreq,para,maxLag,b,direction,dj=1/12,s0=-1,J=-1,wvn
             else:
                 ncwt1 = wcwt1
                 ncwt2 = wcwt2
-            
+
             # run dtw
             dv, error, dist  = dtw_dvv(ncwt2, ncwt1, para, maxLag, b, direction)
-            dvv[ii], err[ii] = dv, error     
-    
+            dvv[ii], err[ii] = dv, error
+
     del cwt1, cwt2, rcwt1, rcwt2, ncwt1, ncwt2, wcwt1, wcwt2, coi, sj, dist
-    
+
     if not allfreq:
         return np.mean(dvv),np.mean(err)
-    else:        
+    else:
         return freq[freq_indin], dvv, err
 
 
@@ -2293,7 +2297,7 @@ below are assembly of the monitoring utility functions called by monitoring func
 '''
 
 def smooth(x, window='boxcar', half_win=3):
-    """ 
+    """
     performs smoothing in interested time window
 
     Parameters
@@ -2303,8 +2307,8 @@ def smooth(x, window='boxcar', half_win=3):
     half_win: half window length
 
     RETURNS:
-    ------------------   
-    y: smoothed time window 
+    ------------------
+    y: smoothed time window
     """
     # TODO: docsting
     window_len = 2 * half_win + 1
@@ -2323,7 +2327,7 @@ def nextpow2(x):
     """
     Returns the next power of 2 of x.
     """
-    return int(np.ceil(np.log2(np.abs(x)))) 
+    return int(np.ceil(np.log2(np.abs(x))))
 
 
 def getCoherence(dcs, ds1, ds2):
@@ -2335,10 +2339,10 @@ def getCoherence(dcs, ds1, ds2):
     dcs: amplitude of the cross spectrum
     ds1: amplitude of the spectrum of current waveform
     ds2: amplitude of the spectrum of reference waveform
-    
+
     RETURNS:
-    ------------------  
-    coh: cohrerency matrix used for estimate the robustness of the cross spectrum 
+    ------------------
+    coh: cohrerency matrix used for estimate the robustness of the cross spectrum
     """
     n = len(dcs)
     coh = np.zeros(n).astype('complex')
@@ -2352,7 +2356,7 @@ def computeErrorFunction(u1, u0, nSample, lag, norm='L2'):
     """
     compute Error Function used in DTW. The error function is equation 1 in Hale, 2013. You could uncomment the
     L1 norm and comment the L2 norm if you want on Line 29
-    
+
     Parameters
     --------------
     u1:  trace that we want to warp; size = (nsamp,1)
@@ -2360,31 +2364,31 @@ def computeErrorFunction(u1, u0, nSample, lag, norm='L2'):
     nSample: numer of points to compare in the traces
     lag: maximum lag in sample number to search
     norm: 'L2' or 'L1' (default is 'L2')
-    
+
     RETURNS:
-    ------------------   
+    ------------------
     err: the 2D error function; size = (nsamp,2*lag+1)
-    
+
     Original by Di Yang
     Last modified by Dylan Mikesell (25 Feb. 2015)
     Translated to python by Tim Clements (17 Aug. 2018)
 
     """
 
-    if lag >= nSample: 
+    if lag >= nSample:
         raise ValueError('computeErrorFunction:lagProblem','lag must be smaller than nSample')
 
     # Allocate error function variable
     err = np.zeros([nSample, 2 * lag + 1])
 
-    # initial error calculation 
+    # initial error calculation
     # loop over lags
     for ll in np.arange(-lag,lag + 1):
-        thisLag = ll + lag 
+        thisLag = ll + lag
 
-        # loop over samples 
+        # loop over samples
         for ii in range(nSample):
-            
+
             # skip corners for now, we will come back to these
             if (ii + ll >= 0) & (ii + ll < nSample):
                 err[ii,thisLag] = u1[ii] - u0[ii + ll]
@@ -2396,7 +2400,7 @@ def computeErrorFunction(u1, u0, nSample, lag, norm='L2'):
 
     # Now fix corners with constant extrapolation
     for ll in np.arange(-lag,lag + 1):
-        thisLag = ll + lag 
+        thisLag = ll + lag
 
         for ii in range(nSample):
             if ii + ll < 0:
@@ -2404,7 +2408,7 @@ def computeErrorFunction(u1, u0, nSample, lag, norm='L2'):
 
             elif ii + ll > nSample - 1:
                 err[ii,thisLag] = err[nSample - ll - 1,thisLag]
-    
+
     return err
 
 
@@ -2419,9 +2423,9 @@ def accumulateErrorFunction(dir, err, nSample, lag, b ):
     nSample: numer of points to compare in the traces
     lag: maximum lag in sample number to search
     b: strain limit (integer value >= 1)
-    
+
     RETURNS:
-    ------------------   
+    ------------------
     d: the 2D distance function; size = (nsamp,2*lag+1)
 
     Original by Di Yang
@@ -2440,7 +2444,7 @@ def accumulateErrorFunction(dir, err, nSample, lag, b ):
     if dir > 0: # FORWARD
         iBegin, iEnd, iInc = 0, nSample - 1, 1
     else: # BACKWARD
-        iBegin, iEnd, iInc = nSample - 1, 0, -1 
+        iBegin, iEnd, iInc = nSample - 1, 0, -1
 
     # Loop through all times ii in forward or backward direction
     for ii in range(iBegin,iEnd + iInc,iInc):
@@ -2449,10 +2453,10 @@ def accumulateErrorFunction(dir, err, nSample, lag, b ):
         ji = max([0, min([nSample - 1, ii - iInc])])
         jb = max([0, min([nSample - 1, ii - iInc * b])])
 
-        # loop through all lag 
+        # loop through all lag
         for ll in range(nLag):
 
-            # check limits on lag indices 
+            # check limits on lag indices
             lMinus1 = ll - 1
 
             # check lag index is greater than 0
@@ -2460,21 +2464,21 @@ def accumulateErrorFunction(dir, err, nSample, lag, b ):
                 lMinus1 = 0 # make lag = first lag
 
             lPlus1 = ll + 1 # lag at l+1
-            
+
             # check lag index less than max lag
-            if lPlus1 > nLag - 1: 
+            if lPlus1 > nLag - 1:
                 lPlus1 = nLag - 1
-            
+
             # get distance at lags (ll-1, ll, ll+1)
             distLminus1 = d[jb, lMinus1] # minus:  d[i-b, j-1]
             distL = d[ji,ll] # actual d[i-1, j]
             distLplus1 = d[jb, lPlus1] # plus d[i-b, j+1]
 
             if ji != jb: # equation 10 in Hale, 2013
-                for kb in range(ji,jb + iInc - 1, -iInc): 
+                for kb in range(ji,jb + iInc - 1, -iInc):
                     distLminus1 = distLminus1 + err[kb, lMinus1]
                     distLplus1 = distLplus1 + err[kb, lPlus1]
-            
+
             # equation 6 (if b=1) or 10 (if b>1) in Hale (2013) after treating boundaries
             d[ii, ll] = err[ii,ll] + min([distLminus1, distL, distLplus1])
 
@@ -2492,9 +2496,9 @@ def backtrackDistanceFunction(dir, d, err, lmin, b):
     err: the 2D error function; size = (nsamp,2*lag+1)
     lmin: minimum lag to search over
     b : strain limit (integer value >= 1)
-    
+
     RETURNS:
-    ------------------   
+    ------------------
     stbar: vector of integer shifts subject to |u(i)-u(i-1)| <= 1/b
 
     Original by Di Yang
@@ -2511,7 +2515,7 @@ def backtrackDistanceFunction(dir, d, err, lmin, b):
     if dir > 0: # FORWARD
         iBegin, iEnd, iInc = 0, nSample - 1, 1
     else: # BACKWARD
-        iBegin, iEnd, iInc = nSample - 1, 0, -1 
+        iBegin, iEnd, iInc = nSample - 1, 0, -1
 
     # start from the end (front or back)
     ll = np.argmin(d[iBegin,:]) # find minimum accumulated distance at front or back depending on 'dir'
@@ -2520,13 +2524,13 @@ def backtrackDistanceFunction(dir, d, err, lmin, b):
     # move through all time samples in forward or backward direction
     ii = iBegin
 
-    while ii != iEnd: 
+    while ii != iEnd:
 
         # min/max for edges/boundaries
         ji = np.max([0, np.min([nSample - 1, ii + iInc])])
         jb = np.max([0, np.min([nSample - 1, ii + iInc * b])])
 
-        # check limits on lag indices 
+        # check limits on lag indices
         lMinus1 = ll - 1
 
         if lMinus1 < 0: # check lag index is greater than 1
@@ -2548,21 +2552,21 @@ def backtrackDistanceFunction(dir, d, err, lmin, b):
             for kb in range(ji, jb - iInc - 1, iInc):
                 distLminus1 = distLminus1 + err[kb, lMinus1]
                 distLplus1  = distLplus1  + err[kb, lPlus1]
-        
+
         # update minimum distance to previous sample
         dl = np.min([distLminus1, distL, distLplus1 ])
 
         if dl != distL: # then ll ~= ll and we check forward and backward
             if dl == distLminus1:
                 ll = lMinus1
-            else: 
+            else:
                 ll = lPlus1
-        
+
         # assume ii = ii - 1
-        ii += iInc 
+        ii += iInc
 
         # absolute integer of lag
-        stbar[ii] = ll + lmin 
+        stbar[ii] = ll + lmin
 
         # now move to correct time index, if smoothing difference over many
         # time samples using 'b'
@@ -2613,7 +2617,7 @@ def wct_modified(y1, y2, dt, dj=1/12, s0=-1, J=-1, sig=True, significance_level=
     cwt, xwt
 ​
     '''
-    
+
     wavelet = pycwt.wavelet._check_parameter_wavelet(wavelet)
     # Checking some input parameters
     if s0 == -1:
@@ -2642,7 +2646,7 @@ def wct_modified(y1, y2, dt, dj=1/12, s0=-1, J=-1, sig=True, significance_level=
     _kwargs = dict(dj=dj, s0=s0, J=J, wavelet=wavelet)
     W1, sj, freq, coi, _, _ = pycwt.cwt(y1_normal, dt, **_kwargs)
     W2, sj, freq, coi, _, _ = pycwt.cwt(y2_normal, dt, **_kwargs)
-    
+
     scales1 = np.ones([1, y1.size]) * sj[:, None]
     scales2 = np.ones([1, y2.size]) * sj[:, None]
 
@@ -2656,7 +2660,7 @@ def wct_modified(y1, y2, dt, dj=1/12, s0=-1, J=-1, sig=True, significance_level=
     S12 = wavelet.smooth(W12 / scales, dt, dj, sj)
     WCT = np.abs(S12) ** 2 / (S1 * S2)
     aWCT = np.angle(W12)
-    
+
     # Calculate cross spectrum & its amplitude
     WXS, WXA = W12, np.abs(S12)
 
@@ -2686,7 +2690,7 @@ def extract_dispersion(amp,per,vel):
     the wavelet spectrum amplitude and extract the sections with continous and high quality data
 
     PARAMETERS:
-    ----------------    
+    ----------------
     amp: 2D amplitude matrix of the wavelet spectrum
     phase: 2D phase matrix of the wavelet spectrum
     per:  period vector for the 2D matrix
@@ -2714,7 +2718,7 @@ def extract_dispersion(amp,per,vel):
             if np.abs(gv[ii+jj]-gv[ii+1+jj])>maxgap*dvel:
                 gv[ii] = 0
                 break
-    
+
     # remove the bad ones
     indx = np.where(gv>0)[0]
 
