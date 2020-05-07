@@ -18,11 +18,20 @@ The nature of NoisePy being composed of python scripts allows flexiable package 
 
 ### Note the order of the command lines below matters ###
 
+# With Conda:
 ```python
 conda create -n noisepy -c conda-forge python=3.7 numpy=1.16.2 numba pandas pycwt jupyter mpi4py=3.0.1 obspy=1.1 pyasdf
 conda activate noisepy
 git clone https://github.com/mdenolle/NoisePy.git
 ```
+# With virtual environment:
+```python
+python -m venv noisepy
+source noisepy/bin/activate
+pip install wheel h5py numpy numba pandas pycwt jupyter mpi4py pyasdf
+git clone https://github.com/mdenolle/NoisePy.git
+```
+
 
 # Functionality
 * download continous noise data based on obspy's core functions of [get_station](https://docs.obspy.org/packages/autogen/obspy.clients.fdsn.client.Client.get_stations.html) and [get_waveforms](https://docs.obspy.org/packages/autogen/obspy.clients.fdsn.client.Client.get_waveforms.html)
