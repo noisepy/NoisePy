@@ -1,6 +1,8 @@
 # About NoisePy
 NoisePy is a Python package designed for fast and easy computation of ambient noise cross-correlation functions. It provides additional functionality for noise monitoring and surface wave dispersion analysis. 
 
+Disclaimer: this code should not be used "as-is" and not run like a blackbox. The user is expected to change local paths and parameters. Submit an issue to github with information such as the scripts+error messages to debug.
+
 Detailed documentation can be found at https://noise-python.readthedocs.io/en/latest/
 
 [![Documentation Status](https://readthedocs.org/projects/noise-python/badge/?version=latest)](https://noise-python.readthedocs.io/en/latest/?badge=latest)
@@ -31,7 +33,16 @@ source noisepy/bin/activate
 pip install wheel h5py numpy numba pandas pycwt jupyter mpi4py pyasdf
 git clone https://github.com/mdenolle/NoisePy.git
 ```
+To run the code on a single core, open the terminal and activate the noisepy environment before run following command. To run on institutional clusters, see installation notes for individual packages on the module list of the cluster. Examples of installation on Frontera are below.
 
+# Installing on institutional clusters:
+Here is an example on how to install it on Frontera. hyp5 is already installed under the phdf5 default module.
+```python
+python -m venv noisepy
+source noisepy/bin/activate
+pip install wheel  numpy numba pandas pycwt jupyter mpi4py pyasdf
+git clone https://github.com/mdenolle/NoisePy.git
+```
 
 # Functionality
 * download continous noise data based on obspy's core functions of [get_station](https://docs.obspy.org/packages/autogen/obspy.clients.fdsn.client.Client.get_stations.html) and [get_waveforms](https://docs.obspy.org/packages/autogen/obspy.clients.fdsn.client.Client.get_waveforms.html)
@@ -45,7 +56,7 @@ git clone https://github.com/mdenolle/NoisePy.git
 ### 0A. Downloading seismic noise data by using `S0A_download_ASDF_MPI.py`
 This script (located in the directory of `src`) and its existing parameters allows to download all available broadband CI stations `(BH?)` located in a certain region and operated during 1/Jul/2016-2/Jul/2016 through the SCEC data center. 
 
-In the script, short summary is provided for all input parameters that can be changed according to the user's needs. In the current form of the script, we set `inc_hours=24` to download day-long continous noise data as well as the meta info and store them into a single ASDF file. To increase the signal-to-noise (SNR) of the final cross-correlation functions (see Seats et al.,2012 for more details), we break the day-long sequence into smaller segments, each of `cc_len` (s) long with some overlapping defined by `step`. You may wanto to set `flag` to be `True` if intermediate outputs/operational time is preferred during the downloading process. To run the code on a single core, open the terminal and activate the noisepy environment before run following command. (NOTE that things may go completely different if you want to run NoisePy on a cluster. Better check it out first!!) 
+In the script, short summary is provided for all input parameters that can be changed according to the user's needs. In the current form of the script, we set `inc_hours=24` to download day-long continous noise data as well as the meta info and store them into a single ASDF file. To increase the signal-to-noise (SNR) of the final cross-correlation functions (see Seats et al.,2012 for more details), we break the day-long sequence into smaller segments, each of `cc_len` (s) long with some overlapping defined by `step`. You may wanto to set `flag` to be `True` if intermediate outputs/operational time is preferred during the downloading process. 
 
 ```python
 python S0_download_ASDF_MPI.py
