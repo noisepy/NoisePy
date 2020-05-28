@@ -847,12 +847,14 @@ def cc_parameters(cc_para,coor,tcorr,ncorr,comp):
 def stacking(cc_array,cc_time,cc_ngood,stack_para):
     '''
     this function stacks the cross correlation data according to the user-defined substack_len parameter
+
     PARAMETERS:
     ----------------------
     cc_array: 2D numpy float32 matrix containing all segmented cross-correlation data
     cc_time:  1D numpy array of timestamps for each segment of cc_array
     cc_ngood: 1D numpy int16 matrix showing the number of segments for each sub-stack and/or full stack
     stack_para: a dict containing all stacking parameters
+
     RETURNS:
     ----------------------
     cc_array, cc_ngood, cc_time: same to the input parameters but with abnormal cross-correaltions removed
@@ -870,9 +872,9 @@ def stacking(cc_array,cc_time,cc_ngood,stack_para):
     ampmax = np.max(cc_array,axis=1)
     tindx  = np.where( (ampmax<20*np.median(ampmax)) & (ampmax>0))[0]
     if not len(tindx):
-        allstacks1=[];allstacks2=[];nstacks=0
+        allstacks1=[];allstacks2=[];allstacks3=[];nstacks=0
         cc_array=[];cc_ngood=[];cc_time=[]
-        return cc_array,cc_ngood,cc_time,allstacks1,allstacks2,nstacks
+        return cc_array,cc_ngood,cc_time,allstacks1,allstacks2,allstacks3,nstacks
     else:
 
         # remove ones with bad amplitude
@@ -891,6 +893,10 @@ def stacking(cc_array,cc_time,cc_ngood,stack_para):
             allstacks1 = pws(cc_array,samp_freq)
         elif smethod == 'robust':
             allstacks1,w,nstep = robust_stack(cc_array,0.001)
+        elif smethod == 'acf':
+            allstack1 = adaptive_filter(cc_array,1)
+        elif smethod == 'nroot':
+            allstack1 = nroot_stack(cc_array,2)
         elif smethod == 'all':
             allstacks1 = np.mean(cc_array,axis=0)
             allstacks2 = pws(cc_array,samp_freq)
@@ -1375,6 +1381,7 @@ def robust_stack(cc_array,epsilon):
     return newstack, w, nstep
 
 
+
 def selective_stack(cc_array,epsilon):
     """
     this is a selective stacking algorithm developed by Jared Bryan.
@@ -1578,6 +1585,85 @@ def pws(arr,sampling_rate,power=2,pws_timegate=5.):
     #phase_stack = moving_ave(phase_stack,timegate_samples)
     weighted = np.multiply(arr,phase_stack)
     return np.mean(weighted,axis=0)
+
+
+def nroot_stack(cc_array,power):
+    '''
+    this is nth-root stacking algorithm translated based on the matlab function
+    from https://github.com/xtyangpsp/SeisStack (by Xiaotao Yang; follows the 
+    reference of Millet, F et al., 2019 JGR) 
+
+    Parameters:
+    ------------
+    cc_array: numpy.ndarray contains the 2D cross correlation matrix
+    power: np.int, nth root for the stacking
+
+    Returns:
+    ------------
+    nstack: np.ndarray, final stacked waveforms
+
+    Written by Chengxin Jiang @ANU (May2020)
+    '''
+    if cc_array.ndim == 1:
+        print('2D matrix is needed for nroot_stack')
+        return cc_array
+    N,M = cc_array.shape 
+    dout = np.zeros(M,dtype=np.float32)
+
+    # construct y
+    for ii in range(N):
+        dat = cc_array[ii,:]
+        dout += np.sign(dat)*np.abs(dat)**(1/power)
+    dout /= N
+
+    # the final stacked waveform
+    nstack = dout*np.abs(dout)**(power-1)
+
+    return nstack
+
+
+def selective_stack(cc_array,epsilon,cc_th):
+    ''' 
+    this is a selective stacking algorithm developed by Jared Bryan/Kurama Okubo.
+
+    PARAMETERS:
+    ----------------------
+    cc_array: numpy.ndarray contains the 2D cross correlation matrix
+    epsilon: residual threhold to quit the iteration
+    cc_th: numpy.float, threshold of correlation coefficient to be selected
+
+    RETURNS:
+    ----------------------
+    newstack: numpy vector contains the stacked cross correlation
+    nstep: np.int, total number of iterations for the stacking
+
+    Originally ritten by Marine Denolle 
+    Modified by Chengxin Jiang @Harvard (Oct2020)
+    '''
+    if cc_array.ndim == 1:
+        print('2D matrix is needed for nroot_stack')
+        return cc_array
+    N,M = cc_array.shape 
+
+    res  = 9E9  # residuals
+    cof  = np.zeros(N,dtype=np.float32)
+    newstack = np.mean(cc_array,axis=0)
+
+    nstep = 0
+    # start iteration
+    while res>epsilon:
+        for ii in range(N):
+            cof[ii] = np.corrcoef(newstack, cc_array[ii,:])[0, 1]
+        
+        # find good waveforms
+        indx = np.where(cof>=cc_th)[0]
+        if not len(indx): raise ValueError('cannot find good waveforms inside selective stacking')
+        oldstack = newstack
+        newstack = np.mean(cc_array[indx],axis=0)
+        res = np.linalg.norm(newstack-oldstack)/(np.linalg.norm(newstack)*M)
+        nstep +=1
+
+    return newstack, nstep
 
 
 def get_cc(s1,s_ref):

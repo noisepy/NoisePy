@@ -17,7 +17,8 @@ if not sys.warnoptions:
 Stacking script of NoisePy to:
     1) load cross-correlation data for sub-stacking (if needed) and all-time average;
     2) stack data with either linear or phase weighted stacking (pws) methods (or both);
-    3) save outputs in ASDF or SAC format depend on user's choice;
+    3) save outputs in ASDF or SAC format depend on user's choice (for latter option, find the script of write_sac
+       in the folder of application_modules;
     4) rotate from a E-N-Z to R-T-Z system if needed.
 
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
@@ -37,7 +38,7 @@ tt0=time.time()
 ########################################
 
 # absolute path parameters
-rootpath  = '/Volumes/Chengxin/monitor'                             # root path for this data processing
+rootpath  = '/Volumes/Chengxin/TA'.                                 # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                            # dir where CC data is stored
 STACKDIR  = os.path.join(rootpath,'STACK')                          # dir where stacked data is going to
 locations = os.path.join(rootpath,'station.txt')                    # station info including network,station,channel,latitude,longitude,elevation
