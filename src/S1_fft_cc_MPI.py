@@ -49,11 +49,11 @@ tt0=time.time()
 rootpath  = '/Volumes/Chengxin/monitor'                                     # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                                    # dir to store CC data
 DATADIR   = os.path.join(rootpath,'RAW_DATA')                               # dir where noise data is located
-local_data_path = os.path.join(rootpath,'2004_*')                           # absolute dir where SAC files are stored: this para is VERY IMPORTANT and has to be RIGHT if input_fmt is not asdf!!!
-locations = os.path.join(rootpath,'station.txt')                            # station info including network,station,channel,latitude,longitude,elevation: only needed when input_fmt is not asdf
+local_data_path = os.path.join(rootpath,'2004_*')                           # absolute dir where SAC files are stored: this para is VERY IMPORTANT and has to be RIGHT if input_fmt is not h5 for asdf!!!
+locations = os.path.join(rootpath,'station.txt')                            # station info including network,station,channel,latitude,longitude,elevation: only needed when input_fmt is not h5 for asdf
 
 # some control parameters
-input_fmt   = 'asdf'                                                        # string: 'asdf', 'sac','mseed' 
+input_fmt   = 'h5'                                                          # string: 'h5', 'sac','mseed' 
 freq_norm   = 'phase_only'                                                  # 'no' for no whitening, or 'rma' for running-mean average, 'phase' for sign-bit normalization in freq domain
 time_norm   = 'no'                                                          # 'no' for no normalization, or 'rma', 'one_bit' for normalization in time domain
 cc_method   = 'xcorr'                                                       # 'xcorr' for pure cross correlation, 'deconv' for deconvolution; FOR "COHERENCY" PLEASE set freq_norm to "rma" and time_norm to "no"
@@ -67,7 +67,7 @@ stationxml = False                                                          # st
 rm_resp   = 'no'                                                            # select 'no' to not remove response and use 'inv','spectrum','RESP', or 'polozeros' to remove response
 respdir   = os.path.join(rootpath,'resp')                                   # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
 # read station list
-if input_fmt != 'asdf':
+if input_fmt != 'h5':
     if not os.path.isfile(locations): 
         raise ValueError('Abort! station info is needed for this script')   
     locs = pd.read_csv(locations)
@@ -85,13 +85,12 @@ smoothspect_N  = 10                                                         # mo
 
 # criteria for data selection
 max_over_std = 10                                                           # threahold to remove window of bad signals: set it to 10*9 if prefer not to remove them
-max_kurtosis = 10                                                           # max kurtosis allowed, TO BE ADDED!
 
 # maximum memory allowed per core in GB
 MAX_MEM = 4.0
 
 # load useful download info if start from ASDF
-if input_fmt == 'asdf':
+if input_fmt == 'h5':
     dfile = os.path.join(DATADIR,'download_info.txt')
     down_info = eval(open(dfile).read())
     samp_freq = down_info['samp_freq']
@@ -140,7 +139,7 @@ if rank == 0:
     fout.write(str(fc_para));fout.close()
 
     # set variables to broadcast
-    if input_fmt == 'asdf':
+    if input_fmt == 'h5':
         tdir = sorted(glob.glob(os.path.join(DATADIR,'*.h5')))
     else:
         tdir = sorted(glob.glob(local_data_path))
@@ -156,14 +155,14 @@ if rank == 0:
     if nchunk==0:
         raise IOError('Abort! no available seismic files for FFT')
 else:
-    if input_fmt == 'asdf':
+    if input_fmt == 'h5':
         splits,tdir = [None for _ in range(2)]
     else: splits,tdir,nsta = [None for _ in range(3)]
 
 # broadcast the variables
 splits = comm.bcast(splits,root=0)
 tdir  = comm.bcast(tdir,root=0)
-if input_fmt != 'asdf': nsta = comm.bcast(nsta,root=0)
+if input_fmt != 'h5': nsta = comm.bcast(nsta,root=0)
 
 # MPI loop: loop through each user-defined time chunk
 for ick in range (rank,splits,size):
@@ -172,7 +171,7 @@ for ick in range (rank,splits,size):
     #############LOADING NOISE DATA AND DO FFT##################
 
     # get the tempory file recording cc process
-    if input_fmt == 'asdf':
+    if input_fmt == 'h5':
         tmpfile = os.path.join(CCFDIR,tdir[ick].split('/')[-1].split('.')[0]+'.tmp')
     else: 
         tmpfile = os.path.join(CCFDIR,tdir[ick].split('/')[-1]+'.tmp')
@@ -188,7 +187,7 @@ for ick in range (rank,splits,size):
             os.remove(tmpfile)
     
     # retrive station information
-    if input_fmt == 'asdf':
+    if input_fmt == 'h5':
         ds=pyasdf.ASDFDataSet(tdir[ick],mpi=False,mode='r') 
         sta_list = ds.waveforms.list()
         nsta=ncomp*len(sta_list)
@@ -220,7 +219,7 @@ for ick in range (rank,splits,size):
     for ista in range(len(sta_list)):
         tmps = sta_list[ista]
 
-        if input_fmt == 'asdf':
+        if input_fmt == 'h5':
             # get station and inventory
             try:
                 inv1 = ds.waveforms[tmps]['StationXML']
@@ -242,7 +241,7 @@ for ick in range (rank,splits,size):
             if flag:print("working on station %s and trace %s" % (sta,all_tags[itag]))
 
             # read waveform data
-            if input_fmt == 'asdf':
+            if input_fmt == 'h5':
                 source = ds.waveforms[tmps][all_tags[itag]]
             else:
                 source = obspy.read(tmps)
@@ -255,7 +254,7 @@ for ick in range (rank,splits,size):
             if len(source)==0:continue
 
             # cut daily-long data into smaller segments (dataS always in 2D)
-            trace_stdS,dataS_t,dataS = noise_module.cut_trace_make_statis(fc_para,source)        # optimized version:3-4 times faster
+            trace_stdS,dataS_t,dataS = noise_module.cut_trace_make_stat(fc_para,source)        # optimized version:3-4 times faster
             if not len(dataS): continue
             N = dataS.shape[0]
 
@@ -277,7 +276,7 @@ for ick in range (rank,splits,size):
             iii+=1
             del trace_stdS,dataS_t,dataS,source_white,data
     
-    if input_fmt == 'asdf': del ds
+    if input_fmt == 'h5': del ds
 
     # check whether array size is enough
     if iii!=nsta:
@@ -323,7 +322,7 @@ for ick in range (rank,splits,size):
             t3=time.time()
 
             #---------------keep daily cross-correlation into a hdf5 file--------------
-            if input_fmt == 'asdf':
+            if input_fmt == 'h5':
                 tname = tdir[ick].split('/')[-1]
             else: 
                 tname = tdir[ick].split('/')[-1]+'.h5'

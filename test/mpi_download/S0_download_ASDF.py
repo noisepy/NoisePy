@@ -1,12 +1,15 @@
+import sys
 import time
 import obspy
 import pyasdf
 import os, glob
 import numpy as np
-import noise_module
 import pandas as pd
 from obspy import UTCDateTime
 from obspy.clients.fdsn import Client
+
+sys.path.insert(1,'../../src')
+import noise_module
 
 '''
 This script:

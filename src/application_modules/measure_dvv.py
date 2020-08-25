@@ -5,11 +5,13 @@ import pyasdf
 import os, glob
 import datetime
 import numpy as np
-import noise_module
 import pandas as pd
 from mpi4py import MPI
 import matplotlib.pyplot as plt
 from obspy.signal.filter import bandpass
+
+sys.path.insert(1,'../')
+import noise_module
 
 # register datetime converter
 from pandas.plotting import register_matplotlib_converters

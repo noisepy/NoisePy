@@ -399,7 +399,7 @@ def sta_info_from_inv(inv):
     return sta,net,lon,lat,elv,location
 
 
-def cut_trace_make_statis(fc_para,source):
+def cut_trace_make_stat(fc_para,source):
     '''
     this function cuts continous noise data into user-defined segments, estimate the statistics of
     each segment and keep timestamp of each segment for later use. (used in S1)
@@ -560,11 +560,16 @@ def correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
         freqmax: maximum frequency (Hz)
     Nfft:    number of frequency points for ifft
     dataS_t: matrix of datetime object.
+    
     RETURNS:
     ---------------------
     s_corr: 1D or 2D matrix of the averaged or sub-stacks of cross-correlation functions in time domain
     t_corr: timestamp for each sub-stack or averaged function
     n_corr: number of included segments for each sub-stack or averaged function
+
+    MODIFICATIONS:
+    ---------------------
+    output the linear stack of each time chunk even when substack is selected (by Chengxin @Aug2020)
     '''
     #----load paramters----
     dt      = D['dt']
