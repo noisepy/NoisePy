@@ -99,7 +99,7 @@ if input_fmt == 'h5':
     start_date = down_info['start_date']
     end_date   = down_info['end_date']
     inc_hours  = down_info['inc_hours']  
-    #ncomp      = down_info['ncomp'] 
+    ncomp      = down_info['ncomp'] 
 else:   # sac or mseed format
     samp_freq = 20
     freqmin   = 0.05
@@ -113,12 +113,31 @@ dt = 1/samp_freq
 # we expect no parameters need to be changed below
 
 # make a dictionary to store all variables: also for later cc
-fc_para={'samp_freq':samp_freq,'dt':dt,'cc_len':cc_len,'step':step,'freqmin':freqmin,'freqmax':freqmax,\
-    'freq_norm':freq_norm,'time_norm':time_norm,'cc_method':cc_method,'smooth_N':smooth_N,'data_format':\
-    input_fmt,'rootpath':rootpath,'CCFDIR':CCFDIR,'start_date':start_date[0],'end_date':end_date[0],\
-    'inc_hours':inc_hours,'substack':substack,'substack_len':substack_len,'smoothspect_N':smoothspect_N,\
-    'maxlag':maxlag,'max_over_std':max_over_std,'MAX_MEM':MAX_MEM,'ncomp':ncomp,'stationxml':stationxml,\
-    'rm_resp':rm_resp,'respdir':respdir,'input_fmt':input_fmt}
+fc_para={'samp_freq':samp_freq,
+         'dt':dt,
+         'cc_len':cc_len,
+         'step':step,
+         'freqmin':freqmin,
+         'freqmax':freqmax,
+         'freq_norm':freq_norm,
+         'time_norm':time_norm,
+         'cc_method':cc_method,
+         'smooth_N':smooth_N,
+         'rootpath':rootpath,
+         'CCFDIR':CCFDIR,
+         'start_date':start_date[0],
+         'end_date':end_date[0],
+         'inc_hours':inc_hours,
+         'substack':substack,
+         'substack_len':substack_len,
+         'smoothspect_N':smoothspect_N,
+         'maxlag':maxlag,
+         'max_over_std':max_over_std,
+         'ncomp':ncomp,
+         'stationxml':stationxml,
+         'rm_resp':rm_resp,
+         'respdir':respdir,
+         'input_fmt':input_fmt}
 # save fft metadata for future reference
 fc_metadata  = os.path.join(CCFDIR,'fft_cc_data.txt')       
 
@@ -264,8 +283,13 @@ for ick in range (rank,splits,size):
             if flag:print('N and Nfft are %d (proposed %d),%d (proposed %d)' %(N,nseg_chunk,Nfft,nnfft))
 
             # keep track of station info to write into parameter section of ASDF files
-            station.append(sta);network.append(net);channel.append(comp),clon.append(lon)
-            clat.append(lat);location.append(loc);elevation.append(elv)
+            station.append(sta)
+            network.append(net)
+            channel.append(comp)
+            clon.append(lon)
+            clat.append(lat)
+            location.append(loc)
+            elevation.append(elv)
 
             # load fft data in memory for cross-correlations
             data = source_white[:,:Nfft2]
@@ -330,7 +354,10 @@ for ick in range (rank,splits,size):
             crap  = np.zeros(corr.shape,dtype=corr.dtype)
 
             with pyasdf.ASDFDataSet(cc_h5,mpi=False) as ccf_ds:
-                coor = {'lonS':clon[iiS],'latS':clat[iiS],'lonR':clon[iiR],'latR':clat[iiR]}
+                coor = {'lonS':clon[iiS],
+                        'latS':clat[iiS],
+                        'lonR':clon[iiR],
+                        'latR':clat[iiR]}
                 comp = channel[iiS][-1]+channel[iiR][-1]
                 parameters = noise_module.cc_parameters(fc_para,coor,tcorr,ncorr,comp)
 
@@ -338,7 +365,10 @@ for ick in range (rank,splits,size):
                 data_type = network[iiS]+'.'+station[iiS]+'_'+network[iiR]+'.'+station[iiR]
                 path = channel[iiS]+'_'+channel[iiR]
                 crap[:] = corr[:]
-                ccf_ds.add_auxiliary_data(data=crap, data_type=data_type, path=path, parameters=parameters)
+                ccf_ds.add_auxiliary_data(data=crap, 
+                                          data_type=data_type, 
+                                          path=path, 
+                                          parameters=parameters)
                 ftmp.write(network[iiS]+'.'+station[iiS]+'.'+channel[iiS]+'_'+network[iiR]+'.'+station[iiR]+'.'+channel[iiR]+'\n')
 
             t4=time.time()

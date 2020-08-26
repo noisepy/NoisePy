@@ -75,9 +75,23 @@ MAX_MEM   = 4.0                                                         # maximu
 # we expect no parameters need to be changed below
 
 # assemble parameters for data pre-processing
-prepro_para = {'RAWDATA':RAWDATA,'wiki_file':wiki_file,'messydata':messydata,'input_fmt':input_fmt,'stationxml':stationxml,\
-    'rm_resp':rm_resp,'respdir':respdir,'freqmin':freqmin,'freqmax':freqmax,'samp_freq':samp_freq,'inc_hours':inc_hours,\
-    'start_date':start_date,'end_date':end_date,'allfiles_path':allfiles_path,'cc_len':cc_len,'step':step,'MAX_MEM':MAX_MEM}
+prepro_para = {'RAWDATA':RAWDATA,
+               'wiki_file':wiki_file,
+               'messydata':messydata,
+               'input_fmt':input_fmt,
+               'stationxml':stationxml,
+               'rm_resp':rm_resp,
+               'respdir':respdir,
+               'freqmin':freqmin,
+               'freqmax':freqmax,
+               'samp_freq':samp_freq,
+               'inc_hours':inc_hours,
+               'start_date':start_date,
+               'end_date':end_date,
+               'allfiles_path':allfiles_path,
+               'cc_len':cc_len,
+               'step':step,
+               'MAX_MEM':MAX_MEM}
 metadata = os.path.join(DATADIR,'download_info.txt') 
 
 ##########################################################
@@ -92,8 +106,10 @@ size = comm.Get_size()
 
 if rank == 0:
     # make directory
-    if not os.path.isdir(DATADIR):os.mkdir(DATADIR)
-    if not os.path.isdir(RAWDATA):raise ValueError('Abort! no path of %s exists for RAWDATA'%RAWDATA)
+    if not os.path.isdir(DATADIR):
+        os.mkdir(DATADIR)
+    if not os.path.isdir(RAWDATA):
+        raise ValueError('Abort! no path of %s exists for RAWDATA'%RAWDATA)
 
     # output parameter info
     fout = open(metadata,'w')

@@ -575,20 +575,21 @@ tt1 = time.time()
 print('it takes %6.2fs to process step 1 in total' % (tt1-tt0))
 comm.barrier()
 
-rootpath  = './'         # root path for this data processing
+# absolute path parameters
+rootpath  = './'                                                    # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                            # dir where CC data is stored
 STACKDIR  = os.path.join(rootpath,'STACK')                          # dir where stacked data is going to
-locations = os.path.join(rootpath,'RAW_DATA/station.txt')                    # station info including network,station,channel,latitude,longitude,elevation
+locations = os.path.join(rootpath,'RAW_DATA/station.txt')           # station info including network,station,channel,latitude,longitude,elevation
 if not os.path.isfile(locations): 
     raise ValueError('Abort! station info is needed for this script')
 
 # define new stacking para
-keep_substack= False                                                 # keep all sub-stacks in final ASDF file
+keep_substack= False                                                # keep all sub-stacks in final ASDF file
 flag         = False                                                # output intermediate args for debugging
-stack_method = 'both'                                               # linear, pws or both
+stack_method = 'linear'                                             # linear, pws, robust, nroot, selective, auto_covariance or all
 
 # new rotation para
-rotation     = False                                                # rotation from E-N-Z to R-T-Z 
+rotation     = True                                                 # rotation from E-N-Z to R-T-Z 
 correction   = False                                                # angle correction due to mis-orientation
 if rotation and correction:
     corrfile = os.path.join(rootpath,'meso_angles.txt')             # csv file containing angle info to be corrected
@@ -616,15 +617,29 @@ substack    = fc_para['substack']
 substack_len= fc_para['substack_len']
 
 # cross component info
-if ncomp==1:enz_system = ['ZZ']
-else: enz_system = ['EE','EN','EZ','NE','NN','NZ','ZE','ZN','ZZ']
+if ncomp==1:
+    enz_system = ['ZZ']
+else: 
+    enz_system = ['EE','EN','EZ','NE','NN','NZ','ZE','ZN','ZZ']
+
 rtz_components = ['ZR','ZT','ZZ','RR','RT','RZ','TR','TT','TZ']
 
 # make a dictionary to store all variables: also for later cc
-stack_para={'samp_freq':samp_freq,'cc_len':cc_len,'step':step,'rootpath':rootpath,'STACKDIR':\
-    STACKDIR,'start_date':start_date[0],'end_date':end_date[0],'inc_hours':inc_hours,'substack':substack,\
-    'substack_len':substack_len,'maxlag':maxlag,'MAX_MEM':MAX_MEM,'keep_substack':keep_substack,\
-    'stack_method':stack_method,'rotation':rotation,'correction':correction}
+stack_para={'samp_freq':samp_freq,
+            'cc_len':cc_len,
+            'step':step,
+            'rootpath':rootpath,
+            'STACKDIR':STACKDIR,
+            'start_date':start_date[0],
+            'end_date':end_date[0],
+            'inc_hours':inc_hours,
+            'substack':substack,
+            'substack_len':substack_len,
+            'maxlag':maxlag,
+            'keep_substack':keep_substack,
+            'stack_method':stack_method,
+            'rotation':rotation,
+            'correction':correction}
 # save fft metadata for future reference
 stack_metadata  = os.path.join(STACKDIR,'stack_data.txt') 
 
@@ -764,7 +779,9 @@ for ipair in range (rank,splits,size):
 
     # matrix used for rotation
     if rotation:bigstack=np.zeros(shape=(9,npts_segmt),dtype=np.float32)
-    if stack_method =='both':bigstack1=np.zeros(shape=(9,npts_segmt),dtype=np.float32)
+    if stack_method =='all':
+        bigstack1=np.zeros(shape=(9,npts_segmt),dtype=np.float32)
+        bigstack2=np.zeros(shape=(9,npts_segmt),dtype=np.float32)
 
     # loop through cross-component for stacking
     iflag=1
@@ -779,30 +796,37 @@ for ipair in range (rank,splits,size):
         t2=time.time()
         stack_h5 = os.path.join(STACKDIR,idir+'/'+outfn)
         # output stacked data
-        if stack_method != 'both':
-            cc_final,ngood_final,stamps_final,allstacks,nstacks = noise_module.stacking(cc_array[indx],cc_time[indx],cc_ngood[indx],stack_para)
-            if not len(allstacks):continue
-            if rotation:bigstack[icomp]=allstacks
-
-            # write stacked data into ASDF file
-            with pyasdf.ASDFDataSet(stack_h5,mpi=False) as ds:
-                tparameters['time']  = stamps_final[0]
-                tparameters['ngood'] = nstacks
-                data_type = 'Allstack_'+stack_method
-                ds.add_auxiliary_data(data=allstacks, data_type=data_type, path=comp, parameters=tparameters)
-        else:
-            cc_final,ngood_final,stamps_final,allstacks1,allstacks2,nstacks = noise_module.stacking(cc_array[indx],cc_time[indx],cc_ngood[indx],stack_para)
-            if not len(allstacks1):continue
-            if rotation:
-                bigstack[icomp] =allstacks1
+        cc_final,ngood_final,stamps_final,allstacks1,allstacks2,allstacks3,nstacks = noise_module.stacking(cc_array[indx],cc_time[indx],cc_ngood[indx],stack_para)
+        if not len(allstacks1):continue
+        if rotation:
+            bigstack[icomp] =allstacks1
+            if stack_method == 'all':
                 bigstack1[icomp]=allstacks2
+                bigstack2[icomp]=allstacks3
 
-            # write stacked data into ASDF file
-            with pyasdf.ASDFDataSet(stack_h5,mpi=False) as ds:
-                tparameters['time']  = stamps_final[0]
-                tparameters['ngood'] = nstacks
-                ds.add_auxiliary_data(data=allstacks1, data_type='Allstack_linear', path=comp, parameters=tparameters)
-                ds.add_auxiliary_data(data=allstacks2, data_type='Allstack_pws', path=comp, parameters=tparameters)
+        # write stacked data into ASDF file
+        with pyasdf.ASDFDataSet(stack_h5,mpi=False) as ds:
+            tparameters['time']  = stamps_final[0]
+            tparameters['ngood'] = nstacks
+            if stack_method != 'all':
+                data_type = 'Allstack_'+stack_method
+                ds.add_auxiliary_data(data=allstacks1, 
+                                      data_type=data_type, 
+                                      path=comp, 
+                                      parameters=tparameters)
+            else:
+                ds.add_auxiliary_data(data=allstacks1, 
+                                      data_type='Allstack_linear', 
+                                      path=comp, 
+                                      parameters=tparameters)
+                ds.add_auxiliary_data(data=allstacks2, 
+                                      data_type='Allstack_pws', 
+                                      path=comp, 
+                                      parameters=tparameters)
+                ds.add_auxiliary_data(data=allstacks3, 
+                                      data_type='Allstack_robust', 
+                                      path=comp, 
+                                      parameters=tparameters)
 
         # keep a track of all sub-stacked data from S1
         if keep_substack:
@@ -811,7 +835,10 @@ for ipair in range (rank,splits,size):
                     tparameters['time']  = stamps_final[ii]
                     tparameters['ngood'] = ngood_final[ii]
                     data_type = 'T'+str(int(stamps_final[ii]))
-                    ds.add_auxiliary_data(data=cc_final[ii], data_type=data_type, path=comp, parameters=tparameters)            
+                    ds.add_auxiliary_data(data=cc_final[ii], 
+                                          data_type=data_type, 
+                                          path=comp, 
+                                          parameters=tparameters)            
         
         t3 = time.time()
         if flag:print('takes %6.2fs to stack one component with %s stacking method' %(t3-t1,stack_method))
@@ -821,7 +848,7 @@ for ipair in range (rank,splits,size):
         if np.all(bigstack==0):continue
         tparameters['station_source'] = ssta
         tparameters['station_receiver'] = rsta
-        if stack_method!='both':
+        if stack_method!='all':
             bigstack_rotated = noise_module.rotation(bigstack,tparameters,locs,flag)
 
             # write to file
@@ -831,10 +858,14 @@ for ipair in range (rank,splits,size):
                 tparameters['ngood'] = nstacks
                 data_type = 'Allstack_'+stack_method
                 with pyasdf.ASDFDataSet(stack_h5,mpi=False) as ds2:
-                    ds2.add_auxiliary_data(data=bigstack_rotated[icomp], data_type=data_type, path=tpath, parameters=tparameters)
+                    ds2.add_auxiliary_data(data=bigstack_rotated[icomp], 
+                                           data_type=data_type, 
+                                           path=comp, 
+                                           parameters=tparameters)
         else:
             bigstack_rotated  = noise_module.rotation(bigstack,tparameters,locs,flag)
             bigstack_rotated1 = noise_module.rotation(bigstack1,tparameters,locs,flag)
+            bigstack_rotated2 = noise_module.rotation(bigstack2,tparameters,locs,flag)
 
             # write to file
             for icomp in range(nccomp):
@@ -842,8 +873,18 @@ for ipair in range (rank,splits,size):
                 tparameters['time']  = stamps_final[0]
                 tparameters['ngood'] = nstacks
                 with pyasdf.ASDFDataSet(stack_h5,mpi=False) as ds2:
-                    ds2.add_auxiliary_data(data=bigstack_rotated[icomp], data_type='Allstack_linear', path=comp, parameters=tparameters)    
-                    ds2.add_auxiliary_data(data=bigstack_rotated1[icomp], data_type='Allstack_pws', path=comp, parameters=tparameters)
+                    ds2.add_auxiliary_data(data=bigstack_rotated[icomp], 
+                                           data_type='Allstack_linear', 
+                                           path=comp, 
+                                           parameters=tparameters)    
+                    ds2.add_auxiliary_data(data=bigstack_rotated1[icomp], 
+                                           data_type='Allstack_pws', 
+                                           path=comp, 
+                                           parameters=tparameters)
+                    ds2.add_auxiliary_data(data=bigstack_rotated2[icomp], 
+                                           data_type='Allstack_robust', 
+                                           path=comp, 
+                                           parameters=tparameters)
 
     t4 = time.time()
     if flag:print('takes %6.2fs to stack/rotate all station pairs %s' %(t4-t1,pairs_all[ipair]))
@@ -858,4 +899,5 @@ comm.barrier()
 # merge all path_array and output
 if rank == 0:
     sys.exit()
+
     

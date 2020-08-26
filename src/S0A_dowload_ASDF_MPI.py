@@ -84,9 +84,22 @@ if flag:
     print('station.list selected [%s] for data from %s to %s with %sh interval'%(down_list,starttime,endtime,inc_hours))
 
 # assemble parameters used for pre-processing
-prepro_para = {'rm_resp':rm_resp,'respdir':respdir,'freqmin':freqmin,'freqmax':freqmax,'samp_freq':samp_freq,'start_date':\
-    start_date,'end_date':end_date,'inc_hours':inc_hours,'cc_len':cc_len,'step':step,'MAX_MEM':MAX_MEM,'lamin':lamin,\
-    'lamax':lamax,'lomin':lomin,'lomax':lomax,'ncomp':ncomp}
+prepro_para = {'rm_resp':rm_resp,
+               'respdir':respdir,
+               'freqmin':freqmin,
+               'freqmax':freqmax,
+               'samp_freq':samp_freq,
+               'start_date':start_date,
+               'end_date':end_date,
+               'inc_hours':inc_hours,
+               'cc_len':cc_len,
+               'step':step,
+               'MAX_MEM':MAX_MEM,
+               'lamin':lamin,
+               'lamax':lamax,
+               'lomin':lomin,
+               'lomax':lomax,
+               'ncomp':ncomp}
 metadata = os.path.join(direc,'download_info.txt') 
 
 # prepare station info (existing station list vs. fetching from client)
@@ -121,9 +134,17 @@ else:
             for ichan in chan_list:
                 # gather station info
                 try:
-                    inv = client.get_stations(network=inet,station=ista,channel=ichan,location='*', \
-                        starttime=starttime,endtime=endtime,minlatitude=lamin,maxlatitude=lamax, \
-                        minlongitude=lomin, maxlongitude=lomax,level='response')
+                    inv = client.get_stations(network=inet,
+                                              station=ista,
+                                              channel=ichan,
+                                              location='*',
+                                              starttime=starttime,
+                                              endtime=endtime,
+                                              minlatitude=lamin,
+                                              maxlatitude=lamax, 
+                                              minlongitude=lomin, 
+                                              maxlongitude=lomax,
+                                              level='response')
                 except Exception as e:
                     print('Abort at L126 in S0A due to '+str(e))
                     sys.exit()
@@ -162,12 +183,19 @@ rank = comm.Get_rank()
 size = comm.Get_size()
 
 if rank==0:
-    if not os.path.isdir(rootpath):os.mkdir(rootpath)
-    if not os.path.isdir(direc):os.mkdir(direc)
+    if not os.path.isdir(rootpath):
+        os.mkdir(rootpath)
+    if not os.path.isdir(direc):
+        os.mkdir(direc)
     
     # output station list
     if not down_list:     
-        dict = {'network':net,'station':sta,'channel':chan,'latitude':lat,'longitude':lon,'elevation':elev}
+        dict = {'network':net,
+                'station':sta,
+                'channel':chan,
+                'latitude':lat,
+                'longitude':lon,
+                'elevation':elev}
         locs = pd.DataFrame(dict)        
         locs.to_csv(os.path.join(direc,'station.txt'),index=False)
     
@@ -224,8 +252,12 @@ for ick in range(rank,splits,size):
 
             # get inventory for specific station
             try:
-                sta_inv = client.get_stations(network=net[ista],station=sta[ista],\
-                    location=location[ista],starttime=s1,endtime=s2,level="response")
+                sta_inv = client.get_stations(network=net[ista],
+                                              station=sta[ista],
+                                              location=location[ista],
+                                              starttime=s1,
+                                              endtime=s2,
+                                              level="response")
             except Exception as e:
                 print(e);continue
 
@@ -238,8 +270,12 @@ for ick in range(rank,splits,size):
             try:
                 # get data
                 t0=time.time()
-                tr = client.get_waveforms(network=net[ista],station=sta[ista],\
-                    channel=chan[ista],location=location[ista],starttime=s1,endtime=s2)
+                tr = client.get_waveforms(network=net[ista],
+                                          station=sta[ista],
+                                          channel=chan[ista],
+                                          location=location[ista],
+                                          starttime=s1,
+                                          endtime=s2)
                 t1=time.time()
             except Exception as e:
                 print(e,'for',sta[ista]);continue
