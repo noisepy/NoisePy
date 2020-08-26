@@ -12,7 +12,7 @@ from obspy import UTCDateTime
 from obspy.clients.fdsn import Client
 from scipy.fftpack.helper import next_fast_len
 
-sys.path.insert(1,'../src')
+sys.path.insert(1,'src')
 import noise_module
 
 if not sys.warnoptions:
