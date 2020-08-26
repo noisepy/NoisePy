@@ -78,9 +78,9 @@ step      = 450                                                             # ov
 smooth_N  = 10                                                              # moving window length for time/freq domain normalization if selected (points)
 
 # cross-correlation parameters
-maxlag         = 400                                                        # lags of cross-correlation to save (sec)
+maxlag         = 200                                                        # lags of cross-correlation to save (sec)
 substack       = True                                                       # sub-stack daily cross-correlation or not
-substack_len   = 4*cc_len                                                  # how long to stack over (for monitoring purpose): need to be multiples of cc_len
+substack_len   = cc_len                                                     # how long to stack over (for monitoring purpose): need to be multiples of cc_len
 smoothspect_N  = 10                                                         # moving window length to smooth spectrum amplitude (points)
 
 # criteria for data selection

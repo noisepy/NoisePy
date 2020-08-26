@@ -12,7 +12,7 @@ from obspy import UTCDateTime
 from obspy.clients.fdsn import Client
 from scipy.fftpack.helper import next_fast_len
 
-sys.path.insert(1,'../src')
+sys.path.insert(1,'src')
 import noise_module
 
 if not sys.warnoptions:
@@ -269,12 +269,13 @@ comm.barrier()
 rootpath  = './'                # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                                    # dir to store CC data
 DATADIR   = os.path.join(rootpath,'RAW_DATA')                               # dir where noise data is located
+local_data_path = os.path.join(rootpath,'2016_*') 
 
 #-------some control parameters--------
 input_fmt   = 'asdf'                                                        # string: 'asdf', 'sac','mseed' 
-to_whiten   = 'no'                                                          # 'no' for no whitening, or 'running_mean', 'one_bit' for normalization
-time_norm   = 'no'                                                         # 'no' for no normalization, or 'running_mean', 'one_bit' for normalization
-cc_method   = 'coherency'                                                   # select between 'raw', 'deconv' and 'coherency'
+freq_norm   = 'rma'                                                         # 'no' for no whitening, or 'rma', 'one_bit' for normalization
+time_norm   = 'no'                                                          # 'no' for no normalization, or 'rma', 'one_bit' for normalization
+cc_method   = 'xcorr'                                                       # select between 'raw', 'deconv' and 'coherency'
 flag        = False                                                         # print intermediate variables and computing time for debugging purpose
 acorr_only  = False                                                         # only perform auto-correlation 
 xcorr_only  = False                                                         # only perform cross-correlation or not
@@ -328,11 +329,11 @@ dt = 1/samp_freq
 
 # make a dictionary to store all variables: also for later cc
 fc_para={'samp_freq':samp_freq,'dt':dt,'cc_len':cc_len,'step':step,'freqmin':freqmin,'freqmax':freqmax,\
-    'to_whiten':to_whiten,'time_norm':time_norm,'cc_method':cc_method,'smooth_N':smooth_N,'data_format':\
+    'freq_norm':freq_norm,'time_norm':time_norm,'cc_method':cc_method,'smooth_N':smooth_N,'data_format':\
     input_fmt,'rootpath':rootpath,'CCFDIR':CCFDIR,'start_date':start_date[0],'end_date':end_date[0],\
     'inc_hours':inc_hours,'substack':substack,'substack_len':substack_len,'smoothspect_N':smoothspect_N,\
-    'maxlag':maxlag,'max_over_std':max_over_std,'max_kurtosis':max_kurtosis,'MAX_MEM':MAX_MEM,'ncomp':ncomp,\
-    'stationxml':stationxml,'rm_resp':rm_resp,'respdir':respdir}
+    'maxlag':maxlag,'max_over_std':max_over_std,'MAX_MEM':MAX_MEM,'ncomp':ncomp,'stationxml':stationxml,\
+    'rm_resp':rm_resp,'respdir':respdir,'input_fmt':input_fmt}
 # save fft metadata for future reference
 fc_metadata  = os.path.join(CCFDIR,'fft_cc_data.txt')       
 
@@ -467,7 +468,7 @@ for ick in range (rank,splits,size):
             if len(source)==0:continue
 
             # cut daily-long data into smaller segments (dataS always in 2D)
-            trace_stdS,dataS_t,dataS = noise_module.cut_trace_make_statis(fc_para,source)        # optimized version:3-4 times faster
+            trace_stdS,dataS_t,dataS = noise_module.cut_trace_make_stat(fc_para,source)        # optimized version:3-4 times faster
             if not len(dataS): continue
             N = dataS.shape[0]
 
