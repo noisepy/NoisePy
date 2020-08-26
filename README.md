@@ -6,7 +6,7 @@ Disclaimer: this code should not be used "as-is" and not run like a blackbox. Th
 Detailed documentation can be found at https://noise-python.readthedocs.io/en/latest/
 
 [![Documentation Status](https://readthedocs.org/projects/noisepy/badge/?version=latest)](https://noisepy.readthedocs.io/en/latest/?badge=latest)
-[![Build Status](https://travis-ci.com/chengxinjiang/Noise_python.svg?token=jimdAXcrUt4ngV6Dy3s7&branch=master)](https://travis-ci.com/chengxinjiang/Noise_python)
+[![Build Status](https://travis-ci.com/chengxinjiang/NoisePy.svg?branch=master)](https://travis-ci.com/github/chengxinjiang/NoisePy)
 [![Codecov](https://codecov.io/gh/chengxinjiang/Noise_python/branch/master/graph/badge.svg)](https://codecov.io/gh/chengxinjiang/Noise_python)
 
 <img src="/docs/figures/logo.png" width="800" height="400">
@@ -17,6 +17,11 @@ Jiang, C. and Denolle, M. "NoisePy: a new high-performance python tool for seism
 
 # Installation
 The nature of NoisePy being composed of python scripts allows flexiable package installation, which is essentially to build dependented libraries the scripts and related functions live upon. We recommand to use [conda](https://docs.conda.io/en/latest/) and [pip](https://pypi.org/project/pip/) to install the library due to their convinence. Below are command lines we have tested that would create a python environment to run NoisePy. Note that the test is performed on `macOS Mojave (10.14.5)`, so it could be slightly different for other OS. 
+
+## Major updates include
+* adding options for several stacking methods such as nth-root, robust-stacking, auto-covariance and selective in S2. A script is added to the folder of application_modules to cross-compare the effects of different stacking method (note that `substack` parameter in S2 has to be `True` in order to use it)
+* adding a jupter notebook for tutorials on performing seismic monitoring analysis using NoisePy
+* adding a jupter notebook for generating response spectrum for a nodal array (to be done)
 
 ### Note the order of the command lines below matters ###
 
