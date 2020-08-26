@@ -467,7 +467,7 @@ for ick in range (rank,splits,size):
             if len(source)==0:continue
 
             # cut daily-long data into smaller segments (dataS always in 2D)
-            trace_stdS,dataS_t,dataS = noise_module.cut_trace_make_statis(fc_para,source)        # optimized version:3-4 times faster
+            trace_stdS,dataS_t,dataS = noise_module.cut_trace_make_stat(fc_para,source)        # optimized version:3-4 times faster
             if not len(dataS): continue
             N = dataS.shape[0]
 
