@@ -1,8 +1,7 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html4" lang="en" >
 <head>
   <meta charset="utf-8">
   
@@ -12,12 +11,19 @@
   
 
   
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+
+  
   
   
   
 
   
-  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
@@ -29,11 +35,6 @@
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
     
-
-  
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Installation" href="installation.html" /> 
@@ -50,7 +51,7 @@
           
 
           
-            <a href="#" class="icon icon-home"> NoisePy
+            <a href="#" class="icon icon-home" alt="Documentation Home"> NoisePy
           
 
           
@@ -80,6 +81,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -90,13 +92,14 @@
               <ul>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
-<li class="toctree-l1"><a class="reference internal" href="examples.html">Pyasdf examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">NoisePy ASDF file architecture</a></li>
 <li class="toctree-l1"><a class="reference internal" href="applications.html">Applications</a></li>
 </ul>
 
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -135,7 +138,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="#">Docs</a> &raquo;</li>
+      <li><a href="#" class="icon icon-home"></a> &raquo;</li>
         
       <li>Welcome to NoisePy</li>
     
@@ -158,25 +161,29 @@
             
   <div class="section" id="welcome-to-noisepy">
 <h1>Welcome to NoisePy<a class="headerlink" href="#welcome-to-noisepy" title="Permalink to this headline">¶</a></h1>
-<a class="reference internal image-reference" href="_images/logo.png"><img alt="_images/logo.png" class="align-center" src="_images/logo.png" style="width: 100%;" /></a>
+<a class="reference internal image-reference" href="_images/logo_small.png"><img alt="_images/logo_small.png" class="align-center" src="_images/logo_small.png" style="width: 100%;" /></a>
 <p>This is the documentation for the Python package of <strong>NoisePy</strong>, which is a new high-performance python tool for seismic ambient noise seismology. For further information and contact information please
 see below website:</p>
 <ul class="simple">
-<li><p>Github repository of <em>NoisePy</em>: <a class="reference external" href="https://github.com/mdenolle/NoisePy">https://github.com/mdenolle/NoisePy</a></p></li>
+<li>Github repository of <em>NoisePy</em>: <a class="reference external" href="https://github.com/mdenolle/NoisePy">https://github.com/mdenolle/NoisePy</a></li>
 </ul>
 <p>If you use NoisePy for your research and prepare publications, please consider citing <strong>NoisePy</strong>:</p>
 <ul class="simple">
-<li><p>Jiang, C., Yuan, C., and Denolle, M. NoisePy: a new high-performance python tool for seismic ambient noise seismology. In prep for Seismological Research Letter.</p></li>
+<li>Jiang, C., Denolle, M. 2020. NoisePy: a new high-performance python tool for ambient noise seismology. Seismological Research Letters. 91, 1853-1866. <a class="reference external" href="https://pubs.geoscienceworld.org/ssa/srl/article-abstract/91/3/1853/583390/NoisePy-A-New-High-Performance-Python-Tool-for?redirectedFrom=fulltext">DOI:10.1785/0220190364</a>.</li>
 </ul>
+<p>The monitoring modules are a compilation of published Python scripts and include the new approach described in:
+* Yuan, C., Bryan, J., Denolle, M.A.: Comparing approaches to measuring time- and frequency-dependent seismic phase variations for coda wave interferometry. In prep for <em>Geophysical Journal International</em>.
+Please cite this paper if using the monitoring module</p>
+<p>The stacking subroutines have been compiled from various published methods. Please cite appropriate article when using a particular stacking routine (references are listed in the documentation).</p>
 <p>We gratefully acknowledge support from the Packard Fundation (<a class="reference external" href="http://www.packard.org">www.packard.org</a>).</p>
 <div class="section" id="functionality">
 <h2>Functionality<a class="headerlink" href="#functionality" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li><p>Download continous noise data based on obspy’s core functions of <a class="reference external" href="https://docs.obspy.org/packages/autogen/obspy.clients.fdsn.client.Client.get_stations.html">get_station</a> and <a class="reference external" href="https://docs.obspy.org/packages/autogen/obspy.clients.fdsn.client.Client.get_waveforms.html">get_waveforms</a></p></li>
-<li><p>Save seismic data in <a class="reference external" href="https://asdf-definition.readthedocs.io/en/latest/">ASDF</a> format, which convinently assembles meta, wavefrom and auxililary data into one single file (<a class="reference external" href="https://github.com/SeismicData/pyasdf/blob/master/doc/tutorial.rst">Turtorials</a> on reading/writing ASDF files)</p></li>
-<li><p>Offers high flexibility to handle messy SAC/miniSEED data stored on your local machine and convert them into ASDF format data that could easily be pluged into NoisePy</p></li>
-<li><p>Performs fast and easy cross-correlation with functionality to run in parallel through <a class="reference external" href="https://en.wikipedia.org/wiki/Message_Passing_Interface">MPI</a></p></li>
-<li><p>Includes a series of monitoring functions to measure dv/v on the resulted cross-correlation functions using some recently developed new methods (see our papers for more details)</p></li>
+<li>Download continous noise data based on obspy’s core functions of <a class="reference external" href="https://docs.obspy.org/packages/autogen/obspy.clients.fdsn.client.Client.get_stations.html">get_station</a> and <a class="reference external" href="https://docs.obspy.org/packages/autogen/obspy.clients.fdsn.client.Client.get_waveforms.html">get_waveforms</a></li>
+<li>Save seismic data in <a class="reference external" href="https://asdf-definition.readthedocs.io/en/latest/">ASDF</a> format, which convinently assembles meta, wavefrom and auxililary data into one single file (<a class="reference external" href="https://github.com/SeismicData/pyasdf/blob/master/doc/tutorial.rst">Tutorials</a> on reading/writing ASDF files)</li>
+<li>Offers high flexibility to handle messy SAC/miniSEED data stored on your local machine and convert them into ASDF format data that could easily be pluged into NoisePy</li>
+<li>Performs fast and easy cross-correlation with functionality to run in parallel through <a class="reference external" href="https://en.wikipedia.org/wiki/Message_Passing_Interface">MPI</a></li>
+<li>Includes a series of monitoring functions to measure dv/v on the resulted cross-correlation functions using some recently developed new methods (see our papers for more details)</li>
 </ul>
 <div class="toctree-wrapper compound">
 </div>
@@ -201,11 +208,19 @@ see below website:</p>
 
   <div role="contentinfo">
     <p>
+        
         &copy; Copyright 2019, Chengxin Jiang
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -216,7 +231,6 @@ see below website:</p>
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {

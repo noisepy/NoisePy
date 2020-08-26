@@ -13,12 +13,12 @@ add an option to output the CCFs into txt files for image transform analysis
 '''
 
 #------absolute path to output data-------
-STACKDIR = '/Volumes/Seagate/research_Harvard/Kanto_basin/stacked'
-ALLFILES = glob.glob(os.path.join(STACKDIR,'*/*MKJM*.h5'))
+STACKDIR = '/Users/chengxin/Documents/SCAL/STACK'
+ALLFILES = glob.glob(os.path.join(STACKDIR,'*/*.h5'))
 COMP_OUT = ['ZZ','RR','TT']
 #COMP_OUT = ['ZR','ZT','ZZ','TR','TT','TZ','RR','RT','RZ']
 #COMP_OUT = ['EE','EN','EZ','NE','NN','NZ','ZE','ZN','ZZ']
-dtype    = 'Allstack0linear'
+dtype    = 'Allstack_linear'
 
 #---output file format-----
 out_SAC = True

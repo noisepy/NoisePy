@@ -891,6 +891,8 @@ def stacking(cc_array,cc_time,cc_ngood,stack_para):
         allstacks1 = np.zeros(npts,dtype=np.float32)
         allstacks2 = np.zeros(npts,dtype=np.float32)
         allstacks3 = np.zeros(npts,dtype=np.float32)
+        allstacks4 = np.zeros(npts,dtype=np.float32)
+        allstacks5 = np.zeros(npts,dtype=np.float32)
 
         if smethod == 'linear':
             allstacks1 = np.mean(cc_array,axis=0)
@@ -898,14 +900,16 @@ def stacking(cc_array,cc_time,cc_ngood,stack_para):
             allstacks1 = pws(cc_array,samp_freq)
         elif smethod == 'robust':
             allstacks1,w,nstep = robust_stack(cc_array,0.001)
-        elif smethod == 'acf':
-            allstack1 = adaptive_filter(cc_array,1)
+        elif smethod == 'auto_covariance':
+            allstacks1 = adaptive_filter(cc_array,1)
         elif smethod == 'nroot':
-            allstack1 = nroot_stack(cc_array,2)
+            allstacks1 = nroot_stack(cc_array,2)
         elif smethod == 'all':
             allstacks1 = np.mean(cc_array,axis=0)
             allstacks2 = pws(cc_array,samp_freq)
             allstacks3,w,nstep = robust_stack(cc_array,0.001)
+            allstacks4 = adaptive_filter(cc_array,1)
+            allstacks5 = nroot_stack(cc_array,2)
         nstacks = np.sum(cc_ngood)
 
     # good to return
@@ -989,8 +993,8 @@ def stacking_rma(cc_array,cc_time,cc_ngood,stack_para):
             allstacks1 = pws(cc_array,samp_freq)
         elif smethod == 'robust':
             allstacks1,w, = robust_stack(cc_array,0.001)
-        #elif smethod == 'selective':
-        #    allstacks1 = selective_stack(cc_array,0.001)
+        elif smethod == 'selective':
+            allstacks1 = selective_stack(cc_array,0.001)
         elif smethod == 'all':
             allstacks1 = np.mean(cc_array,axis=0)
             allstacks2 = pws(cc_array,samp_freq)

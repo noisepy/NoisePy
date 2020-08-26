@@ -38,17 +38,17 @@ tt0=time.time()
 ########################################
 
 # absolute path parameters
-rootpath  = '/Volumes/Chengxin/TA'.                                 # root path for this data processing
+rootpath  = '/Users/chengxin/Documents/SCAL'                        # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                            # dir where CC data is stored
 STACKDIR  = os.path.join(rootpath,'STACK')                          # dir where stacked data is going to
-locations = os.path.join(rootpath,'station.txt')                    # station info including network,station,channel,latitude,longitude,elevation
+locations = os.path.join(rootpath,'RAW_DATA/station.txt')                    # station info including network,station,channel,latitude,longitude,elevation
 if not os.path.isfile(locations): 
     raise ValueError('Abort! station info is needed for this script')
 
 # define new stacking para
-keep_substack= True                                                 # keep all sub-stacks in final ASDF file
+keep_substack= False                                                # keep all sub-stacks in final ASDF file
 flag         = False                                                # output intermediate args for debugging
-stack_method = 'all'                                                # linear, pws, robust or all
+stack_method = 'linear'                                             # linear, pws, robust, nroot, selective, auto_covariance or all
 
 # new rotation para
 rotation     = True                                                 # rotation from E-N-Z to R-T-Z 

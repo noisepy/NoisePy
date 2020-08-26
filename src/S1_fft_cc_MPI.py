@@ -46,21 +46,21 @@ tt0=time.time()
 ########################################
 
 # absolute path parameters
-rootpath  = '/Volumes/Chengxin/monitor'                                     # root path for this data processing
+rootpath  = '/Users/chengxin/Documents/SCAL'                                # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                                    # dir to store CC data
 DATADIR   = os.path.join(rootpath,'RAW_DATA')                               # dir where noise data is located
-local_data_path = os.path.join(rootpath,'2004_*')                           # absolute dir where SAC files are stored: this para is VERY IMPORTANT and has to be RIGHT if input_fmt is not h5 for asdf!!!
+local_data_path = os.path.join(rootpath,'2016_*')                           # absolute dir where SAC files are stored: this para is VERY IMPORTANT and has to be RIGHT if input_fmt is not h5 for asdf!!!
 locations = os.path.join(rootpath,'station.txt')                            # station info including network,station,channel,latitude,longitude,elevation: only needed when input_fmt is not h5 for asdf
 
 # some control parameters
 input_fmt   = 'h5'                                                          # string: 'h5', 'sac','mseed' 
-freq_norm   = 'phase_only'                                                  # 'no' for no whitening, or 'rma' for running-mean average, 'phase' for sign-bit normalization in freq domain
+freq_norm   = 'rma'                                                         # 'no' for no whitening, or 'rma' for running-mean average, 'phase_only' for sign-bit normalization in freq domain.
 time_norm   = 'no'                                                          # 'no' for no normalization, or 'rma', 'one_bit' for normalization in time domain
-cc_method   = 'xcorr'                                                       # 'xcorr' for pure cross correlation, 'deconv' for deconvolution; FOR "COHERENCY" PLEASE set freq_norm to "rma" and time_norm to "no"
+cc_method   = 'xcorr'                                                       # 'xcorr' for pure cross correlation, 'deconv' for deconvolution; FOR "COHERENCY" PLEASE set freq_norm to "rma", time_norm to "no" and cc_method to "xcorr"
 flag        = False                                                         # print intermediate variables and computing time for debugging purpose
 acorr_only  = False                                                         # only perform auto-correlation 
 xcorr_only  = True                                                          # only perform cross-correlation or not
-ncomp       = 1                                                             # 1 or 3 component data (needed to decide whether do rotation)
+ncomp       = 3                                                             # 1 or 3 component data (needed to decide whether do rotation)
 
 # station/instrument info for input_fmt=='sac' or 'mseed'
 stationxml = False                                                          # station.XML file used to remove instrument response for SAC/miniseed data
@@ -79,8 +79,8 @@ smooth_N  = 10                                                              # mo
 
 # cross-correlation parameters
 maxlag         = 400                                                        # lags of cross-correlation to save (sec)
-substack       = False                                                      # sub-stack daily cross-correlation or not
-substack_len   = 12*cc_len                                                  # how long to stack over (for monitoring purpose): need to be multiples of cc_len
+substack       = True                                                       # sub-stack daily cross-correlation or not
+substack_len   = 4*cc_len                                                  # how long to stack over (for monitoring purpose): need to be multiples of cc_len
 smoothspect_N  = 10                                                         # moving window length to smooth spectrum amplitude (points)
 
 # criteria for data selection
@@ -102,10 +102,10 @@ if input_fmt == 'h5':
     #ncomp      = down_info['ncomp'] 
 else:   # sac or mseed format
     samp_freq = 20
-    freqmin   = 0.02
-    freqmax   = 5
-    start_date = ["2004_01_01_0_0_0"]
-    end_date   = ["2004_06_30_0_0_0"]
+    freqmin   = 0.05
+    freqmax   = 2
+    start_date = ["2016_07_01_0_0_0"]
+    end_date   = ["2016_07_02_0_0_0"]
     inc_hours  = 24
 dt = 1/samp_freq
 
@@ -117,8 +117,8 @@ fc_para={'samp_freq':samp_freq,'dt':dt,'cc_len':cc_len,'step':step,'freqmin':fre
     'freq_norm':freq_norm,'time_norm':time_norm,'cc_method':cc_method,'smooth_N':smooth_N,'data_format':\
     input_fmt,'rootpath':rootpath,'CCFDIR':CCFDIR,'start_date':start_date[0],'end_date':end_date[0],\
     'inc_hours':inc_hours,'substack':substack,'substack_len':substack_len,'smoothspect_N':smoothspect_N,\
-    'maxlag':maxlag,'max_over_std':max_over_std,'max_kurtosis':max_kurtosis,'MAX_MEM':MAX_MEM,'ncomp':ncomp,\
-    'stationxml':stationxml,'rm_resp':rm_resp,'respdir':respdir,'input_fmt':input_fmt}
+    'maxlag':maxlag,'max_over_std':max_over_std,'MAX_MEM':MAX_MEM,'ncomp':ncomp,'stationxml':stationxml,\
+    'rm_resp':rm_resp,'respdir':respdir,'input_fmt':input_fmt}
 # save fft metadata for future reference
 fc_metadata  = os.path.join(CCFDIR,'fft_cc_data.txt')       
 

@@ -5,7 +5,7 @@ Disclaimer: this code should not be used "as-is" and not run like a blackbox. Th
 
 Detailed documentation can be found at https://noise-python.readthedocs.io/en/latest/
 
-[![Documentation Status](https://readthedocs.org/projects/noise-python/badge/?version=latest)](https://noise-python.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/noisepy/badge/?version=latest)](https://noisepy.readthedocs.io/en/latest/?badge=latest)
 [![Build Status](https://travis-ci.com/chengxinjiang/Noise_python.svg?token=jimdAXcrUt4ngV6Dy3s7&branch=master)](https://travis-ci.com/chengxinjiang/Noise_python)
 [![Codecov](https://codecov.io/gh/chengxinjiang/Noise_python/branch/master/graph/badge.svg)](https://codecov.io/gh/chengxinjiang/Noise_python)
 
@@ -76,7 +76,7 @@ plotting_modules.plot_waveform(sfile,'CI','BLC',0.01,0.4)
 ```
 <img src="/docs/figures/waveform3.png" width="600" height="400">
 
-Note that the script also offers the option to download data from an existing station list in a format same to the outputed CSV file. In this case, `down_list` should be set to `True` at L53. In reality, the downloading speed is dependent on many factors such as the original sampling rate of targeted data, the networks, the data center where it is hosted and the general structure you want to store on your machine etc. We tested a bunch of the parameters to evaluate their performance and the readers are referred to our paper for more details (Jiang et al., 2019). 
+Note that the script also offers the option to download data from an existing station list in a format same to the outputed CSV file. In this case, `down_list` should be set to `True` at L53. In reality, the downloading speed is dependent on many factors such as the original sampling rate of targeted data, the networks, the data center where it is hosted and the general structure you want to store on your machine etc. We tested a bunch of the parameters to evaluate their performance and the readers are referred to our paper for more details (Jiang et al., 2020). 
 
 
 ### 0B. DEAL with local SAC/miniseed files using `S0B_sacMSEED_to_ASDF.py`
@@ -85,12 +85,12 @@ If you want to use the NoisePy to handel local data in SAC/miniseed format store
 
 
 ### 1. Perform cross correlations using `S1_fft_cc_MPI.py`\
-This is the core script of NoisePy, which performs [Fourier transform](https://en.wikipedia.org/wiki/Fourier_transform) to all noise data first and loads them into the memory before they are further cross-correlated. This means that we are performing [cross-correlation](https://en.wikipedia.org/wiki/Cross-correlation) in the frequency domain. In the script, we provide several options to calculate the cross correlation, including `raw`, `coherency` and `deconv` (see our paper<sup>*</sup> for detailed definition). We choose `coherency` as an example here. After running the script, it will create a new folder named `CCF`, in which new ASDF files containing all cross-correlation functions between different station pairs are located. It also creates a parameter file of `fft_cc_data.txt` that records all useful parameters used in this script. Once you get the cross-correlation file, you can show the daily temporal variation between all station-pair by calling `plot_substack_cc` function in `plotting_modules` as follows. 
+This is the core script of NoisePy, which performs [Fourier transform](https://en.wikipedia.org/wiki/Fourier_transform) to all noise data first and loads them into the memory before they are further cross-correlated. This means that we are performing [cross-correlation](https://en.wikipedia.org/wiki/Cross-correlation) in the frequency domain. In the script, we provide several options to calculate the cross correlation, including `raw`, `coherency` and `deconv` (see our paper<sup>*</sup> for detailed definition). We choose `coherency` as an example here. After running the script, it will create a new folder named `CCF`, in which new ASDF files containing all cross-correlation functions between different station pairs are located. It also creates a parameter file of `fft_cc_data.txt` that records all useful parameters used in this script. Once you get the cross-correlation file, you can show the daily temporal variation between all station-pair by calling `plot_substack_cc` function in `plotting_modules` as follows. NOTE that to make this plot, the parameter of `substack` has to be set to `True` in S1.
 
 ```python
 import plotting_modules
 sfile = '/Users/chengxin/Documents/SCAL/CCF/2016_07_01_00_00_00T2016_07_02_00_00_00.h5'
-plot_modules.plot_substack_cc(sfile,0.1,0.2,200,True,'/Users/chengxin/Documents/SCAL/CCF/figures')     
+plotting_modules.plot_substack_cc(sfile,0.1,0.2,200,True,'/Users/chengxin/Documents/SCAL/CCF/figures')     
 ```
 <img src="/docs/figures/substack_cc_NN.png" width="400" height="190"><img src="/docs/figures/substack_cc_ZZ.png" width="400" height="190">
 
@@ -101,8 +101,8 @@ This script is used to assemble and/or stack all cross-correlation functions com
 ```python
 import plotting_modules,glob
 sfiles = glob.glob('/Users/chengxin/Documents/SCAL/STACK/*/*.h5')
-plot_modules.plot_all_moveout(sfiles,'Allstack_linear'0.1,0.2,'ZZ',1,300,True,'/Users/chengxin/Documents/SCAL/STACK') #(move-out for linear stacking)
-plot_modules.plot_all_moveout(sfiles,'Allstack_pws'0.1,0.2,'ZZ',1,300,True,'/Users/chengxin/Documents/SCAL/STACK')    #(move-out for pws)
+plotting_modules.plot_all_moveout(sfiles,'Allstack_linear'0.1,0.2,'ZZ',1,300,True,'/Users/chengxin/Documents/SCAL/STACK') #(move-out for linear stacking)
+plotting_modules.plot_all_moveout(sfiles,'Allstack_pws'0.1,0.2,'ZZ',1,300,True,'/Users/chengxin/Documents/SCAL/STACK')    #(move-out for pws)
 ```
 <img src="/docs/figures/linear_stack1.png" width="400" height="300"><img src="/docs/figures/pws_stack1.png" width="400" height="300">
 
