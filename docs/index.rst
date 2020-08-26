@@ -1,7 +1,7 @@
 Welcome to NoisePy
 ==================
 
-.. image:: figures/logo_small.png
+.. image:: figures/logo.png
     :width: 100%
     :align: center
 
