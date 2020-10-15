@@ -47,7 +47,7 @@ if not os.path.isfile(locations):
 
 # define new stacking para
 keep_substack= False                                                # keep all sub-stacks in final ASDF file
-flag         = False                                                # output intermediate args for debugging
+flag         = True                                                 # output intermediate args for debugging
 stack_method = 'linear'                                             # linear, pws, robust, nroot, selective, auto_covariance or all
 
 # new rotation para
@@ -159,6 +159,12 @@ for ipair in range (rank,splits,size):
     rnet,rsta = ttr[1].split('.')
     idir  = ttr[0]
 
+    # check if it is auto-correlation
+    if (ssta==rsta and snet==rnet):
+        fauto=1
+    else:
+        fauto=0
+
     # continue when file is done
     toutfn = os.path.join(STACKDIR,idir+'/'+pairs_all[ipair]+'.tmp')   
     if os.path.isfile(toutfn):continue        
@@ -200,9 +206,15 @@ for ipair in range (rank,splits,size):
             if flag:print('continue! no pair of %s in %s'%(dtype,ifile))
             continue
         
-        if ncomp==3 and len(path_list)<9:
-            if flag:print('continue! not enough cross components for %s in %s'%(dtype,ifile))
-            continue
+        # seperate auto and cross-correlation
+        if (fauto==1):
+            if ncomp==3 and len(path_list)<6:
+                if flag:print('continue! not enough cross components for auto-correlation %s in %s'%(dtype,ifile))
+                continue
+        else: 
+            if ncomp==3 and len(path_list)<9:
+                if flag:print('continue! not enough cross components for cross-correlation %s in %s'%(dtype,ifile))
+                continue
 
         if len(path_list) >9:
             raise ValueError('more than 9 cross-component exists for %s %s! please double check'%(ifile,dtype))
@@ -234,8 +246,8 @@ for ipair in range (rank,splits,size):
     t1=time.time()
     if flag:print('loading CCF data takes %6.2fs'%(t1-t0))
 
-    # continue when there is no data
-    if iseg <= 1: continue
+    # continue when there is no data or for auto-correlation
+    if iseg <= 1 or fauto==1: continue
     outfn = pairs_all[ipair]+'.h5'         
     if flag:print('ready to output to %s'%(outfn))                     
 

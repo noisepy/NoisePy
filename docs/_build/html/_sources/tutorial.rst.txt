@@ -65,7 +65,7 @@ temporal variation between all station-pair by calling *plot_substack_cc* functi
 
     >>> import plotting_modules
     >>> sfile = '/Users/chengxin/Documents/SCAL/CCF/2016_07_01_00_00_00T2016_07_02_00_00_00.h5'
-    >>> plot_modules.plot_substack_cc(sfile,0.1,0.2,200,True,'/Users/chengxin/Documents/SCAL/CCF/figures')     
+    >>> plotting_modules.plot_substack_cc(sfile,0.1,0.2,200,True,'/Users/chengxin/Documents/SCAL/CCF/figures')     
 
 .. image:: figures/substack_cc_NN.png
     :width: 100%
@@ -96,8 +96,8 @@ NoisePy compiles a suite of stacking routines. Please cite appropriate manuscrip
 
     >>> import plotting_modules,glob
     >>> sfiles = glob.glob('/Users/chengxin/Documents/SCAL/STACK/*/*.h5')
-    >>> plot_modules.plot_all_moveout(sfiles,'Allstack_linear'0.1,0.2,'ZZ',1,300,True,'/Users/chengxin/Documents/SCAL/STACK') #(move-out for linear stacking)
-    >>> plot_modules.plot_all_moveout(sfiles,'Allstack_pws'0.1,0.2,'ZZ',1,300,True,'/Users/chengxin/Documents/SCAL/STACK')    #(move-out for pws)
+    >>> plotting_modules.plot_all_moveout(sfiles,'Allstack_linear'0.1,0.2,'ZZ',1,300,True,'/Users/chengxin/Documents/SCAL/STACK') #(move-out for linear stacking)
+    >>> plotting_modules.plot_all_moveout(sfiles,'Allstack_pws'0.1,0.2,'ZZ',1,300,True,'/Users/chengxin/Documents/SCAL/STACK')    #(move-out for pws)
 
 .. image:: figures/linear_stack1.png
     :width: 100%

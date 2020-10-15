@@ -165,19 +165,15 @@
             
   <div class="section" id="applications">
 <h1>Applications<a class="headerlink" href="#applications" title="Permalink to this headline">¶</a></h1>
-<p>To fulfill the strong need at user’s end for applications based on ambient noise, NoisePy provides two application scripts for further surface wave dispersion analysis and
-seismic monitoring through measuring velocity change with time.</p>
+<p>To fulfill the strong need at user’s end for applications based on ambient noise, NoisePy provides two application scripts for further surface wave dispersion analysis and seismic monitoring through measuring velocity change with time.</p>
 <div class="section" id="i-group-velocity-measurements">
 <h2>I. Group velocity measurements<a class="headerlink" href="#i-group-velocity-measurements" title="Permalink to this headline">¶</a></h2>
-<p>The script of <cite>I_group_velocity.py</cite> is to estimate the group velocity using wavelet transform. The general idea is to apply narrow bandpass filters to the waveform and track
-the energy peak in each narrow frequency bands at multiple frequencies. The image below shows our synthetic test by cross-comparing the predicted dispersion curves using the
-wave propagation matrix method from CPS (Hermann et al., 2012) and those measured using our script upon a synthetic waveform from SPECFEM2D.</p>
+<p>The script of <cite>dispersion_analysis.py</cite> is to estimate the group velocity using wavelet transform. The general idea is to apply narrow bandpass filters to the waveform and track the energy peak in each narrow frequency bands at multiple frequencies. The image below shows our synthetic test by cross-comparing the predicted dispersion curves using the wave propagation matrix method from CPS (Hermann et al., 2012) and those measured using our script upon a synthetic waveform from SPECFEM2D.</p>
 <a class="reference internal image-reference" href="_images/disp_validation.png"><img alt="_images/disp_validation.png" class="align-center" src="_images/disp_validation.png" style="width: 100%;" /></a>
 </div>
 <div class="section" id="ii-monitoring-velocity-changes">
 <h2>II. Monitoring velocity changes<a class="headerlink" href="#ii-monitoring-velocity-changes" title="Permalink to this headline">¶</a></h2>
-<p>The script of <cite>II_measure_dvv.py</cite> combines several general and popular methods for dv/v measurement including waveform stretching (Sens-Schönfelder and Wegler, 2006),
-dynamic time warping (Mikesell et al., 2015), moving-window cross spectrum (Clark et al., 2011), and the two newly developed methods in wavelet domain including 1) wavelet cross-spectrum
+<p>The script of <cite>measure_dvv.py</cite> combines several general and popular methods for dv/v measurement including waveform stretching (Sens-Schönfelder and Wegler, 2006), dynamic time warping (Mikesell et al., 2015), moving-window cross spectrum (Clark et al., 2011), and the two newly developed methods in wavelet domain including 1) wavelet cross-spectrum
 (wcs; Mao et al., 2018) and wavelet stretching (Yuan et al., in prep).</p>
 <a class="reference internal image-reference" href="_images/dvv_validation.png"><img alt="_images/dvv_validation.png" class="align-center" src="_images/dvv_validation.png" style="width: 100%;" /></a>
 </div>

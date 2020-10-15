@@ -57,9 +57,9 @@ input_fmt   = 'h5'                                                          # st
 freq_norm   = 'rma'                                                         # 'no' for no whitening, or 'rma' for running-mean average, 'phase_only' for sign-bit normalization in freq domain.
 time_norm   = 'no'                                                          # 'no' for no normalization, or 'rma', 'one_bit' for normalization in time domain
 cc_method   = 'xcorr'                                                       # 'xcorr' for pure cross correlation, 'deconv' for deconvolution; FOR "COHERENCY" PLEASE set freq_norm to "rma", time_norm to "no" and cc_method to "xcorr"
-flag        = False                                                         # print intermediate variables and computing time for debugging purpose
+flag        = True                                                          # print intermediate variables and computing time for debugging purpose
 acorr_only  = False                                                         # only perform auto-correlation 
-xcorr_only  = True                                                          # only perform cross-correlation or not
+xcorr_only  = False                                                          # only perform cross-correlation or not
 ncomp       = 3                                                             # 1 or 3 component data (needed to decide whether do rotation)
 
 # station/instrument info for input_fmt=='sac' or 'mseed'

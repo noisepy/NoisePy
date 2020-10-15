@@ -246,7 +246,7 @@ def preprocess_raw(st,inv,prepro_para,date_info):
             resp = glob.glob(os.path.join(respdir,'RESP.'+station+'*'))
             if len(resp)==0:
                 raise ValueError('no RESP files found for %s' % station)
-            seedresp = {'filename':resp[0],'date':date_info['starttime','units':'DIS']}
+            seedresp = {'filename':resp[0],'date':date_info['starttime'],'units':'DIS'}
             st.simulate(paz_remove=None,pre_filt=pre_filt,seedresp=seedresp[0])
 
         elif rm_resp == 'polozeros':
