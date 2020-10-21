@@ -46,11 +46,11 @@ tt0=time.time()
 ########################################
 
 # absolute path parameters
-rootpath  = '/Users/chengxin/Documents/SCAL'                                # root path for this data processing
+rootpath  = '/Users/chengxin/Documents/ANU/NoisePy_NZ'                                # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                                    # dir to store CC data
 DATADIR   = os.path.join(rootpath,'RAW_DATA')                               # dir where noise data is located
 local_data_path = os.path.join(rootpath,'2016_*')                           # absolute dir where SAC files are stored: this para is VERY IMPORTANT and has to be RIGHT if input_fmt is not h5 for asdf!!!
-locations = os.path.join(rootpath,'station.txt')                            # station info including network,station,channel,latitude,longitude,elevation: only needed when input_fmt is not h5 for asdf
+locations = os.path.join(rootpath,'RAW_DATA/station_QRZ_OXZ_GVZ.txt')                            # station info including network,station,channel,latitude,longitude,elevation: only needed when input_fmt is not h5 for asdf
 
 # some control parameters
 input_fmt   = 'h5'                                                          # string: 'h5', 'sac','mseed' 
@@ -59,7 +59,7 @@ time_norm   = 'no'                                                          # 'n
 cc_method   = 'xcorr'                                                       # 'xcorr' for pure cross correlation, 'deconv' for deconvolution; FOR "COHERENCY" PLEASE set freq_norm to "rma", time_norm to "no" and cc_method to "xcorr"
 flag        = True                                                          # print intermediate variables and computing time for debugging purpose
 acorr_only  = False                                                         # only perform auto-correlation 
-xcorr_only  = False                                                          # only perform cross-correlation or not
+xcorr_only  = True                                                          # only perform cross-correlation or not
 ncomp       = 3                                                             # 1 or 3 component data (needed to decide whether do rotation)
 
 # station/instrument info for input_fmt=='sac' or 'mseed'
@@ -325,8 +325,18 @@ for ick in range (rank,splits,size):
 
         # get index right for auto/cross correlation
         istart=iiS;iend=iii
-        if acorr_only:iend=np.minimum(iiS+ncomp,iii)
-        if xcorr_only:istart=np.minimum(iiS+ncomp,iii)
+        if acorr_only:
+            iend=np.minimum(iiS+ncomp,iii)
+        if xcorr_only:
+            if ncomp==1:
+                istart=np.minimum(iiS+ncomp,iii)
+            else:
+                if (channel[iiS][-1]=='Z'):
+                    istart=np.minimum(iiS+1,iii)
+                elif (channel[iiS][-1]=='N'):
+                    istart=np.minimum(iiS+2,iii)
+                else:
+                    istart=np.minimum(iiS+ncomp,iii)
 
         #-----------now loop III for each receiver B----------
         for iiR in range(istart,iend):
