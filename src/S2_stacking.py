@@ -38,10 +38,10 @@ tt0=time.time()
 ########################################
 
 # absolute path parameters
-rootpath  = '/Users/chengxin/Documents/ANU/NoisePy_NZ'              # root path for this data processing
+rootpath  = '/Users/chengxin/Documents/SCAL'                        # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                            # dir where CC data is stored
 STACKDIR  = os.path.join(rootpath,'STACK')                          # dir where stacked data is going to
-locations = os.path.join(rootpath,'RAW_DATA/station_QRZ_OXZ_GVZ.txt')           # station info including network,station,channel,latitude,longitude,elevation
+locations = os.path.join(rootpath,'RAW_DATA/station.txt')           # station info including network,station,channel,latitude,longitude,elevation
 if not os.path.isfile(locations): 
     raise ValueError('Abort! station info is needed for this script')
 

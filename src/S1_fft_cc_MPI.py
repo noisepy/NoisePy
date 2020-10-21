@@ -46,11 +46,11 @@ tt0=time.time()
 ########################################
 
 # absolute path parameters
-rootpath  = '/Users/chengxin/Documents/ANU/NoisePy_NZ'                                # root path for this data processing
+rootpath  = '/Users/chengxin/Documents/SCAL'                                # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                                    # dir to store CC data
 DATADIR   = os.path.join(rootpath,'RAW_DATA')                               # dir where noise data is located
 local_data_path = os.path.join(rootpath,'2016_*')                           # absolute dir where SAC files are stored: this para is VERY IMPORTANT and has to be RIGHT if input_fmt is not h5 for asdf!!!
-locations = os.path.join(rootpath,'RAW_DATA/station_QRZ_OXZ_GVZ.txt')                            # station info including network,station,channel,latitude,longitude,elevation: only needed when input_fmt is not h5 for asdf
+locations = os.path.join(DATADIR,'station.txt')                             # station info including network,station,channel,latitude,longitude,elevation: only needed when input_fmt is not h5 for asdf
 
 # some control parameters
 input_fmt   = 'h5'                                                          # string: 'h5', 'sac','mseed' 
