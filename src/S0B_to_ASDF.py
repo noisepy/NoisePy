@@ -37,14 +37,10 @@ NOTE:
 tt0=time.time()
 
 # data/file paths
-rootpath  = '/Users/chengxin/Documents/Kanto'                           # absolute path for your project
+rootpath  = '/Users/chengxin/Documents/SCAL'                           # absolute path for your project
 RAWDATA   = os.path.join(rootpath,'RAW_DATA')                           # dir where mseed/SAC files are located
-DATADIR   = os.path.join(rootpath,'Kanto_sac')                          # dir where cleaned data in ASDF format are going to be outputted
-locations = os.path.join(rootpath,'station.txt')                        # station info including network,station,channel,latitude,longitude,elevation
-if not os.path.isfile(locations): 
-    raise ValueError('Abort! station info is needed for this script')
-locs = pd.read_csv(locations)
-nsta = len(locs)
+DATADIR   = os.path.join(rootpath,'CLEAN_DATA')                         # dir where cleaned data in ASDF format are going to be outputted
+locations = os.path.join(RAWDATA,'station.txt')                        # station info including network,station,channel,latitude,longitude,elevation
 
 # useful parameters for cleaning the data
 input_fmt = 'sac'                                                       # input file format between 'sac' and 'mseed' 
@@ -58,11 +54,12 @@ flag      = False                                                       # print 
 
 # having this file saves a tons of time: see L95-126 for why
 wiki_file = os.path.join(rootpath,'allfiles_time.txt')                  # file containing the path+name for all sac/mseed files and its start-end time      
-allfiles_path = os.path.join(DATADIR,'*/*'+input_fmt)                   # make sure all sac/mseed files can be found through this format
-messydata = False                                                       # set this to False when daily noise data is well sorted 
+allfiles_path = os.path.join(DATADIR,'*'+input_fmt)                   # make sure all sac/mseed files can be found through this format
+messydata = True                                                       # set this to False when daily noise data directory is stored in sub-directory of Event_year_month_day 
+ncomp     = 1
 
 # targeted time range
-start_date = ['2010_12_06_0_0_0']                                       # start date of local data
+start_date = ['2010_12_10_0_0_0']                                       # start date of local data
 end_date   = ['2010_12_16_0_0_0']                                       # end date of local data
 inc_hours  = 8                                                          # sac/mseed file length for a continous recording
 
@@ -91,8 +88,9 @@ prepro_para = {'RAWDATA':RAWDATA,
                'allfiles_path':allfiles_path,
                'cc_len':cc_len,
                'step':step,
+               'ncomp':ncomp,
                'MAX_MEM':MAX_MEM}
-metadata = os.path.join(DATADIR,'download_info.txt') 
+metadata = os.path.join(RAWDATA,'download_info.txt') 
 
 ##########################################################
 #################PROCESSING SECTION#######################
@@ -109,7 +107,14 @@ if rank == 0:
     if not os.path.isdir(DATADIR):
         os.mkdir(DATADIR)
     if not os.path.isdir(RAWDATA):
-        raise ValueError('Abort! no path of %s exists for RAWDATA'%RAWDATA)
+        print('no path of %s exists for',RAWDATA)
+        os.mkdir(RAWDATA)
+
+    # check station list
+    if not os.path.isfile(locations): 
+        raise ValueError('Abort! station info is needed for this script')
+    locs = pd.read_csv(locations)
+    nsta = len(locs)
 
     # output parameter info
     fout = open(metadata,'w')
@@ -204,7 +209,7 @@ for ick in range(rank,splits,size):
         if not len(tr):continue
 
         # ready for output
-        ff=os.path.join(DATADIR,all_chunk[ick]+'T'+all_chunk[ick+1]+'.h5')
+        ff=os.path.join(RAWDATA,all_chunk[ick]+'T'+all_chunk[ick+1]+'.h5')
         if not os.path.isfile(ff):
             with pyasdf.ASDFDataSet(ff,mpi=False,compression="gzip-3",mode='w') as ds:
                 pass
