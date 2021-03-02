@@ -60,7 +60,7 @@ cc_method   = 'xcorr'                                                       # 'x
 flag        = True                                                          # print intermediate variables and computing time for debugging purpose
 acorr_only  = False                                                         # only perform auto-correlation 
 xcorr_only  = True                                                          # only perform cross-correlation or not
-ncomp       = 1                                                             # 1 or 3 component data (needed to decide whether do rotation)
+ncomp       = 3                                                             # 1 or 3 component data (needed to decide whether do rotation)
 
 # station/instrument info for input_fmt=='sac' or 'mseed'
 stationxml = False                                                          # station.XML file used to remove instrument response for SAC/miniseed data
