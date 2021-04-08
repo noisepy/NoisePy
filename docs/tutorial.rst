@@ -17,13 +17,13 @@ environment before run following command. (NOTE that things may go completely di
 
 .. code-block:: bash
 
-    $ python S0_download_ASDF.py
+    $ python S0A_download_ASDF_MPI.py
 
 If you want to use multiple cores (e.g, 4), run the script with the following command using `mpi4py <https://mpi4py.readthedocs.io/en/stable/>`_. 
 
 .. code-block:: bash
 
-    $ mpirun -n 4 python S0_download_ASDF_MPI.py
+    $ mpirun -n 4 python S0A_download_ASDF_MPI.py
 
 The outputted files from S0A include ASDF files containing daily-long (24h) continous noise data, a parameter file recording all used parameters in the script of S0A and a CSV file of 
 all station information (more details on reading the ASDF files with downloaded data can be found in docs/src/ASDF.md). The continous waveforms data stored in the ASDF file can be displayed 
