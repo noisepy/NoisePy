@@ -59,7 +59,7 @@ memory before they are further cross-correlated. This means that we are performi
 In the script, we provide several options to calculate the cross correlation, including *raw*, *coherency* and *deconv* (see our paper for detailed definition). We choose *coherency* 
 as an example here. After running the script, it will create a new folder named *CCF*, in which new ASDF files containing all cross-correlation functions between different station pairs 
 are located. It also creates a parameter file of *fft_cc_data.txt* that records all useful parameters used in this script. Once you get the cross-correlation file, you can show the daily 
-temporal variation between all station-pair by calling *plot_substack_cc* function in *plotting_modules* as follows. 
+temporal variation between all station-pair by calling *plot_substack_cc* function in *plotting_modules* as follows. Note to use this function, the parameter of *substack* at L82 in S1 has to be *True* to allow substacks to be done. Otherwise, it will stack the entire thing in default. 
 
 .. code-block:: python
 
