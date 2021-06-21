@@ -326,7 +326,16 @@ for ick in range (rank,splits,size):
         # get index right for auto/cross correlation
         istart=iiS;iend=iii
         if acorr_only:
-            iend=np.minimum(iiS+ncomp,iii)
+            if ncomp==1:
+                iend=np.minimum(iiS+ncomp,iii)
+            else:
+                if (channel[iiS][-1]=='Z'):
+                    iend=np.minimum(iiS+1,iii)
+                elif (channel[iiS][-1]=='N'):
+                    iend=np.minimum(iiS+2,iii)
+                else:
+                    iend=np.minimum(iiS+ncomp,iii)
+            
         if xcorr_only:
             if ncomp==1:
                 istart=np.minimum(iiS+ncomp,iii)
