@@ -1,7 +1,7 @@
 Applications
 ============
 
-To fulfill the strong need at user’s end for applications based on ambient noise, NoisePy provides two application scripts for further surface wave dispersion analysis and seismic monitoring through measuring velocity change with time. 
+To fulfill the strong need at user’s end for applications based on ambient noise, NoisePy provides two application scripts for further surface wave dispersion analysis and seismic monitoring through measuring velocity change with time. NOTE that the two examples here are based on synthetic data and for demonstration only. If you are interested in just reproducing the two figures, please shoot an email to chengxinjiang AT gmail DOT com.
 
 I. Group velocity measurements
 ------------------------------
