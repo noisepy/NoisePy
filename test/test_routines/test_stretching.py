@@ -1,11 +1,18 @@
 import numpy as np
-from src.noise_module import stretching_vect, stretching
+import sys
+import os
+sys.path.append(os.getcwd())
+from noise_module import stretching_vect, stretching
 from obspy.signal.invsim import cosine_taper
 import pytest
+import time
 
 # This short script is intended as a test for the stretching routine
 # it takes a generic sine curve with known stretching factor and ensures
 # that the stretching routines in noise_module always recover this factor
+# Note: The script has to be called from src/ directory, like
+# (in directory noisepy/src:)
+# python ../test/test_routines/test_stretching.py
 
 def test_stretching():
     t = np.linspace(0., 9.95, 2500)  # 0.5 % perturbation
@@ -46,13 +53,14 @@ def test_stretching_vect():
     assert dvv + 0.5 < para["dt"] # assert result is -0.5%
 
 if __name__ == "__main__":
-    import sys
-    if sys.argv[1] == "normal":
-        for i in range(300):
-            test_stretching()
-    elif sys.argv[1] == "vect":
-        for i in range(300):
-            test_stretching_vect()
-    else:
-        raise ValueError("call with python test_stretching.py <choice of stretching>,\
-where choice of stretching is \"normal\" or \"vect\".")
+    print("Running stretching...")
+    t = time.time()
+    for i in range(300):
+        test_stretching()
+    print("Done stretching, no errors, %4.2fs." %(time.time()-t))
+    
+    print("Running stretching using numpy...")
+    t = time.time()
+    for i in range(300):
+        test_stretching_vect()
+    print("Done stretching, no errors, %4.2fs." %(time.time()-t))
