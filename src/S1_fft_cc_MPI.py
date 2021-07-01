@@ -79,7 +79,9 @@ smooth_N  = 10                                                              # mo
 
 # cross-correlation parameters
 maxlag         = 200                                                        # lags of cross-correlation to save (sec)
-substack       = True                                                       # sub-stack daily cross-correlation or not
+substack       = True                                                       # True = smaller stacks within the time chunk. False: it will stack over inc_hours
+                                                                            # for instance: substack=True, substack_len=cc_len means that you keep ALL of the correlations
+                                                                            # if substack=True, substack_len=2*cc_len, then you pre-stack every 2 correlation windows.
 substack_len   = cc_len                                                     # how long to stack over (for monitoring purpose): need to be multiples of cc_len
 smoothspect_N  = 10                                                         # moving window length to smooth spectrum amplitude (points)
 
