@@ -46,28 +46,28 @@ tt0=time.time()
 ########################################
 
 # absolute path parameters
-rootpath  = '/Volumes/Chengxin/monitor'                                     # root path for this data processing
+rootpath  = '/Users/chengxin/Documents/SCAL'                                # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                                    # dir to store CC data
 DATADIR   = os.path.join(rootpath,'RAW_DATA')                               # dir where noise data is located
-local_data_path = os.path.join(rootpath,'2004_*')                           # absolute dir where SAC files are stored: this para is VERY IMPORTANT and has to be RIGHT if input_fmt is not asdf!!!
-locations = os.path.join(rootpath,'station.txt')                            # station info including network,station,channel,latitude,longitude,elevation: only needed when input_fmt is not asdf
+local_data_path = os.path.join(rootpath,'2016_*')                           # absolute dir where SAC files are stored: this para is VERY IMPORTANT and has to be RIGHT if input_fmt is not h5 for asdf!!!
+locations = os.path.join(DATADIR,'station.txt')                             # station info including network,station,channel,latitude,longitude,elevation: only needed when input_fmt is not h5 for asdf
 
 # some control parameters
-input_fmt   = 'asdf'                                                        # string: 'asdf', 'sac','mseed' 
-freq_norm   = 'phase_only'                                                  # 'no' for no whitening, or 'rma' for running-mean average, 'phase' for sign-bit normalization in freq domain
+input_fmt   = 'h5'                                                          # string: 'h5', 'sac','mseed' 
+freq_norm   = 'rma'                                                         # 'no' for no whitening, or 'rma' for running-mean average, 'phase_only' for sign-bit normalization in freq domain.
 time_norm   = 'no'                                                          # 'no' for no normalization, or 'rma', 'one_bit' for normalization in time domain
-cc_method   = 'xcorr'                                                       # 'xcorr' for pure cross correlation, 'deconv' for deconvolution; FOR "COHERENCY" PLEASE set freq_norm to "rma" and time_norm to "no"
-flag        = False                                                         # print intermediate variables and computing time for debugging purpose
+cc_method   = 'xcorr'                                                       # 'xcorr' for pure cross correlation, 'deconv' for deconvolution; FOR "COHERENCY" PLEASE set freq_norm to "rma", time_norm to "no" and cc_method to "xcorr"
+flag        = True                                                          # print intermediate variables and computing time for debugging purpose
 acorr_only  = False                                                         # only perform auto-correlation 
 xcorr_only  = True                                                          # only perform cross-correlation or not
-ncomp       = 1                                                             # 1 or 3 component data (needed to decide whether do rotation)
+ncomp       = 3                                                             # 1 or 3 component data (needed to decide whether do rotation)
 
 # station/instrument info for input_fmt=='sac' or 'mseed'
 stationxml = False                                                          # station.XML file used to remove instrument response for SAC/miniseed data
 rm_resp   = 'no'                                                            # select 'no' to not remove response and use 'inv','spectrum','RESP', or 'polozeros' to remove response
 respdir   = os.path.join(rootpath,'resp')                                   # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
 # read station list
-if input_fmt != 'asdf':
+if input_fmt != 'h5':
     if not os.path.isfile(locations): 
         raise ValueError('Abort! station info is needed for this script')   
     locs = pd.read_csv(locations)
@@ -78,20 +78,19 @@ step      = 450                                                             # ov
 smooth_N  = 10                                                              # moving window length for time/freq domain normalization if selected (points)
 
 # cross-correlation parameters
-maxlag         = 400                                                        # lags of cross-correlation to save (sec)
-substack       = False                                                      # sub-stack daily cross-correlation or not
-substack_len   = 12*cc_len                                                  # how long to stack over (for monitoring purpose): need to be multiples of cc_len
+maxlag         = 200                                                        # lags of cross-correlation to save (sec)
+substack       = True                                                       # sub-stack daily cross-correlation or not
+substack_len   = cc_len                                                     # how long to stack over (for monitoring purpose): need to be multiples of cc_len
 smoothspect_N  = 10                                                         # moving window length to smooth spectrum amplitude (points)
 
 # criteria for data selection
 max_over_std = 10                                                           # threahold to remove window of bad signals: set it to 10*9 if prefer not to remove them
-max_kurtosis = 10                                                           # max kurtosis allowed, TO BE ADDED!
 
 # maximum memory allowed per core in GB
 MAX_MEM = 4.0
 
 # load useful download info if start from ASDF
-if input_fmt == 'asdf':
+if input_fmt == 'h5':
     dfile = os.path.join(DATADIR,'download_info.txt')
     down_info = eval(open(dfile).read())
     samp_freq = down_info['samp_freq']
@@ -100,13 +99,13 @@ if input_fmt == 'asdf':
     start_date = down_info['start_date']
     end_date   = down_info['end_date']
     inc_hours  = down_info['inc_hours']  
-    #ncomp      = down_info['ncomp'] 
+    ncomp      = down_info['ncomp'] 
 else:   # sac or mseed format
     samp_freq = 20
-    freqmin   = 0.02
-    freqmax   = 5
-    start_date = ["2004_01_01_0_0_0"]
-    end_date   = ["2004_06_30_0_0_0"]
+    freqmin   = 0.05
+    freqmax   = 2
+    start_date = ["2016_07_01_0_0_0"]
+    end_date   = ["2016_07_02_0_0_0"]
     inc_hours  = 24
 dt = 1/samp_freq
 
@@ -114,12 +113,31 @@ dt = 1/samp_freq
 # we expect no parameters need to be changed below
 
 # make a dictionary to store all variables: also for later cc
-fc_para={'samp_freq':samp_freq,'dt':dt,'cc_len':cc_len,'step':step,'freqmin':freqmin,'freqmax':freqmax,\
-    'freq_norm':freq_norm,'time_norm':time_norm,'cc_method':cc_method,'smooth_N':smooth_N,'data_format':\
-    input_fmt,'rootpath':rootpath,'CCFDIR':CCFDIR,'start_date':start_date[0],'end_date':end_date[0],\
-    'inc_hours':inc_hours,'substack':substack,'substack_len':substack_len,'smoothspect_N':smoothspect_N,\
-    'maxlag':maxlag,'max_over_std':max_over_std,'max_kurtosis':max_kurtosis,'MAX_MEM':MAX_MEM,'ncomp':ncomp,\
-    'stationxml':stationxml,'rm_resp':rm_resp,'respdir':respdir,'input_fmt':input_fmt}
+fc_para={'samp_freq':samp_freq,
+         'dt':dt,
+         'cc_len':cc_len,
+         'step':step,
+         'freqmin':freqmin,
+         'freqmax':freqmax,
+         'freq_norm':freq_norm,
+         'time_norm':time_norm,
+         'cc_method':cc_method,
+         'smooth_N':smooth_N,
+         'rootpath':rootpath,
+         'CCFDIR':CCFDIR,
+         'start_date':start_date[0],
+         'end_date':end_date[0],
+         'inc_hours':inc_hours,
+         'substack':substack,
+         'substack_len':substack_len,
+         'smoothspect_N':smoothspect_N,
+         'maxlag':maxlag,
+         'max_over_std':max_over_std,
+         'ncomp':ncomp,
+         'stationxml':stationxml,
+         'rm_resp':rm_resp,
+         'respdir':respdir,
+         'input_fmt':input_fmt}
 # save fft metadata for future reference
 fc_metadata  = os.path.join(CCFDIR,'fft_cc_data.txt')       
 
@@ -140,7 +158,7 @@ if rank == 0:
     fout.write(str(fc_para));fout.close()
 
     # set variables to broadcast
-    if input_fmt == 'asdf':
+    if input_fmt == 'h5':
         tdir = sorted(glob.glob(os.path.join(DATADIR,'*.h5')))
     else:
         tdir = sorted(glob.glob(local_data_path))
@@ -156,14 +174,14 @@ if rank == 0:
     if nchunk==0:
         raise IOError('Abort! no available seismic files for FFT')
 else:
-    if input_fmt == 'asdf':
+    if input_fmt == 'h5':
         splits,tdir = [None for _ in range(2)]
     else: splits,tdir,nsta = [None for _ in range(3)]
 
 # broadcast the variables
 splits = comm.bcast(splits,root=0)
 tdir  = comm.bcast(tdir,root=0)
-if input_fmt != 'asdf': nsta = comm.bcast(nsta,root=0)
+if input_fmt != 'h5': nsta = comm.bcast(nsta,root=0)
 
 # MPI loop: loop through each user-defined time chunk
 for ick in range (rank,splits,size):
@@ -172,7 +190,7 @@ for ick in range (rank,splits,size):
     #############LOADING NOISE DATA AND DO FFT##################
 
     # get the tempory file recording cc process
-    if input_fmt == 'asdf':
+    if input_fmt == 'h5':
         tmpfile = os.path.join(CCFDIR,tdir[ick].split('/')[-1].split('.')[0]+'.tmp')
     else: 
         tmpfile = os.path.join(CCFDIR,tdir[ick].split('/')[-1]+'.tmp')
@@ -188,7 +206,7 @@ for ick in range (rank,splits,size):
             os.remove(tmpfile)
     
     # retrive station information
-    if input_fmt == 'asdf':
+    if input_fmt == 'h5':
         ds=pyasdf.ASDFDataSet(tdir[ick],mpi=False,mode='r') 
         sta_list = ds.waveforms.list()
         nsta=ncomp*len(sta_list)
@@ -220,7 +238,7 @@ for ick in range (rank,splits,size):
     for ista in range(len(sta_list)):
         tmps = sta_list[ista]
 
-        if input_fmt == 'asdf':
+        if input_fmt == 'h5':
             # get station and inventory
             try:
                 inv1 = ds.waveforms[tmps]['StationXML']
@@ -242,7 +260,7 @@ for ick in range (rank,splits,size):
             if flag:print("working on station %s and trace %s" % (sta,all_tags[itag]))
 
             # read waveform data
-            if input_fmt == 'asdf':
+            if input_fmt == 'h5':
                 source = ds.waveforms[tmps][all_tags[itag]]
             else:
                 source = obspy.read(tmps)
@@ -255,7 +273,7 @@ for ick in range (rank,splits,size):
             if len(source)==0:continue
 
             # cut daily-long data into smaller segments (dataS always in 2D)
-            trace_stdS,dataS_t,dataS = noise_module.cut_trace_make_statis(fc_para,source)        # optimized version:3-4 times faster
+            trace_stdS,dataS_t,dataS = noise_module.cut_trace_make_stat(fc_para,source)        # optimized version:3-4 times faster
             if not len(dataS): continue
             N = dataS.shape[0]
 
@@ -265,8 +283,13 @@ for ick in range (rank,splits,size):
             if flag:print('N and Nfft are %d (proposed %d),%d (proposed %d)' %(N,nseg_chunk,Nfft,nnfft))
 
             # keep track of station info to write into parameter section of ASDF files
-            station.append(sta);network.append(net);channel.append(comp),clon.append(lon)
-            clat.append(lat);location.append(loc);elevation.append(elv)
+            station.append(sta)
+            network.append(net)
+            channel.append(comp)
+            clon.append(lon)
+            clat.append(lat)
+            location.append(loc)
+            elevation.append(elv)
 
             # load fft data in memory for cross-correlations
             data = source_white[:,:Nfft2]
@@ -277,7 +300,7 @@ for ick in range (rank,splits,size):
             iii+=1
             del trace_stdS,dataS_t,dataS,source_white,data
     
-    if input_fmt == 'asdf': del ds
+    if input_fmt == 'h5': del ds
 
     # check whether array size is enough
     if iii!=nsta:
@@ -302,8 +325,27 @@ for ick in range (rank,splits,size):
 
         # get index right for auto/cross correlation
         istart=iiS;iend=iii
-        if acorr_only:iend=np.minimum(iiS+ncomp,iii)
-        if xcorr_only:istart=np.minimum(iiS+ncomp,iii)
+        if acorr_only:
+            if ncomp==1:
+                iend=np.minimum(iiS+ncomp,iii)
+            else:
+                if (channel[iiS][-1]=='Z'):
+                    iend=np.minimum(iiS+1,iii)
+                elif (channel[iiS][-1]=='N'):
+                    iend=np.minimum(iiS+2,iii)
+                else:
+                    iend=np.minimum(iiS+ncomp,iii)
+            
+        if xcorr_only:
+            if ncomp==1:
+                istart=np.minimum(iiS+ncomp,iii)
+            else:
+                if (channel[iiS][-1]=='Z'):
+                    istart=np.minimum(iiS+1,iii)
+                elif (channel[iiS][-1]=='N'):
+                    istart=np.minimum(iiS+2,iii)
+                else:
+                    istart=np.minimum(iiS+ncomp,iii)
 
         #-----------now loop III for each receiver B----------
         for iiR in range(istart,iend):
@@ -323,7 +365,7 @@ for ick in range (rank,splits,size):
             t3=time.time()
 
             #---------------keep daily cross-correlation into a hdf5 file--------------
-            if input_fmt == 'asdf':
+            if input_fmt == 'h5':
                 tname = tdir[ick].split('/')[-1]
             else: 
                 tname = tdir[ick].split('/')[-1]+'.h5'
@@ -331,7 +373,10 @@ for ick in range (rank,splits,size):
             crap  = np.zeros(corr.shape,dtype=corr.dtype)
 
             with pyasdf.ASDFDataSet(cc_h5,mpi=False) as ccf_ds:
-                coor = {'lonS':clon[iiS],'latS':clat[iiS],'lonR':clon[iiR],'latR':clat[iiR]}
+                coor = {'lonS':clon[iiS],
+                        'latS':clat[iiS],
+                        'lonR':clon[iiR],
+                        'latR':clat[iiR]}
                 comp = channel[iiS][-1]+channel[iiR][-1]
                 parameters = noise_module.cc_parameters(fc_para,coor,tcorr,ncorr,comp)
 
@@ -339,7 +384,10 @@ for ick in range (rank,splits,size):
                 data_type = network[iiS]+'.'+station[iiS]+'_'+network[iiR]+'.'+station[iiR]
                 path = channel[iiS]+'_'+channel[iiR]
                 crap[:] = corr[:]
-                ccf_ds.add_auxiliary_data(data=crap, data_type=data_type, path=path, parameters=parameters)
+                ccf_ds.add_auxiliary_data(data=crap, 
+                                          data_type=data_type, 
+                                          path=path, 
+                                          parameters=parameters)
                 ftmp.write(network[iiS]+'.'+station[iiS]+'.'+channel[iiS]+'_'+network[iiR]+'.'+station[iiR]+'.'+channel[iiR]+'\n')
 
             t4=time.time()

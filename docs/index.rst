@@ -1,7 +1,7 @@
 Welcome to NoisePy
 ==================
 
-.. image:: figures/logo_small.png
+.. image:: figures/logo.png
     :width: 100%
     :align: center
 
@@ -13,10 +13,10 @@ see below website:
 
 If you use NoisePy for your research and prepare publications, please consider citing **NoisePy**: 
 
-* Jiang, C. and Denolle, M. NoisePy: A new high-performance python tool for seismic ambient noise seismology. In prep for Seismological Research Letter.
+* Jiang, C., Denolle, M. 2020. NoisePy: a new high-performance python tool for ambient noise seismology. Seismological Research Letters. 91, 1853-1866. `DOI:10.1785/0220190364 <https://pubs.geoscienceworld.org/ssa/srl/article-abstract/91/3/1853/583390/NoisePy-A-New-High-Performance-Python-Tool-for?redirectedFrom=fulltext>`_.
 
 The monitoring modules are a compilation of published Python scripts and include the new approach described in:
-* Yuan, C., Jiang, C., Bryan, J., Clements, C.T., Okubo, K., Denolle, M.A.: Comparing approaches to measuring time- and frequency-dependent seismic phase variations for coda wave interferometry. In prep for Geophysical Journal International
+* Yuan, C., Bryan, J., Denolle, M.A.: Comparing approaches to measuring time- and frequency-dependent seismic phase variations for coda wave interferometry. In prep for *Geophysical Journal International*.
 Please cite this paper if using the monitoring module
 
 The stacking subroutines have been compiled from various published methods. Please cite appropriate article when using a particular stacking routine (references are listed in the documentation).

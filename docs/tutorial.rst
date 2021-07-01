@@ -7,7 +7,7 @@ Tutorial
 
 S0A. Downloading seismic noise data 
 -----------------------------------
-The script of *S0_download_ASDF_MPI.py* (located in *src* directory) and its existing parameters allows to download all available broadband CI stations *(BH?)* located in a certain region
+The script of *S0A_download_ASDF_MPI.py* (located in *src* directory) and its existing parameters allows to download all available broadband CI stations *(BH?)* located in a certain region
 and operated during 1/Jul/2016-2/Jul/2016 through the SCEC data center. 
 In the script, short summary is provided for all input parameters that can be changed according to the user's needs. In the current form of the script, we set *inc_hours=24* to download 
 day-long continous noise data as well as the meta info and store them into a single ASDF file. To increase the signal-to-noise (SNR) of the final cross-correlation functions 
@@ -47,7 +47,7 @@ using the plotting modules named as *plotting_modules* in the directory of *src*
 
 S0B. Deal with local data
 --------------------------------------
-The script of `S0B_sacMSEED_to_ASDF.py` is developed for the users to handle local data in any format that ObsPy can read  stored on your own disk. Most of the variables are the same as those for 
+The script of `S0B_to_ASDF.py` is developed for the users to handle local data in any format that ObsPy can read  stored on your own disk. Most of the variables are the same as those for 
 S0A and thus should be pretty straighforward to follow and change. In this script, it preprocesses the data by merging, detrending, demeaning, downsampling, and then trimming before saving them into ASDF format for later NoisePy processing. In particular, we expect the script to deal with very messydata, by which we mean that, seismic data is broken into small 
 pieces and of messy time info such as overlapping time. REMEMBER to set *messydata* at L62 to *True* when you have messy data! (Tutorials on removing instrument response)
 
@@ -59,13 +59,13 @@ memory before they are further cross-correlated. This means that we are performi
 In the script, we provide several options to calculate the cross correlation, including *raw*, *coherency* and *deconv* (see our paper for detailed definition). We choose *coherency* 
 as an example here. After running the script, it will create a new folder named *CCF*, in which new ASDF files containing all cross-correlation functions between different station pairs 
 are located. It also creates a parameter file of *fft_cc_data.txt* that records all useful parameters used in this script. Once you get the cross-correlation file, you can show the daily 
-temporal variation between all station-pair by calling *plot_substack_cc* function in *plotting_modules* as follows. 
+temporal variation between all station-pair by calling *plot_substack_cc* function in *plotting_modules* as follows. Note to use this function, the parameter of *substack* at L82 in S1 has to be *True* to allow substacks to be done. Otherwise, it will stack the entire thing in default. 
 
 .. code-block:: python
 
     >>> import plotting_modules
     >>> sfile = '/Users/chengxin/Documents/SCAL/CCF/2016_07_01_00_00_00T2016_07_02_00_00_00.h5'
-    >>> plot_modules.plot_substack_cc(sfile,0.1,0.2,200,True,'/Users/chengxin/Documents/SCAL/CCF/figures')     
+    >>> plotting_modules.plot_substack_cc(sfile,0.1,0.2,200,True,'/Users/chengxin/Documents/SCAL/CCF/figures')     
 
 .. image:: figures/substack_cc_NN.png
     :width: 100%
@@ -96,8 +96,8 @@ NoisePy compiles a suite of stacking routines. Please cite appropriate manuscrip
 
     >>> import plotting_modules,glob
     >>> sfiles = glob.glob('/Users/chengxin/Documents/SCAL/STACK/*/*.h5')
-    >>> plot_modules.plot_all_moveout(sfiles,'Allstack_linear'0.1,0.2,'ZZ',1,300,True,'/Users/chengxin/Documents/SCAL/STACK') #(move-out for linear stacking)
-    >>> plot_modules.plot_all_moveout(sfiles,'Allstack_pws'0.1,0.2,'ZZ',1,300,True,'/Users/chengxin/Documents/SCAL/STACK')    #(move-out for pws)
+    >>> plotting_modules.plot_all_moveout(sfiles,'Allstack_linear'0.1,0.2,'ZZ',1,300,True,'/Users/chengxin/Documents/SCAL/STACK') #(move-out for linear stacking)
+    >>> plotting_modules.plot_all_moveout(sfiles,'Allstack_pws'0.1,0.2,'ZZ',1,300,True,'/Users/chengxin/Documents/SCAL/STACK')    #(move-out for pws)
 
 .. image:: figures/linear_stack1.png
     :width: 100%

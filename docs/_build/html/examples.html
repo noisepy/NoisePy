@@ -1,39 +1,40 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Pyasdf examples &mdash; NoisePy v1.0 documentation</title>
+  <title>NoisePy ASDF file architecture &mdash; NoisePy v1.0 documentation</title>
   
-
-  
-  
-  
-  
-
-  
-  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
-  
-    
-      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
-    
-    <script type="text/javascript" src="_static/js/theme.js"></script>
-
-    
 
   
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+
+  
+  
+  
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Creating an ASDF File" href="examples/create_observed_asdf_file.html" />
@@ -51,7 +52,7 @@
           
 
           
-            <a href="index.html" class="icon icon-home"> NoisePy
+            <a href="index.html" class="icon icon-home" alt="Documentation Home"> NoisePy
           
 
           
@@ -81,6 +82,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -91,7 +93,7 @@
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Pyasdf examples</a><ul>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">NoisePy ASDF file architecture</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="examples/create_observed_asdf_file.html">Creating an ASDF File</a></li>
 <li class="toctree-l2"><a class="reference internal" href="examples/process_observed.html">Processing Observed Data in Parallel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="examples/parallel_pyflex.html">Running pyflex in Parallel</a></li>
@@ -104,6 +106,7 @@
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -142,9 +145,9 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="index.html">Docs</a> &raquo;</li>
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
-      <li>Pyasdf examples</li>
+      <li>NoisePy ASDF file architecture</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -163,9 +166,9 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="pyasdf-examples">
-<h1>Pyasdf examples<a class="headerlink" href="#pyasdf-examples" title="Permalink to this headline">¶</a></h1>
-<p>The pyasdf format is developed by the <strong>Theoretical and Computation Seismology Group</strong> at Princeton University, and
+  <div class="section" id="noisepy-asdf-file-architecture">
+<h1>NoisePy ASDF file architecture<a class="headerlink" href="#noisepy-asdf-file-architecture" title="Permalink to this headline">¶</a></h1>
+<p>The ASDF format is developed by the <strong>Theoretical and Computation Seismology Group</strong> at Princeton University, and
 combines the capability to create comprehensive data sets including all necessary meta information with
 high-performance parallel I/O for the most demanding use cases. The users who are interested in the details of this
 format are referred to the following publication.</p>
@@ -208,11 +211,19 @@ subject to the BSD 3-Clause license.</p>
 
   <div role="contentinfo">
     <p>
+        
         &copy; Copyright 2019, Chengxin Jiang
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -223,7 +234,6 @@ subject to the BSD 3-Clause license.</p>
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {

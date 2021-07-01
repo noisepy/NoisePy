@@ -4,11 +4,13 @@ import obspy
 import pyasdf
 import os, glob
 import numpy as np
-import noise_module
 import pandas as pd
 from mpi4py import MPI
 from obspy import UTCDateTime
 from obspy.clients.fdsn import Client
+
+sys.path.insert(1,'../../src')
+import noise_module
 
 '''
 This script:

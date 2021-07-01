@@ -246,7 +246,7 @@ def preprocess_raw(st,inv,prepro_para,date_info):
             resp = glob.glob(os.path.join(respdir,'RESP.'+station+'*'))
             if len(resp)==0:
                 raise ValueError('no RESP files found for %s' % station)
-            seedresp = {'filename':resp[0],'date':date_info['starttime','units':'DIS']}
+            seedresp = {'filename':resp[0],'date':date_info['starttime'],'units':'DIS'}
             st.simulate(paz_remove=None,pre_filt=pre_filt,seedresp=seedresp[0])
 
         elif rm_resp == 'polozeros':
@@ -399,7 +399,7 @@ def sta_info_from_inv(inv):
     return sta,net,lon,lat,elv,location
 
 
-def cut_trace_make_statis(fc_para,source):
+def cut_trace_make_stat(fc_para,source):
     '''
     this function cuts continous noise data into user-defined segments, estimate the statistics of
     each segment and keep timestamp of each segment for later use. (used in S1)
@@ -560,11 +560,16 @@ def correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
         freqmax: maximum frequency (Hz)
     Nfft:    number of frequency points for ifft
     dataS_t: matrix of datetime object.
+    
     RETURNS:
     ---------------------
     s_corr: 1D or 2D matrix of the averaged or sub-stacks of cross-correlation functions in time domain
     t_corr: timestamp for each sub-stack or averaged function
     n_corr: number of included segments for each sub-stack or averaged function
+
+    MODIFICATIONS:
+    ---------------------
+    output the linear stack of each time chunk even when substack is selected (by Chengxin @Aug2020)
     '''
     #----load paramters----
     dt      = D['dt']
@@ -886,6 +891,8 @@ def stacking(cc_array,cc_time,cc_ngood,stack_para):
         allstacks1 = np.zeros(npts,dtype=np.float32)
         allstacks2 = np.zeros(npts,dtype=np.float32)
         allstacks3 = np.zeros(npts,dtype=np.float32)
+        allstacks4 = np.zeros(npts,dtype=np.float32)
+        allstacks5 = np.zeros(npts,dtype=np.float32)
 
         if smethod == 'linear':
             allstacks1 = np.mean(cc_array,axis=0)
@@ -893,14 +900,16 @@ def stacking(cc_array,cc_time,cc_ngood,stack_para):
             allstacks1 = pws(cc_array,samp_freq)
         elif smethod == 'robust':
             allstacks1,w,nstep = robust_stack(cc_array,0.001)
-        elif smethod == 'acf':
-            allstack1 = adaptive_filter(cc_array,1)
+        elif smethod == 'auto_covariance':
+            allstacks1 = adaptive_filter(cc_array,1)
         elif smethod == 'nroot':
-            allstack1 = nroot_stack(cc_array,2)
+            allstacks1 = nroot_stack(cc_array,2)
         elif smethod == 'all':
             allstacks1 = np.mean(cc_array,axis=0)
             allstacks2 = pws(cc_array,samp_freq)
             allstacks3,w,nstep = robust_stack(cc_array,0.001)
+            allstacks4 = adaptive_filter(cc_array,1)
+            allstacks5 = nroot_stack(cc_array,2)
         nstacks = np.sum(cc_ngood)
 
     # good to return
@@ -984,8 +993,8 @@ def stacking_rma(cc_array,cc_time,cc_ngood,stack_para):
             allstacks1 = pws(cc_array,samp_freq)
         elif smethod == 'robust':
             allstacks1,w, = robust_stack(cc_array,0.001)
-        #elif smethod == 'selective':
-        #    allstacks1 = selective_stack(cc_array,0.001)
+        elif smethod == 'selective':
+            allstacks1 = selective_stack(cc_array,0.001)
         elif smethod == 'all':
             allstacks1 = np.mean(cc_array,axis=0)
             allstacks2 = pws(cc_array,samp_freq)
@@ -1781,6 +1790,93 @@ def stretching(ref, cur, dv_range, nbtrial, para):
 
     return dv, error, cc, cdp
 
+
+def stretching_vect(ref, cur, dv_range, nbtrial, para):
+    
+    """
+    This function compares the Reference waveform to stretched/compressed current waveforms to get the relative seismic velocity variation (and associated error).
+    It also computes the correlation coefficient between the Reference waveform and the current waveform.
+    
+    PARAMETERS:
+    ----------------
+    ref: Reference waveform (np.ndarray, size N)
+    cur: Current waveform (np.ndarray, size N)
+    dv_range: absolute bound for the velocity variation; example: dv=0.03 for [-3,3]% of relative velocity change ('float')
+    nbtrial: number of stretching coefficient between dvmin and dvmax, no need to be higher than 100  ('float')
+    para: vector of the indices of the cur and ref windows on wich you want to do the measurements (np.ndarray, size tmin*delta:tmax*delta)
+    For error computation, we need parameters:
+        fmin: minimum frequency of the data
+        fmax: maximum frequency of the data
+        tmin: minimum time window where the dv/v is computed 
+        tmax: maximum time window where the dv/v is computed 
+    RETURNS:
+    ----------------
+    dv: Relative velocity change dv/v (in %)
+    cc: correlation coefficient between the reference waveform and the best stretched/compressed current waveform
+    cdp: correlation coefficient between the reference waveform and the initial current waveform
+    error: Errors in the dv/v measurements based on Weaver et al (2011), On the precision of noise-correlation interferometry, Geophys. J. Int., 185(3)
+
+    Note: The code first finds the best correlation coefficient between the Reference waveform and the stretched/compressed current waveform among the "nbtrial" values. 
+    A refined analysis is then performed around this value to obtain a more precise dv/v measurement .
+
+    Originally by L. Viens 04/26/2018 (Viens et al., 2018 JGR)
+    modified by Chengxin Jiang
+    modified by Laura Ermert: vectorized version
+    """ 
+    # load common variables from dictionary
+    twin = para['twin']
+    freq = para['freq']
+    dt   = para['dt']
+    tmin = np.min(twin)
+    tmax = np.max(twin)
+    fmin = np.min(freq)
+    fmax = np.max(freq)
+    tvec = np.arange(tmin, tmax, dt)
+
+    # make useful one for measurements
+    dvmin = -np.abs(dv_range)
+    dvmax = np.abs(dv_range)
+    Eps = 1 + (np.linspace(dvmin, dvmax, nbtrial))
+    cdp = np.corrcoef(cur, ref)[0, 1] # correlation coefficient between the reference and initial current waveforms
+    waveforms = np.zeros((nbtrial + 1, len(ref)))
+    waveforms[0, :] = ref
+
+    # Set of stretched/compressed current waveforms
+    for ii in range(nbtrial):
+        nt = tvec * Eps[ii]
+        s = np.interp(x=tvec, xp=nt, fp=cur)
+        waveforms[ii + 1, :] = s
+    cof = np.corrcoef(waveforms)[0][1:]
+    
+    # find the maximum correlation coefficient
+    imax = np.nanargmax(cof)
+    if imax >= len(Eps)-2:
+        imax = imax - 2
+    if imax < 2:
+        imax = imax + 2
+
+    # Proceed to the second step to get a more precise dv/v measurement
+    dtfiner = np.linspace(Eps[imax-2], Eps[imax+2], nbtrial)
+    #ncof    = np.zeros(dtfiner.shape,dtype=np.float32)
+    waveforms = np.zeros((nbtrial + 1, len(ref)))
+    waveforms[0, :] = ref
+    for ii in range(len(dtfiner)):
+        nt = tvec * dtfiner[ii]
+        s = np.interp(x=tvec, xp=nt, fp=cur)
+        waveforms[ii + 1, :] = s
+    ncof = np.corrcoef(waveforms)[0][1: ]
+    cc = np.max(ncof) # Find maximum correlation coefficient of the refined  analysis
+    dv = 100. * dtfiner[np.argmax(ncof)] - 100 # Multiply by 100 to convert to percentage (Epsilon = -dt/t = dv/v)
+
+    # Error computation based on Weaver et al (2011), On the precision of noise-correlation interferometry, Geophys. J. Int., 185(3)
+    T = 1 / (fmax - fmin)
+    X = cc
+    wc = np.pi * (fmin + fmax)
+    t1 = np.min([tmin, tmax])
+    t2 = np.max([tmin, tmax])
+    error = 100*(np.sqrt(1-X**2)/(2*X)*np.sqrt((6* np.sqrt(np.pi/2)*T)/(wc**2*(t2**3-t1**3))))
+
+    return dv, error, cc, cdp
 
 def dtw_dvv(ref, cur, para, maxLag, b, direction):
     """

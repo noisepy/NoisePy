@@ -1,4 +1,5 @@
 import os
+import sys
 import glob
 import obspy
 import datetime
@@ -9,6 +10,9 @@ from numba import jit
 import matplotlib.pyplot as plt
 from obspy.signal.filter import bandpass,lowpass
 from obspy.signal.util import _npts2nfft
+
+sys.path.insert(1,'../../src')
+import noise_module
 
 '''
 a test script for pre-processing data

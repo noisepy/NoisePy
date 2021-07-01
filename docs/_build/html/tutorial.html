@@ -1,8 +1,7 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
@@ -12,31 +11,33 @@
   
 
   
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+
+  
   
   
   
 
   
-  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
     
-
-  
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Pyasdf examples" href="examples.html" />
+    <link rel="next" title="NoisePy ASDF file architecture" href="examples.html" />
     <link rel="prev" title="Installation" href="installation.html" /> 
 </head>
 
@@ -51,7 +52,7 @@
           
 
           
-            <a href="index.html" class="icon icon-home"> NoisePy
+            <a href="index.html" class="icon icon-home" alt="Documentation Home"> NoisePy
           
 
           
@@ -81,6 +82,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -92,18 +94,19 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Tutorial</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#s0a-downloading-seismic-noise-data">S0A. Downloading seismic noise data</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#s0b-deal-with-local-sac-miniseed-data">S0B. Deal with local SAC/miniseed data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#s0b-deal-with-local-data">S0B. Deal with local data</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#s1-perform-cross-correlations">S1. Perform cross correlations</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#s2-do-stacking">S2. Do stacking</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="examples.html">Pyasdf examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">NoisePy ASDF file architecture</a></li>
 <li class="toctree-l1"><a class="reference internal" href="applications.html">Applications</a></li>
 </ul>
 
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -142,7 +145,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="index.html">Docs</a> &raquo;</li>
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
       <li>Tutorial</li>
     
@@ -168,31 +171,31 @@
 <div class="contents local topic" id="contents">
 <ul class="simple">
 <li><p><a class="reference internal" href="#s0a-downloading-seismic-noise-data" id="id1">S0A. Downloading seismic noise data</a></p></li>
-<li><p><a class="reference internal" href="#s0b-deal-with-local-sac-miniseed-data" id="id2">S0B. Deal with local SAC/miniseed data</a></p></li>
+<li><p><a class="reference internal" href="#s0b-deal-with-local-data" id="id2">S0B. Deal with local data</a></p></li>
 <li><p><a class="reference internal" href="#s1-perform-cross-correlations" id="id3">S1. Perform cross correlations</a></p></li>
 <li><p><a class="reference internal" href="#s2-do-stacking" id="id4">S2. Do stacking</a></p></li>
 </ul>
 </div>
 <div class="section" id="s0a-downloading-seismic-noise-data">
 <h2><a class="toc-backref" href="#id1">S0A. Downloading seismic noise data</a><a class="headerlink" href="#s0a-downloading-seismic-noise-data" title="Permalink to this headline">¶</a></h2>
-<p>The script of <em>S0_download_ASDF_MPI.py</em> (located in <em>src</em> directory) and its existing parameters allows to download all available broadband CI stations <em>(BH?)</em> located in a certain region
+<p>The script of <em>S0A_download_ASDF_MPI.py</em> (located in <em>src</em> directory) and its existing parameters allows to download all available broadband CI stations <em>(BH?)</em> located in a certain region
 and operated during 1/Jul/2016-2/Jul/2016 through the SCEC data center.
 In the script, short summary is provided for all input parameters that can be changed according to the user’s needs. In the current form of the script, we set <em>inc_hours=24</em> to download
 day-long continous noise data as well as the meta info and store them into a single ASDF file. To increase the signal-to-noise (SNR) of the final cross-correlation functions
 (see Seats et al.,2012 for more details), we break the day-long sequence into smaller segments, each of <em>cc_len</em> (s) long with some overlapping defined by <em>step</em>. You may wanto to
 set <em>flag</em> to be <em>True</em> if intermediate outputs/operational time is preferred during the downloading process. To run the code on a single core, open the terminal and activate the noisepy
 environment before run following command. (NOTE that things may go completely different if you want to run NoisePy on a cluster. Better check it out first!!)</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ python S0_download_ASDF.py
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ python S0A_download_ASDF.py
 </pre></div>
 </div>
 <p>If you want to use multiple cores (e.g, 4), run the script with the following command using <a class="reference external" href="https://mpi4py.readthedocs.io/en/stable/">mpi4py</a>.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ mpirun -n <span class="m">4</span> python S0_download_ASDF_MPI.py
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ mpirun -n <span class="m">4</span> python S0A_download_ASDF_MPI.py
 </pre></div>
 </div>
 <p>The outputted files from S0A include ASDF files containing daily-long (24h) continous noise data, a parameter file recording all used parameters in the script of S0A and a CSV file of
 all station information (more details on reading the ASDF files with downloaded data can be found in docs/src/ASDF.md). The continous waveforms data stored in the ASDF file can be displayed
 using the plotting modules named as <em>plotting_modules</em> in the directory of <em>src</em> as shown below.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">plotting_modules</span> <span class="p">(</span><span class="n">cd</span> <span class="n">to</span> <span class="n">your</span> <span class="n">source</span> <span class="nb">file</span> <span class="n">directory</span> <span class="n">first</span> <span class="n">before</span> <span class="n">loading</span> <span class="n">this</span> <span class="n">module</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">plotting_modules</span> <span class="p">(</span><span class="n">cd</span> <span class="n">to</span> <span class="n">your</span> <span class="n">source</span> <span class="n">file</span> <span class="n">directory</span> <span class="n">first</span> <span class="n">before</span> <span class="n">loading</span> <span class="n">this</span> <span class="n">module</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">sfile</span> <span class="o">=</span> <span class="s1">&#39;/Users/chengxin/Documents/SCAL/RAW_DATA/2016_07_01_00_00_00T2016_07_02_00_00_00.h5&#39;</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">plotting_modules</span><span class="o">.</span><span class="n">plot_waveform</span><span class="p">(</span><span class="n">sfile</span><span class="p">,</span><span class="s1">&#39;CI&#39;</span><span class="p">,</span><span class="s1">&#39;BLC&#39;</span><span class="p">,</span><span class="mf">0.01</span><span class="p">,</span><span class="mf">0.4</span><span class="p">)</span>
 </pre></div>
@@ -206,11 +209,10 @@ and the general structure you want to store on your machine etc. We tested a bun
 details (Jiang et al., 2019).</p>
 </div>
 </div>
-<div class="section" id="s0b-deal-with-local-sac-miniseed-data">
-<h2><a class="toc-backref" href="#id2">S0B. Deal with local SAC/miniseed data</a><a class="headerlink" href="#s0b-deal-with-local-sac-miniseed-data" title="Permalink to this headline">¶</a></h2>
-<p>The script of <cite>S0B_sacMSEED_to_ASDF.py</cite> is developed for the users to handle local data in SAC/miniseed format stored on your own disk. Most of the variables are the same as those for
-S0A and thus should be pretty straighforward to follow and change. In this script, it preprocesses the data by merging, detrending, demeaning, downsampling and then trimming before
-saving them into ASDF format for later NoisePy processing. In particular, we expect the script to deal with very messydata, by which we mean that, seismic data is broken into small
+<div class="section" id="s0b-deal-with-local-data">
+<h2><a class="toc-backref" href="#id2">S0B. Deal with local data</a><a class="headerlink" href="#s0b-deal-with-local-data" title="Permalink to this headline">¶</a></h2>
+<p>The script of <cite>S0B_to_ASDF.py</cite> is developed for the users to handle local data in any format that ObsPy can read  stored on your own disk. Most of the variables are the same as those for
+S0A and thus should be pretty straighforward to follow and change. In this script, it preprocesses the data by merging, detrending, demeaning, downsampling, and then trimming before saving them into ASDF format for later NoisePy processing. In particular, we expect the script to deal with very messydata, by which we mean that, seismic data is broken into small
 pieces and of messy time info such as overlapping time. REMEMBER to set <em>messydata</em> at L62 to <em>True</em> when you have messy data! (Tutorials on removing instrument response)</p>
 </div>
 <div class="section" id="s1-perform-cross-correlations">
@@ -223,7 +225,7 @@ are located. It also creates a parameter file of <em>fft_cc_data.txt</em> that r
 temporal variation between all station-pair by calling <em>plot_substack_cc</em> function in <em>plotting_modules</em> as follows.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">plotting_modules</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">sfile</span> <span class="o">=</span> <span class="s1">&#39;/Users/chengxin/Documents/SCAL/CCF/2016_07_01_00_00_00T2016_07_02_00_00_00.h5&#39;</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">plot_modules</span><span class="o">.</span><span class="n">plot_substack_cc</span><span class="p">(</span><span class="n">sfile</span><span class="p">,</span><span class="mf">0.1</span><span class="p">,</span><span class="mf">0.2</span><span class="p">,</span><span class="mi">200</span><span class="p">,</span><span class="bp">True</span><span class="p">,</span><span class="s1">&#39;/Users/chengxin/Documents/SCAL/CCF/figures&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">plotting_modules</span><span class="o">.</span><span class="n">plot_substack_cc</span><span class="p">(</span><span class="n">sfile</span><span class="p">,</span><span class="mf">0.1</span><span class="p">,</span><span class="mf">0.2</span><span class="p">,</span><span class="mi">200</span><span class="p">,</span><span class="kc">True</span><span class="p">,</span><span class="s1">&#39;/Users/chengxin/Documents/SCAL/CCF/figures&#39;</span><span class="p">)</span>
 </pre></div>
 </div>
 <a class="reference internal image-reference" href="_images/substack_cc_NN.png"><img alt="_images/substack_cc_NN.png" class="align-center" src="_images/substack_cc_NN.png" style="width: 100%;" /></a>
@@ -234,10 +236,24 @@ temporal variation between all station-pair by calling <em>plot_substack_cc</em>
 <p>The script of <cite>S2_stacking.py</cite> is used to assemble and/or stack all cross-correlation functions computed for the staion pairs in S1 and save them into ASDF files for future analysis
 (e.g., temporal variation and/or dispersion extraction). In particular, there are two options for the stacking process, including linear and phase weighted stacking (pws). In general,
 the pws produces waveforms with high SNR, and the snapshot below shows the waveform comparison from the two stacking methods. We use the folloing commend lines to make the move-out plot.</p>
+<dl class="simple">
+<dt>NoisePy compiles a suite of stacking routines. Please cite appropriate manuscript when using them:</dt><dd><ul class="simple">
+<li><p>Phase-weighted stacking: Schimmel et al, 1997</p></li>
+<li><p>Selective stack with amp threshold: NoisePy paper</p></li>
+<li><p>Selective stack with a CC threshold: NoisePy paper</p></li>
+<li><p>Time-frequency PWS (Zeng and Thurber 2016)</p></li>
+<li><p>auto-covariance filter (Nakata et al, 2016)</p></li>
+<li><p>Robust stack (Xiaotao - Pavlis &amp; Vernon, 2010), Yang et al, 2020</p></li>
+<li><p>Robust stacking with CC threshold, Yang et al, 2020</p></li>
+<li><p>Nth-root stack (Rost and Thomas?)</p></li>
+<li><p>Denoise with SVD+Wiener (Moreau et al, 2017)</p></li>
+</ul>
+</dd>
+</dl>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">plotting_modules</span><span class="o">,</span><span class="nn">glob</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">sfiles</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s1">&#39;/Users/chengxin/Documents/SCAL/STACK/*/*.h5&#39;</span><span class="p">)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">plot_modules</span><span class="o">.</span><span class="n">plot_all_moveout</span><span class="p">(</span><span class="n">sfiles</span><span class="p">,</span><span class="s1">&#39;Allstack_linear&#39;</span><span class="mf">0.1</span><span class="p">,</span><span class="mf">0.2</span><span class="p">,</span><span class="s1">&#39;ZZ&#39;</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">300</span><span class="p">,</span><span class="bp">True</span><span class="p">,</span><span class="s1">&#39;/Users/chengxin/Documents/SCAL/STACK&#39;</span><span class="p">)</span> <span class="c1">#(move-out for linear stacking)</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">plot_modules</span><span class="o">.</span><span class="n">plot_all_moveout</span><span class="p">(</span><span class="n">sfiles</span><span class="p">,</span><span class="s1">&#39;Allstack_pws&#39;</span><span class="mf">0.1</span><span class="p">,</span><span class="mf">0.2</span><span class="p">,</span><span class="s1">&#39;ZZ&#39;</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">300</span><span class="p">,</span><span class="bp">True</span><span class="p">,</span><span class="s1">&#39;/Users/chengxin/Documents/SCAL/STACK&#39;</span><span class="p">)</span>    <span class="c1">#(move-out for pws)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">plotting_modules</span><span class="o">.</span><span class="n">plot_all_moveout</span><span class="p">(</span><span class="n">sfiles</span><span class="p">,</span><span class="s1">&#39;Allstack_linear&#39;</span><span class="mf">0.1</span><span class="p">,</span><span class="mf">0.2</span><span class="p">,</span><span class="s1">&#39;ZZ&#39;</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">300</span><span class="p">,</span><span class="kc">True</span><span class="p">,</span><span class="s1">&#39;/Users/chengxin/Documents/SCAL/STACK&#39;</span><span class="p">)</span> <span class="c1">#(move-out for linear stacking)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">plotting_modules</span><span class="o">.</span><span class="n">plot_all_moveout</span><span class="p">(</span><span class="n">sfiles</span><span class="p">,</span><span class="s1">&#39;Allstack_pws&#39;</span><span class="mf">0.1</span><span class="p">,</span><span class="mf">0.2</span><span class="p">,</span><span class="s1">&#39;ZZ&#39;</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">300</span><span class="p">,</span><span class="kc">True</span><span class="p">,</span><span class="s1">&#39;/Users/chengxin/Documents/SCAL/STACK&#39;</span><span class="p">)</span>    <span class="c1">#(move-out for pws)</span>
 </pre></div>
 </div>
 <a class="reference internal image-reference" href="_images/linear_stack1.png"><img alt="_images/linear_stack1.png" class="align-center" src="_images/linear_stack1.png" style="width: 100%;" /></a>
@@ -253,7 +269,7 @@ the pws produces waveforms with high SNR, and the snapshot below shows the wavef
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="examples.html" class="btn btn-neutral float-right" title="Pyasdf examples" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="examples.html" class="btn btn-neutral float-right" title="NoisePy ASDF file architecture" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="installation.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
@@ -265,11 +281,19 @@ the pws produces waveforms with high SNR, and the snapshot below shows the wavef
 
   <div role="contentinfo">
     <p>
+        
         &copy; Copyright 2019, Chengxin Jiang
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -280,7 +304,6 @@ the pws produces waveforms with high SNR, and the snapshot below shows the wavef
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {

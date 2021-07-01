@@ -1,8 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import noise_module
 import obspy
+import sys
 import timeit
+
+sys.path.insert(1,'../../src')
+import noise_module
 
 '''
 This script compares several different ways for smoothing a signal,
