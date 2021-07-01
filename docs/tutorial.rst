@@ -17,7 +17,7 @@ environment before run following command. (NOTE that things may go completely di
 
 .. code-block:: bash
 
-    $ python S0A_download_ASDF.py
+    $ python S0A_download_ASDF_MPI.py
 
 If you want to use multiple cores (e.g, 4), run the script with the following command using `mpi4py <https://mpi4py.readthedocs.io/en/stable/>`_. 
 
