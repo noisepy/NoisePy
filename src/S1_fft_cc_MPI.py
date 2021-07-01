@@ -325,31 +325,32 @@ for ick in range (rank,splits,size):
 
         # get index right for auto/cross correlation
         istart=iiS;iend=iii
-        if acorr_only:
-            if ncomp==1:
-                iend=np.minimum(iiS+ncomp,iii)
-            else:
-                if (channel[iiS][-1]=='Z'): # THIS IS NOT GENERALIZABLE. WE need to change this to the order there are bugs that shifts the components
-                    iend=np.minimum(iiS+1,iii)
-                elif (channel[iiS][-1]=='N'):
-                    iend=np.minimum(iiS+2,iii)
-                else:
-                    iend=np.minimum(iiS+ncomp,iii)
+#             if ncomp==1:
+#                 iend=np.minimum(iiS+ncomp,iii)
+#             else:
+#                 if (channel[iiS][-1]=='Z'): # THIS IS NOT GENERALIZABLE. WE need to change this to the order there are bugs that shifts the components
+#                     iend=np.minimum(iiS+1,iii)
+#                 elif (channel[iiS][-1]=='N'):
+#                     iend=np.minimum(iiS+2,iii)
+#                 else:
+#                     iend=np.minimum(iiS+ncomp,iii)
             
-        if xcorr_only:
-            if ncomp==1:
-                istart=np.minimum(iiS+ncomp,iii)
-            else:
-                if (channel[iiS][-1]=='Z'):
-                    istart=np.minimum(iiS+1,iii)
-                elif (channel[iiS][-1]=='N'):
-                    istart=np.minimum(iiS+2,iii)
-                else:
-                    istart=np.minimum(iiS+ncomp,iii)
+#         if xcorr_only:
+#             if ncomp==1:
+#                 istart=np.minimum(iiS+ncomp,iii)
+#             else:
+#                 if (channel[iiS][-1]=='Z'):
+#                     istart=np.minimum(iiS+1,iii)
+#                 elif (channel[iiS][-1]=='N'):
+#                     istart=np.minimum(iiS+2,iii)
+#                 else:
+#                     istart=np.minimum(iiS+ncomp,iii)
 
         #-----------now loop III for each receiver B----------
         for iiR in range(istart,iend):
-            if flag:print('receiver: %s %s' % (station[iiR],network[iiR]))
+            if acorr_only:
+                if (station[iiR]~=station[iiS]):continue
+            if flag:print('receiver: %s %s %s' % (station[iiR],network[iiR],channel[iiR]))
             if not fft_flag[iiR]: continue
                 
             fft2 = fft_array[iiR];sfft2 = fft2.reshape(N,Nfft2)
