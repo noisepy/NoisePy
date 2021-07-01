@@ -3,11 +3,11 @@ NoisePy is a Python package designed for fast and easy computation of ambient no
 
 Disclaimer: this code should not be used "as-is" and not run like a blackbox. The user is expected to change local paths and parameters. Submit an issue to github with information such as the scripts+error messages to debug.
 
-Detailed documentation can be found at https://noise-python.readthedocs.io/en/latest/
+Detailed documentation can be found at https://noisepy.readthedocs.io/en/latest/
 
-[![Documentation Status](https://readthedocs.org/projects/noise-python/badge/?version=latest)](https://noise-python.readthedocs.io/en/latest/?badge=latest)
-[![Build Status](https://travis-ci.com/chengxinjiang/Noise_python.svg?token=jimdAXcrUt4ngV6Dy3s7&branch=master)](https://travis-ci.com/chengxinjiang/Noise_python)
-[![Codecov](https://codecov.io/gh/chengxinjiang/Noise_python/branch/master/graph/badge.svg)](https://codecov.io/gh/chengxinjiang/Noise_python)
+[![Documentation Status](https://readthedocs.org/projects/noisepy/badge/?version=latest)](https://noisepy.readthedocs.io/en/latest/?badge=latest)
+[![Build Status](https://travis-ci.com/chengxinjiang/NoisePy.svg?branch=master)](https://travis-ci.com/github/chengxinjiang/NoisePy)
+[![Codecov](https://codecov.io/gh/chengxinjiang/NoisePy/branch/master/graph/badge.svg)](https://codecov.io/gh/chengxinjiang/NoisePy)
 
 <img src="/docs/figures/logo.png" width="800" height="400">
  
