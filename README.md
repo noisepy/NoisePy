@@ -113,10 +113,10 @@ plotting_modules.plot_all_moveout(sfiles,'Allstack_pws'0.1,0.2,'ZZ',1,300,True,'
 
 Anyway, here just presents one simple example of how NoisePy might work! We strongly encourage you to download the NoisePy package and play it on your own! If you have any  comments and/or suggestions during running the codes, please do not hesitate to contact us through email or open an issue in this github page!  
 
-Chengxin Jiang (chengxin_jiang@fas.harvard.edu)  
-Marine Denolle (mdenolle@fas.harvard.edu).
+Chengxin Jiang (chengxinjiang@gmail.com)  
+Marine Denolle (mdenolle@uw.edu).
 
 #### Reference
 Seats, K. J., Jesse F. L., and German A. P. "Improved ambient noise correlation functions using Welch′ s method." _Geophysical Journal International_ 188, no. 2 (2012): 513-523.  
 *Jiang, C. and Denolle, M. "NoisePy: a new high-performance python tool for seismic ambient noise seismology." _Seismological Research Letter_ 91, no. 3 (2020): 1853–1866..  
-** Yuan, C., Bryan, J. T., Jiang, C., Okubo, K., Clements, T. and Denolle, M. (2019). Comparing approaches to measuring time- and frequency-dependent seismic phase variations for coda wave interferometry. In AGU Fall Meeting 2019.
+** Yuan, C., Bryan, J. T., and Denolle, M. "Numerical comparison of time-, frequency- and wavelet-domain methods for coda wave interferometry." _Geophysical Journal International_ 226, no. 2 (2021): 828-846.
