@@ -1324,34 +1324,30 @@ def taper(data):
 
 
 @jit(nopython = True)
-def moving_ave(A,N):
+
+def moving_ave(A, N): ## change the moving average calculation to take as input N the full window length to smooth
     '''
-    this Numba compiled function does running smooth average for an array.
+    Alternative function for moving average for an array.
     PARAMETERS:
     ---------------------
     A: 1-D array of data to be smoothed
-    N: integer, it defines the half window length to smooth
-
+    N: integer, it defines the full!! window length to smooth
     RETURNS:
     ---------------------
     B: 1-D array with smoothed data
     '''
-    A = np.concatenate((A[:N],A,A[-N:]),axis=0)
-    B = np.zeros(A.shape,A.dtype)
-
-    tmp=0.
-    for pos in range(N,A.size-N):
-        # do summing only once
-        if pos==N:
-            for i in range(-N,N+1):
-                tmp+=A[pos+i]
-        else:
-            tmp=tmp-A[pos-N-1]+A[pos+N]
-        B[pos]=tmp/(2*N+1)
-        if B[pos]==0:
-            B[pos]=1
-    return B[N:-N]
-
+    # defines an array with N extra samples at either side
+    temp = np.zeros(len(A) + 2 * N)
+    # set the central portion of the array to A
+    temp[N: -N] = A
+    # leading samples: equal to first sample of actual array
+    temp[0: N] = temp[N]
+    # trailing samples: Equal to last sample of actual array
+    temp[-N:] = temp[-N-1]
+    # convolve with a boxcar and normalize, and use only central portion of the result
+    # with length equal to the original array, discarding the added leading and trailing samples
+    B = np.convolve(temp, np.ones(N)/N, mode='same')[N: -N]
+    return(B)
 
 def robust_stack(cc_array,epsilon):
     """
