@@ -191,7 +191,7 @@ def plot_substack_cc(sfile,freqmin,freqmax,disp_lag=None,savefig=True,sdir='./')
             ax.set_xlabel('time [s]')
             ax.set_xticks(t)
             ax.set_yticks(np.arange(0,nwin,step=tick_inc))
-            ax.set_yticklabels(timestamp[0:-1:tick_inc])
+            ax.set_yticklabels(timestamp[0::tick_inc])
             ax.xaxis.set_ticks_position('bottom')
             ax1 = fig.add_subplot(413)
             ax1.set_title('stacked and filtered at %4.2f-%4.2f Hz'%(freqmin,freqmax))
@@ -216,7 +216,7 @@ def plot_substack_cc(sfile,freqmin,freqmax,disp_lag=None,savefig=True,sdir='./')
                 fig.savefig(outfname, format='pdf', dpi=400)
                 plt.close()
             else:
-                fig.show()
+                plt.show()
 
 
 def plot_substack_cc_spect(sfile,freqmin,freqmax,disp_lag=None,savefig=True,sdir='./'):
@@ -306,7 +306,7 @@ def plot_substack_cc_spect(sfile,freqmin,freqmax,disp_lag=None,savefig=True,sdir
             ax[0].set_xlabel('time [s]')
             ax[0].set_xticks(t)
             ax[0].set_yticks(np.arange(0,nwin,step=tick_inc))
-            ax[0].set_yticklabels(timestamp[0:-1:tick_inc])
+            ax[0].set_yticklabels(timestamp[0::tick_inc])
             ax[0].xaxis.set_ticks_position('bottom')
             ax[1].matshow(np.abs(spec),cmap='seismic',extent=[freq[0],freq[-1],nwin,0],aspect='auto')
             ax[1].set_xlabel('freq [Hz]')
@@ -328,14 +328,14 @@ def plot_substack_cc_spect(sfile,freqmin,freqmax,disp_lag=None,savefig=True,sdir
                 fig.savefig(outfname, format='pdf', dpi=400)
                 plt.close()
             else:
-                fig.show()
+                plt.show()
 
 
 #############################################################################
 ###############PLOTTING FUNCTIONS FOR FILES FROM S2##########################
 #############################################################################
 
-def plot_substack_all(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=False,sdir=None):
+def plot_substack_all(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=False,sdir=None, figsize=(14,14)):
     '''
     display the 2D matrix of the cross-correlation functions stacked for all time windows.
 
@@ -377,14 +377,16 @@ def plot_substack_all(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=False,sd
     indx2 = indx1+2*int(disp_lag/dt)+1
 
     # other parameters to keep
-    nwin = len(dtype_lists)-1
+    num_stacks = len([itype for itype in dtype_lists if "stack" in itype])
+    nwin = len(dtype_lists) - num_stacks
     data = np.zeros(shape=(nwin,indx2-indx1),dtype=np.float32)
     ngood= np.zeros(nwin,dtype=np.int16)
     ttime= np.zeros(nwin,dtype=np.int)
     timestamp = np.empty(ttime.size,dtype='datetime64[s]')
     amax = np.zeros(nwin,dtype=np.float32)
 
-    for ii,itype in enumerate(dtype_lists[2:]):
+    for ii,itype in enumerate(dtype_lists[num_stacks:]):
+        if "Allstack" in itype: continue
         timestamp[ii] = obspy.UTCDateTime(np.float(itype[1:]))
         try:
             ngood[ii] = ds.auxiliary_data[itype][paths].parameters['ngood']
@@ -408,7 +410,7 @@ def plot_substack_all(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=False,sd
         tick_inc = int(nwin/5) 
     else:
         tick_inc = 2
-    fig,ax = plt.subplots(2,sharex=False)
+    fig,ax = plt.subplots(2,sharex=False, figsize=figsize)
     ax[0].matshow(data,cmap='seismic',extent=[-disp_lag,disp_lag,nwin,0],aspect='auto')
     ax[0].set_title('%s dist:%5.2f km filtered at %4.2f-%4.2fHz' % (sfile.split('/')[-1],dist,freqmin,freqmax))
     ax[0].set_xlabel('time [s]')
@@ -418,7 +420,10 @@ def plot_substack_all(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=False,sd
     ax[0].set_yticklabels(timestamp[0:nwin:tick_inc])
     ax[0].xaxis.set_ticks_position('bottom')
     ax[1].plot(amax/max(amax),'r-')
-    ax[1].plot(ngood,'b-')
+    ax2 = ax[1].twinx()
+    ax2.plot(ngood,'b-')
+    ax2.set_ylabel('ngood', color="b")
+    ax[1].set_ylabel('relative amp', color="r")
     ax[1].set_xlabel('waveform number')
     ax[1].set_xticks(np.arange(0,nwin,nwin//5))
     ax[1].legend(['relative amp','ngood'],loc='upper right')
@@ -430,10 +435,10 @@ def plot_substack_all(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=False,sd
         fig.savefig(outfname, format='pdf', dpi=400)
         plt.close()
     else:
-        fig.show()
+        plt.show()
 
 
-def plot_substack_all_spect(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=False,sdir=None):
+def plot_substack_all_spect(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=False,sdir=None, figsize=(14,14)):
     '''
     display the 2D matrix of the cross-correlation functions stacked for all time windows.
 
@@ -477,7 +482,8 @@ def plot_substack_all_spect(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=Fa
     freq  = scipy.fftpack.fftfreq(nfft,d=dt)[:nfft//2]
 
     # other parameters to keep
-    nwin = len(dtype_lists)-1
+    num_stacks = len([itype for itype in dtype_lists if "stack" in itype])
+    nwin = len(dtype_lists) - num_stacks
     data = np.zeros(shape=(nwin,indx2-indx1),dtype=np.float32)
     spec = np.zeros(shape=(nwin,nfft//2),dtype=np.complex64)
     ngood= np.zeros(nwin,dtype=np.int16)
@@ -485,7 +491,8 @@ def plot_substack_all_spect(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=Fa
     timestamp = np.empty(ttime.size,dtype='datetime64[s]')
     amax = np.zeros(nwin,dtype=np.float32)
 
-    for ii,itype in enumerate(dtype_lists[1:]):
+    for ii,itype in enumerate(dtype_lists[num_stacks:]):
+        if "stack" in itype: continue
         timestamp[ii] = obspy.UTCDateTime(np.float(itype[1:]))
         try:
             ngood[ii] = ds.auxiliary_data[itype][paths].parameters['ngood']
@@ -506,7 +513,7 @@ def plot_substack_all_spect(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=Fa
         
     # plotting
     tick_inc = 50
-    fig,ax = plt.subplots(3,sharex=False)
+    fig,ax = plt.subplots(3,sharex=False, figsize=figsize)
     ax[0].matshow(data,cmap='seismic',extent=[-disp_lag,disp_lag,nwin,0],aspect='auto')
     ax[0].set_title('%s dist:%5.2f km' % (sfile.split('/')[-1],dist))
     ax[0].set_xlabel('time [s]')
@@ -534,7 +541,7 @@ def plot_substack_all_spect(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=Fa
         fig.savefig(outfname, format='pdf', dpi=400)
         plt.close()
     else:
-        fig.show()
+        plt.show()
 
 
 def plot_all_moveout(sfiles,dtype,freqmin,freqmax,ccomp,dist_inc,disp_lag=None,savefig=False,sdir=None):
@@ -555,7 +562,7 @@ def plot_all_moveout(sfiles,dtype,freqmin,freqmax,ccomp,dist_inc,disp_lag=None,s
 
     USAGE: 
     ----------------------
-    plot_substack_moveout('temp.h5','Allstack0pws',0.1,0.2,1,'ZZ',200,True,'./temp')
+    plot_substack_moveout('temp.h5','Allstack_pws',0.1,0.2,1,'ZZ',200,True,'./temp')
     '''
     # open data for read
     if savefig:
@@ -634,10 +641,10 @@ def plot_all_moveout(sfiles,dtype,freqmin,freqmax,ccomp,dist_inc,disp_lag=None,s
         fig.savefig(outfname, format='pdf', dpi=400)
         plt.close()
     else:
-        fig.show()
+        plt.show()
 
 
-def plot_all_moveout_1D_1comp(sfiles,sta,dtype,freqmin,freqmax,ccomp,disp_lag=None,savefig=False,sdir=None):
+def plot_all_moveout_1D_1comp(sfiles,sta,dtype,freqmin,freqmax,ccomp,disp_lag=None,savefig=False,sdir=None,figsize=(14,11)):
     '''
     display the moveout waveforms of the cross-correlation functions stacked for all time chuncks.
 
@@ -681,6 +688,10 @@ def plot_all_moveout_1D_1comp(sfiles,sta,dtype,freqmin,freqmax,ccomp,disp_lag=No
 
     # load cc and parameter matrix
     mdist = 0
+    if not figsize:
+        plt.figure()
+    else:
+        plt.figure(figsize=figsize)
     for ii in range(len(sfiles)):
         sfile = sfiles[ii]
         iflip = 0
@@ -708,7 +719,7 @@ def plot_all_moveout_1D_1comp(sfiles,sta,dtype,freqmin,freqmax,ccomp,disp_lag=No
         plt.title('%s %s filtered @%4.1f-%4.1f Hz' % (sta,ccomp,freqmin,freqmax))
         plt.xlabel('time (s)')
         plt.ylabel('offset (km)')
-        plt.text(maxlag*0.9,dist+0.5,receiver,fontsize=6)
+        plt.text(disp_lag*0.9,dist+0.5,receiver,fontsize=6)
 
         #----use to plot o times------
         if mdist < dist:
@@ -724,7 +735,7 @@ def plot_all_moveout_1D_1comp(sfiles,sta,dtype,freqmin,freqmax,ccomp,disp_lag=No
         plt.show()
 
 
-def plot_all_moveout_1D_9comp(sfiles,sta,dtype,freqmin,freqmax,disp_lag=None,savefig=False,sdir=None):
+def plot_all_moveout_1D_9comp(sfiles,sta,dtype,freqmin,freqmax,mdist,disp_lag=None,savefig=False,sdir=None,figsize=(14,11)):
     '''
     display the moveout waveforms of the cross-correlation functions stacked for all time chuncks.
 
@@ -735,6 +746,7 @@ def plot_all_moveout_1D_9comp(sfiles,sta,dtype,freqmin,freqmax,disp_lag=None,sav
     dtype: datatype either 'Allstack0pws' or 'Allstack0linear'
     freqmin: min frequency to be filtered
     freqmax: max frequency to be filtered
+    mdist: maximum inter-station distance to show on plot
     disp_lag: lag times for displaying
     savefig: set True to save the figures (in pdf format)
     sdir: diresied directory to save the figure (if not provided, save to default dir)
@@ -767,8 +779,10 @@ def plot_all_moveout_1D_9comp(sfiles,sta,dtype,freqmin,freqmax,disp_lag=None,sav
     indx2 = indx1+2*int(disp_lag/dt)+1
 
     # load cc and parameter matrix
-    mdist = 80
-    plt.figure(figsize=(14,10.5))
+    if not figsize:
+        plt.figure()
+    else:
+        plt.figure(figsize=figsize)
     for ic in range(len(ccomp)):
         comp = ccomp[ic]
         tmp  = '33'+str(ic+1)
@@ -804,13 +818,13 @@ def plot_all_moveout_1D_9comp(sfiles,sta,dtype,freqmin,freqmax,disp_lag=None,sav
             plt.xlabel('time (s)')
             plt.ylabel('offset (km)')
             if ic==0:
-                plt.plot([0,160],[0,80],'r--',linewidth=0.2)
-                plt.plot([0,80],[0,80],'g--',linewidth=0.2)
+                plt.plot([0,2*mdist],[0,mdist],'r--',linewidth=0.2)
+                plt.plot([0,mdist],[0,mdist],'g--',linewidth=0.2)
             plt.text(disp_lag*1.1,dist+0.5,treceiver,fontsize=6)
 
         plt.plot([0,0],[0,mdist],'b--',linewidth=1)
         font = {'family': 'serif', 'color':  'red', 'weight': 'bold','size': 16}
-        plt.text(disp_lag*0.65,80,comp,fontdict=font)
+        plt.text(disp_lag*0.65,0.9*mdist,comp,fontdict=font)
     plt.tight_layout()
 
     # save figure or show
