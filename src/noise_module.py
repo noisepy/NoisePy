@@ -225,12 +225,15 @@ def preprocess_raw(st,inv,prepro_para,date_info):
             #----check whether inventory is attached----
             if not inv[0][0][0].response:
                 raise ValueError('no response found in the inventory! abort!')
+            elif inv[0][0][0].response == obspy.core.inventory.response.Response():
+                raise ValueError('The response found in the inventory is empty (no stages)! abort!')
             else:
                 try:
                     print('removing response for %s using inv'%st[0])
                     st[0].attach_response(inv)
                     st[0].remove_response(output=rm_resp_out,pre_filt=pre_filt,water_level=60)
                 except Exception:
+                    print('WARNING: Failed to remove response from %s. Returning empty stream.' % st[0])
                     st = []
                     return st
 
@@ -288,11 +291,17 @@ def stats2inv(stats,prepro_para,locs=None):
         if not respdir:
             raise ValueError('Abort! staxml is selected but no directory is given to access the files')
         else:
-            invfile = glob.glob(os.path.join(respdir,'*'+stats.station+'*'))
-            if os.path.isfile(str(invfile)):
-                inv = obspy.read_inventory(invfile)
-                return inv
-
+            invfilelist = glob.glob(os.path.join(respdir,'*'+stats.station+'*'))
+            if len(invfilelist) > 0:
+                invfile = invfilelist[0]
+                if len(invfilelist) > 1:
+                    print('Warning! More than one StationXML file was found for station %s. Keeping the first file in list.' % stats.station)
+                if os.path.isfile(str(invfile)):
+                    inv = obspy.read_inventory(invfile)
+                    return inv
+            else:
+                raise ValueError('Could not find a StationXML file for station: %s.' % stats.station)
+                
     inv = Inventory(networks=[],source="homegrown")
 
     if input_fmt=='sac':

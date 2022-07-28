@@ -201,12 +201,11 @@ for ick in range(rank,splits,size):
         t1=time.time()
         inv1   = noise_module.stats2inv(source[0].stats,prepro_para,locs=locs)      
         tr = noise_module.preprocess_raw(source,inv1,prepro_para,date_info)
-        if np.all(tr[0].data==0):continue
+        # jump if no good data left
+        if not len(tr): continue
+        if np.all(tr[0].data==0): continue
         t2 = time.time()
         if flag:print('pre-processing takes %6.2fs'%(t2-t1))
-
-        # jump if no good data left
-        if not len(tr):continue
 
         # ready for output
         ff=os.path.join(RAWDATA,all_chunk[ick]+'T'+all_chunk[ick+1]+'.h5')
