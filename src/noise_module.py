@@ -1415,8 +1415,8 @@ def selective_stack(cc_array,epsilon):
     nstep=0
     newstack = np.mean(cc_array,axis=0)
     for i in range(cc_array.shape[0]):
-    	CC[i] = np.sum(np.multiply(stack,cc_array[i,:].T))
-    ik = np.where(CC>=epsilon)
+        cc[i] = np.sum(np.multiply(newstack,cc_array[i,:].T))
+    ik = np.where(cc>=epsilon)[0]
     newstack = np.mean(cc_array[ik,:],axis=0)
 
     return newstack, cc
