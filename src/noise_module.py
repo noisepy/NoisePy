@@ -5,7 +5,7 @@ import obspy
 import scipy
 import time
 import pycwt
-import pyasdf
+#import pyasdf
 import datetime
 import numpy as np
 import pandas as pd
@@ -1422,10 +1422,133 @@ def selective_stack(cc_array,epsilon):
     return newstack, cc
 
 
-
-def whiten(data, fft_para):
+def whiten_1D(timeseries, fft_para, n_taper):
     '''
-    This function takes 1-dimensional timeseries array, transforms to frequency domain using fft,
+    This function takes a 1-dimensional timeseries array, transforms to frequency domain using fft,
+    whitens the amplitude of the spectrum in frequency domain between *freqmin* and *freqmax*
+    and returns the whitened fft.
+    PARAMETERS:
+    ----------------------
+    data: numpy.ndarray contains the 1D time series to whiten
+    fft_para: dict containing all fft_cc parameters such as
+        dt: The sampling space of the `data`
+        freqmin: The lower frequency bound
+        freqmax: The upper frequency bound
+        smooth_N: integer, it defines the half window length to smooth
+        n_taper, optional: integer, define the width of the taper in samples
+    RETURNS:
+    ----------------------
+    FFTRawSign: numpy.ndarray contains the FFT of the whitened input trace between the frequency bounds
+    '''
+    # load parameters
+    delta   = fft_para['dt']
+    freqmin = fft_para['freqmin']
+    freqmax = fft_para['freqmax']
+    smooth_N  = fft_para['smooth_N']
+
+    nfft = next_fast_len(len(timeseries))
+    spec = np.fft.rfft(timeseries, nfft)
+    freq = np.fft.rfftfreq(nfft, d=delta)
+
+    ix0 = np.argmin(np.abs(freq - freqmin))
+    ix1 = np.argmin(np.abs(freq - freqmax))
+
+    if ix1 + n_taper > nfft:
+        ix11 = nfft
+    else:
+        ix11 = ix1 + n_taper
+
+
+    if ix0 - n_taper < 0:
+        ix00 = 0
+    else:
+        ix00 = ix0 - n_taper
+
+
+    spec_out = spec.copy()
+    spec_out[0: ix00] = 0.0 + 0.0j
+    spec_out[ix11:] = 0.0 + 0.0j
+
+    if smooth_N <= 1:
+        spec_out[ix00: ix11] = np.exp(1.j * np.angle(spec_out[ix00: ix11]))
+    else:
+        spec_out[ix00: ix11] /= moving_ave(np.abs(spec_out[ix00: ix11]), smooth_N)
+
+
+    x = np.linspace(np.pi / 2., np.pi, ix0 - ix00)
+    spec_out[ix00: ix0] *= np.cos(x) ** 2
+
+    x = np.linspace(0., np.pi / 2., ix11 - ix1)
+    spec_out[ix1: ix11] *= np.cos(x) ** 2
+
+    return(spec_out)
+
+
+def whiten_2D(timeseries, fft_para, n_taper):
+    '''
+    This function takes a 2-dimensional timeseries array, transforms to frequency domain using fft,
+    whitens the amplitude of the spectrum in frequency domain between *freqmin* and *freqmax*
+    and returns the whitened fft.
+    PARAMETERS:
+    ----------------------
+    data: numpy.ndarray contains the 1D time series to whiten
+    fft_para: dict containing all fft_cc parameters such as
+        dt: The sampling space of the `data`
+        freqmin: The lower frequency bound
+        freqmax: The upper frequency bound
+        smooth_N: integer, it defines the half window length to smooth
+        n_taper, optional: integer, define the width of the taper in samples
+    RETURNS:
+    ----------------------
+    FFTRawSign: numpy.ndarray contains the FFT of the whitened input trace between the frequency bounds
+    '''
+    # load parameters
+    delta   = fft_para['dt']
+    freqmin = fft_para['freqmin']
+    freqmax = fft_para['freqmax']
+    smooth_N  = fft_para['smooth_N']
+
+    nfft = next_fast_len(timeseries.shape[1])
+    spec = np.fft.rfftn(timeseries, s=[nfft])
+    freq = np.fft.rfftfreq(nfft, d=delta)
+
+    ix0 = np.argmin(np.abs(freq - freqmin))
+    ix1 = np.argmin(np.abs(freq - freqmax))
+
+    if ix1 + n_taper > nfft:
+        ix11 = nfft
+    else:
+        ix11 = ix1 + n_taper
+
+
+    if ix0 - n_taper < 0:
+        ix00 = 0
+    else:
+        ix00 = ix0 - n_taper
+
+
+    spec_out = spec.copy()  # may be inconvenient due to higher memory usage
+    spec_out[:, 0: ix00] = 0.0 + 0.0j
+    spec_out[:, ix11:] = 0.0 + 0.0j
+
+    if smooth_N <= 1:
+        spec_out[:, ix00: ix11] = np.exp(1.j * np.angle(spec_out[:, ix00: ix11]))
+    else:
+        spec_out[:, ix00: ix11] /= moving_ave(np.abs(spec_out[:, ix00: ix11]), smooth_N)
+
+
+    x = np.linspace(np.pi / 2., np.pi, ix0 - ix00)
+    spec_out[:, ix00: ix0] *= np.cos(x) ** 2
+
+    x = np.linspace(0., np.pi / 2., ix11 - ix1)
+    spec_out[:, ix1: ix11] *= np.cos(x) ** 2
+
+    return(spec_out)
+
+
+def whiten(data, fft_para, n_taper=100):
+    '''
+    This function takes a timeseries array, transforms to frequency domain using fft,
     whitens the amplitude of the spectrum in frequency domain between *freqmin* and *freqmax*
     and returns the whitened fft.
     PARAMETERS:
@@ -1442,77 +1565,18 @@ def whiten(data, fft_para):
     FFTRawSign: numpy.ndarray contains the FFT of the whitened input trace between the frequency bounds
     '''
 
-    # load parameters
-    delta   = fft_para['dt']
-    freqmin = fft_para['freqmin']
-    freqmax = fft_para['freqmax']
-    smooth_N  = fft_para['smooth_N']
-    freq_norm = fft_para['freq_norm']
-
     # Speed up FFT by padding to optimal size for FFTPACK
     if data.ndim == 1:
-        axis = 0
+        FFTRawSign = whiten_1D(data, fft_para, n_taper)
+        # ARR_OUT: Only for consistency with noisepy approach of holding the full spectrum (not just 0 and positive freq. part)
+        arr_out = np.zeros((FFTRawSign.shape[0] - 1) * 2 + 1, dtype=complex)
+        arr_out[0: FFTRawSign.shape[0]] = FFTRawSign
+        arr_out[FFTRawSign.shape[0]:] = FFTRawSign[1:].conjugate()[::-1]
+    
     elif data.ndim == 2:
-        axis = 1
-
-    Nfft = int(next_fast_len(int(data.shape[axis])))
-
-    Napod = 100
-    Nfft = int(Nfft)
-    freqVec = scipy.fftpack.fftfreq(Nfft, d=delta)[:Nfft // 2]
-    J = np.where((freqVec >= freqmin) & (freqVec <= freqmax))[0]
-    low = J[0] - Napod
-    if low <= 0:
-        low = 1
-
-    left = J[0]
-    right = J[-1]
-    high = J[-1] + Napod
-    if high > Nfft/2:
-        high = int(Nfft//2)
-
-    FFTRawSign = scipy.fftpack.fft(data, Nfft,axis=axis)
-    # Left tapering:
-    if axis == 1:
-        FFTRawSign[:,0:low] *= 0
-        FFTRawSign[:,low:left] = np.cos(
-            np.linspace(np.pi / 2., np.pi, left - low)) ** 2 * np.exp(
-            1j * np.angle(FFTRawSign[:,low:left]))
-        # Pass band:
-        if freq_norm == 'phase_only':
-            FFTRawSign[:,left:right] = np.exp(1j * np.angle(FFTRawSign[:,left:right]))
-        elif freq_norm == 'rma':
-            for ii in range(data.shape[0]):
-                tave = moving_ave(np.abs(FFTRawSign[ii,left:right]),smooth_N)
-                FFTRawSign[ii,left:right] = FFTRawSign[ii,left:right]/tave
-        # Right tapering:
-        FFTRawSign[:,right:high] = np.cos(
-            np.linspace(0., np.pi / 2., high - right)) ** 2 * np.exp(
-            1j * np.angle(FFTRawSign[:,right:high]))
-        FFTRawSign[:,high:Nfft//2] *= 0
-
-        # Hermitian symmetry (because the input is real)
-        FFTRawSign[:,-(Nfft//2)+1:] = np.flip(np.conj(FFTRawSign[:,1:(Nfft//2)]),axis=axis)
-    else:
-        FFTRawSign[0:low] *= 0
-        FFTRawSign[low:left] = np.cos(
-            np.linspace(np.pi / 2., np.pi, left - low)) ** 2 * np.exp(
-            1j * np.angle(FFTRawSign[low:left]))
-        # Pass band:
-        if freq_norm == 'phase_only':
-            FFTRawSign[left:right] = np.exp(1j * np.angle(FFTRawSign[left:right]))
-        elif freq_norm == 'rma':
-            tave = moving_ave(np.abs(FFTRawSign[left:right]),smooth_N)
-            FFTRawSign[left:right] = FFTRawSign[left:right]/tave
-        # Right tapering:
-        FFTRawSign[right:high] = np.cos(
-            np.linspace(0., np.pi / 2., high - right)) ** 2 * np.exp(
-            1j * np.angle(FFTRawSign[right:high]))
-        FFTRawSign[high:Nfft//2] *= 0
-
-        # Hermitian symmetry (because the input is real)
-        FFTRawSign[-(Nfft//2)+1:] = FFTRawSign[1:(Nfft//2)].conjugate()[::-1]
-
+        FFTRawSign = whiten_2D(data, fft_para, n_taper)
+        arr_out = np.zeros((FFTRawSign.shape[0], (FFTRawSign.shape[1] - 1) * 2 + 1), dtype=complex)
+        arr_out[:, FFTRawSign.shape[1]:] = FFTRawSign[:, 1:].conjugate()[::-1]
     return FFTRawSign
 
 def adaptive_filter(arr,g):
