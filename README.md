@@ -131,7 +131,8 @@ Seats, K. J., Jesse F. L., and German A. P. "Improved ambient noise correlation 
 
 * ``cc_len`` correlation length, basic window length in seconds 
 * ``step`` is the window that get skipped when sliding windows in seconds
-* ``smooth_N `` number of points for smoothing the  time or frequency domain discrete arrays.
-* ``maxlag   `` maximum length in seconds saved in files in each side of the correlation (save on storage)
-substack       = True                                                       # True = smaller stacks within the time chunk. False: it will stack over inc_hours
-                              
+* ``smooth_N`` number of points for smoothing the  time or frequency domain discrete arrays.
+* ``maxlag`` maximum length in seconds saved in files in each side of the correlation (save on storage)
+* ``substack,substack_len`` boolean, window length over which to substack the correlation (to save storage or do monitoring), it has to be a multiple of ``cc_len``.
+
+ 
