@@ -128,3 +128,10 @@ Seats, K. J., Jesse F. L., and German A. P. "Improved ambient noise correlation 
 * ``station`` refers to the site that has the seismic instruments that records ground shaking.
 * `` channel`` refers to the direction of ground motion investigated for 3 component seismometers. For DAS project, it may refers to the single channel sensors.
 * ``ista`` is the index name for looping over stations
+
+* ``cc_len`` correlation length, basic window length in seconds 
+* ``step`` is the window that get skipped when sliding windows in seconds
+* ``smooth_N `` number of points for smoothing the  time or frequency domain discrete arrays.
+* ``maxlag   `` maximum length in seconds saved in files in each side of the correlation (save on storage)
+substack       = True                                                       # True = smaller stacks within the time chunk. False: it will stack over inc_hours
+                              
