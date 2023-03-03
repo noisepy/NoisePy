@@ -134,5 +134,6 @@ Seats, K. J., Jesse F. L., and German A. P. "Improved ambient noise correlation 
 * ``smooth_N`` number of points for smoothing the  time or frequency domain discrete arrays.
 * ``maxlag`` maximum length in seconds saved in files in each side of the correlation (save on storage)
 * ``substack,substack_len`` boolean, window length over which to substack the correlation (to save storage or do monitoring), it has to be a multiple of ``cc_len``.
+* ``time_chunk, nchunk`` refers to the time unit that defined a single job. for instace, ``cc_len`` is the correlation length (e.g., 1 hour, 30 min), the overall duration of the experiment is the total length (1 month, 1 year, ...). The time chunk could be 1 day: the code would loop through each cc_len window in a for loop. But each day will be sent as a thread.
 
  
