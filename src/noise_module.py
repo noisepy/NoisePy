@@ -1339,23 +1339,24 @@ def moving_ave(A, N): ## change the moving average calculation to take as input 
     Alternative function for moving average for an array.
     PARAMETERS:
     ---------------------
-    A: 1-D array of data to be smoothed
+    A: 2-D array of data to be smoothed
     N: integer, it defines the full!! window length to smooth
     RETURNS:
     ---------------------
-    B: 1-D array with smoothed data
+    B: 2-D array with smoothed data
     '''
+    ntc, nspt = A.shape
     # defines an array with N extra samples at either side
-    temp = np.zeros(len(A) + 2 * N)
+    temp = np.zeros([ntc, nspt + 2 * N])
     # set the central portion of the array to A
-    temp[N: -N] = A
+    temp[:, N: -N] = A
     # leading samples: equal to first sample of actual array
-    temp[0: N] = temp[N]
+    temp[:, 0: N] = np.repeat(np.expand_dims(temp[:, N], axis = -1), N, axis = -1)
     # trailing samples: Equal to last sample of actual array
-    temp[-N:] = temp[-N-1]
+    temp[:, -N:] = np.repeat(np.expand_dims(temp[:, -N-1], axis = -1), N, axis = -1)
     # convolve with a boxcar and normalize, and use only central portion of the result
     # with length equal to the original array, discarding the added leading and trailing samples
-    B = np.convolve(temp, np.ones(N)/N, mode='same')[N: -N]
+    B = scipy.signal.convolve2d(temp, np.expand_dims(np.ones(N)/N, axis = 0), mode = 'same')[:, N: -N]
     return(B)
 
 def robust_stack(cc_array,epsilon):
