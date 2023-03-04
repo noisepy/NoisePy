@@ -12,6 +12,9 @@ import noise_module
 from mpi4py import MPI
 from scipy.fftpack.helper import next_fast_len
 import matplotlib.pyplot  as plt
+import plotting_modules
+
+
 
 # ignore warnings
 if not sys.warnoptions:
@@ -46,7 +49,7 @@ tt0=time.time()
 ########################################
 
 # absolute path parameters
-rootpath  = '/Users/chengxin/Documents/SCAL'                                # root path for this data processing
+rootpath  = '/Users/Nikus/OneDrive/Documents/Work/NoisePy'                  # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                                    # dir to store CC data
 DATADIR   = os.path.join(rootpath,'RAW_DATA')                               # dir where noise data is located
 local_data_path = os.path.join(rootpath,'2016_*')                           # absolute dir where SAC files are stored: this para is VERY IMPORTANT and has to be RIGHT if input_fmt is not h5 for asdf!!!
@@ -193,7 +196,10 @@ for ick in range (rank,splits,size):
 
     # get the tempory file recording cc process
     if input_fmt == 'h5':
-        tmpfile = os.path.join(CCFDIR,tdir[ick].split('/')[-1].split('.')[0]+'.tmp')
+        filename = os.path.basename(tdir[0])
+        filename_noext = os.path.splitext(filename)[0]
+        tmpfile = os.path.join(CCFDIR, filename_noext + '.tmp')
+        #tmpfile = os.path.join(CCFDIR,tdir[ick].split('/')[-1].split('.')[0]+'.tmp')
     else: 
         tmpfile = os.path.join(CCFDIR,tdir[ick].split('/')[-1]+'.tmp')
     
@@ -295,7 +301,9 @@ for ick in range (rank,splits,size):
 
             # load fft data in memory for cross-correlations
             data = source_white[:,:Nfft2]
-            fft_array[iii] = data.reshape(data.size)
+            data= data.reshape(1, data.size)
+            filler=np.empty((1,data.size))
+            fft_array[iii] = np.concatenate((data,filler),axis=1)
             fft_std[iii]   = trace_stdS
             fft_flag[iii]  = 1
             fft_time[iii]  = dataS_t
@@ -309,7 +317,7 @@ for ick in range (rank,splits,size):
         print('it seems some stations miss data in download step, but it is OKAY!')
 
     #############PERFORM CROSS-CORRELATION##################
-    ftmp = open(tmpfile,'w')
+    ftmp = open(tmpfile, mode='w')
     # make cross-correlations 
     for iiS in range(iii):
         fft1 = fft_array[iiS]
@@ -320,7 +328,8 @@ for ick in range (rank,splits,size):
         t0=time.time()
         #-----------get the smoothed source spectrum for decon later----------
         sfft1 = noise_module.smooth_source_spect(fc_para,fft1)
-        sfft1 = sfft1.reshape(N,Nfft2)
+        sfft1_halved= sfft1[0:(int(sfft1.size/2))]
+        sfft1 = sfft1_halved.reshape(N,Nfft2)
         t1=time.time()
         if flag: 
             print('smoothing source takes %6.4fs' % (t1-t0))
@@ -351,11 +360,13 @@ for ick in range (rank,splits,size):
         #-----------now loop III for each receiver B----------
         for iiR in range(istart,iend):
             if acorr_only:
-                if (station[iiR]~=station[iiS]):continue
+                if (station[iiR]!=station[iiS]):continue
             if flag:print('receiver: %s %s %s' % (station[iiR],network[iiR],channel[iiR]))
             if not fft_flag[iiR]: continue
                 
-            fft2 = fft_array[iiR];sfft2 = fft2.reshape(N,Nfft2)
+            fft2 = fft_array[iiR]
+            fft2_halved= fft2[0:(int(fft2.size/2))]
+            sfft2 = fft2_halved.reshape(N,Nfft2)
             receiver_std = fft_std[iiR]
 
             #---------- check the existence of earthquakes ----------
@@ -369,7 +380,8 @@ for ick in range (rank,splits,size):
 
             #---------------keep daily cross-correlation into a hdf5 file--------------
             if input_fmt == 'h5':
-                tname = tdir[ick].split('/')[-1]
+                tname = tdir[ick].split('\\')[-1]
+
             else: 
                 tname = tdir[ick].split('/')[-1]+'.h5'
             cc_h5 = os.path.join(CCFDIR,tname)
@@ -413,6 +425,10 @@ tt1 = time.time()
 print('it takes %6.2fs to process step 1 in total' % (tt1-tt0))
 comm.barrier()
 
+sfile = '/Users/Nikus/OneDrive/Documents/Work/NoisePy/CCF/2016_07_01_00_00_00T2016_07_02_00_00_00.h5'
+plotting_modules.plot_substack_cc(sfile,0.1,0.2,200,True,'/Users/Nikus/OneDrive/Documents/Work/NoisePy/CCF/Figures')
+
 # merge all path_array and output
 if rank == 0:
     sys.exit()
+
