@@ -45,7 +45,8 @@ Enjoy the NoisePy journey!
 tt0=time.time()
 
 # paths and filenames
-rootpath = '/Users/chengxin/Documents/SCAL'                     # roothpath for the project
+# rootpath = '/Users/chengxin/Documents/SCAL'                     # roothpath for the project
+rootpath  = os.path.join(os.path.expanduser('~'), 'Documents/SCAL')         # root path for this data processing
 direc  = os.path.join(rootpath,'RAW_DATA')                      # where to store the downloaded data
 dlist  = os.path.join(direc,'station.txt')                      # CSV file for station location info
 

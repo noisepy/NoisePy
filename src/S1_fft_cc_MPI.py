@@ -12,6 +12,7 @@ import noise_module
 from mpi4py import MPI
 from scipy.fftpack.helper import next_fast_len
 import matplotlib.pyplot  as plt
+import plotting_modules
 
 # ignore warnings
 if not sys.warnoptions:
@@ -28,7 +29,7 @@ This main script of NoisePy:
 
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
          Marine Denolle (mdenolle@fas.harvard.edu)
-        
+       
 NOTE:
     0. MOST occasions you just need to change parameters followed with detailed explanations to run the script. 
     1. To read SAC/mseed files, we assume the users have sorted the data by the time chunk they prefer (e.g., 1day) 
@@ -46,7 +47,8 @@ tt0=time.time()
 ########################################
 
 # absolute path parameters
-rootpath  = '/Users/chengxin/Documents/SCAL'                                # root path for this data processing
+# rootpath  = '/Users/chengxin/Documents/SCAL'                                # root path for this data processing
+rootpath  = os.path.join(os.path.expanduser('~'), 'Documents/SCAL')         # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                                    # dir to store CC data
 DATADIR   = os.path.join(rootpath,'RAW_DATA')                               # dir where noise data is located
 local_data_path = os.path.join(rootpath,'2016_*')                           # absolute dir where SAC files are stored: this para is VERY IMPORTANT and has to be RIGHT if input_fmt is not h5 for asdf!!!
@@ -237,7 +239,7 @@ for ick in range (rank,splits,size):
 
     # loop through all stations
     iii = 0
-    for ista in range(len(sta_list)):
+    for ista in range(len(sta_list[0:1])):
         tmps = sta_list[ista]
 
         if input_fmt == 'h5':
