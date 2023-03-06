@@ -120,3 +120,20 @@ Marine Denolle (mdenolle@uw.edu).
 Seats, K. J., Jesse F. L., and German A. P. "Improved ambient noise correlation functions using Welch′ s method." _Geophysical Journal International_ 188, no. 2 (2012): 513-523.  
 *Jiang, C. and Denolle, M. "NoisePy: a new high-performance python tool for seismic ambient noise seismology." _Seismological Research Letter_ 91, no. 3 (2020): 1853–1866..  
 ** Yuan, C., Bryan, J. T., and Denolle, M. "Numerical comparison of time-, frequency- and wavelet-domain methods for coda wave interferometry." _Geophysical Journal International_ 226, no. 2 (2021): 828-846.
+
+
+
+### Some taxonomy of the NoisePy variables.
+
+* ``station`` refers to the site that has the seismic instruments that records ground shaking.
+* `` channel`` refers to the direction of ground motion investigated for 3 component seismometers. For DAS project, it may refers to the single channel sensors.
+* ``ista`` is the index name for looping over stations
+
+* ``cc_len`` correlation length, basic window length in seconds 
+* ``step`` is the window that get skipped when sliding windows in seconds
+* ``smooth_N`` number of points for smoothing the  time or frequency domain discrete arrays.
+* ``maxlag`` maximum length in seconds saved in files in each side of the correlation (save on storage)
+* ``substack,substack_len`` boolean, window length over which to substack the correlation (to save storage or do monitoring), it has to be a multiple of ``cc_len``.
+* ``time_chunk, nchunk`` refers to the time unit that defined a single job. for instace, ``cc_len`` is the correlation length (e.g., 1 hour, 30 min), the overall duration of the experiment is the total length (1 month, 1 year, ...). The time chunk could be 1 day: the code would loop through each cc_len window in a for loop. But each day will be sent as a thread.
+
+ 
