@@ -1,7 +1,7 @@
 import gc
 import sys
 import time
-import scipy
+# import scipy
 import obspy
 import pyasdf
 import datetime
