@@ -1,7 +1,7 @@
 import gc
 import sys
 import time
-# import scipy
+import scipy
 import obspy
 import pyasdf
 import datetime
@@ -12,7 +12,6 @@ import noise_module
 from mpi4py import MPI
 from scipy.fftpack.helper import next_fast_len
 import matplotlib.pyplot  as plt
-import plotting_modules
 
 # ignore warnings
 if not sys.warnoptions:
@@ -29,7 +28,7 @@ This main script of NoisePy:
 
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
          Marine Denolle (mdenolle@fas.harvard.edu)
-       
+        
 NOTE:
     0. MOST occasions you just need to change parameters followed with detailed explanations to run the script. 
     1. To read SAC/mseed files, we assume the users have sorted the data by the time chunk they prefer (e.g., 1day) 
@@ -238,7 +237,7 @@ for ick in range (rank,splits,size):
 
     # loop through all stations
     iii = 0
-    for ista in range(len(sta_list[0:1])):
+    for ista in range(len(sta_list)):
         tmps = sta_list[ista]
 
         if input_fmt == 'h5':
