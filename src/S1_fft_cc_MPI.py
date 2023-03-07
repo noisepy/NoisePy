@@ -47,7 +47,6 @@ tt0=time.time()
 ########################################
 
 # absolute path parameters
-# rootpath  = '/Users/chengxin/Documents/SCAL'                                # root path for this data processing
 rootpath  = os.path.join(os.path.expanduser('~'), 'Documents/SCAL')         # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                                    # dir to store CC data
 DATADIR   = os.path.join(rootpath,'RAW_DATA')                               # dir where noise data is located

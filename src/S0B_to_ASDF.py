@@ -37,7 +37,7 @@ NOTE:
 tt0=time.time()
 
 # data/file paths
-rootpath  = '/Users/chengxin/Documents/SCAL'                           # absolute path for your project
+rootpath  = os.path.join(os.path.expanduser('~'), 'Documents/SCAL')         # root path for this data processing
 RAWDATA   = os.path.join(rootpath,'RAW_DATA')                           # dir where mseed/SAC files are located
 DATADIR   = os.path.join(rootpath,'CLEAN_DATA')                         # dir where cleaned data in ASDF format are going to be outputted
 locations = os.path.join(RAWDATA,'station.txt')                        # station info including network,station,channel,latitude,longitude,elevation
