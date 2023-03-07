@@ -38,7 +38,7 @@ tt0=time.time()
 ########################################
 
 # absolute path parameters
-rootpath  = '/Users/chengxin/Documents/SCAL'                        # root path for this data processing
+rootpath  = os.path.join(os.path.expanduser('~'), 'Documents/SCAL') # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                            # dir where CC data is stored
 STACKDIR  = os.path.join(rootpath,'STACK')                          # dir where stacked data is going to
 locations = os.path.join(rootpath,'RAW_DATA/station.txt')           # station info including network,station,channel,latitude,longitude,elevation
