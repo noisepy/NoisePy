@@ -1332,8 +1332,6 @@ def taper(data):
     return data
 
 
-@jit(nopython = True)
-
 def moving_ave(A, N): ## change the moving average calculation to take as input N the full window length to smooth
     '''
     Alternative function for moving average for an array.
