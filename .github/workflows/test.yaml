@@ -18,6 +18,8 @@ jobs:
       uses: actions/setup-python@v4.5.0
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Setup MPI
+      uses: mpi4py/setup-mpi@v1
     - name: Install project
       run: pip install "."
     - name: Run unit tests
