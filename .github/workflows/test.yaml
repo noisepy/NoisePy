@@ -12,7 +12,7 @@ jobs:
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
-        python-version: ['3.8'] # TODO: What over versions do we need to support?
+        python-version: ['3.8'] # TODO: What other versions do we need to support?
         experimental: [false]
     steps:
     - name: Checkout Repo
