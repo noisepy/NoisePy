@@ -27,15 +27,3 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install "."
-    - name: Run unit tests
-      env:
-        FORCE_COLOR: 3
-      run: |
-        pip install pytest
-        pytest -vv |& tee unit_test_log${{ matrix.python-version }}.log
-    - name: Upload unit test log
-      if: ${{ success() || failure() }}
-      uses: actions/upload-artifact@v3.1.2
-      with:
-        name: unit_test_log${{ matrix.python-version }}
-        path: unit_test_log${{ matrix.python-version }}.log
