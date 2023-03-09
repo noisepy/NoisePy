@@ -1,6 +1,6 @@
 name: Test
 
-on: [pull_request, push: { branches: [master] }]
+on: [pull_request]
 
 jobs:
   unit_test:
