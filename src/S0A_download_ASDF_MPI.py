@@ -61,11 +61,11 @@ freqmax   = 2                                                   # note this cann
 
 # targeted region/station information: only needed when down_list is False
 lamin,lamax,lomin,lomax = 32.9,35.9,-120.7,-118.5               # regional box: min lat, min lon, max lat, max lon (-114.0)
-chan_list = ["BHE","BHN","BHZ"]                                             # channel if down_list=false (format like "HN?" not work here)
+chan_list = ["BHZ"]                                             # channel if down_list=false (format like "HN?" not work here)
 net_list  = ["CI"]                                              # network list 
-sta_list  = ["*"]                                               # station (using a station list is way either compared to specifying stations one by one)
-start_date = ["2016_07_01_0_0_0"]                               # start date of download
-end_date   = ["2016_07_02_0_0_0"]                               # end date of download
+sta_list  = ["SDD"]                                               # station (using a station list is way either compared to specifying stations one by one)
+start_date = ["2019_02_03_0_0_0"]                               # start date of download
+end_date   = ["2019_02_04_0_0_0"]                               # end date of download
 inc_hours  = 24                                                 # length of data for each request (in hour)
 ncomp      = len(chan_list)
 
