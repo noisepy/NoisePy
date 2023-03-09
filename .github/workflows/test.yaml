@@ -10,6 +10,7 @@ jobs:
     strategy:
       matrix:
         python-version: ['3.8'] # TODO: What over versions do we need to support?
+        experimental: [false]
     steps:
     - name: Checkout Repo
       uses: actions/checkout@v3.3.0
