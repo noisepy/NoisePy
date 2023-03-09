@@ -1,0 +1,32 @@
+name: Test
+
+on: [push, pull_request]
+
+jobs:
+  unit_test:
+    name: ${{ matrix.python-version }}-unit-test
+    runs-on: ubuntu-22.04
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      matrix:
+        python-version: ['3.9'] # TODO: What over versions do we need to support?
+        experimental: [false]
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v3.3.0
+    - name: Setup Python
+      uses: actions/setup-python@v4.5.0
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install project
+      run: pip install ".[all]"
+    - name: Run unit tests
+      env:
+        FORCE_COLOR: 3
+      run: pytest -vv |& tee unit_test_log${{ matrix.python-version }}.log
+    - name: Upload unit test log
+      if: ${{ success() || failure() }}
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: unit_test_log${{ matrix.python-version }}
+        path: unit_test_log${{ matrix.python-version }}.log
