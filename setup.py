@@ -4,7 +4,7 @@ with open('requirements.txt') as f:
   reqs = f.read().split("\n")
 
 setup(version="1.0",
-      name='src',
+      name='noisepy',
       packages=find_packages(),
       include_package_data=True,
       python_requires='>=3.8',
