@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 with open('requirements.txt') as f:
   reqs = f.read().split("\n")
-  
+
 setup(version="1.0",
       name='src',
       packages=find_packages(),
