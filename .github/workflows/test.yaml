@@ -9,7 +9,7 @@ jobs:
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
-        python-version: ['3.7'] # TODO: What over versions do we need to support?
+        python-version: ['3.8', '3.9'] # TODO: What over versions do we need to support?
         experimental: [false]
     steps:
     - name: Checkout Repo
@@ -19,7 +19,7 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install project
-      run: pip install ".[all]"
+      run: pip install "."
     - name: Run unit tests
       env:
         FORCE_COLOR: 3
