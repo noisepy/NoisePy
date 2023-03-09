@@ -1,0 +1,7 @@
+numba=0.43.1
+numpy=1.21.5
+scipy=1.2.1
+obspy=1.2.2
+pandas=0.24.2
+pyasdf=0.7.5
+mpi4py=3.0.1

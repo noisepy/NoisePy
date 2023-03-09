@@ -1,6 +1,8 @@
 name: Test
 
-on: [push, pull_request]
+on:
+  pull_request:
+  push: { branches: [master] }
 
 jobs:
   unit_test:
@@ -9,8 +11,7 @@ jobs:
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
-        python-version: ['3.8', '3.9'] # TODO: What over versions do we need to support?
-        experimental: [false]
+        python-version: ['3.8'] # TODO: What over versions do we need to support?
     steps:
     - name: Checkout Repo
       uses: actions/checkout@v3.3.0
@@ -25,7 +26,9 @@ jobs:
     - name: Run unit tests
       env:
         FORCE_COLOR: 3
-      run: pytest -vv |& tee unit_test_log${{ matrix.python-version }}.log
+      run: |
+        pip install pytest
+        pytest -vv |& tee unit_test_log${{ matrix.python-version }}.log
     - name: Upload unit test log
       if: ${{ success() || failure() }}
       uses: actions/upload-artifact@v3.1.2

@@ -1,20 +1,14 @@
 from setuptools import setup, find_packages
 
+with open('requirements.txt') as f:
+  reqs = f.read().split()
+
 setup(version="1.0",
       name='src',
       packages=find_packages(),
       include_package_data=True,
       python_requires='>=3.8',
-      install_requires=[
-          'numpy',
-          'scipy',
-          'numba',
-          'obspy',
-          'pandas',
-          'pyasdf',
-          'mpi4py',
-          'markdown',
-      ],
+      install_requires=reqs,
       author="Chengxin Jiang & Marine Denolle",
       author_email="chengxin_jiang@fas.harvard.edu & mdenolle@fas.harvard.edu",
       description="A High-performance Computing Python Package for Ambient Noise Analysis",
