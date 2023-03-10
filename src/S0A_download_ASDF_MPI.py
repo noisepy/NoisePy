@@ -47,7 +47,8 @@ Enjoy the NoisePy journey!
 tt0=time.time()
 
 # paths and filenames
-rootpath = '/Users/Nikus/OneDrive/Documents/Work/NoisePy'       # roothpath for the project
+#rootpath = '/Users/Nikus/OneDrive/Documents/Work/NoisePy'       # roothpath for the project
+rootpath  = os.path.join(os.path.expanduser('~'), 'Documents/SCAL') # roothpath for the project
 direc  = os.path.join(rootpath,'RAW_DATA')                      # where to store the downloaded data
 dlist  = os.path.join(direc,'station.txt')                      # CSV file for station location info
 
@@ -65,7 +66,8 @@ freqmax   = 2                                                   # note this cann
 lamin,lamax,lomin,lomax = 32.9,35.9,-120.7,-118.5               # regional box: min lat, min lon, max lat, max lon (-114.0)
 chan_list = ["BHE","BHN","BHZ"]                                             # channel if down_list=false (format like "HN?" not work here)
 net_list  = ["CI"]                                              # network list 
-sta_list  = ["*"]                                               # station (using a station list is way either compared to specifying stations one by one)
+#sta_list  = ["*"]                                              #  station (using a station list is way either compared to specifying stations one by one)
+sta_list  = ["ARV", "BAK", "BCW", "BTP", "BLC"]                 # station (select stations for the example tutorial)
 start_date = ["2016_07_01_0_0_0"]                               # start date of download
 end_date   = ["2016_07_02_0_0_0"]                               # end date of download
 inc_hours  = 24                                                 # length of data for each request (in hour)
@@ -302,7 +304,8 @@ for ick in range(rank,splits,size):
 tt1=time.time()
 print('downloading step takes %6.2f s with %6.2f for preprocess' %(tt1-tt0, tp))
 
-sfile = '/Users/Nikus/OneDrive/Documents/Work/NoisePy/RAW_DATA/2016_07_01_00_00_00T2016_07_02_00_00_00.h5'
+
+sfile = rootpath + '/RAW_DATA/2016_07_01_00_00_00T2016_07_02_00_00_00.h5' 
 plotting_modules.plot_waveform(sfile,'CI','BLC',0.01,0.4)  
 
 comm.barrier()
