@@ -25,7 +25,6 @@ This main script of NoisePy:
     2) save all FFT data of the same time chunk in memory;
     3) performs cross-correlation for all station pairs in the same time chunk and output the sub-stacked (if 
     selected) into ASDF format;
-
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
          Marine Denolle (mdenolle@fas.harvard.edu)
         
@@ -351,7 +350,7 @@ for ick in range (rank,splits,size):
         #-----------now loop III for each receiver B----------
         for iiR in range(istart,iend):
             if acorr_only:
-                if (station[iiR]==station[iiS]):continue
+                if (station[iiR]!=station[iiS]):continue
             if flag:print('receiver: %s %s %s' % (station[iiR],network[iiR],channel[iiR]))
             if not fft_flag[iiR]: continue
                 
@@ -416,3 +415,4 @@ comm.barrier()
 # merge all path_array and output
 if rank == 0:
     sys.exit()
+
