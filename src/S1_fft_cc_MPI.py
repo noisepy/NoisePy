@@ -200,7 +200,6 @@ for ick in range (rank,splits,size):
         filename = os.path.basename(tdir[0])
         filename_noext = os.path.splitext(filename)[0]
         tmpfile = os.path.join(CCFDIR, filename_noext + '.tmp')
-        #tmpfile = os.path.join(CCFDIR,tdir[ick].split('/')[-1].split('.')[0]+'.tmp')
     else: 
         tmpfile = os.path.join(CCFDIR,tdir[ick].split('/')[-1]+'.tmp')
     
