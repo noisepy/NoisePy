@@ -29,4 +29,4 @@ jobs:
         pip install "."
     - name: Test Download
       working-directory: ./src
-      run: python noisepy.py download --start 2019_02_01_00_00_00 --end 2019_02_01_02_00_00 --stations ARV --channels BHZ --inc_hours 1 --path .
+      run: python noisepy.py download --start 2019_02_01_00_00_00 --end 2019_02_01_02_00_00 --stations ARV --inc_hours 1 --path .
