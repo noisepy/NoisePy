@@ -21,6 +21,8 @@ def valid_date(d: str) -> str:
 def main(args: typing.Any):
     if args.step == Step.DOWNLOAD:
         download(args.path, args.channels, args.stations, [args.start], [args.end], args.inc_hours)
+    if args.step == Step.CROSS_CORRELATE:
+        cross_correlate(args.path)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -34,6 +36,10 @@ if __name__ == "__main__":
     down_parser.add_argument("--stations", type=lambda s: s.split(","), help="Comma separated list of stations or '*' (default)", default="*")
     down_parser.add_argument("--channels", type=lambda s: s.split(","), help="Comma separated list of channels", default="BHE,BHN,BHZ")
     down_parser.add_argument("--inc_hours", type=int, default=24, help="Time increment size (hrs)")
+    
+    # Cross_correlate arguments
+    cc_parser = subparsers.add_parser(Step.CROSS_CORRELATE.name.lower())
+    cc_parser.add_argument("--path", type=str, default=os.path.join(os.path.expanduser('~'), 'Documents/SCAL'), help="Directory to look for input files")
     args = parser.parse_args()
     args.step = Step[args.step.upper()]
     main(args)
