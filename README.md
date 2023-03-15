@@ -21,7 +21,7 @@ Jiang, C. and Denolle, M. "NoisePy: a new high-performance python tool for seism
 * adding a jupter notebook for generating response spectrum for a nodal array (to be done)
 
 # Installation
-The nature of NoisePy being composed of python scripts allows flexible package installation, which is essentially to build dependented libraries the scripts and related functions live upon. We recommend to use [conda](https://docs.conda.io/en/latest/) or [pip](https://pypi.org/project/pip/) to install the library due to their convenience. Below are command lines we have tested that would create a python environment to run NoisePy. Note that the test is performed on `macOS Mojave (10.14.5)`, so it could be slightly different for other OS. 
+The nature of NoisePy being composed of python scripts allows flexible package installation, which is essentially to build dependent libraries the scripts and related functions live upon. We recommend using [conda](https://docs.conda.io/en/latest/) or [pip](https://pypi.org/project/pip/) to install the library due to their convenience. Below are command lines we have tested to create a python environment to run NoisePy. Note that the test is performed on `macOS Mojave (10.14.5)`, so it could be slightly different for other OS. 
 
 ## Pre-requisites
 
@@ -45,7 +45,6 @@ source noisepy/bin/activate
 pip install -r requirements.txt
 ```
 To run the code on a single core, open the terminal and activate the noisepy environment before run following command. To run on institutional clusters, see installation notes for individual packages on the module list of the cluster. Examples of installation on Frontera are below.
-
 
 # Functionality
 * download continous noise data based on obspy's core functions of [get_station](https://docs.obspy.org/packages/autogen/obspy.clients.fdsn.client.Client.get_stations.html) and [get_waveforms](https://docs.obspy.org/packages/autogen/obspy.clients.fdsn.client.Client.get_waveforms.html)
