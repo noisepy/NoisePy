@@ -28,7 +28,6 @@ This main script of NoisePy:
     2) save all FFT data of the same time chunk in memory;
     3) performs cross-correlation for all station pairs in the same time chunk and output the sub-stacked (if 
     selected) into ASDF format;
-
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
          Marine Denolle (mdenolle@fas.harvard.edu)
         
@@ -49,8 +48,7 @@ tt0=time.time()
 ########################################
 
 # absolute path parameters
-
-rootpath  = os.path.join(os.path.expanduser('~'), 'Documents/SCAL') # roothpath for the project
+rootpath  = os.path.join(os.path.expanduser('~'), 'Documents/SCAL')         # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                                    # dir to store CC data
 DATADIR   = os.path.join(rootpath,'RAW_DATA')                               # dir where noise data is located
 local_data_path = os.path.join(rootpath,'2016_*')                           # absolute dir where SAC files are stored: this para is VERY IMPORTANT and has to be RIGHT if input_fmt is not h5 for asdf!!!
@@ -431,3 +429,4 @@ plotting_modules.plot_substack_cc(sfile,0.1,0.2,200,True,(rootpath+'/CCF/Figures
 # merge all path_array and output
 if rank == 0:
     sys.exit()
+

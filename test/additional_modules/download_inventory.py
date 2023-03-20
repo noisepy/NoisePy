@@ -11,7 +11,7 @@ that the instrument has been changed during the time)
 '''
 
 #------absolute path for the data-----
-rootpath  = '/Users/chengxin/Documents/Harvard/Seattle'
+rootpath  = os.path.join(os.path.expanduser('~'), 'Documents/Harvard/Seattle')
 invdir    = os.path.join(rootpath,'resp_all')
 slocation = os.path.join(rootpath,'*h5')
 afiles    = glob.glob(slocation)

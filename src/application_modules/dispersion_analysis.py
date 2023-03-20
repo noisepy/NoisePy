@@ -29,9 +29,9 @@ NOTE:
 ############################################
 
 # input file info
-rootpath  = '/Users/chengxin/Documents/NoisePy_example/SCAL'                # root path for this data processing
-sfile     = os.path.join(rootpath,'STACK_month/CI.BLC/CI.BLC_CI.BTP.h5')    # ASDF file containing stacked data
-outdir    = os.path.join(rootpath,'figures/dispersion')                     # dir where to output dispersive image and extracted dispersion
+rootpath  = os.path.join(os.path.expanduser('~'), 'Documents/NoisePy_example/SCAL') # root path for this data processing
+sfile     = os.path.join(rootpath,'STACK_month/CI.BLC/CI.BLC_CI.BTP.h5')            # ASDF file containing stacked data
+outdir    = os.path.join(rootpath,'figures/dispersion')                             # dir where to output dispersive image and extracted dispersion
 
 # data type and cross-component
 stack_method = 'linear'                                                     # which stacked data to measure dispersion info

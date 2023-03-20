@@ -1331,8 +1331,33 @@ def taper(data):
             data[ii] *= win
     return data
 
-#jit(nopython = True)
+# @jit(nopython = True)
 def moving_ave(A, N): ## change the moving average calculation to take as input N the full window length to smooth
+    '''
+    Alternative function for moving average for an array.
+    PARAMETERS:
+    ---------------------
+    A: 2-D array of data to be smoothed
+    N: integer, it defines the full!! window length to smooth
+    RETURNS:
+    ---------------------
+    B: 2-D array with smoothed data
+    '''
+    ntc, nspt = A.shape
+    # defines an array with N extra samples at either side
+    temp = np.zeros([ntc, nspt + 2 * N])
+    # set the central portion of the array to A
+    temp[:, N: -N] = A
+    # leading samples: equal to first sample of actual array
+    temp[:, 0: N] = np.repeat(np.expand_dims(temp[:, N], axis = -1), N, axis = -1)
+    # trailing samples: Equal to last sample of actual array
+    temp[:, -N:] = np.repeat(np.expand_dims(temp[:, -N-1], axis = -1), N, axis = -1)
+    # convolve with a boxcar and normalize, and use only central portion of the result
+    # with length equal to the original array, discarding the added leading and trailing samples
+    B = scipy.signal.convolve2d(temp, np.expand_dims(np.ones(N)/N, axis = 0), mode = 'same')[:, N: -N]
+    return(B)
+
+def moving_ave_2D(A, N): ## change the moving average calculation to take as input N the full window length to smooth
     '''
     Alternative function for moving average for an array.
     PARAMETERS:
@@ -1533,7 +1558,7 @@ def whiten_2D(timeseries, fft_para, n_taper):
     if smooth_N <= 1:
         spec_out[:, ix00: ix11] = np.exp(1.j * np.angle(spec_out[:, ix00: ix11]))
     else:
-        spec_out[:, ix00: ix11] /= moving_ave(np.abs(spec_out[:, ix00: ix11]), smooth_N)
+        spec_out[:, ix00: ix11] /= moving_ave_2D(np.abs(spec_out[:, ix00: ix11]), smooth_N)
 
 
     x = np.linspace(np.pi / 2., np.pi, ix0 - ix00)

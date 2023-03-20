@@ -236,7 +236,7 @@ def mad(arr):
     return data	
 
 # path information
-rootpath = '/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/noise_data/Event_2010_340'
+rootpath = os.path.join(os.path.expanduser('~'), 'Documents/Harvard/Kanto_basin/Mesonet_BW/noise_data/Event_2010_340')
 sacfiles = glob.glob(os.path.join(rootpath,'*.sac'))
 
 # cc info

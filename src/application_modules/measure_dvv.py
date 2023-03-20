@@ -38,9 +38,9 @@ NOTE:
 ############################################
 
 # input data and targeted component
-rootpath  = '/Users/chengxin/Documents/NoisePy_example/SCAL/'               # root path for this data processing
-sfile     = os.path.join(rootpath,'STACK_month/CI.BLC/CI.BLC_CI.MPI.h5')    # ASDF file containing stacked data
-outdir    = os.path.join(rootpath,'figures/monitoring')                     # dir where to output dispersive image and extracted dispersion
+rootpath  = os.path.join(os.path.expanduser('~'), 'Documents/NoisePy_example/SCAL/')   # root path for this data processing
+sfile     = os.path.join(rootpath,'STACK_month/CI.BLC/CI.BLC_CI.MPI.h5')                # ASDF file containing stacked data
+outdir    = os.path.join(rootpath,'figures/monitoring')                                 # dir where to output dispersive image and extracted dispersion
 if not os.path.isdir(outdir):
     os.mkdir(outdir)
 
