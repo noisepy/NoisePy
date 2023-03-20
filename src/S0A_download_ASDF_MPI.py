@@ -315,3 +315,4 @@ def download(rootpath: str, chan_list: List[str], sta_list: List[str], start_dat
 # Keeping this for backward compatibility, but the preferred entry point is: noisepy.py download
 if __name__ == "__main__":
     download(default_rootpath, default_chan_list, default_sta_list, default_start_date, default_end_date, default_inc_hours)
+

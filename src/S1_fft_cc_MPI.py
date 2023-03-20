@@ -1,18 +1,14 @@
 import gc
 import sys
 import time
-import scipy
 import obspy
 import pyasdf
-import datetime
 import os, glob
 import numpy as np
 import pandas as pd
 import noise_module
 from mpi4py import MPI
 from scipy.fftpack.helper import next_fast_len
-import matplotlib.pyplot  as plt
-import plotting_modules
 
 
 
@@ -195,11 +191,11 @@ for ick in range (rank,splits,size):
 
     # get the tempory file recording cc process
     if input_fmt == 'h5':
-        filename = os.path.basename(tdir[0])
+        filename = os.path.basename(tdir[ick])
         filename_noext = os.path.splitext(filename)[0]
         tmpfile = os.path.join(CCFDIR, filename_noext + '.tmp')
     else: 
-        tmpfile = os.path.join(CCFDIR,tdir[ick].split('/')[-1]+'.tmp')
+        tmpfile = os.path.join(CCFDIR,os.paths.basename(tdir[ick])+'.tmp')
     
     # check whether time chunk been processed or not
     if os.path.isfile(tmpfile):
@@ -377,11 +373,10 @@ for ick in range (rank,splits,size):
             t3=time.time()
 
             #---------------keep daily cross-correlation into a hdf5 file--------------
-            if input_fmt == 'h5':
-                tname = tdir[ick].split('\\')[-1]
+            tname = os.path.basename(tdir[ick])
+            if input_fmt != 'h5':
+                tname += '.h5'
 
-            else: 
-                tname = tdir[ick].split('/')[-1]+'.h5'
             cc_h5 = os.path.join(CCFDIR,tname)
             crap  = np.zeros(corr.shape,dtype=corr.dtype)
 
@@ -422,9 +417,6 @@ for ick in range (rank,splits,size):
 tt1 = time.time()
 print('it takes %6.2fs to process step 1 in total' % (tt1-tt0))
 comm.barrier()
-
-sfile = rootpath+ '/CCF/2016_07_01_00_00_00T2016_07_02_00_00_00.h5'
-plotting_modules.plot_substack_cc(sfile,0.1,0.2,200,True,(rootpath+'/CCF/Figures'))
 
 # merge all path_array and output
 if rank == 0:
