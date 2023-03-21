@@ -10,8 +10,6 @@ import noise_module
 from mpi4py import MPI
 from scipy.fftpack.helper import next_fast_len
 
-
-
 # ignore warnings
 if not sys.warnoptions:
     import warnings
