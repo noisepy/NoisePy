@@ -49,7 +49,7 @@ def taper(data):
     #ndata = np.zeros(shape=data.shape,dtype=data.dtype)
     if data.ndim == 1:
         npts = data.shape[0]
-        # window length 
+        # window length
         if npts*0.05>20:wlen = 20
         else:wlen = npts*0.05
         # taper values
@@ -63,7 +63,7 @@ def taper(data):
         data *= win
     elif data.ndim == 2:
         npts = data.shape[1]
-        # window length 
+        # window length
         if npts*0.05>20:wlen = 20
         else:wlen = npts*0.05
         # taper values
@@ -97,11 +97,11 @@ def smooth(x, window='boxcar', half_win=3):
 def nextpow2(x):
     """
     Returns the next power of 2 of x.
-    :type x: int 
+    :type x: int
     :returns: the next power of 2 of x
     """
 
-    return int(np.ceil(np.log2(np.abs(x)))) 
+    return int(np.ceil(np.log2(np.abs(x))))
 
 
 def getCoherence(dcs, ds1, ds2):
@@ -117,7 +117,7 @@ def getCoherence(dcs, ds1, ds2):
 def computeErrorFunction(u1, u0, nSample, lag, norm='L2'):
     """
     USAGE: err = computeErrorFunction( u1, u0, nSample, lag )
-    
+
     INPUT:
         u1      = trace that we want to warp; size = (nsamp,1)
         u0      = reference trace to compare with: size = (nsamp,1)
@@ -126,29 +126,29 @@ def computeErrorFunction(u1, u0, nSample, lag, norm='L2'):
         norm    = 'L2' or 'L1' (default is 'L2')
     OUTPUT:
         err = the 2D error function; size = (nsamp,2*lag+1)
-    
+
     The error function is equation 1 in Hale, 2013. You could uncomment the
     L1 norm and comment the L2 norm if you want on Line 29
-    
+
     Original by Di Yang
     Last modified by Dylan Mikesell (25 Feb. 2015)
     Translated to python by Tim Clements (17 Aug. 2018)
     """
 
-    if lag >= nSample: 
+    if lag >= nSample:
         raise ValueError('computeErrorFunction:lagProblem','lag must be smaller than nSample')
 
     # Allocate error function variable
     err = np.zeros([nSample, 2 * lag + 1])
 
-    # initial error calculation 
+    # initial error calculation
     # loop over lags
     for ll in np.arange(-lag,lag + 1):
-        thisLag = ll + lag 
+        thisLag = ll + lag
 
-        # loop over samples 
+        # loop over samples
         for ii in range(nSample):
-            
+
             # skip corners for now, we will come back to these
             if (ii + ll >= 0) & (ii + ll < nSample):
                 err[ii,thisLag] = u1[ii] - u0[ii + ll]
@@ -160,7 +160,7 @@ def computeErrorFunction(u1, u0, nSample, lag, norm='L2'):
 
     # Now fix corners with constant extrapolation
     for ll in np.arange(-lag,lag + 1):
-        thisLag = ll + lag 
+        thisLag = ll + lag
 
         for ii in range(nSample):
             if ii + ll < 0:
@@ -168,7 +168,7 @@ def computeErrorFunction(u1, u0, nSample, lag, norm='L2'):
 
             elif ii + ll > nSample - 1:
                 err[ii,thisLag] = err[nSample - ll - 1,thisLag]
-    
+
     return err
 
 
@@ -183,7 +183,7 @@ def accumulateErrorFunction(dir, err, nSample, lag, b ):
         b = strain limit (integer value >= 1)
     OUTPUT:
         d = the 2D distance function; size = (nsamp,2*lag+1)
-    
+
     The function is equation 6 in Hale, 2013.
     Original by Di Yang
     Last modified by Dylan Mikesell (25 Feb. 2015)
@@ -200,7 +200,7 @@ def accumulateErrorFunction(dir, err, nSample, lag, b ):
     if dir > 0: # FORWARD
         iBegin, iEnd, iInc = 0, nSample - 1, 1
     else: # BACKWARD
-        iBegin, iEnd, iInc = nSample - 1, 0, -1 
+        iBegin, iEnd, iInc = nSample - 1, 0, -1
 
     # Loop through all times ii in forward or backward direction
     for ii in range(iBegin,iEnd + iInc,iInc):
@@ -209,10 +209,10 @@ def accumulateErrorFunction(dir, err, nSample, lag, b ):
         ji = max([0, min([nSample - 1, ii - iInc])])
         jb = max([0, min([nSample - 1, ii - iInc * b])])
 
-        # loop through all lag 
+        # loop through all lag
         for ll in range(nLag):
 
-            # check limits on lag indices 
+            # check limits on lag indices
             lMinus1 = ll - 1
 
             # check lag index is greater than 0
@@ -220,21 +220,21 @@ def accumulateErrorFunction(dir, err, nSample, lag, b ):
                 lMinus1 = 0 # make lag = first lag
 
             lPlus1 = ll + 1 # lag at l+1
-            
+
             # check lag index less than max lag
-            if lPlus1 > nLag - 1: 
+            if lPlus1 > nLag - 1:
                 lPlus1 = nLag - 1
-            
+
             # get distance at lags (ll-1, ll, ll+1)
             distLminus1 = d[jb, lMinus1] # minus:  d[i-b, j-1]
             distL = d[ji,ll] # actual d[i-1, j]
             distLplus1 = d[jb, lPlus1] # plus d[i-b, j+1]
 
             if ji != jb: # equation 10 in Hale, 2013
-                for kb in range(ji,jb + iInc - 1, -iInc): 
+                for kb in range(ji,jb + iInc - 1, -iInc):
                     distLminus1 = distLminus1 + err[kb, lMinus1]
                     distLplus1 = distLplus1 + err[kb, lPlus1]
-            
+
             # equation 6 (if b=1) or 10 (if b>1) in Hale (2013) after treating boundaries
             d[ii, ll] = err[ii,ll] + min([distLminus1, distL, distLplus1])
 
@@ -265,7 +265,7 @@ def backtrackDistanceFunction(dir, d, err, lmin, b):
     if dir > 0: # FORWARD
         iBegin, iEnd, iInc = 0, nSample - 1, 1
     else: # BACKWARD
-        iBegin, iEnd, iInc = nSample - 1, 0, -1 
+        iBegin, iEnd, iInc = nSample - 1, 0, -1
 
     # start from the end (front or back)
     ll = np.argmin(d[iBegin,:]) # find minimum accumulated distance at front or back depending on 'dir'
@@ -274,13 +274,13 @@ def backtrackDistanceFunction(dir, d, err, lmin, b):
     # move through all time samples in forward or backward direction
     ii = iBegin
 
-    while ii != iEnd: 
+    while ii != iEnd:
 
         # min/max for edges/boundaries
         ji = np.max([0, np.min([nSample - 1, ii + iInc])])
         jb = np.max([0, np.min([nSample - 1, ii + iInc * b])])
 
-        # check limits on lag indices 
+        # check limits on lag indices
         lMinus1 = ll - 1
 
         if lMinus1 < 0: # check lag index is greater than 1
@@ -302,21 +302,21 @@ def backtrackDistanceFunction(dir, d, err, lmin, b):
             for kb in range(ji, jb - iInc - 1, iInc):
                 distLminus1 = distLminus1 + err[kb, lMinus1]
                 distLplus1  = distLplus1  + err[kb, lPlus1]
-        
+
         # update minimum distance to previous sample
         dl = np.min([distLminus1, distL, distLplus1 ])
 
         if dl != distL: # then ll ~= ll and we check forward and backward
             if dl == distLminus1:
                 ll = lMinus1
-            else: 
+            else:
                 ll = lPlus1
-        
+
         # assume ii = ii - 1
-        ii += iInc 
+        ii += iInc
 
         # absolute integer of lag
-        stbar[ii] = ll + lmin 
+        stbar[ii] = ll + lmin
 
         # now move to correct time index, if smoothing difference over many
         # time samples using 'b'
@@ -405,7 +405,7 @@ def wct_modified(y1, y2, dt, dj=1/12, s0=-1, J=-1, sig=True,
     S12 = wavelet.smooth(W12 / scales, dt, dj, sj)
     WCT = np.abs(S12) ** 2 / (S1 * S2)
     aWCT = np.angle(W12)
-    
+
     # Calculate cross spectrum & its amplitude
     WXS, WXA = W12, np.abs(S12)
 

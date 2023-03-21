@@ -18,7 +18,7 @@ def moving_ave(A,N):
     '''
     A = np.r_[A[:N],A,A[-N:]]
     B = np.zeros(A.shape,A.dtype)
-    
+
     tmp=0.
     for pos in range(N,A.size-N):
         # do summing only once
@@ -45,12 +45,12 @@ list_r1  = 'fft_N_CHHH_EHZ_2010_01_01.real'
 list_r2  = 'fft_N_CHHH_EHZ_2010_01_01.imag'
 
 Nfft = ds_s[list_s1].attrs['nfft']
-Nseg = ds_s[list_s1].attrs['nseg']    
+Nseg = ds_s[list_s1].attrs['nseg']
 
-fft1 = np.zeros(Nfft//2,dtype=np.complex64)     
+fft1 = np.zeros(Nfft//2,dtype=np.complex64)
 fft1 = ds_s[list_s1][0,:Nfft//2]+1j*ds_s[list_s2][0,:Nfft//2]
 
-fft2 = np.zeros(Nfft//2,dtype=np.complex64)  
+fft2 = np.zeros(Nfft//2,dtype=np.complex64)
 fft2 = ds_r[list_r1][0,:Nfft//2]+1j*ds_r[list_r2][0,:Nfft//2]
 
 # do cross correlations
@@ -67,4 +67,3 @@ plt.plot(ncorr)
 plt.subplot(212)
 plt.plot(tcorr)
 plt.show()
-

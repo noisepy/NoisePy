@@ -5,13 +5,13 @@ import obspy
 import scipy
 import pyasdf
 import numpy as np
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
 from scipy.signal import hilbert
 from scipy.fftpack import next_fast_len
 from obspy.signal.filter import bandpass
 
 '''
-check the performance of all different stacking method for noise cross-correlations. 
+check the performance of all different stacking method for noise cross-correlations.
 
 Chengxin Jiang @Harvard Oct/29/2019
 Updated @May/2020 to include nth-root stacking, selective stacking and tf-PWS stacking
@@ -20,7 +20,7 @@ Updated @May/2020 to include nth-root stacking, selective stacking and tf-PWS st
 def pws(cc_array,sampling_rate,power=2,pws_timegate=5.):
     '''
     Performs phase-weighted stack on array of time series.
-    Follows methods of Schimmel and Paulssen, 1997. 
+    Follows methods of Schimmel and Paulssen, 1997.
     If s(t) is time series data (seismogram, or cross-correlation),
     S(t) = s(t) + i*H(s(t)), where H(s(t)) is Hilbert transform of s(t)
     S(t) = s(t) + i*H(s(t)) = A(t)*exp(i*phi(t)), where
@@ -28,14 +28,14 @@ def pws(cc_array,sampling_rate,power=2,pws_timegate=5.):
     Phase-weighted stack, g(t), is then:
     g(t) = 1/N sum j = 1:N s_j(t) * | 1/N sum k = 1:N exp[i * phi_k(t)]|^v
     where N is number of traces used, v is sharpness of phase-weighted stack
-    
+
     PARAMETERS:
     ---------------------
     arr: N length array of time series data (numpy.ndarray)
     sampling_rate: sampling rate of time series arr (int)
     power: exponent for phase stack (int)
     pws_timegate: number of seconds to smooth phase stack (float)
-    
+
     RETURNS:
     ---------------------
     weighted: Phase weighted stack of time series data (numpy.ndarray)
@@ -65,8 +65,8 @@ def adaptive_filter(cc_array,g):
     the adaptive covariance filter to enhance coherent signals. Fellows the method of
     Nakata et al., 2015 (Appendix B)
 
-    the filtered signal [x1] is given by x1 = ifft(P*x1(w)) where x1 is the ffted spectra 
-    and P is the filter. P is constructed by using the temporal covariance matrix. 
+    the filtered signal [x1] is given by x1 = ifft(P*x1(w)) where x1 is the ffted spectra
+    and P is the filter. P is constructed by using the temporal covariance matrix.
 
     PARAMETERS:
     ----------------------
@@ -93,7 +93,7 @@ def adaptive_filter(cc_array,g):
         for jj in range(N):
             kk = ii*N+jj
             cspec[kk] = spec[ii]*np.conjugate(spec[jj])
-        
+
     S1 = np.zeros(M,dtype=np.complex64)
     S2 = np.zeros(M,dtype=np.complex64)
     # construct the filter P
@@ -103,7 +103,7 @@ def adaptive_filter(cc_array,g):
         for jj in range(N):
             kk = ii*N+jj
             S1 += cspec[kk]
-    
+
     p = np.power((S1-S2)/(S2*(N-1)),g)
 
     # make ifft
@@ -112,7 +112,7 @@ def adaptive_filter(cc_array,g):
 
 
 def robust_stack(cc_array,epsilon):
-    """ 
+    """
     this is a robust stacking algorithm described in Palvis and Vernon 2010
 
     PARAMETERS:
@@ -123,7 +123,7 @@ def robust_stack(cc_array,epsilon):
     ----------------------
     newstack: numpy vector contains the stacked cross correlation
 
-    Written by Marine Denolle 
+    Written by Marine Denolle
     """
     res  = 9E9  # residuals
     w = np.ones(cc_array.shape[0])
@@ -151,8 +151,8 @@ def robust_stack(cc_array,epsilon):
 def nroot_stack(cc_array,power):
     '''
     this is nth-root stacking algorithm translated based on the matlab function
-    from https://github.com/xtyangpsp/SeisStack (by Xiaotao Yang; follows the 
-    reference of Millet, F et al., 2019 JGR) 
+    from https://github.com/xtyangpsp/SeisStack (by Xiaotao Yang; follows the
+    reference of Millet, F et al., 2019 JGR)
 
     Parameters:
     ------------
@@ -168,7 +168,7 @@ def nroot_stack(cc_array,power):
     if cc_array.ndim == 1:
         print('2D matrix is needed for nroot_stack')
         return cc_array
-    N,M = cc_array.shape 
+    N,M = cc_array.shape
     dout = np.zeros(M,dtype=np.float32)
 
     # construct y
@@ -184,7 +184,7 @@ def nroot_stack(cc_array,power):
 
 
 def selective_stack(cc_array,epsilon,cc_th):
-    ''' 
+    '''
     this is a selective stacking algorithm developed by Jared Bryan/Kurama Okubo.
 
     PARAMETERS:
@@ -198,13 +198,13 @@ def selective_stack(cc_array,epsilon,cc_th):
     newstack: numpy vector contains the stacked cross correlation
     nstep: np.int, total number of iterations for the stacking
 
-    Originally ritten by Marine Denolle 
+    Originally ritten by Marine Denolle
     Modified by Chengxin Jiang @Harvard (Oct2020)
     '''
     if cc_array.ndim == 1:
         print('2D matrix is needed for nroot_stack')
         return cc_array
-    N,M = cc_array.shape 
+    N,M = cc_array.shape
 
     res  = 9E9  # residuals
     cof  = np.zeros(N,dtype=np.float32)
@@ -215,7 +215,7 @@ def selective_stack(cc_array,epsilon,cc_th):
     while res>epsilon:
         for ii in range(N):
             cof[ii] = np.corrcoef(newstack, cc_array[ii,:])[0, 1]
-        
+
         # find good waveforms
         indx = np.where(cof>=cc_th)[0]
         if not len(indx): raise ValueError('cannot find good waveforms inside selective stacking')
@@ -246,7 +246,7 @@ fqmax = 0.5
 # loop through each station-pair
 for sfile in sfiles:
 
-    # useful parameters from each asdf file 
+    # useful parameters from each asdf file
     with pyasdf.ASDFDataSet(sfile,mode='r') as ds:
         alist = ds.auxiliary_data.list()
         try:
@@ -285,7 +285,7 @@ for sfile in sfiles:
                 #timestamp[ii] = obspy.UTCDateTime(int(ilist.split('T')[-1]))
                 ii +=1
             except Exception:
-                continue 
+                continue
 
     # remove empty data
     nwin = ii

@@ -1,6 +1,5 @@
 sudo: false
 language: python
-sudo: false
 matrix:
     include:
         - os: Linux
@@ -21,7 +20,7 @@ install:
   - conda create -n noisepy -c conda-forge python=3.7 numpy=1.16.2 numba pandas pycwt jupyter mpi4py=3.0.1 obspy=1.1 pyasdf
   - conda activate noisepy
   - pip install codecov coverage
-  
+
 # Run test
 script:
   - ls src

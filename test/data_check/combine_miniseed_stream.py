@@ -30,7 +30,7 @@ def preprocess_raw(st,downsamp_freq,clean_time=True,pre_filt=None,resp=False,res
         - remove trend and mean of each trace
         - interpolated to ensure all samples are at interger times of the sampling rate
         - low pass and downsample the data  (from original process_raw)
-        - remove instrument response according to the option of resp_option. 
+        - remove instrument response according to the option of resp_option.
             "inv" -> using inventory information and obspy function of remove_response;
             "spectrum" -> use downloaded response spectrum and interpolate if necessary
             "polezeros" -> use the pole zeros for a crude correction of response
@@ -45,7 +45,7 @@ def preprocess_raw(st,downsamp_freq,clean_time=True,pre_filt=None,resp=False,res
 
     #----check sampling rate and trace length----
     st = check_sample(st)
-            
+
     if len(st) == 0:
         print('No traces in Stream: Continue!')
         return st
@@ -124,8 +124,8 @@ def preprocess_raw(st,downsamp_freq,clean_time=True,pre_filt=None,resp=False,res
 def portion_gaps(stream):
     '''
     get the accumulated gaps (npts) by looking at the accumulated difference between starttime and endtime,
-    instead of using the get_gaps function of obspy object of stream. remove the trace if gap length is 
-    more than 30% of the trace size. remove the ones with sampling rate not consistent with max(freq) 
+    instead of using the get_gaps function of obspy object of stream. remove the trace if gap length is
+    more than 30% of the trace size. remove the ones with sampling rate not consistent with max(freq)
     '''
     #-----check the consistency of sampling rate----
 
@@ -172,8 +172,8 @@ def segment_interpolate(sig1,nfric):
 def resp_spectrum(source,resp_file,downsamp_freq):
     '''
     remove the instrument response with response spectrum from evalresp.
-    the response spectrum is evaluated based on RESP/PZ files and then 
-    inverted using obspy function of invert_spectrum. 
+    the response spectrum is evaluated based on RESP/PZ files and then
+    inverted using obspy function of invert_spectrum.
     '''
     #--------resp_file is the inverted spectrum response---------
     respz = np.load(resp_file)
@@ -191,7 +191,7 @@ def resp_spectrum(source,resp_file,downsamp_freq):
         indx = np.where(respz[0]<=0.5*sps)
         nfreq = np.linspace(0,0.5*sps,nfft)
         nrespz= np.interp(nfreq,respz[0][indx],respz[1][indx])
-        
+
     #----do interpolation if necessary-----
     source_spect = np.fft.rfft(source.data,n=nfft)
 
@@ -205,7 +205,7 @@ def clean_daily_segments(tr):
     '''
     subfunction to clean the tr recordings. only the traces with at least 0.5-day long
     sequence (respect to 00:00:00.0 of the day) is kept. note that the trace here could
-    be of several days recordings, so this function helps to break continuous chunck 
+    be of several days recordings, so this function helps to break continuous chunck
     into a day-long segment from 00:00:00.0 to 24:00:00.0.
 
     tr: obspy stream object
@@ -233,7 +233,7 @@ def clean_daily_segments(tr):
         ntr = obspy.Stream()
         ttr = tr[0].copy()
         #----trim a continous segment into day-long sequences----
-        for ii in range(ndays):    
+        for ii in range(ndays):
             tr[0] = ttr.copy()
             endtime = starttime+datetime.timedelta(days=1)
             tr[0].trim(starttime=starttime,endtime=endtime,pad=True,fill_value=0)
@@ -247,15 +247,15 @@ def check_sample(stream):
     """
     Returns sampling rate of traces in stream.
 
-    :type stream:`~obspy.core.stream.Stream` object. 
-    :param stream: Stream containing one or more day-long trace 
+    :type stream:`~obspy.core.stream.Stream` object.
+    :param stream: Stream containing one or more day-long trace
     :return: List of sampling rates in stream
 
     """
     if len(stream)==0:
         return stream
     else:
-        freqs = []	
+        freqs = []
         for tr in stream:
             freqs.append(tr.stats.sampling_rate)
 
@@ -264,7 +264,7 @@ def check_sample(stream):
         if tr.stats.sampling_rate != freq:
             stream.remove(tr)
 
-    return stream		
+    return stream
 
 
 ###############################################################

@@ -1,8 +1,8 @@
 import sys
-import numpy as np 
+import numpy as np
 
 '''
-this script generates a large matrix to compare its 
+this script generates a large matrix to compare its
 memory size with that estimated from mprof module
 '''
 

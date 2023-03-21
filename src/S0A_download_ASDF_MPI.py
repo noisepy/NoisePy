@@ -3,7 +3,7 @@ import time
 from typing import List
 import obspy
 import pyasdf
-import os 
+import os
 import numpy as np
 import pandas as pd
 import noise_module
@@ -22,11 +22,11 @@ This script:
     4) parallelize the downloading processes with MPI.
     5) avoids downloading data for stations that already have 1 or 3 channels
 
-Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu) 
-         Marine Denolle (mdenolle@fas.harvard.edu) 
+Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
+         Marine Denolle (mdenolle@fas.harvard.edu)
 
-NOTE: 
-    0. MOST occasions you just need to change parameters followed with detailed explanations to run the script. 
+NOTE:
+    0. MOST occasions you just need to change parameters followed with detailed explanations to run the script.
     1. to avoid segmentation fault later in cross-correlation calculations due to too large data in memory,
     a rough estimation of the memory needs is made in the beginning of the code. you can reduce the value of
     inc_hours if memory on your machine is not enough to load proposed (x) hours of noise data all at once;
@@ -36,7 +36,7 @@ NOTE:
     Therefore, we recommend setting location code to "*" in the request setting (L105 & 134) when it is confirmed
     manually by the users that no stations with same name but different location codes occurs.
 
-Enjoy the NoisePy journey! 
+Enjoy the NoisePy journey!
 '''
 
 #########################################################
@@ -48,14 +48,14 @@ tt0=time.time()
 client    = Client('SCEDC')                                     # client/data center. see https://docs.obspy.org/packages/obspy.clients.fdsn.html for a list
 down_list = False                                               # download stations from a pre-compiled list or not
 flag      = False                                               # print progress when running the script; recommend to use it at the begining
-samp_freq = 20                                                  # targeted sampling rate at X samples per seconds 
+samp_freq = 20                                                  # targeted sampling rate at X samples per seconds
 rm_resp   = 'no'                                                # select 'no' to not remove response and use 'inv','spectrum','RESP', or 'polozeros' to remove response
 freqmin   = 0.05                                                # pre filtering frequency bandwidth
-freqmax   = 2                                                   # note this cannot exceed Nquist freq                         
+freqmax   = 2                                                   # note this cannot exceed Nquist freq
 
 # targeted region/station information: only needed when down_list is False
 lamin,lamax,lomin,lomax = 32.9,35.9,-120.7,-118.5               # regional box: min lat, min lon, max lat, max lon (-114.0)
-net_list  = ["CI"]                                              # network list 
+net_list  = ["CI"]                                              # network list
 
 # get rough estimate of memory needs to ensure it now below up in S1
 cc_len    = 1800                                                # basic unit of data length for fft (s)
@@ -71,11 +71,11 @@ def download(rootpath: str, chan_list: List[str], sta_list: List[str], start_dat
     dlist  = os.path.join(direc,'station.txt')                      # CSV file for station location info
     respdir   = os.path.join(rootpath,'resp')                       # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
     # time tags
-    starttime = obspy.UTCDateTime(start_date[0])       
+    starttime = obspy.UTCDateTime(start_date[0])
     endtime   = obspy.UTCDateTime(end_date[0])
     if flag:
         print('station.list selected [%s] for data from %s to %s with %sh interval'%(down_list,starttime,endtime,inc_hours))
-    print(f"""Download 
+    print(f"""Download
         From: {starttime}
         To: {endtime}
         Stations: {sta_list}
@@ -99,7 +99,7 @@ def download(rootpath: str, chan_list: List[str], sta_list: List[str], start_dat
                 'lomin':lomin,
                 'lomax':lomax,
                 'ncomp':ncomp}
-    metadata = os.path.join(direc,'download_info.txt') 
+    metadata = os.path.join(direc,'download_info.txt')
 
     # prepare station info (existing station list vs. fetching from client)
     if down_list:
@@ -107,7 +107,7 @@ def download(rootpath: str, chan_list: List[str], sta_list: List[str], start_dat
             raise IOError('file %s not exist! double check!' % dlist)
 
         # read station info from list
-        locs = pd.read_csv(dlist)               
+        locs = pd.read_csv(dlist)
         nsta = len(locs)
         chan = list(locs.iloc[:]['channel'])
         net  = list(locs.iloc[:]['network'])
@@ -140,8 +140,8 @@ def download(rootpath: str, chan_list: List[str], sta_list: List[str], start_dat
                                                 starttime=starttime,
                                                 endtime=endtime,
                                                 minlatitude=lamin,
-                                                maxlatitude=lamax, 
-                                                minlongitude=lomin, 
+                                                maxlatitude=lamax,
+                                                minlongitude=lomin,
                                                 maxlongitude=lomax,
                                                 level='response')
                     except Exception as e:
@@ -186,23 +186,23 @@ def download(rootpath: str, chan_list: List[str], sta_list: List[str], start_dat
             os.mkdir(rootpath)
         if not os.path.isdir(direc):
             os.mkdir(direc)
-        
+
         # output station list
-        if not down_list:     
+        if not down_list:
             dict = {'network':net,
                     'station':sta,
                     'channel':chan,
                     'latitude':lat,
                     'longitude':lon,
                     'elevation':elev}
-            locs = pd.DataFrame(dict)        
+            locs = pd.DataFrame(dict)
             locs.to_csv(os.path.join(direc,'station.txt'),index=False)
-        
+
         # save parameters for future reference
         fout = open(metadata,'w')
         fout.write(str(prepro_para));fout.close()
 
-        # get MPI variables ready 
+        # get MPI variables ready
         all_chunk = noise_module.get_event_list(start_date[0],end_date[0],inc_hours)
         if len(all_chunk)<1:
             raise ValueError('Abort! no data chunk between %s and %s' % (start_date[0],end_date[0]))
@@ -216,13 +216,13 @@ def download(rootpath: str, chan_list: List[str], sta_list: List[str], start_dat
     extra = splits % size
 
     tp = 0
-    # MPI: loop through each time chunk 
+    # MPI: loop through each time chunk
     for ick in range(rank,splits,size):
 
         s1=obspy.UTCDateTime(all_chunk[ick])
-        s2=obspy.UTCDateTime(all_chunk[ick+1]) 
-        date_info = {'starttime':s1,'endtime':s2} 
-        
+        s2=obspy.UTCDateTime(all_chunk[ick+1])
+        date_info = {'starttime':s1,'endtime':s2}
+
         # keep a track of the channels already exists
         num_records = np.zeros(nsta,dtype=np.int16)
 
@@ -260,11 +260,11 @@ def download(rootpath: str, chan_list: List[str], sta_list: List[str], start_dat
                 except Exception as e:
                     print(e);continue
 
-                # add the inventory for all components + all time of this tation         
+                # add the inventory for all components + all time of this tation
                 try:
-                    ds.add_stationxml(sta_inv) 
-                except Exception: 
-                    pass   
+                    ds.add_stationxml(sta_inv)
+                except Exception:
+                    pass
 
                 try:
                     # get data
@@ -278,8 +278,8 @@ def download(rootpath: str, chan_list: List[str], sta_list: List[str], start_dat
                     t1=time.time()
                 except Exception as e:
                     print(e,'for',sta[ista]);continue
-                    
-                # preprocess to clean data  
+
+                # preprocess to clean data
                 print(sta[ista])
                 tr = noise_module.preprocess_raw(tr,sta_inv,prepro_para,date_info)
                 t2 = time.time()

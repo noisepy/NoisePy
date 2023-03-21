@@ -33,7 +33,7 @@ def load_waveforms(sfile,para):
     RETURNS:
     ----------------
     ref: reference waveform
-    cur: array containing all current waveforms 
+    cur: array containing all current waveforms
     '''
     # load useful variables
     twin = para['twin']
@@ -69,7 +69,7 @@ def load_waveforms(sfile,para):
         npts = tt.size
         nstacks = len(slist)
 
-        # prepare data matrix for later loading 
+        # prepare data matrix for later loading
         data  = np.zeros((nstacks,npts),dtype=np.float32)
         stamp = np.zeros(nstacks,dytpe=np.float)
         flag  = np.zeros(nstacks,dtype=np.int16)
@@ -89,21 +89,21 @@ def load_waveforms(sfile,para):
         data = data[indx]
         stamp= stamp[indx]
         del flag
-    
+
     ref = data[0]
     data = data[1:]
 
     # detrend, demean and tapering
     ref  = monitor_modules.demean(ref)
     ref  = monitor_modules.detrend(ref)
-    ref  = monitor_modules.taper(ref)    
+    ref  = monitor_modules.taper(ref)
     data = monitor_modules.demean(data)
     data = monitor_modules.detrend(data)
     data = monitor_modules.taper(data)
     return ref,data,stamp,para
 
 def stretching(ref, cur, dv_range, nbtrial, para):
-    
+
     """
     This function compares the Reference waveform to stretched/compressed current waveforms to get the relative seismic velocity variation (and associated error).
     It also computes the correlation coefficient between the Reference waveform and the current waveform.
@@ -114,23 +114,23 @@ def stretching(ref, cur, dv_range, nbtrial, para):
     dv_range: absolute bound for the velocity variation; example: dv=0.03 for [-3,3]% of relative velocity change ('float')
     nbtrial: number of stretching coefficient between dvmin and dvmax, no need to be higher than 100  ('float')
     para: vector of the indices of the cur and ref windows on wich you want to do the measurements (np.ndarray, size tmin*delta:tmax*delta)
-    
+
     For error computation, we need parameters:
         fmin: minimum frequency of the data
         fmax: maximum frequency of the data
-        tmin: minimum time window where the dv/v is computed 
-        tmax: maximum time window where the dv/v is computed 
+        tmin: minimum time window where the dv/v is computed
+        tmax: maximum time window where the dv/v is computed
     RETURNS:
     ----------------
     dv: Relative velocity change dv/v (in %)
     cc: correlation coefficient between the reference waveform and the best stretched/compressed current waveform
     cdp: correlation coefficient between the reference waveform and the initial current waveform
     error: Errors in the dv/v measurements based on Weaver et al (2011), On the precision of noise-correlation interferometry, Geophys. J. Int., 185(3)
-    Note: The code first finds the best correlation coefficient between the Reference waveform and the stretched/compressed current waveform among the "nbtrial" values. 
+    Note: The code first finds the best correlation coefficient between the Reference waveform and the stretched/compressed current waveform among the "nbtrial" values.
     A refined analysis is then performed around this value to obtain a more precise dv/v measurement .
     Originally by L. Viens 04/26/2018 (Viens et al., 2018 JGR)
     modified by Chengxin Jiang
-    """ 
+    """
     # load common variables from dictionary
     twin = para['twin']
     freq = para['freq']
@@ -191,22 +191,22 @@ def stretching(ref, cur, dv_range, nbtrial, para):
 def dtw_dvv(ref, cur, para, maxLag, b, direction):
     """
     Dynamic time warping for dv/v estimation.
-    
+
     PARAMETERS:
     ----------------
     ref : reference signal (np.array, size N)
     cur : current signal (np.array, size N)
     para: dict containing useful parameters about the data window and targeted frequency
-    maxLag : max number of points to search forward and backward. 
+    maxLag : max number of points to search forward and backward.
             Suggest setting it larger if window is set larger.
-    b : b-value to limit strain, which is to limit the maximum velocity perturbation. 
+    b : b-value to limit strain, which is to limit the maximum velocity perturbation.
             See equation 11 in (Mikesell et al. 2015)
-    
+
     RETURNS:
     ------------------
     -m0 : estimated dv/v
     em0 : error of dv/v estimation
-        
+
     """
     twin = para['twin']
     dt   = para['dt']
@@ -216,10 +216,10 @@ def dtw_dvv(ref, cur, para, maxLag, b, direction):
 
     # setup other parameters
     npts = len(ref) # number of time samples
-    
+
     # compute error function over lags, which is independent of strain limit 'b'.
-    err = monitor_modules.computeErrorFunction( cur, ref, npts, maxLag ) 
-    
+    err = monitor_modules.computeErrorFunction( cur, ref, npts, maxLag )
+
     # direction to accumulate errors (1=forward, -1=backward)
     # it is instructive to flip the sign of +/-1 here to see how the function
     # changes as we start the backtracking on different sides of the traces.
@@ -229,7 +229,7 @@ def dtw_dvv(ref, cur, para, maxLag, b, direction):
     dist  = monitor_modules.accumulateErrorFunction( direction, err, npts, maxLag, b )
     stbar = monitor_modules.backtrackDistanceFunction( -1*direction, dist, err, -maxLag, b )
     stbarTime = stbar * dt   # convert from samples to time
-    
+
     # linear regression to get dv/v
     if npts >2:
 
@@ -241,7 +241,7 @@ def dtw_dvv(ref, cur, para, maxLag, b, direction):
     else:
         print('not enough points to estimate dv/v for dtw')
         m0=0;em0=0
-    
+
     return m0*100,em0*100,dist
 
 
@@ -254,20 +254,20 @@ def mwcs_dvv(ref, cur, moving_window_length, slide_step, para, smoothing_half_wi
     cur: Current waveform (np.ndarray, size N)
     moving_window_length: moving window length to calculate cross-spectrum (np.float, in sec)
     slide_step: steps in time to shift the moving window (np.float, in seconds)
-    para: a dict containing parameters about input data window and frequency info, including 
+    para: a dict containing parameters about input data window and frequency info, including
         delta->The sampling rate of the input timeseries (in Hz)
         window-> The target window for measuring dt/t
         freq-> The frequency bound to compute the dephasing (in Hz)
         tmin: The leftmost time lag (used to compute the "time lags array")
     smoothing_half_win: If different from 0, defines the half length of the smoothing hanning window.
-    
+
     RETURNS:
     ------------------
-    time_axis: the central times of the windows. 
+    time_axis: the central times of the windows.
     delta_t: dt
-    delta_err:error 
+    delta_err:error
     delta_mcoh: mean coherence
-    
+
     Originally from MSNoise by Thomas Lecocq. (https://github.com/ROBelgium/MSNoise/tree/master/msnoise)
     Modified by Chengxin Jiang
     """
@@ -403,7 +403,7 @@ def mwcs_dvv(ref, cur, moving_window_length, slide_step, para, smoothing_half_wi
         #---------do linear regression-----------
         #m, a, em, ea = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=False)
         m0, em0 = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=True)
-    
+
     else:
         print('not enough points to estimate dv/v')
         m0=0;em0=0
@@ -427,9 +427,9 @@ def WCC_dvv(ref, cur, moving_window_length, slide_step, para):
     delta_t: dt
     delta_err: error
     delta_mcoh: mean coherence for each window
-        
+
     Written by Congcong Yuan (1 July, 2019)
-    """ 
+    """
     # common variables
     twin = para['twin']
     dt   = para['dt']
@@ -465,19 +465,19 @@ def WCC_dvv(ref, cur, moving_window_length, slide_step, para):
         # normalize signals before cross correlation
         cci = (cci - cci.mean()) / cci.std()
         cri = (cri - cri.mean()) / cri.std()
-        
+
         # get maximum correlation coefficient and its index
         cc2 = np.correlate(cci, cri, mode='same')
         cc2 = cc2 / np.sqrt((cci**2).sum() * (cri**2).sum())
-            
+
         imaxcc2 = np.where(cc2==np.max(cc2))[0]
         maxcc2 = np.max(cc2)
-        
+
         # get the time shift
         m = (imaxcc2-((maxind-minind)//2))*dt
         delta_t.append(m)
         delta_t_coef.append(maxcc2)
-       
+
         time_axis.append(tmin+moving_window_length/2.+count*slide_step)
         count += 1
 
@@ -497,7 +497,7 @@ def WCC_dvv(ref, cur, moving_window_length, slide_step, para):
         w = np.ones(count)
         #m, a, em, ea = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=False)
         m0, em0 = linear_regression(time_axis.flatten(), delta_t.flatten(), w.flatten(),intercept_origin=True)
-    
+
     else:
         print('not enough points to estimate dv/v')
         m0=0;em0=0
@@ -509,7 +509,7 @@ def wxs_allfreq(cur,ref,allfreq,para,dj=1/12, s0=-1, J=-1, sig=False, wvn='morle
     """
     Compute dt or dv/v in time and frequency domain from wavelet cross spectrum (wxs).
     for all frequecies in an interest range
-    
+
     Parameters
     --------------
     :type cur: :class:`~numpy.ndarray`
@@ -522,10 +522,10 @@ def wxs_allfreq(cur,ref,allfreq,para,dj=1/12, s0=-1, J=-1, sig=False, wvn='morle
     :param fwindow: 1d array. [lowest frequncy, highest frequency] frequency window limit
     :params, dj, s0, J, sig, wvn, refer to function 'wavelet.wct'
     :unwrapflag: True - unwrap phase delays. Default is False
-    :nwindow: the times of current period/frequency, which will be time window if windowflag is False 
-    :windowflag: if True, the given window 'twindow' will be used, 
+    :nwindow: the times of current period/frequency, which will be time window if windowflag is False
+    :windowflag: if True, the given window 'twindow' will be used,
                  otherwise, the current period*nwindow will be used as time window
-    
+
     Originally written by Tim Clements (1 March, 2019)
     Modified by Congcong Yuan (30 June, 2019) based on (Mao et al. 2019).
     """
@@ -536,29 +536,29 @@ def wxs_allfreq(cur,ref,allfreq,para,dj=1/12, s0=-1, J=-1, sig=False, wvn='morle
     tmin = np.min(twin)
     tmax = np.max(twin)
     fmin = np.min(freq)
-    fmax = np.max(freq)    
+    fmax = np.max(freq)
     tvec = np.arange(tmin,tmax,dt)
-    
+
     # perform cross coherent analysis, modified from function 'wavelet.cwt'
     WCT, aWCT, coi, freq, sig = pycwt.wct(cur, ref, dt, dj=dj, s0=s0, J=J, sig=sig, wavelet=wvn, normalize=True)
-    
+
     if unwrapflag:
         phase = np.unwrap(aWCT,axis=-1) # axis=0, upwrap along time; axis=-1, unwrap along frequency
     else:
         phase=aWCT
-    
+
     # convert phase delay to time delay
-    delta_t = phase / (2*np.pi*freq[:,None]) # normalize phase by (2*pi*frequency) 
+    delta_t = phase / (2*np.pi*freq[:,None]) # normalize phase by (2*pi*frequency)
 
     # zero out data outside frequency band
     if (fmax> np.max(freq)) | (fmax <= fmin):
         raise ValueError('Abort: input frequency out of limits!')
     else:
         freq_indin = np.where((freq >= fmin) & (freq <= fmax))[0]
-        
+
     # initialize arrays for dv/v measurements
     dvv, err = np.zeros(freq_indin.shape), np.zeros(freq_indin.shape)
-         
+
     # loop through freq for linear regression
     for ii, ifreq in enumerate(freq_indin):
         if len(tvec)>2:
@@ -571,27 +571,27 @@ def wxs_allfreq(cur,ref,allfreq,para,dj=1/12, s0=-1, J=-1, sig=False, wvn='morle
             # w = np.real(w)
             w = 1/WCT[ifreq]
             w[~np.isfinite(w)] = 1.0
-            
+
             #m, a, em, ea = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=False)
             m, em = linear_regression(tvec, delta_t[ifreq], w, intercept_origin=True)
             dvv[ii], err[ii] = -m, em
         else:
             print('not enough points to estimate dv/v')
-            dvv[ii], err[ii]=np.nan, np.nan    
+            dvv[ii], err[ii]=np.nan, np.nan
 
     del WCT, aWCT, coi, sig, phase, delta_t
     del tvec, w, m, em
 
     if not allfreq:
         return np.mean(dvv)*100,np.mean(err)*100
-    else:        
+    else:
         return freq[freq_indin], dvv*100, err*100
 
 def wts_allfreq(ref,cur,allfreq,para,dv_range,nbtrial,dj=1/12,s0=-1,J=-1,wvn='morlet',normalize=True):
     """
     Apply stretching method to continuous wavelet transformation (CWT) of signals
     for all frequecies in an interest range
-    
+
     Parameters
     --------------
     :type ref: :class:`~numpy.ndarray`
@@ -600,16 +600,16 @@ def wts_allfreq(ref,cur,allfreq,para,dv_range,nbtrial,dj=1/12,s0=-1,J=-1,wvn='mo
     :param cur: 1d array. Cross-correlation measurements.
     :type ave: :class:`~numpy.ndarray`
     :param ave: flag to averaging the dv/v over a frequency range.
-    
+
     :params, dj, s0, J, wvn, refer to function 'wavelet.cwt'
     :normalize: True - normalize signals before stretching. Default is True
     :param maxdv: Velocity relative variation range [-maxdv, maxdv](100%)
     :param ndv : Number of stretching coefficient between dvmin and dvmax, no need to be higher than 100  ('float')
-    :nwindow: the times of current period/frequency, which will be time window if windowflag is False 
-    :windowflag: if True, the given window 'twindow' will be used, 
+    :nwindow: the times of current period/frequency, which will be time window if windowflag is False
+    :windowflag: if True, the given window 'twindow' will be used,
                  otherwise, the current period*nwindow will be used as time window
-    
-    Written by Congcong Yuan (30 Jun, 2019)  
+
+    Written by Congcong Yuan (30 Jun, 2019)
     """
     # common variables
     twin = para['twin']
@@ -618,16 +618,16 @@ def wts_allfreq(ref,cur,allfreq,para,dv_range,nbtrial,dj=1/12,s0=-1,J=-1,wvn='mo
     tmin = np.min(twin)
     tmax = np.max(twin)
     fmin = np.min(freq)
-    fmax = np.max(freq)    
+    fmax = np.max(freq)
     tvec = np.arange(tmin,tmax,dt)
-    
+
     # apply cwt on two traces
     cwt1, sj, freq, coi, _, _ = pycwt.cwt(cur, dt, dj, s0, J, wvn)
     cwt2, sj, freq, coi, _, _ = pycwt.cwt(ref, dt, dj, s0, J, wvn)
-    
+
     # extract real values of cwt
     rcwt1, rcwt2 = np.real(cwt1), np.real(cwt2)
-    
+
     # zero out data outside frequency band
     if (fmax> np.max(freq)) | (fmax <= fmin):
         raise ValueError('Abort: input frequency out of limits!')
@@ -637,13 +637,13 @@ def wts_allfreq(ref,cur,allfreq,para,dv_range,nbtrial,dj=1/12,s0=-1,J=-1,wvn='mo
         # initialize variable
         nfreq=len(freq_indin)
         dvv, cc, cdp, err = np.zeros(nfreq,dtype=np.float32), np.zeros(nfreq,dtype=np.float32),\
-            np.zeros(nfreq,dtype=np.float32),np.zeros(nfreq,dtype=np.float32)  
-        
+            np.zeros(nfreq,dtype=np.float32),np.zeros(nfreq,dtype=np.float32)
+
         # loop through each freq
         for ii, ifreq in enumerate(freq_indin):
 
-            # prepare windowed data                
-            wcwt1, wcwt2 = rcwt1[ifreq], rcwt2[ifreq] 
+            # prepare windowed data
+            wcwt1, wcwt2 = rcwt1[ifreq], rcwt2[ifreq]
 
             # Normalizes both signals, if appropriate.
             if normalize:
@@ -652,16 +652,16 @@ def wts_allfreq(ref,cur,allfreq,para,dv_range,nbtrial,dj=1/12,s0=-1,J=-1,wvn='mo
             else:
                 ncwt1 = wcwt1
                 ncwt2 = wcwt2
-                
+
             # run stretching
             dv, error, c1, c2 = stretching(ncwt2, ncwt1, dv_range, nbtrial, para)
-            dvv[ii], cc[ii], cdp[ii], err[ii]=dv, c1, c2, error     
-    
+            dvv[ii], cc[ii], cdp[ii], err[ii]=dv, c1, c2, error
+
     del cwt1, cwt2, rcwt1, rcwt2, ncwt1, ncwt2, wcwt1, wcwt2, coi, sj
-    
+
     if not allfreq:
         return np.mean(dvv),np.mean(err)
-    else:        
+    else:
         return freq[freq_indin], dvv, err
 
 
@@ -669,7 +669,7 @@ def wtdtw_allfreq(ref,cur,allfreq,para,maxLag,b,direction,dj=1/12,s0=-1,J=-1,wvn
     """
     Apply dynamic time warping method to continuous wavelet transformation (CWT) of signals
     for all frequecies in an interest range
-    
+
     Parameters
     --------------
     :type cur: :class:`~numpy.ndarray`
@@ -682,14 +682,14 @@ def wtdtw_allfreq(ref,cur,allfreq,para,maxLag,b,direction,dj=1/12,s0=-1,J=-1,wvn
     :param fwindow: 1d array. [lowest frequncy, highest frequency] frequency window limit
     :params, dj, s0, J, wvn, refer to function 'wavelet.cwt'
     :normalize: True - normalize signals before stretching. Default is True
-    :param maxLag : max number of points to search forward and backward. 
+    :param maxLag : max number of points to search forward and backward.
                 Suggest setting it larger if window is set larger.
-    :param b : b-value to limit strain, which is to limit the maximum velocity perturbation. 
+    :param b : b-value to limit strain, which is to limit the maximum velocity perturbation.
                See equation 11 in (Mikesell et al. 2015)
-    :nwindow: the times of current period/frequency, which will be time window if windowflag is False 
-    :windowflag: if True, the given window 'twindow' will be used, 
+    :nwindow: the times of current period/frequency, which will be time window if windowflag is False
+    :windowflag: if True, the given window 'twindow' will be used,
                  otherwise, the current period*nwindow will be used as time window
-    
+
     Written by Congcong Yuan (30 Jun, 2019)
     """
     # common variables
@@ -699,29 +699,29 @@ def wtdtw_allfreq(ref,cur,allfreq,para,maxLag,b,direction,dj=1/12,s0=-1,J=-1,wvn
     tmin = np.min(twin)
     tmax = np.max(twin)
     fmin = np.min(freq)
-    fmax = np.max(freq)    
+    fmax = np.max(freq)
     tvec = np.arange(tmin,tmax)*dt
- 
+
     # apply cwt on two traces
     cwt1, sj, freq, coi, _, _ = pycwt.cwt(cur, dt, dj, s0, J, wvn)
     cwt2, sj, freq, coi, _, _ = pycwt.cwt(ref, dt, dj, s0, J, wvn)
-    
+
     # extract real values of cwt
     rcwt1, rcwt2 = np.real(cwt1), np.real(cwt2)
-    
+
     # zero out cone of influence and data outside frequency band
     if (fmax> np.max(freq)) | (fmax <= fmin):
         raise ValueError('Abort: input frequency out of limits!')
     else:
         freq_indin = np.where((freq >= fmin) & (freq <= fmax))[0]
-        
+
         # Use DTW method to extract dvv
         nfreq=len(freq_indin)
-        dvv, err = np.zeros(nfreq,dtype=np.float32), np.zeros(nfreq,dtype=np.float32)   
-        
+        dvv, err = np.zeros(nfreq,dtype=np.float32), np.zeros(nfreq,dtype=np.float32)
+
         for ii,ifreq in enumerate(freq_indin):
 
-            # prepare windowed data 
+            # prepare windowed data
             wcwt1, wcwt2 = rcwt1[ifreq], rcwt2[ifreq]
             # Normalizes both signals, if appropriate.
             if normalize:
@@ -730,16 +730,16 @@ def wtdtw_allfreq(ref,cur,allfreq,para,maxLag,b,direction,dj=1/12,s0=-1,J=-1,wvn
             else:
                 ncwt1 = wcwt1
                 ncwt2 = wcwt2
-            
+
             # run dtw
             dv, error, dist  = dtw_dvv(ncwt2, ncwt1, para, maxLag, b, direction)
-            dvv[ii], err[ii] = dv, error     
-    
+            dvv[ii], err[ii] = dv, error
+
     del cwt1, cwt2, rcwt1, rcwt2, ncwt1, ncwt2, wcwt1, wcwt2, coi, sj, dist
-    
+
     if not allfreq:
         return np.mean(dvv),np.mean(err)
-    else:        
+    else:
         return freq[freq_indin], dvv, err
 
 if __name__ == "__main__":

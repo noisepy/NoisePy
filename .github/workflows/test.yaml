@@ -1,6 +1,6 @@
 name: Test
 
-on: 
+on:
   pull_request:
   push: { branches: [master] }
   workflow_dispatch:
@@ -33,10 +33,9 @@ jobs:
     - name: Test Cross-Correlation (S1)
       working-directory: ./src
       run: python noisepy.py cross_correlate --path .
-    - name: Test Stacking (S2)  
+    - name: Test Stacking (S2)
       working-directory: ./src
       run: |
         python noisepy.py stack --path . --method linear
         rm -rf STACK
         python noisepy.py stack --path . --method pws
-

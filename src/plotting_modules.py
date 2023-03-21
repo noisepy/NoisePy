@@ -31,11 +31,11 @@ def plot_waveform(sfile,net,sta,freqmin,freqmax,savefig=False,sdir=None):
     PARAMETERS:
     -----------------------
     sfile: containing all wavefrom data for a time-chunck in ASDF format
-    net,sta,comp: network, station name and component 
+    net,sta,comp: network, station name and component
     freqmin: min frequency to be filtered
     freqmax: max frequency to be filtered
 
-    USAGE: 
+    USAGE:
     -----------------------
     plot_waveform('temp.h5','CI','BLC',0.01,0.5)
     '''
@@ -50,7 +50,7 @@ def plot_waveform(sfile,net,sta,freqmin,freqmax,savefig=False,sdir=None):
     tsta = net+'.'+sta
     if tsta not in sta_list:
         raise ValueError('no data for %s in %s'%(tsta,sfile))
-    
+
     tcomp = ds.waveforms[tsta].get_waveform_tags()
     ncomp = len(tcomp)
     if ncomp == 1:
@@ -63,7 +63,7 @@ def plot_waveform(sfile,net,sta,freqmin,freqmax,savefig=False,sdir=None):
         plt.figure(figsize=(9,3))
         plt.plot(tt,data,'k-',linewidth=1)
         plt.title('T\u2080:%s   %s.%s.%s   @%5.3f-%5.2f Hz' % (tr[0].stats.starttime,net,sta,tcomp[0].split('_')[0].upper(),freqmin,freqmax))
-        plt.xlabel('Time [s]')  
+        plt.xlabel('Time [s]')
         plt.ylabel('Amplitude')
         plt.tight_layout()
         plt.show()
@@ -71,7 +71,7 @@ def plot_waveform(sfile,net,sta,freqmin,freqmax,savefig=False,sdir=None):
         tr   = ds.waveforms[tsta][tcomp[0]]
         dt   = tr[0].stats.delta
         npts = tr[0].stats.npts
-        tt   = np.arange(0,npts)*dt 
+        tt   = np.arange(0,npts)*dt
         data = np.zeros(shape=(ncomp,npts),dtype=np.float32)
         for ii in range(ncomp):
             data[ii] = ds.waveforms[tsta][tcomp[ii]][0].data
@@ -87,7 +87,7 @@ def plot_waveform(sfile,net,sta,freqmin,freqmax,savefig=False,sdir=None):
         plt.subplot(313)
         plt.plot(tt,data[2],'k-',linewidth=1)
         plt.legend([tcomp[2].split('_')[0].upper()],loc='upper left')
-        plt.xlabel('Time [s]') 
+        plt.xlabel('Time [s]')
         plt.tight_layout()
 
         if savefig:
@@ -96,8 +96,8 @@ def plot_waveform(sfile,net,sta,freqmin,freqmax,savefig=False,sdir=None):
             plt.savefig(outfname, format='pdf', dpi=400)
             plt.close()
         else:
-            plt.show() 
-                      
+            plt.show()
+
 
 #############################################################################
 ###############PLOTTING FUNCTIONS FOR FILES FROM S1##########################
@@ -105,7 +105,7 @@ def plot_waveform(sfile,net,sta,freqmin,freqmax,savefig=False,sdir=None):
 
 def plot_substack_cc(sfile,freqmin,freqmax,disp_lag=None,savefig=True,sdir='./'):
     '''
-    display the 2D matrix of the cross-correlation functions for a certain time-chunck. 
+    display the 2D matrix of the cross-correlation functions for a certain time-chunck.
 
     PARAMETERS:
     --------------------------
@@ -114,7 +114,7 @@ def plot_substack_cc(sfile,freqmin,freqmax,disp_lag=None,savefig=True,sdir='./')
     freqmax: max frequency to be filtered
     disp_lag: time ranges for display
 
-    USAGE: 
+    USAGE:
     --------------------------
     plot_substack_cc('temp.h5',0.1,1,100,True,'./')
 
@@ -139,12 +139,12 @@ def plot_substack_cc(sfile,freqmin,freqmax,disp_lag=None,savefig=True,sdir='./')
     if not flag:
         raise ValueError('seems no substacks have been done! not suitable for this plotting function')
 
-    # lags for display   
+    # lags for display
     if not disp_lag:disp_lag=maxlag
     if disp_lag>maxlag:raise ValueError('lag excceds maxlag!')
 
     # t is the time labels for plotting
-    t = np.arange(-int(disp_lag),int(disp_lag)+dt,step=int(2*int(disp_lag)/4)) 
+    t = np.arange(-int(disp_lag),int(disp_lag)+dt,step=int(2*int(disp_lag)/4))
     # windowing the data
     indx1 = int((maxlag-disp_lag)/dt)
     indx2 = indx1+2*int(disp_lag/dt)+1
@@ -163,7 +163,7 @@ def plot_substack_cc(sfile,freqmin,freqmax,disp_lag=None,savefig=True,sdir='./')
             except Exception:
                 print('continue! something wrong with %s %s'%(spair,ipath))
                 continue
-            
+
             # cc matrix
             data = ds.auxiliary_data[spair][ipath].data[:,indx1:indx2]
             nwin = data.shape[0]
@@ -178,11 +178,11 @@ def plot_substack_cc(sfile,freqmin,freqmax,disp_lag=None,savefig=True,sdir='./')
                 data[ii] /= amax[ii]
                 timestamp[ii] = obspy.UTCDateTime(ttime[ii])
                 tmarks.append(obspy.UTCDateTime(ttime[ii]).strftime('%H:%M:%S'))
-            
+
             # plotting
             if nwin>10:
                 tick_inc = int(nwin/5)
-            else: 
+            else:
                 tick_inc = 2
             fig = plt.figure(figsize=(10,6))
             ax = fig.add_subplot(211)
@@ -221,7 +221,7 @@ def plot_substack_cc(sfile,freqmin,freqmax,disp_lag=None,savefig=True,sdir='./')
 
 def plot_substack_cc_spect(sfile,freqmin,freqmax,disp_lag=None,savefig=True,sdir='./'):
     '''
-    display the 2D matrix of the cross-correlation functions for a time-chunck. 
+    display the 2D matrix of the cross-correlation functions for a time-chunck.
 
     PARAMETERS:
     -----------------------
@@ -230,7 +230,7 @@ def plot_substack_cc_spect(sfile,freqmin,freqmax,disp_lag=None,savefig=True,sdir
     freqmax: max frequency to be filtered
     disp_lag: time ranges for display
 
-    USAGE: 
+    USAGE:
     -----------------------
     plot_substack_cc('temp.h5',0.1,1,200,True,'./')
 
@@ -255,10 +255,10 @@ def plot_substack_cc_spect(sfile,freqmin,freqmax,disp_lag=None,savefig=True,sdir
     if not flag:
         raise ValueError('seems no substacks have been done! not suitable for this plotting function')
 
-    # lags for display   
+    # lags for display
     if not disp_lag:disp_lag=maxlag
     if disp_lag>maxlag:raise ValueError('lag excceds maxlag!')
-    t = np.arange(-int(disp_lag),int(disp_lag)+dt,step=int(2*int(disp_lag)/4)) 
+    t = np.arange(-int(disp_lag),int(disp_lag)+dt,step=int(2*int(disp_lag)/4))
     indx1 = int((maxlag-disp_lag)/dt)
     indx2 = indx1+2*int(disp_lag/dt)+1
     nfft  = int(next_fast_len(indx2-indx1))
@@ -294,11 +294,11 @@ def plot_substack_cc_spect(sfile,freqmin,freqmax,disp_lag=None,savefig=True,sdir
                 amax[ii] = max(data[ii])
                 data[ii] /= amax[ii]
                 timestamp[ii] = obspy.UTCDateTime(ttime[ii])
-            
+
             # plotting
             if nwin>10:
                 tick_inc = int(nwin/5)
-            else: 
+            else:
                 tick_inc = 2
             fig,ax = plt.subplots(3,sharex=False)
             ax[0].matshow(data,cmap='seismic',extent=[-disp_lag,disp_lag,nwin,0],aspect='auto')
@@ -347,7 +347,7 @@ def plot_substack_all(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=False,sd
     disp_lag: time ranges for display
     ccomp: cross component of the targeted cc functions
 
-    USAGE: 
+    USAGE:
     ----------------------
     plot_substack_all('temp.h5',0.1,1,'ZZ',50,True,'./')
     '''
@@ -369,10 +369,10 @@ def plot_substack_all(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=False,sd
     if len(dtype_lists)==1:
         raise ValueError('Abort! seems no substacks have been done')
 
-    # lags for display   
+    # lags for display
     if not disp_lag:disp_lag=maxlag
     if disp_lag>maxlag:raise ValueError('lag excceds maxlag!')
-    t = np.arange(-int(disp_lag),int(disp_lag)+dt,step=int(2*int(disp_lag)/4)) 
+    t = np.arange(-int(disp_lag),int(disp_lag)+dt,step=int(2*int(disp_lag)/4))
     indx1 = int((maxlag-disp_lag)/dt)
     indx2 = indx1+2*int(disp_lag/dt)+1
 
@@ -402,12 +402,12 @@ def plot_substack_all(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=False,sd
 
         if len(ngood)==1:
             raise ValueError('seems no substacks have been done! not suitable for this plotting function')
-        
+
     # plotting
     if nwin>100:
         tick_inc = int(nwin/10)
     elif nwin>10:
-        tick_inc = int(nwin/5) 
+        tick_inc = int(nwin/5)
     else:
         tick_inc = 2
     fig,ax = plt.subplots(2,sharex=False, figsize=figsize)
@@ -450,7 +450,7 @@ def plot_substack_all_spect(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=Fa
     disp_lag: time ranges for display
     ccomp: cross component of the targeted cc functions
 
-    USAGE: 
+    USAGE:
     -----------------------
     plot_substack_all('temp.h5',0.1,1,'ZZ',50,True,'./')
     '''
@@ -472,10 +472,10 @@ def plot_substack_all_spect(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=Fa
     if len(dtype_lists)==1:
         raise ValueError('Abort! seems no substacks have been done')
 
-    # lags for display   
+    # lags for display
     if not disp_lag:disp_lag=maxlag
     if disp_lag>maxlag:raise ValueError('lag excceds maxlag!')
-    t = np.arange(-int(disp_lag),int(disp_lag)+dt,step=int(2*int(disp_lag)/4)) 
+    t = np.arange(-int(disp_lag),int(disp_lag)+dt,step=int(2*int(disp_lag)/4))
     indx1 = int((maxlag-disp_lag)/dt)
     indx2 = indx1+2*int(disp_lag/dt)+1
     nfft  = int(next_fast_len(indx2-indx1))
@@ -510,7 +510,7 @@ def plot_substack_all_spect(sfile,freqmin,freqmax,ccomp,disp_lag=None,savefig=Fa
 
         if len(ngood)==1:
             raise ValueError('seems no substacks have been done! not suitable for this plotting function')
-        
+
     # plotting
     tick_inc = 50
     fig,ax = plt.subplots(3,sharex=False, figsize=figsize)
@@ -560,14 +560,14 @@ def plot_all_moveout(sfiles,dtype,freqmin,freqmax,ccomp,dist_inc,disp_lag=None,s
     savefig: set True to save the figures (in pdf format)
     sdir: diresied directory to save the figure (if not provided, save to default dir)
 
-    USAGE: 
+    USAGE:
     ----------------------
     plot_substack_moveout('temp.h5','Allstack_pws',0.1,0.2,1,'ZZ',200,True,'./temp')
     '''
     # open data for read
     if savefig:
         if sdir==None:print('no path selected! save figures in the default path')
-    
+
     path  = ccomp
 
     # extract common variables
@@ -578,8 +578,8 @@ def plot_all_moveout(sfiles,dtype,freqmin,freqmax,ccomp,dist_inc,disp_lag=None,s
         stack_method = dtype.split('0')[-1]
     except Exception:
         print("exit! cannot open %s to read"%sfiles[0]);sys.exit()
-    
-    # lags for display   
+
+    # lags for display
     if not disp_lag:disp_lag=maxlag
     if disp_lag>maxlag:raise ValueError('lag excceds maxlag!')
     t = np.arange(-int(disp_lag),int(disp_lag)+dt,step=(int(2*int(disp_lag)/4)))
@@ -590,7 +590,7 @@ def plot_all_moveout(sfiles,dtype,freqmin,freqmax,ccomp,dist_inc,disp_lag=None,s
     nwin = len(sfiles)
     data = np.zeros(shape=(nwin,indx2-indx1),dtype=np.float32)
     dist = np.zeros(nwin,dtype=np.float32)
-    ngood= np.zeros(nwin,dtype=np.int16)    
+    ngood= np.zeros(nwin,dtype=np.int16)
 
     # load cc and parameter matrix
     for ii in range(len(sfiles)):
@@ -617,7 +617,7 @@ def plot_all_moveout(sfiles,dtype,freqmin,freqmax,ccomp,dist_inc,disp_lag=None,s
             ndata[td] = np.mean(data[tindx],axis=0)
             ndist[td] = (td+0.5)*dist_inc
 
-    # normalize waveforms 
+    # normalize waveforms
     indx  = np.where(ndist>0)[0]
     ndata = ndata[indx]
     ndist = ndist[indx]
@@ -634,7 +634,7 @@ def plot_all_moveout(sfiles,dtype,freqmin,freqmax,ccomp,dist_inc,disp_lag=None,s
     ax.set_xticks(t)
     ax.xaxis.set_ticks_position('bottom')
     #ax.text(np.ones(len(ndist))*(disp_lag-5),dist[ndist],ngood[ndist],fontsize=8)
-    
+
     # save figure or show
     if savefig:
         outfname = sdir+'/moveout_allstack_'+str(stack_method)+'_'+str(dist_inc)+'kmbin.pdf'
@@ -660,14 +660,14 @@ def plot_all_moveout_1D_1comp(sfiles,sta,dtype,freqmin,freqmax,ccomp,disp_lag=No
     savefig: set True to save the figures (in pdf format)
     sdir: diresied directory to save the figure (if not provided, save to default dir)
 
-    USAGE: 
+    USAGE:
     ----------------------
     plot_substack_moveout('temp.h5','Allstack0pws',0.1,0.2,'ZZ',200,True,'./temp')
     '''
     # open data for read
     if savefig:
         if sdir==None:print('no path selected! save figures in the default path')
-    
+
     receiver = sta+'.h5'
     stack_method = dtype.split('_')[-1]
 
@@ -678,8 +678,8 @@ def plot_all_moveout_1D_1comp(sfiles,sta,dtype,freqmin,freqmax,ccomp,disp_lag=No
         maxlag= ds.auxiliary_data[dtype][ccomp].parameters['maxlag']
     except Exception:
         print("exit! cannot open %s to read"%sfiles[0]);sys.exit()
-    
-    # lags for display   
+
+    # lags for display
     if not disp_lag:disp_lag=maxlag
     if disp_lag>maxlag:raise ValueError('lag excceds maxlag!')
     tt = np.arange(-int(disp_lag),int(disp_lag)+dt,dt)
@@ -751,14 +751,14 @@ def plot_all_moveout_1D_9comp(sfiles,sta,dtype,freqmin,freqmax,mdist,disp_lag=No
     savefig: set True to save the figures (in pdf format)
     sdir: diresied directory to save the figure (if not provided, save to default dir)
 
-    USAGE: 
+    USAGE:
     ----------------------
     plot_substack_moveout('temp.h5','Allstack0pws',0.1,0.2,'ZZ',200,True,'./temp')
     '''
     # open data for read
     if savefig:
         if sdir==None:print('no path selected! save figures in the default path')
-    
+
     receiver = sta+'.h5'
     stack_method = dtype.split('_')[-1]
     ccomp = ['ZR','ZT','ZZ','RR','RT','RZ','TR','TT','TZ']
@@ -770,8 +770,8 @@ def plot_all_moveout_1D_9comp(sfiles,sta,dtype,freqmin,freqmax,mdist,disp_lag=No
         maxlag= ds.auxiliary_data[dtype][ccomp[0]].parameters['maxlag']
     except Exception:
         print("exit! cannot open %s to read"%sfiles[0]);sys.exit()
-    
-    # lags for display   
+
+    # lags for display
     if not disp_lag:disp_lag=maxlag
     if disp_lag>maxlag:raise ValueError('lag excceds maxlag!')
     tt = np.arange(-int(disp_lag),int(disp_lag)+dt,dt)
@@ -804,7 +804,7 @@ def plot_all_moveout_1D_9comp(sfiles,sta,dtype,freqmin,freqmax,mdist,disp_lag=No
 
             except Exception:
                 print("continue! cannot read %s "%sfile);continue
-            
+
             if dist>mdist:continue
             tdata = bandpass(tdata,freqmin,freqmax,int(1/dt),corners=4, zerophase=True)
             tdata /= np.max(tdata,axis=0)

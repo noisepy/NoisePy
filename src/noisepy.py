@@ -21,7 +21,7 @@ class Step(Enum):
 
 def valid_date(d: str) -> str:
     _ = obspy.UTCDateTime(d)
-    return d    
+    return d
 
 def main(args: typing.Any):
     if args.step == Step.DOWNLOAD:
@@ -34,7 +34,7 @@ def main(args: typing.Any):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest='step', required=True)
-    
+
     # Download arguments
     down_parser = subparsers.add_parser(Step.DOWNLOAD.name.lower(), formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     down_parser.add_argument("--path", type=str, default=os.path.join(os.path.expanduser('~'), default_data_path), help="Directory for downloading files")
@@ -42,7 +42,7 @@ if __name__ == "__main__":
     down_parser.add_argument("--end",   type=valid_date, required=True, help="End date in the format: "+DATE_FORMAT, default=default_end_date)
     down_parser.add_argument("--stations", type=lambda s: s.split(","), help="Comma separated list of stations or '*' for all", default="*")
     down_parser.add_argument("--channels", type=lambda s: s.split(","), help="Comma separated list of channels", default="BHE,BHN,BHZ")
-    down_parser.add_argument("--inc_hours", type=int, default=24, help="Time increment size (hrs)")    
+    down_parser.add_argument("--inc_hours", type=int, default=24, help="Time increment size (hrs)")
     # Cross_correlate arguments
     cc_parser = subparsers.add_parser(Step.CROSS_CORRELATE.name.lower(), formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     cc_parser.add_argument("--path", type=str, default=os.path.join(os.path.expanduser('~'), default_data_path), help="Directory to look for input files")
@@ -50,8 +50,7 @@ if __name__ == "__main__":
     stack_parser = subparsers.add_parser(Step.STACK.name.lower(), formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     stack_parser.add_argument("--path", type=str, default=os.path.join(os.path.expanduser('~'), default_data_path), help="Directory to look for input files")
     stack_parser.add_argument("--method", type=str, required=True, choices=["linear", "pws", "robust", "nroot", "selective", "auto_covariance", "all"], help="Stacking method")
-    
+
     args = parser.parse_args()
     args.step = Step[args.step.upper()]
     main(args)
-

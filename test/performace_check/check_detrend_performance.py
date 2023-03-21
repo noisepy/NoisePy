@@ -15,7 +15,7 @@ script to test the cut_trace_make_statis function
 
 def cut_trace_make_statis(cc_len,step,source,flag):
     '''
-    cut continous noise data into user-defined segments, estimate the statistics of 
+    cut continous noise data into user-defined segments, estimate the statistics of
     each segment and keep timestamp for later use.
 
     fft_para: dictionary containing all useful variables for the fft step.
@@ -76,7 +76,7 @@ def cut_trace_make_statis(cc_len,step,source,flag):
 
 def cut_trace_make_statis1(cc_len,step,inc_hours,source,flag):
     '''
-    cut continous noise data into user-defined segments, estimate the statistics of 
+    cut continous noise data into user-defined segments, estimate the statistics of
     each segment and keep timestamp for later use.
 
     fft_para: dictionary containing all useful variables for the fft step.
@@ -106,7 +106,7 @@ def cut_trace_make_statis1(cc_len,step,inc_hours,source,flag):
     trace_stdS = np.zeros(nseg,dtype=np.float32)
     dataS    = np.zeros(shape=(nseg,npts),dtype=np.float32)
     dataS_t  = np.zeros(shape=(nseg,2),dtype=np.float)
-    
+
     indx1 = 0
     for iseg in range(nseg):
         indx2 = indx1+npts
@@ -186,10 +186,10 @@ def taper(data):
     if data.ndim == 1:
         npts = data.shape[0]
 
-        # window length 
+        # window length
         if npts*0.05>20:wlen = 20
         else:wlen = npts*0.05
-        
+
         # taper values
         func = _get_function_from_entry_point('taper', 'hann')
         if 2*wlen == npts:
@@ -202,11 +202,11 @@ def taper(data):
         data = data*win
     elif data.ndim == 2:
         npts = data.shape[1]
-    
-        # window length 
+
+        # window length
         if npts*0.05>20:wlen = 20
         else:wlen = npts*0.05
-        
+
         # taper values
         func = _get_function_from_entry_point('taper', 'hann')
         if 2*wlen == npts:
@@ -218,13 +218,13 @@ def taper(data):
         win  = np.hstack((taper_sides[:wlen], np.ones(npts-2*wlen),taper_sides[len(taper_sides) - wlen:]))
         for ii in range(data.shape[0]):
             data[ii] = data[ii]*win
-    return data    
+    return data
 
 def mad(arr):
-    """ 
+    """
     Median Absolute Deviation: MAD = median(|Xi- median(X)|)
     :type arr: numpy.ndarray
-    :param arr: seismic trace data array 
+    :param arr: seismic trace data array
     :return: Median Absolute Deviation of data
     """
     if not np.ma.is_masked(arr):
@@ -233,7 +233,7 @@ def mad(arr):
     else:
         med = np.ma.median(arr)
         data = np.ma.median(np.ma.abs(arr-med))
-    return data	
+    return data
 
 # path information
 rootpath = os.path.join(os.path.expanduser('~'), 'Documents/Harvard/Kanto_basin/Mesonet_BW/noise_data/Event_2010_340')

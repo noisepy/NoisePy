@@ -301,7 +301,7 @@ def stats2inv(stats,prepro_para,locs=None):
                     return inv
             else:
                 raise ValueError('Could not find a StationXML file for station: %s.' % stats.station)
-                
+
     inv = Inventory(networks=[],source="homegrown")
 
     if input_fmt=='sac':
@@ -569,7 +569,7 @@ def correlate(fft1_smoothed_abs,fft2,D,Nfft,dataS_t):
         freqmax: maximum frequency (Hz)
     Nfft:    number of frequency points for ifft
     dataS_t: matrix of datetime object.
-    
+
     RETURNS:
     ---------------------
     s_corr: 1D or 2D matrix of the averaged or sub-stacks of cross-correlation functions in time domain
@@ -1597,7 +1597,7 @@ def whiten(data, fft_para, n_taper=100):
         arr_out = np.zeros((FFTRawSign.shape[0] - 1) * 2 + 1, dtype=complex)
         arr_out[0: FFTRawSign.shape[0]] = FFTRawSign
         arr_out[FFTRawSign.shape[0]:] = FFTRawSign[1:].conjugate()[::-1]
-    
+
     elif data.ndim == 2:
         FFTRawSign = whiten_2D(data, fft_para, n_taper)
         arr_out = np.zeros((FFTRawSign.shape[0], (FFTRawSign.shape[1] - 1) * 2 + 1), dtype=complex)
@@ -1693,8 +1693,8 @@ def pws(arr,sampling_rate,power=2,pws_timegate=5.):
 def nroot_stack(cc_array,power):
     '''
     this is nth-root stacking algorithm translated based on the matlab function
-    from https://github.com/xtyangpsp/SeisStack (by Xiaotao Yang; follows the 
-    reference of Millet, F et al., 2019 JGR) 
+    from https://github.com/xtyangpsp/SeisStack (by Xiaotao Yang; follows the
+    reference of Millet, F et al., 2019 JGR)
 
     Parameters:
     ------------
@@ -1710,7 +1710,7 @@ def nroot_stack(cc_array,power):
     if cc_array.ndim == 1:
         print('2D matrix is needed for nroot_stack')
         return cc_array
-    N,M = cc_array.shape 
+    N,M = cc_array.shape
     dout = np.zeros(M,dtype=np.float32)
 
     # construct y
@@ -1726,7 +1726,7 @@ def nroot_stack(cc_array,power):
 
 
 def selective_stack(cc_array,epsilon,cc_th):
-    ''' 
+    '''
     this is a selective stacking algorithm developed by Jared Bryan/Kurama Okubo.
 
     PARAMETERS:
@@ -1740,13 +1740,13 @@ def selective_stack(cc_array,epsilon,cc_th):
     newstack: numpy vector contains the stacked cross correlation
     nstep: np.int, total number of iterations for the stacking
 
-    Originally ritten by Marine Denolle 
+    Originally ritten by Marine Denolle
     Modified by Chengxin Jiang @Harvard (Oct2020)
     '''
     if cc_array.ndim == 1:
         print('2D matrix is needed for nroot_stack')
         return cc_array
-    N,M = cc_array.shape 
+    N,M = cc_array.shape
 
     res  = 9E9  # residuals
     cof  = np.zeros(N,dtype=np.float32)
@@ -1757,7 +1757,7 @@ def selective_stack(cc_array,epsilon,cc_th):
     while res>epsilon:
         for ii in range(N):
             cof[ii] = np.corrcoef(newstack, cc_array[ii,:])[0, 1]
-        
+
         # find good waveforms
         indx = np.where(cof>=cc_th)[0]
         if not len(indx): raise ValueError('cannot find good waveforms inside selective stacking')
@@ -1886,11 +1886,11 @@ def stretching(ref, cur, dv_range, nbtrial, para):
 
 
 def stretching_vect(ref, cur, dv_range, nbtrial, para):
-    
+
     """
     This function compares the Reference waveform to stretched/compressed current waveforms to get the relative seismic velocity variation (and associated error).
     It also computes the correlation coefficient between the Reference waveform and the current waveform.
-    
+
     PARAMETERS:
     ----------------
     ref: Reference waveform (np.ndarray, size N)
@@ -1901,8 +1901,8 @@ def stretching_vect(ref, cur, dv_range, nbtrial, para):
     For error computation, we need parameters:
         fmin: minimum frequency of the data
         fmax: maximum frequency of the data
-        tmin: minimum time window where the dv/v is computed 
-        tmax: maximum time window where the dv/v is computed 
+        tmin: minimum time window where the dv/v is computed
+        tmax: maximum time window where the dv/v is computed
     RETURNS:
     ----------------
     dv: Relative velocity change dv/v (in %)
@@ -1910,13 +1910,13 @@ def stretching_vect(ref, cur, dv_range, nbtrial, para):
     cdp: correlation coefficient between the reference waveform and the initial current waveform
     error: Errors in the dv/v measurements based on Weaver et al (2011), On the precision of noise-correlation interferometry, Geophys. J. Int., 185(3)
 
-    Note: The code first finds the best correlation coefficient between the Reference waveform and the stretched/compressed current waveform among the "nbtrial" values. 
+    Note: The code first finds the best correlation coefficient between the Reference waveform and the stretched/compressed current waveform among the "nbtrial" values.
     A refined analysis is then performed around this value to obtain a more precise dv/v measurement .
 
     Originally by L. Viens 04/26/2018 (Viens et al., 2018 JGR)
     modified by Chengxin Jiang
     modified by Laura Ermert: vectorized version
-    """ 
+    """
     # load common variables from dictionary
     twin = para['twin']
     freq = para['freq']
@@ -1941,7 +1941,7 @@ def stretching_vect(ref, cur, dv_range, nbtrial, para):
         s = np.interp(x=tvec, xp=nt, fp=cur)
         waveforms[ii + 1, :] = s
     cof = np.corrcoef(waveforms)[0][1:]
-    
+
     # find the maximum correlation coefficient
     imax = np.nanargmax(cof)
     if imax >= len(Eps)-2:
