@@ -1,17 +1,14 @@
 import gc
 import sys
 import time
-import scipy
 import obspy
 import pyasdf
-import datetime
 import os, glob
 import numpy as np
 import pandas as pd
 import noise_module
 from mpi4py import MPI
 from scipy.fftpack.helper import next_fast_len
-import matplotlib.pyplot  as plt
 
 # ignore warnings
 if not sys.warnoptions:
@@ -105,8 +102,8 @@ else:   # sac or mseed format
     samp_freq = 20
     freqmin   = 0.05
     freqmax   = 2
-    start_date = ["2016_07_01_0_0_0"]
-    end_date   = ["2016_07_02_0_0_0"]
+    start_date = "2016_07_01_0_0_0"
+    end_date   = "2016_07_02_0_0_0"
     inc_hours  = 24
 dt = 1/samp_freq
 
@@ -126,8 +123,8 @@ fc_para={'samp_freq':samp_freq,
          'smooth_N':smooth_N,
          'rootpath':rootpath,
          'CCFDIR':CCFDIR,
-         'start_date':start_date[0],
-         'end_date':end_date[0],
+         'start_date':start_date,
+         'end_date':end_date,
          'inc_hours':inc_hours,
          'substack':substack,
          'substack_len':substack_len,
@@ -192,9 +189,11 @@ for ick in range (rank,splits,size):
 
     # get the tempory file recording cc process
     if input_fmt == 'h5':
-        tmpfile = os.path.join(CCFDIR,tdir[ick].split('/')[-1].split('.')[0]+'.tmp')
+        filename = os.path.basename(tdir[ick])
+        filename_noext = os.path.splitext(filename)[0]
+        tmpfile = os.path.join(CCFDIR, filename_noext + '.tmp')
     else: 
-        tmpfile = os.path.join(CCFDIR,tdir[ick].split('/')[-1]+'.tmp')
+        tmpfile = os.path.join(CCFDIR,os.paths.basename(tdir[ick])+'.tmp')
     
     # check whether time chunk been processed or not
     if os.path.isfile(tmpfile):
@@ -280,7 +279,8 @@ for ick in range (rank,splits,size):
 
             # do normalization if needed
             source_white = noise_module.noise_processing(fc_para,dataS)
-            Nfft = source_white.shape[1];Nfft2 = Nfft//2
+            Nfft = source_white.shape[1]
+            Nfft2 = Nfft//2
             if flag:print('N and Nfft are %d (proposed %d),%d (proposed %d)' %(N,nseg_chunk,Nfft,nnfft))
 
             # keep track of station info to write into parameter section of ASDF files
@@ -294,7 +294,9 @@ for ick in range (rank,splits,size):
 
             # load fft data in memory for cross-correlations
             data = source_white[:,:Nfft2]
-            fft_array[iii] = data.reshape(data.size)
+            data= data.reshape(data.size)
+            # pad for the case of rFFT (half spectrum)
+            fft_array[iii] = np.pad(data, (0, fft_array[iii].shape[0] - data.size), 'constant')   
             fft_std[iii]   = trace_stdS
             fft_flag[iii]  = 1
             fft_time[iii]  = dataS_t
@@ -308,7 +310,7 @@ for ick in range (rank,splits,size):
         print('it seems some stations miss data in download step, but it is OKAY!')
 
     #############PERFORM CROSS-CORRELATION##################
-    ftmp = open(tmpfile,'w')
+    ftmp = open(tmpfile, mode='w')
     # make cross-correlations 
     for iiS in range(iii):
         fft1 = fft_array[iiS]
@@ -319,7 +321,8 @@ for ick in range (rank,splits,size):
         t0=time.time()
         #-----------get the smoothed source spectrum for decon later----------
         sfft1 = noise_module.smooth_source_spect(fc_para,fft1)
-        sfft1 = sfft1.reshape(N,Nfft2)
+        sfft1_halved= sfft1[0:(int(sfft1.size/2))]
+        sfft1 = sfft1_halved.reshape(N,Nfft2)
         t1=time.time()
         if flag: 
             print('smoothing source takes %6.4fs' % (t1-t0))
@@ -354,7 +357,9 @@ for ick in range (rank,splits,size):
             if flag:print('receiver: %s %s %s' % (station[iiR],network[iiR],channel[iiR]))
             if not fft_flag[iiR]: continue
                 
-            fft2 = fft_array[iiR];sfft2 = fft2.reshape(N,Nfft2)
+            fft2 = fft_array[iiR]
+            fft2_halved= fft2[0:(int(fft2.size/2))]
+            sfft2 = fft2_halved.reshape(N,Nfft2)
             receiver_std = fft_std[iiR]
 
             #---------- check the existence of earthquakes ----------
@@ -367,10 +372,10 @@ for ick in range (rank,splits,size):
             t3=time.time()
 
             #---------------keep daily cross-correlation into a hdf5 file--------------
-            if input_fmt == 'h5':
-                tname = tdir[ick].split('/')[-1]
-            else: 
-                tname = tdir[ick].split('/')[-1]+'.h5'
+            tname = os.path.basename(tdir[ick])
+            if input_fmt != 'h5':
+                tname += '.h5'
+
             cc_h5 = os.path.join(CCFDIR,tname)
             crap  = np.zeros(corr.shape,dtype=corr.dtype)
 
