@@ -89,8 +89,17 @@ If you want to use the NoisePy to handel local data in SAC/miniseed format store
 
 
 
-### 1. Perform cross correlations using `S1_fft_cc_MPI.py`\
-This is the core script of NoisePy, which performs [Fourier transform](https://en.wikipedia.org/wiki/Fourier_transform) to all noise data first and loads them into the memory before they are further cross-correlated. This means that we are performing [cross-correlation](https://en.wikipedia.org/wiki/Cross-correlation) in the frequency domain. In the script, we provide several options to calculate the cross correlation, including `raw`, `coherency` and `deconv` (see our paper<sup>*</sup> for detailed definition). We choose `coherency` as an example here. After running the script, it will create a new folder named `CCF`, in which new ASDF files containing all cross-correlation functions between different station pairs are located. It also creates a parameter file of `fft_cc_data.txt` that records all useful parameters used in this script. Once you get the cross-correlation file, you can show the daily temporal variation between all station-pair by calling `plot_substack_cc` function in `plotting_modules` as follows. NOTE that to make this plot, the parameter of `substack` has to be set to `True` in S1.
+### 1. Perform cross correlations (`src/S1_fft_cc_MPI.py`)
+This is the core script of NoisePy, which performs [Fourier transform](https://en.wikipedia.org/wiki/Fourier_transform) to all noise data first and loads them into the memory before they are further cross-correlated. This means that we are performing [cross-correlation](https://en.wikipedia.org/wiki/Cross-correlation) in the frequency domain. In the script, we provide several options to calculate the cross correlation, including `raw`, `coherency` and `deconv` (see our paper<sup>*</sup> for detailed definition). We choose `coherency` as an example here. After running the script, it will create a new folder named `CCF`, in which new ASDF files containing all cross-correlation functions between different station pairs are located. It also creates a parameter file of `fft_cc_data.txt` that records all useful parameters used in this script.
+
+```sh
+cd src
+python noisepy cross-correlate
+```
+If you downloaded the data to a custom location, specify the `--path` argument. See `python noisepy.py cross-correlate --help` for details.
+
+Once you get the cross-correlation file, you can show the daily temporal variation between all station-pair by calling `plot_substack_cc` function in `plotting_modules` as follows. NOTE that to make this plot, the parameter of `substack` has to be set to `True` in S1.
+
 
 ```python
 import plotting_modules

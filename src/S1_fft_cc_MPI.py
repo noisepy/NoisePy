@@ -425,3 +425,7 @@ def cross_correlate(rootpath: str):
     if rank == 0:
         sys.exit()
 
+
+# Point people to new entry point:
+if __name__ == "__main__":
+    print("Please see:\n\npython noisepy.py cross_correlate --help\n")
