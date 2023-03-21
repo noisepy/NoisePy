@@ -29,8 +29,14 @@ jobs:
         pip install "."
     - name: Test Download (S0)
       working-directory: ./src
-      run: python noisepy.py download --start 2019_02_01_00_00_00 --end 2019_02_01_02_00_00 --stations ARV --inc_hours 1 --path .
+      run: python noisepy.py download --start 2019_02_01_00_00_00 --end 2019_02_01_02_00_00 --stations ARV,BAK --inc_hours 1 --path .
     - name: Test Cross-Correlation (S1)
       working-directory: ./src
       run: python noisepy.py cross_correlate --path .
+    - name: Test Stacking (S2)  
+      working-directory: ./src
+      run: |
+        python noisepy.py stack --path . --method linear
+        rm -rf STACK
+        python noisepy.py stack --path . --method pws
 
