@@ -104,8 +104,8 @@ else:   # sac or mseed format
     samp_freq = 20
     freqmin   = 0.05
     freqmax   = 2
-    start_date = ["2016_07_01_0_0_0"]
-    end_date   = ["2016_07_02_0_0_0"]
+    start_date = "2016_07_01_0_0_0"
+    end_date   = "2016_07_02_0_0_0"
     inc_hours  = 24
 dt = 1/samp_freq
 
@@ -125,8 +125,8 @@ fc_para={'samp_freq':samp_freq,
          'smooth_N':smooth_N,
          'rootpath':rootpath,
          'CCFDIR':CCFDIR,
-         'start_date':start_date[0],
-         'end_date':end_date[0],
+         'start_date':start_date,
+         'end_date':end_date,
          'inc_hours':inc_hours,
          'substack':substack,
          'substack_len':substack_len,
@@ -281,7 +281,8 @@ for ick in range (rank,splits,size):
 
             # do normalization if needed
             source_white = noise_module.noise_processing(fc_para,dataS)
-            Nfft = source_white.shape[1];Nfft2 = Nfft//2
+            Nfft = source_white.shape[1]
+            Nfft2 = Nfft//2
             if flag:print('N and Nfft are %d (proposed %d),%d (proposed %d)' %(N,nseg_chunk,Nfft,nnfft))
 
             # keep track of station info to write into parameter section of ASDF files
@@ -295,9 +296,9 @@ for ick in range (rank,splits,size):
 
             # load fft data in memory for cross-correlations
             data = source_white[:,:Nfft2]
-            data= data.reshape(1, data.size)
-            filler=np.empty((1,data.size))
-            fft_array[iii] = np.concatenate((data,filler),axis=1)
+            data= data.reshape(data.size)
+            # pad for the case of rFFT (half spectrum)
+            fft_array[iii] = np.pad(data, (0, fft_array[iii].shape[0] - data.size), 'constant')   
             fft_std[iii]   = trace_stdS
             fft_flag[iii]  = 1
             fft_time[iii]  = dataS_t
@@ -354,7 +355,7 @@ for ick in range (rank,splits,size):
         #-----------now loop III for each receiver B----------
         for iiR in range(istart,iend):
             if acorr_only:
-                if (station[iiR]==station[iiS]):continue
+                if (station[iiR]!=station[iiS]):continue
             if flag:print('receiver: %s %s %s' % (station[iiR],network[iiR],channel[iiR]))
             if not fft_flag[iiR]: continue
                 
