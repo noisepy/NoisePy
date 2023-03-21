@@ -3,12 +3,11 @@ import time
 from typing import List
 import obspy
 import pyasdf
-import os, glob
+import os 
 import numpy as np
 import pandas as pd
 import noise_module
 from mpi4py import MPI
-from obspy import UTCDateTime
 from obspy.clients.fdsn import Client
 
 if not sys.warnoptions:
@@ -45,9 +44,6 @@ Enjoy the NoisePy journey!
 #########################################################
 tt0=time.time()
 
-# paths and filenames
-default_rootpath  = os.path.join(os.path.expanduser('~'), 'Documents/SCAL')         # root path for this data processing
-
 # download parameters
 client    = Client('SCEDC')                                     # client/data center. see https://docs.obspy.org/packages/obspy.clients.fdsn.html for a list
 down_list = False                                               # download stations from a pre-compiled list or not
@@ -60,11 +56,6 @@ freqmax   = 2                                                   # note this cann
 # targeted region/station information: only needed when down_list is False
 lamin,lamax,lomin,lomax = 32.9,35.9,-120.7,-118.5               # regional box: min lat, min lon, max lat, max lon (-114.0)
 net_list  = ["CI"]                                              # network list 
-default_inc_hours  = 24                                                 # length of data for each request (in hour)
-default_chan_list = ["BHE","BHN","BHZ"]                                             # channel if down_list=false (format like "HN?" not work here)
-default_sta_list  = ["*"]                                               # station (using a station list is way either compared to specifying stations one by one)
-default_start_date = ["2016_07_01_0_0_0"]                               # start date of download
-default_end_date   = ["2016_07_02_0_0_0"]                               # end date of download
 
 # get rough estimate of memory needs to ensure it now below up in S1
 cc_len    = 1800                                                # basic unit of data length for fft (s)
@@ -312,6 +303,6 @@ def download(rootpath: str, chan_list: List[str], sta_list: List[str], start_dat
     if rank == 0:
         sys.exit()
 
-# Keeping this for backward compatibility, but the preferred entry point is: noisepy.py download
+# Point people to new entry point:
 if __name__ == "__main__":
-    download(default_rootpath, default_chan_list, default_sta_list, default_start_date, default_end_date, default_inc_hours)
+    print("Please see:\n\npython noisepy.py download --help\n")
