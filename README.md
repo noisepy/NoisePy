@@ -21,33 +21,31 @@ Jiang, C. and Denolle, M. "NoisePy: a new high-performance python tool for seism
 * adding a jupter notebook for generating response spectrum for a nodal array (to be done)
 
 # Installation
-The nature of NoisePy being composed of python scripts allows flexiable package installation, which is essentially to build dependented libraries the scripts and related functions live upon. We recommand to use [conda](https://docs.conda.io/en/latest/) and [pip](https://pypi.org/project/pip/) to install the library due to their convinence. Below are command lines we have tested that would create a python environment to run NoisePy. Note that the test is performed on `macOS Mojave (10.14.5)`, so it could be slightly different for other OS. 
+The nature of NoisePy being composed of python scripts allows flexible package installation, which is essentially to build dependent libraries the scripts and related functions live upon. We recommend using [conda](https://docs.conda.io/en/latest/) or [pip](https://pypi.org/project/pip/) to install the library due to their convenience. Below are command lines we have tested to create a python environment to run NoisePy. Note that the test is performed on `macOS Mojave (10.14.5)`, so it could be slightly different for other OS. 
+
 
 ### Note the order of the command lines below matters ###
 
 # With Conda:
-```python
-conda create -n noisepy -c conda-forge python=3.7 numpy=1.16.2 numba pandas pycwt jupyter mpi4py=3.0.1 obspy=1.1 pyasdf
+```bash
+conda create -n noisepy python=3.8 pip
 conda activate noisepy
-git clone https://github.com/mdenolle/NoisePy.git
+conda install -c conda-forge openmpi
+pip install -r requirements.txt
 ```
+
 # With virtual environment:
-```python
+An MPI installation is required. E.g. for macOS using [brew](https://brew.sh/) :
+```sh
+brew install open-mpi
+```
+
+```bash
 python -m venv noisepy
 source noisepy/bin/activate
-pip install wheel h5py numpy numba pandas pycwt jupyter mpi4py pyasdf
-git clone https://github.com/mdenolle/NoisePy.git
+pip install -r requirements.txt
 ```
 To run the code on a single core, open the terminal and activate the noisepy environment before run following command. To run on institutional clusters, see installation notes for individual packages on the module list of the cluster. Examples of installation on Frontera are below.
-
-# Installing on institutional clusters:
-Here is an example on how to install it on Frontera. hyp5 is already installed under the phdf5 default module.
-```python
-python -m venv noisepy
-source noisepy/bin/activate
-pip install wheel  numpy numba pandas pycwt jupyter mpi4py pyasdf
-git clone https://github.com/mdenolle/NoisePy.git
-```
 
 # Functionality
 * download continous noise data based on obspy's core functions of [get_station](https://docs.obspy.org/packages/autogen/obspy.clients.fdsn.client.Client.get_stations.html) and [get_waveforms](https://docs.obspy.org/packages/autogen/obspy.clients.fdsn.client.Client.get_waveforms.html)
@@ -58,18 +56,20 @@ git clone https://github.com/mdenolle/NoisePy.git
 
 # Short tutorial
 
-### 0A. Downloading seismic noise data by using `S0A_download_ASDF_MPI.py`
+### 0A. Downloading seismic noise data (`src/S0A_download_ASDF_MPI.py`)
 This script (located in the directory of `src`) and its existing parameters allows to download all available broadband CI stations `(BH?)` located in a certain region and operated during 1/Jul/2016-2/Jul/2016 through the SCEC data center. 
 
 In the script, short summary is provided for all input parameters that can be changed according to the user's needs. In the current form of the script, we set `inc_hours=24` to download day-long continous noise data as well as the meta info and store them into a single ASDF file. To increase the signal-to-noise (SNR) of the final cross-correlation functions (see Seats et al.,2012 for more details), we break the day-long sequence into smaller segments, each of `cc_len` (s) long with some overlapping defined by `step`. You may wanto to set `flag` to be `True` if intermediate outputs/operational time is preferred during the downloading process. 
 
-```python
-python S0A_download_ASDF_MPI.py
+```bash
+cd src
+python noisepy.py download
 ```  
+The data to be downloaded can be customized via command line arguments. See `python noisepy.py download --help` for details.
 
 If you want to use multiple cores (e.g, 4), run the script with the following command using [mpi4py](https://mpi4py.readthedocs.io/en/stable/). 
-```python
-mpirun -n 4 python S0A_download_ASDF_MPI.py
+```bash
+mpirun -n 4 python noisepy.py download 
 ```
 
 The outputted files from S0A include ASDF files containing daily-long (24h) continous noise data, a parameter file recording all used parameters in the script of S0A and a CSV file of all station information (more details on reading the ASDF files with downloaded data can be found in docs/src/ASDF.md). The continous waveforms data stored in the ASDF file can be displayed using the plotting modules named as `plotting_modules` in the directory of `src` as shown below.
