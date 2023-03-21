@@ -38,7 +38,7 @@ if __name__ == "__main__":
     down_parser.add_argument("--inc_hours", type=int, default=24, help="Time increment size (hrs)")
     
     # Cross_correlate arguments
-    cc_parser = subparsers.add_parser(Step.CROSS_CORRELATE.name.lower())
+    cc_parser = subparsers.add_parser(Step.CROSS_CORRELATE.name.lower(), formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     cc_parser.add_argument("--path", type=str, default=os.path.join(os.path.expanduser('~'), 'Documents/SCAL'), help="Directory to look for input files")
     args = parser.parse_args()
     args.step = Step[args.step.upper()]
