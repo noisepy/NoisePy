@@ -94,9 +94,9 @@ This is the core script of NoisePy, which performs [Fourier transform](https://e
 
 ```sh
 cd src
-python noisepy cross-correlate
+python noisepy.py cross_correlate
 ```
-If you downloaded the data to a custom location, specify the `--path` argument. See `python noisepy.py cross-correlate --help` for details.
+If you downloaded the data to a custom location, specify the `--path` argument. See `python noisepy.py cross_correlate --help` for details.
 
 Once you get the cross-correlation file, you can show the daily temporal variation between all station-pair by calling `plot_substack_cc` function in `plotting_modules` as follows. NOTE that to make this plot, the parameter of `substack` has to be set to `True` in S1.
 
@@ -109,8 +109,15 @@ plotting_modules.plot_substack_cc(sfile,0.1,0.2,200,True,'/Users/chengxin/Docume
 <img src="/docs/figures/substack_cc_NN.png" width="400" height="190"><img src="/docs/figures/substack_cc_ZZ.png" width="400" height="190">
 
 
-### 2. Do stacking with `S2_stacking.py`\
-This script is used to assemble and/or stack all cross-correlation functions computed for the staion pairs in S1 and save them into ASDF files for future analysis (e.g., temporal variation and/or dispersion extraction). In particular, there are two options for the stacking process, including linear and phase weighted stacking (pws). In general, the pws produces waveforms with high SNR, and the snapshot below shows the waveform comparison from the two stacking methods. We use the folloing commend lines to make the move-out plot.
+### 2. Do stacking (`src/S2_stacking.py`)
+This script is used to assemble and/or stack all cross-correlation functions computed for the staion pairs in S1 and save them into ASDF files for future analysis (e.g., temporal variation and/or dispersion extraction). In particular, there are two options for the stacking process, including linear and phase weighted stacking (pws). See ```python noisepy.py stack --help```
+
+```sh
+python noisepy.py stack --method linear
+python noisepy.py stack --method pws
+```
+
+In general, the pws produces waveforms with high SNR, and the snapshot below shows the waveform comparison from the two stacking methods. We use the folloing commend lines to make the move-out plot.
 
 ```python
 import plotting_modules,glob
