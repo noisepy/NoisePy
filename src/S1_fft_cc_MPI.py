@@ -77,7 +77,7 @@ max_over_std = 10                                                           # th
 # maximum memory allowed per core in GB
 MAX_MEM = 4.0
 
-def resize_fft(fft: np.array, n: int, nfft2: int) -> np.array:
+def _resize_fft(fft: np.array, n: int, nfft2: int) -> np.array:
     # check the size to see if this is an rFFT (half) and resize accordingly
     if fft.size // 2 == n*nfft2:
         fft = fft[0:(int(fft.size/2))]
@@ -339,7 +339,7 @@ def cross_correlate(rootpath: str, freq_norm: str):
             t0=time.time()
             #-----------get the smoothed source spectrum for decon later----------
             sfft1 = noise_module.smooth_source_spect(fc_para,fft1)
-            sfft1 = resize_fft(sfft1, N, Nfft2)
+            sfft1 = _resize_fft(sfft1, N, Nfft2)
 
             t1=time.time()
             if flag:
@@ -376,7 +376,7 @@ def cross_correlate(rootpath: str, freq_norm: str):
                 if not fft_flag[iiR]: continue
 
                 fft2 = fft_array[iiR]
-                sfft2 = resize_fft(fft2, N,Nfft2)
+                sfft2 = _resize_fft(fft2, N,Nfft2)
                 receiver_std = fft_std[iiR]
 
                 #---------- check the existence of earthquakes ----------
