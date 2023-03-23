@@ -7,7 +7,7 @@ on:
 
 env:
   python_version: 3.8
-  testdir: "${{env.GITHUB_WORKSPACE}}/test"
+  testdir: $GITHUB_WORKSPACE/test
 jobs:
   s0_download:
     runs-on: ubuntu-22.04
