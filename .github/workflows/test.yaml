@@ -28,8 +28,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install "."
   integration_tests:
-      runs-on: ubuntu-22.04
-      needs: integration_setup
+    runs-on: ubuntu-22.04
+    needs: integration_setup
+    steps:
     - name: Test Download (S0)
       working-directory: ./src
       run: python noisepy.py download --start 2019_02_01_00_00_00 --end 2019_02_01_02_00_00 --stations ARV,BAK --inc_hours 1 --path .
@@ -47,7 +48,7 @@ jobs:
         rm -rf STACK
         python noisepy.py stack --path . --method selective
         rm -rf STACK
-        python noisepy.py stack --path . --method pws
+        python noisepy.py stack --path . --method auto_covariance
         rm -rf STACK
         python noisepy.py stack --path . --method pws
 
