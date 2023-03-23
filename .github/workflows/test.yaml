@@ -28,6 +28,7 @@ jobs:
         path: $testdir
   s1_cross_correlate:
     runs-on: ubuntu-22.04
+    needs: s0_download
     steps:
     - name: Checkout Repo
       uses: actions/checkout@v3.3.0
