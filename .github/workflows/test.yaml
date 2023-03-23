@@ -5,20 +5,44 @@ on:
   push: { branches: [master] }
   workflow_dispatch:
 
+env:
+  python_version: 3.8
+  testdir: "./test"
 jobs:
-  integration_tests:
+  s0_download:
     runs-on: ubuntu-22.04
     steps:
     - name: Checkout Repo
       uses: actions/checkout@v3.3.0
     - name: Setup NoisePy
       uses: ./.github/actions/setup
+      with:
+        python-version: "$python_version"
     - name: Test Download (S0)
       working-directory: ./src
-      run: python noisepy.py download --start 2019_02_01_00_00_00 --end 2019_02_01_02_00_00 --stations ARV,BAK --inc_hours 1 --path .
+      run: python noisepy.py download --start 2019_02_01_00_00_00 --end 2019_02_01_02_00_00 --stations ARV,BAK --inc_hours 1 --path $testdir
+    - name: Cache data
+      uses: actions/cache@v3
+      with:
+        key: download_data
+        path: $testdir
+  s1_cross_correlate:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v3.3.0
+    - name: Setup NoisePy
+      uses: ./.github/actions/setup
+      with:
+        python-version: "$python_version"
+    - name: Cache data
+      uses: actions/cache@v3
+      with:
+        key: download_data
+        path: $testdir
     - name: Test Cross-Correlation (S1)
       working-directory: ./src
-      run: python noisepy.py cross_correlate --path .
+      run: python noisepy.py cross_correlate --path $testdir 
     - name: Test Stacking (S2)  
       working-directory: ./src
       run: |

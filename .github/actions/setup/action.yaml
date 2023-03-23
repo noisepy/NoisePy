@@ -1,12 +1,16 @@
 name: Setup 
 description: Setup NoisePy for testing
+inputs:
+  python-version:
+    required: true
+    description: Python version to install
 runs:
   using: composite
   steps:
     - name: Setup Python
       uses: actions/setup-python@v4.5.0
       with:
-        python-version: 3.8
+        python-version: ${{inputs.python_version}}
     - name: Setup MPI
       uses: mpi4py/setup-mpi@v1
     - name: Install project
