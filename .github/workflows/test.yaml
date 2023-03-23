@@ -6,8 +6,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  setup:
-    uses: ./.github/workflows/setup.yaml 
   integration_tests:
     runs-on: ubuntu-22.04
     needs: integration_setup
