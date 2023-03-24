@@ -13,16 +13,16 @@ runs:
     #     python-version: ${{inputs.python-version}}
     # - name: Setup MPI
       # uses: mpi4py/setup-mpi@v1
-    - name: Install prerequisites
-      shell: sh
-      run: |
+    # - name: Install prerequisites
+    #   shell: sh
+    #   run: |
         # apk update
         # apk add --update --no-cache python3
         # apk add py3-mpi4py
-        apt-get update
-        apt-get install -y libopenmpi-dev
-        python3 -m ensurepip
-        pip3 install --upgrade pip
+        # apt-get update
+        # apt-get install -y libopenmpi-dev
+        # python3 -m ensurepip
+        # pip3 install --upgrade pip
     - name: Install project
       shell: sh
       run: |
