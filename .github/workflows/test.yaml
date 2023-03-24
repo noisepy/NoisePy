@@ -26,11 +26,12 @@ jobs:
       with:
         key: download_data_2
         path: ${{runner.temp}}
-  s1_cross_correlate:
+  s1_s2:
     strategy:
       fail-fast: true
       matrix:
         method: [linear, robust, nroot, selective, auto_covariance, pws]
+        freq_norm: [rma, no]
     runs-on: ubuntu-22.04
     needs: s0_download
     steps:
@@ -48,9 +49,7 @@ jobs:
     - name: Test Cross-Correlation (S1)
       working-directory: ./src
       run: |
-        python noisepy.py cross_correlate --path $RUNNER_TEMP --freq_norm rma
-        rm -rf CCF
-        python noisepy.py cross_correlate --path $RUNNER_TEMP --freq_norm no
+        python noisepy.py cross_correlate --path $RUNNER_TEMP --freq_norm ${{matrix.freq_norm}}
     - name: Test Stacking (S2)
       working-directory: ./src
       run: |
