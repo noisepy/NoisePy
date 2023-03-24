@@ -7,7 +7,7 @@ on:
 
 env:
   python_version: 3.8
-  testdir: ./test
+  testdir: ~/test
 jobs:
   s0_download:
     runs-on: ubuntu-22.04
@@ -20,11 +20,11 @@ jobs:
         python-version: ${{env.python_version}}
     - name: Test Download (S0)
       working-directory: ./src
-      run: python noisepy.py download --start 2019_02_01_00_00_00 --end 2019_02_01_02_00_00 --stations ARV,BAK --inc_hours 1 --path ../$testdir
+      run: python noisepy.py download --start 2019_02_01_00_00_00 --end 2019_02_01_02_00_00 --stations ARV,BAK --inc_hours 1 --path $testdir
     - name: Cache data
       uses: actions/cache@v3
       with:
-        key: download_data
+        key: download_data_2
         path: ${{env.testdir}}
   s1_cross_correlate:
     strategy:
@@ -43,11 +43,11 @@ jobs:
     - name: Cache data
       uses: actions/cache@v3
       with:
-        key: download_data
+        key: download_data_2
         path: ${{env.testdir}}
     - name: Test Cross-Correlation (S1)
       working-directory: ./src
-      run: python noisepy.py cross_correlate --path ../$testdir 
+      run: python noisepy.py cross_correlate --path $testdir 
     - name: Test Stacking (S2)  
       working-directory: ./src
       run: |
