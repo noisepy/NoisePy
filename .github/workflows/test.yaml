@@ -5,32 +5,50 @@ on:
   push: { branches: [master] }
   workflow_dispatch:
 
+env:
+  python_version: 3.8
+  # testdir: ~/test
 jobs:
-  unit_test:
-    name: ${{ matrix.python-version }}-unit-test
+  s0_download:
     runs-on: ubuntu-22.04
-    continue-on-error: ${{ matrix.experimental }}
-    strategy:
-      matrix:
-        python-version: ['3.8'] # TODO: What other versions do we need to support?
-        experimental: [false]
     steps:
     - name: Checkout Repo
       uses: actions/checkout@v3.3.0
-    - name: Setup Python
-      uses: actions/setup-python@v4.5.0
+    - name: Setup NoisePy
+      uses: ./.github/actions/setup
       with:
-        python-version: ${{ matrix.python-version }}
-    - name: Setup MPI
-      uses: mpi4py/setup-mpi@v1
-    - name: Install project
-      run: |
-        python -m pip install --upgrade pip
-        pip install "."
+        python-version: ${{env.python_version}}
     - name: Test Download (S0)
       working-directory: ./src
-      run: python noisepy.py download --start 2019_02_01_00_00_00 --end 2019_02_01_02_00_00 --stations ARV --inc_hours 1 --path .
+      run: python noisepy.py download --start 2019_02_01_00_00_00 --end 2019_02_01_02_00_00 --stations ARV,BAK --inc_hours 1 --path $RUNNER_TEMP
+    - name: Cache data
+      uses: actions/cache@v3
+      with:
+        key: download_data_2
+        path: ${{runner.temp}}
+  s1_cross_correlate:
+    strategy:
+      fail-fast: true
+      matrix:
+        method: [linear, robust, nroot, selective, auto_covariance, pws]
+    runs-on: ubuntu-22.04
+    needs: s0_download
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v3.3.0
+    - name: Setup NoisePy
+      uses: ./.github/actions/setup
+      with:
+        python-version: ${{env.python_version}}
+    - name: Cache data
+      uses: actions/cache@v3
+      with:
+        key: download_data_2
+        path: ${{runner.temp}}
     - name: Test Cross-Correlation (S1)
       working-directory: ./src
-      run: python noisepy.py cross_correlate --path .
-
+      run: python noisepy.py cross_correlate --path $RUNNER_TEMP 
+    - name: Test Stacking (S2)  
+      working-directory: ./src
+      run: |
+        python noisepy.py stack --path $RUNNER_TEMP --method ${{matrix.method}}
