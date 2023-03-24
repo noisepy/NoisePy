@@ -16,11 +16,13 @@ runs:
     - name: Install prerequisites
       shell: sh
       run: |
-        apk update
-        apk add --update --no-cache python3
+        # apk update
+        # apk add --update --no-cache python3
+        # apk add py3-mpi4py
+        apt-get update
+        apt-get install -y libopenmpi-dev
         python3 -m ensurepip
         pip3 install --upgrade pip
-        apk add py3-mpi4py
     - name: Install project
       shell: sh
       run: |

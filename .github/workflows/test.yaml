@@ -11,7 +11,7 @@ env:
 jobs:
   s0_download:
     runs-on: ubuntu-22.04
-    container: alpine
+    container: python:3.8
     steps:
     - name: Checkout Repo
       uses: actions/checkout@v3.3.0
