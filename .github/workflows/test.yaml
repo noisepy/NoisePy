@@ -11,7 +11,7 @@ env:
 jobs:
   s0_download:
     runs-on: ubuntu-22.04
-    container: ghcr.io/carlosgjs/noisepy-test:1.1
+    container: ghcr.io/carlosgjs/noisepy-test:1.2
     steps:
     - name: Checkout Repo
       uses: actions/checkout@v3.3.0
@@ -34,7 +34,7 @@ jobs:
         method: [linear, robust, nroot, selective, auto_covariance, pws]
         freq_norm: [rma, no]
     runs-on: ubuntu-22.04
-    container: ghcr.io/carlosgjs/noisepy-test:1.1
+    container: ghcr.io/carlosgjs/noisepy-test:1.2
     needs: s0_download
     steps:
     - name: Checkout Repo
