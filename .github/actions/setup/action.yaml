@@ -14,7 +14,7 @@ runs:
     # - name: Setup MPI
       # uses: mpi4py/setup-mpi@v1
     - name: Install prerequisites
-      shell: bash
+      shell: sh
       run: |
         apk add --update --no-cache python3
         python3 -m ensurepip
