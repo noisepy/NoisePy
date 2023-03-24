@@ -1,5 +1,5 @@
-import numpy as np 
-from numpy import cos,sin 
+import numpy as np
+from numpy import cos,sin
 
 
 # script to check that the rotation is done correctly
@@ -53,8 +53,3 @@ tcorr[7] = -sina*sinb*crap[4]+sina*cosb*crap[3]+cosa*sinb*crap[1]-cosa*cosb*crap
 tcorr[8] = -sina*crap[5]+cosa*crap[2]
 print(tcorr)
 print("YOU SHOULD DEBUG NOISEPY")
-
-
-
-
-

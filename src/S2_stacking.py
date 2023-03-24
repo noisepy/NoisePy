@@ -22,9 +22,9 @@ Stacking script of NoisePy to:
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
          Marine Denolle (mdenolle@fas.harvard.edu)
 
-NOTE: 
-    0. MOST occasions you just need to change parameters followed with detailed explanations to run the script. 
-    1. assuming 3 components are E-N-Z 
+NOTE:
+    0. MOST occasions you just need to change parameters followed with detailed explanations to run the script.
+    1. assuming 3 components are E-N-Z
     2. auto-correlation is not kept in the stacking due to the fact that it has only 6 cross-component.
     this tends to mess up the orders of matrix that stores the CCFs data
 '''
@@ -41,7 +41,7 @@ keep_substack= False                                                # keep all s
 flag         = True                                                 # output intermediate args for debugging
 
 # new rotation para
-rotation     = True                                                 # rotation from E-N-Z to R-T-Z 
+rotation     = True                                                 # rotation from E-N-Z to R-T-Z
 correction   = False                                                # angle correction due to mis-orientation
 
 # maximum memory allowed per core in GB
@@ -58,7 +58,7 @@ def stack(rootpath: str, stack_method: str):
     CCFDIR    = os.path.join(rootpath,'CCF')                            # dir where CC data is stored
     STACKDIR  = os.path.join(rootpath,'STACK')                          # dir where stacked data is going to
     locations = os.path.join(rootpath,'RAW_DATA/station.txt')           # station info including network,station,channel,latitude,longitude,elevation
-    if not os.path.isfile(locations): 
+    if not os.path.isfile(locations):
         raise ValueError('Abort! station info is needed for this script')
 
     ##################################################
@@ -81,7 +81,7 @@ def stack(rootpath: str, stack_method: str):
     # cross component info
     if ncomp==1:
         enz_system = ['ZZ']
-    else: 
+    else:
         enz_system = ['EE','EN','EZ','NE','NN','NZ','ZE','ZN','ZZ']
 
     rtz_components = ['ZR','ZT','ZZ','RR','RT','RZ','TR','TT','TZ']
@@ -103,7 +103,7 @@ def stack(rootpath: str, stack_method: str):
                 'rotation':rotation,
                 'correction':correction}
     # save fft metadata for future reference
-    stack_metadata  = os.path.join(STACKDIR,'stack_data.txt') 
+    stack_metadata  = os.path.join(STACKDIR,'stack_data.txt')
 
     #######################################
     ###########PROCESSING SECTION##########
@@ -116,7 +116,7 @@ def stack(rootpath: str, stack_method: str):
 
     if rank == 0:
         if not os.path.isdir(STACKDIR):os.mkdir(STACKDIR)
-        # save metadata 
+        # save metadata
         fout = open(stack_metadata,'w')
         fout.write(str(stack_para));fout.close()
 
@@ -166,8 +166,8 @@ def stack(rootpath: str, stack_method: str):
             fauto=0
 
         # continue when file is done
-        toutfn = os.path.join(STACKDIR,idir+'/'+pairs_all[ipair]+'.tmp')   
-        if os.path.isfile(toutfn):continue        
+        toutfn = os.path.join(STACKDIR,idir+'/'+pairs_all[ipair]+'.tmp')
+        if os.path.isfile(toutfn):continue
 
         # crude estimation on memory needs (assume float32)
         nccomp     = ncomp*ncomp
@@ -185,7 +185,6 @@ def stack(rootpath: str, stack_method: str):
             raise ValueError('Require %5.3fG memory but only %5.3fG provided)! Cannot load cc data all once!' % (memory_size,MAX_MEM))
         if flag:
             print('Good on memory (need %5.2f G and %s G provided)!' % (memory_size,MAX_MEM))
-            
         # allocate array to store fft data/info
         cc_array = np.zeros((num_chunck*num_segmts,npts_segmt),dtype=np.float32)
         cc_time  = np.zeros(num_chunck*num_segmts,dtype=np.float)
@@ -194,31 +193,41 @@ def stack(rootpath: str, stack_method: str):
 
         # loop through all time-chuncks
         iseg = 0
-        dtype = pairs_all[ipair] 
+        dtype = pairs_all[ipair]
         for ifile in ccfiles:
 
             # load the data from daily compilation
             ds=pyasdf.ASDFDataSet(ifile,mpi=False,mode='r')
             try:
                 path_list   = ds.auxiliary_data[dtype].list()
-                tparameters = ds.auxiliary_data[dtype][path_list[0]].parameters 
-            except Exception: 
+                tparameters = ds.auxiliary_data[dtype][path_list[0]].parameters
+            except Exception:
                 if flag:print('continue! no pair of %s in %s'%(dtype,ifile))
                 continue
-            
+
             # seperate auto and cross-correlation
             if (fauto==1):
                 if ncomp==3 and len(path_list)<6:
                     if flag:print('continue! not enough cross components for auto-correlation %s in %s'%(dtype,ifile))
                     continue
-            else: 
+            else:
+                if ncomp==3 and len(path_list)<9:
+                    if flag:print('continue! not enough cross components for cross-correlation %s in %s'%(dtype,ifile))
+                    continue
+
+            # seperate auto and cross-correlation
+            if (fauto==1):
+                if ncomp==3 and len(path_list)<6:
+                    if flag:print('continue! not enough cross components for auto-correlation %s in %s'%(dtype,ifile))
+                    continue
+            else:
                 if ncomp==3 and len(path_list)<9:
                     if flag:print('continue! not enough cross components for cross-correlation %s in %s'%(dtype,ifile))
                     continue
 
             if len(path_list) >9:
                 raise ValueError('more than 9 cross-component exists for %s %s! please double check'%(ifile,dtype))
-                    
+
             # load the 9-component data, which is in order in the ASDF
             for tpath in path_list:
                 cmp1 = tpath.split('_')[0]
@@ -248,8 +257,8 @@ def stack(rootpath: str, stack_method: str):
 
         # continue when there is no data or for auto-correlation
         if iseg <= 1 or fauto==1: continue
-        outfn = pairs_all[ipair]+'.h5'         
-        if flag:print('ready to output to %s'%(outfn))                     
+        outfn = pairs_all[ipair]+'.h5'
+        if flag:print('ready to output to %s'%(outfn))
 
         # matrix used for rotation
         if rotation:bigstack=np.zeros(shape=(9,npts_segmt),dtype=np.float32)
@@ -264,7 +273,7 @@ def stack(rootpath: str, stack_method: str):
             indx = np.where(cc_comp==comp)[0]
 
             # jump if there are not enough data
-            if len(indx)<2: 
+            if len(indx)<2:
                 iflag=0;break
 
             t2=time.time()
@@ -284,22 +293,22 @@ def stack(rootpath: str, stack_method: str):
                 tparameters['ngood'] = nstacks
                 if stack_method != 'all':
                     data_type = 'Allstack_'+stack_method
-                    ds.add_auxiliary_data(data=allstacks1, 
-                                        data_type=data_type, 
-                                        path=comp, 
+                    ds.add_auxiliary_data(data=allstacks1,
+                                        data_type=data_type,
+                                        path=comp,
                                         parameters=tparameters)
                 else:
-                    ds.add_auxiliary_data(data=allstacks1, 
-                                        data_type='Allstack_linear', 
-                                        path=comp, 
+                    ds.add_auxiliary_data(data=allstacks1,
+                                        data_type='Allstack_linear',
+                                        path=comp,
                                         parameters=tparameters)
-                    ds.add_auxiliary_data(data=allstacks2, 
-                                        data_type='Allstack_pws', 
-                                        path=comp, 
+                    ds.add_auxiliary_data(data=allstacks2,
+                                        data_type='Allstack_pws',
+                                        path=comp,
                                         parameters=tparameters)
-                    ds.add_auxiliary_data(data=allstacks3, 
-                                        data_type='Allstack_robust', 
-                                        path=comp, 
+                    ds.add_auxiliary_data(data=allstacks3,
+                                        data_type='Allstack_robust',
+                                        path=comp,
                                         parameters=tparameters)
 
             # keep a track of all sub-stacked data from S1
@@ -309,11 +318,11 @@ def stack(rootpath: str, stack_method: str):
                         tparameters['time']  = stamps_final[ii]
                         tparameters['ngood'] = ngood_final[ii]
                         data_type = 'T'+str(int(stamps_final[ii]))
-                        ds.add_auxiliary_data(data=cc_final[ii], 
-                                            data_type=data_type, 
-                                            path=comp, 
-                                            parameters=tparameters)            
-            
+                        ds.add_auxiliary_data(data=cc_final[ii],
+                                            data_type=data_type,
+                                            path=comp,
+                                            parameters=tparameters)
+
             t3 = time.time()
             if flag:print('takes %6.2fs to stack one component with %s stacking method' %(t3-t1,stack_method))
 
@@ -332,9 +341,9 @@ def stack(rootpath: str, stack_method: str):
                     tparameters['ngood'] = nstacks
                     data_type = 'Allstack_'+stack_method
                     with pyasdf.ASDFDataSet(stack_h5,mpi=False) as ds2:
-                        ds2.add_auxiliary_data(data=bigstack_rotated[icomp], 
-                                            data_type=data_type, 
-                                            path=comp, 
+                        ds2.add_auxiliary_data(data=bigstack_rotated[icomp],
+                                            data_type=data_type,
+                                            path=comp,
                                             parameters=tparameters)
             else:
                 bigstack_rotated  = noise_module.rotation(bigstack,tparameters,locs,flag)
@@ -347,23 +356,23 @@ def stack(rootpath: str, stack_method: str):
                     tparameters['time']  = stamps_final[0]
                     tparameters['ngood'] = nstacks
                     with pyasdf.ASDFDataSet(stack_h5,mpi=False) as ds2:
-                        ds2.add_auxiliary_data(data=bigstack_rotated[icomp], 
-                                            data_type='Allstack_linear', 
-                                            path=comp, 
-                                            parameters=tparameters)    
-                        ds2.add_auxiliary_data(data=bigstack_rotated1[icomp], 
-                                            data_type='Allstack_pws', 
-                                            path=comp, 
+                        ds2.add_auxiliary_data(data=bigstack_rotated[icomp],
+                                            data_type='Allstack_linear',
+                                            path=comp,
                                             parameters=tparameters)
-                        ds2.add_auxiliary_data(data=bigstack_rotated2[icomp], 
-                                            data_type='Allstack_robust', 
-                                            path=comp, 
+                        ds2.add_auxiliary_data(data=bigstack_rotated1[icomp],
+                                            data_type='Allstack_pws',
+                                            path=comp,
+                                            parameters=tparameters)
+                        ds2.add_auxiliary_data(data=bigstack_rotated2[icomp],
+                                            data_type='Allstack_robust',
+                                            path=comp,
                                             parameters=tparameters)
 
         t4 = time.time()
         if flag:print('takes %6.2fs to stack/rotate all station pairs %s' %(t4-t1,pairs_all[ipair]))
 
-        # write file stamps 
+        # write file stamps
         ftmp = open(toutfn,'w');ftmp.write('done');ftmp.close()
 
     tt1 = time.time()

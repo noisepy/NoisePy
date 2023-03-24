@@ -83,7 +83,7 @@ def plot_moveout_stack(sdir,freqmin,freqmax,ccomp,maxlag=None,tag=None):
     ax[1].xaxis.set_ticks_position('bottom')
     ax[1].set_xlabel('Time [s]')
     ax[1].set_ylabel('Distance [km]')
-    plt.show() 
+    plt.show()
 
 
 def plot_cc_stack(sfile,freqmin,freqmax,ccomp,maxlag=None):
@@ -142,7 +142,7 @@ def plot_cc_stack(sfile,freqmin,freqmax,ccomp,maxlag=None):
     ax[1].xaxis.set_ticks_position('bottom')
     ax[1].set_xlabel('Time [s]')
     ax[1].set_ylabel('Day index')
-    plt.show() 
+    plt.show()
 
 
 def plot_wavefield(sdir,freqmin,freqmax,t0,excitation,tt=3,tag=None):
@@ -152,7 +152,7 @@ def plot_wavefield(sdir,freqmin,freqmax,t0,excitation,tt=3,tag=None):
 
     input parameters:
         sdir:    directory containing the CCFs with the same source
-        freqmin: minimum targeted frequency 
+        freqmin: minimum targeted frequency
         freqmax: maximum targeted frequency
         t0:      the starting time of the window for estimating the seismic power
         excitation: the direction of excited force at the source
@@ -210,7 +210,7 @@ def plot_wavefield(sdir,freqmin,freqmax,t0,excitation,tt=3,tag=None):
                     ccomp.append(tcomp)
                     if tcomp in rlist:
                         k+=1
-                
+
                 if k == len(comp):
                     for icomp in range(len(ccomp)):
                         lonR[ista] = ds.auxiliary_data[tag][ccomp[icomp]].parameters['lonR']
@@ -219,7 +219,7 @@ def plot_wavefield(sdir,freqmin,freqmax,t0,excitation,tt=3,tag=None):
                         tdata = bandpass(tdata,freqmin,freqmax,int(1/delta),corners=4, zerophase=True)
                         amp[ista]  = amp[ista]+np.sum(tdata[indx1:indx2]**2)
                     amp[ista] = np.sqrt(amp[ista]/len(ccomp))
-    
+
     #------good for plotting now-------
     if k == len(ccomp):
         plt.scatter(lonS,latS,marker='^',s=20)
@@ -284,4 +284,4 @@ def plot_freq_time_stack(sfile,freqmin,freqmax,ccomp,maxlag=None):
     ax[1].xaxis.set_ticks_position('bottom')
     ax[1].set_xlabel('Time [s]')
     ax[1].set_ylabel('Day index')
-    plt.show() 
+    plt.show()

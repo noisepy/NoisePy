@@ -118,7 +118,7 @@ plt.show()
 plt.plot(white_original[100:500].imag - white_new[100:500].imag)
 plt.show()
 
-# A strict test does not work because the 
+# A strict test does not work because the
 assert (np.sqrt(np.sum((white_original[0:500] - white_new[0: 500]) ** 2) / 500.) < 0.01 * white_new.max())
 print("1D ok")
 

@@ -58,7 +58,7 @@ if __name__ == "__main__":
     for i in range(300):
         test_stretching()
     print("Done stretching, no errors, %4.2fs." %(time.time()-t))
-    
+
     print("Running stretching using numpy...")
     t = time.time()
     for i in range(300):

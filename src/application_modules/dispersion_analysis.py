@@ -18,10 +18,10 @@ Based on our tests, it generates very similar results to those from Frequency-Ti
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
 
 NOTE:
-    According to Bensen et al., (2007), the centrel frequncy of each narrowband filters (equvalent to 
+    According to Bensen et al., (2007), the centrel frequncy of each narrowband filters (equvalent to
     wavelet tranformed signal at each scale) would be different from the instaneous frequency calculated
-    using instaneous phase due to spectral linkage. We do not correct this effect in this script. Phase 
-    velocity is not calculated here, but could be expaneded using the phase info of wavelet transformed signal.    
+    using instaneous phase due to spectral linkage. We do not correct this effect in this script. Phase
+    velocity is not calculated here, but could be expaneded using the phase info of wavelet transformed signal.
 '''
 
 ############################################
@@ -38,7 +38,7 @@ stack_method = 'linear'                                                     # wh
 lag_type = 'sym'                                                            # options to do measurements on the 'neg', 'pos' or 'sym' lag (average of neg and pos)
 ncomp = 3
 if ncomp==1:
-    rtz_system = ['ZZ']    
+    rtz_system = ['ZZ']
 else:
     rtz_system = ['ZR','ZT','ZZ','RR','RT','RZ','TR','TT','TZ']
 # index for plotting the figures
@@ -63,7 +63,7 @@ wvn='morlet'
 
 # get station-pair name ready for output
 tmp   = sfile.split('/')[-1].split('_')
-spair = tmp[0]+'_'+tmp[1][:-3]                                   
+spair = tmp[0]+'_'+tmp[1][:-3]
 
 # load basic data information including dt, dist and maxlag
 with pyasdf.ASDFDataSet(sfile,mode='r') as ds:
@@ -135,11 +135,11 @@ for comp in rtz_system:
     # use amplitude of the cwt
     period = 1/freq
     rcwt,pcwt = np.abs(cwt)**2,np.angle(cwt)
-    
+
     # interpolation to grids of freq-vel
     fc = scipy.interpolate.interp2d(dist/tvec,period,rcwt)
     rcwt_new = fc(vel,per)
-    
+
     # do normalization for each frequency
     for ii in range(len(per)):
         rcwt_new[ii] /= np.max(rcwt_new[ii])
@@ -154,8 +154,8 @@ for comp in rtz_system:
 
     # plot wavelet spectrum
     if ncomp == 3:
-        
-        # dispersive image 
+
+        # dispersive image
         im=ax[pos1,pos2].imshow(np.transpose(rcwt_new),cmap='jet',extent=[per[0],per[-1],vel[0],vel[-1]],aspect='auto',origin='lower')
         # extracted dispersion curves
         if comp == 'ZZ' or comp == 'RR' or comp == 'TT':
@@ -178,7 +178,7 @@ for comp in rtz_system:
         font = {'family': 'serif', 'color':  'green', 'weight': 'bold','size': 16}
         plt.text(int(per[-1]*0.85),vel[-1]-0.5,comp,fontdict=font)
         plt.tight_layout()
-        
+
 # save figures
 outfname = outdir+'/{0:s}_{1:s}.pdf'.format(spair,lag_type)
 if ncomp==3:

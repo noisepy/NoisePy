@@ -13,16 +13,16 @@ import noise_module
 
 '''
 This script:
-    1) downloads data your choice of Client or pre-compiled station list, 
+    1) downloads data your choice of Client or pre-compiled station list,
     2) cleans up the traces (options: gaps, removing instrumental response,
                             downsampling)
     3) saves the data into ASDF data format.
 authors: Marine Denolle (mdenolle@fas.harvard.edu) - 11/16/18,06/08/19
          Chengxin Jiang (chengxin_jiang@fas.harvard.edu) - 02/22/19
-         
-Note: segmentation fault while manipulating obspy stream can come from too large memory: 
+
+Note: segmentation fault while manipulating obspy stream can come from too large memory:
 - reduce the inc_day variable
-A beginning of nice NoisePy journey! 
+A beginning of nice NoisePy journey!
 '''
 
 ###############################
@@ -42,30 +42,30 @@ client    = Client('GEONET')                    # client/data center
 down_list = False                               # download stations from pre-compiled list
 oput_CSV  = True                                # output station.list to a CSV file to be used in later stacking steps
 flag      = True                                # print progress when running the script
-NewFreq   = 10                                  # resampling at X samples per seconds 
+NewFreq   = 10                                  # resampling at X samples per seconds
 rm_resp   = False                               # boolean to remove instrumental response
 respdir   = 'none'                              # output response directory
 freqmin   = 0.05                                # pre filtering frequency bandwidth
 freqmax   = 4
 
-# station information 
+# station information
 lamin,lomin,lamax,lomax=-46.5,168,-38,175       # regional box: min lat, min lon, max lat, max lon
 dchan= ['HH*']                                  # channel if down_list=false
-dnet = ["NZ"]                                   # network  
+dnet = ["NZ"]                                   # network
 dsta = ["M?Z"]                                  # station (do either one station or *)
 start_date = ["2018_05_01_0_0_0"]               # start date of download
 end_date   = ["2018_05_08_0_0_0"]               # end date of download
 inc_hours  = 48                                 # length of data for each request (in hour)
 
 # time tags
-starttime = obspy.UTCDateTime(start_date[0])       
+starttime = obspy.UTCDateTime(start_date[0])
 endtime   = obspy.UTCDateTime(end_date[0])
 all_chunck= noise_module.get_event_list(start_date[0],end_date[0],inc_hours)
 
 # assemble parameters for pre-processing
 prepro_para = {'rm_resp':rm_resp,'respdir':respdir,'freqmin':freqmin,'freqmax':freqmax,\
     'samp_freq':NewFreq,'start_date':start_date,'end_date':end_date,'inc_days':inc_hours}
-metadata    = os.path.join(direc,'download_info.txt') 
+metadata    = os.path.join(direc,'download_info.txt')
 fout = open(metadata,'w')
 fout.write(str(prepro_para))
 fout.close()
@@ -124,9 +124,9 @@ else:
 # loop through each time chunck
 for ick in range(len(all_chunck)-1):
     s1=obspy.UTCDateTime(all_chunck[ick])
-    s2=obspy.UTCDateTime(all_chunck[ick+1]) 
-    date_info = {'starttime':s1,'endtime':s2} 
-    
+    s2=obspy.UTCDateTime(all_chunck[ick+1])
+    date_info = {'starttime':s1,'endtime':s2}
+
     # filename of the ASDF file
     ff=os.path.join(direc,all_chunck[ick]+'T'+all_chunck[ick+1]+'.h5')
 
@@ -139,10 +139,10 @@ for ick in range(len(all_chunck)-1):
 
         # open the ASDF file
         with pyasdf.ASDFDataSet(ff,compression="gzip-3") as ds:
-            
-            # add the inventory for all components + all time of this tation          
+
+            # add the inventory for all components + all time of this tation
             if (not ds.waveforms.list()) :
-                ds.add_stationxml(sta_inv)     
+                ds.add_stationxml(sta_inv)
             try:
                 # get data
                 t0=time.time()
@@ -152,8 +152,8 @@ for ick in range(len(all_chunck)-1):
             except Exception as e:
                 print(e)
                 continue
-                
-            # preprocess to clean data  
+
+            # preprocess to clean data
             tr = noise_module.preprocess_raw(tr,sta_inv,prepro_para,date_info)
             t2 = time.time()
 

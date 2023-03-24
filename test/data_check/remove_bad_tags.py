@@ -10,7 +10,7 @@ STACKDIR = '/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/STACK1'
 ALLFILES = glob.glob(os.path.join(STACKDIR,'*/*.h5'))
 
 nfiles = len(ALLFILES)
-ncomp  = 17         # expected component number including both E-N-Z and R-T-Z systems 
+ncomp  = 17         # expected component number including both E-N-Z and R-T-Z systems
 
 for ii in range(nfiles):
 
@@ -25,10 +25,9 @@ for ii in range(nfiles):
             if len(rlist)!=ncomp:
                 print('missing data @ %s'%data_type)
                 badlist.append(data_type)
-            
+
     with pyasdf.ASDFDataSet(nfiles[ii]) as ds:
         if badlist:
             for jj in range(len(badlist)):
                 print('removing trace %s'%badlist[jj])
                 del ds.auxiliary_data[badlist[jj]]
-                

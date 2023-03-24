@@ -1,0 +1,4 @@
+[flake8]
+max-line-length = 100
+output-file = flake8_log.txt
+tee = True

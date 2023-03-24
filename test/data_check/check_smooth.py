@@ -9,7 +9,7 @@ import noise_module
 
 '''
 This script compares several different ways for smoothing a signal,
-including convolution(one-side average), running average mean with 
+including convolution(one-side average), running average mean with
 numba compiled and a function from obspy
 '''
 

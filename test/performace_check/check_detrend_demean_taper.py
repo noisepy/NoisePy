@@ -73,7 +73,7 @@ def taper(data):
     #ndata = np.zeros(shape=data.shape,dtype=data.dtype)
     if data.ndim == 1:
         npts = data.shape[0]
-        # window length 
+        # window length
         if npts*0.05>20:wlen = 20
         else:wlen = npts*0.05
         # taper values
@@ -87,7 +87,7 @@ def taper(data):
         data *= win
     elif data.ndim == 2:
         npts = data.shape[1]
-        # window length 
+        # window length
         if npts*0.05>20:wlen = 20
         else:wlen = npts*0.05
         # taper values
@@ -119,7 +119,7 @@ def test_1d(sacfile):
     tr[0].taper(max_percentage=0.05,max_length=20)
     t3=time.time()
     print('1D: it takes %6.3f in total with %6.3f %6.3f and %6.3f for obspy'%(t3-t0,t1-t0,t2-t1,t3-t2))
-    
+
     # detrend, demean using newly defined function
     t0=time.time()
     tdata = demean(tdata)
@@ -151,13 +151,13 @@ def test_2d(sacfile):
     t1=time.time()
 
     print('2D: it takes %6.3f (%d traces) in total with obspy'%(t1-t0,ii))
-    
+
     # define parameters for new
     nseg = int(np.floor((86400-cc_len)/step))
     sps  = int(tr[0].stats.sampling_rate)
     npts = cc_len*sps
     dataS = np.zeros(shape=(nseg,npts),dtype=np.float32)
-    
+
     indx1 = 0
     for iseg in range(nseg):
         indx2 = indx1+npts

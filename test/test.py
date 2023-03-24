@@ -26,10 +26,10 @@ This script:
     3) saves data into ASDF format (see Krischer et al., 2016 for more details on the data structure);
     4) parallelize the downloading processes with MPI.
     5) avoids downloading data for stations that already have 1 or 3 channels
-Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu) 
-         Marine Denolle (mdenolle@fas.harvard.edu) 
-NOTE: 
-    0. MOST occasions you just need to change parameters followed with detailed explanations to run the script. 
+Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
+         Marine Denolle (mdenolle@fas.harvard.edu)
+NOTE:
+    0. MOST occasions you just need to change parameters followed with detailed explanations to run the script.
     1. to avoid segmentation fault later in cross-correlation calculations due to too large data in memory,
     a rough estimation of the memory needs is made in the beginning of the code. you can reduce the value of
     inc_hours if memory on your machine is not enough to load proposed (x) hours of noise data all at once;
@@ -38,7 +38,7 @@ NOTE:
     3. for unknow reasons, including station location code during feteching process sometime result in no-data.
     Therefore, we recommend setting location code to "*" in the request setting (L105 & 134) when it is confirmed
     manually by the users that no stations with same name but different location codes occurs.
-Enjoy the NoisePy journey! 
+Enjoy the NoisePy journey!
 '''
 
 #########################################################
@@ -55,16 +55,16 @@ dlist  = os.path.join(direc,'station.txt')                      # CSV file for s
 client    = Client('IRIS')                                      # client/data center. see https://docs.obspy.org/packages/obspy.clients.fdsn.html for a list
 down_list = False                                               # download stations from a pre-compiled list or not
 flag      = False                                               # print progress when running the script; recommend to use it at the begining
-samp_freq = 2                                                  # targeted sampling rate at X samples per seconds 
+samp_freq = 2                                                  # targeted sampling rate at X samples per seconds
 rm_resp   = 'no'                                                # select 'no' to not remove response and use 'inv','spectrum','RESP', or 'polozeros' to remove response
 respdir   = os.path.join(rootpath,'resp')                       # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
 freqmin   = 0.02                                                # pre filtering frequency bandwidth
-freqmax   = 1                                                   # note this cannot exceed Nquist freq                         
+freqmax   = 1                                                   # note this cannot exceed Nquist freq
 
 # targeted region/station information: only needed when down_list is False
 lamin,lamax,lomin,lomax= 35.5,36.5,-120.5,-119.5                # regional box: min lat, min lon, max lat, max lon (-114.0)
 chan_list = ["HHE","HHN","HHZ"]                                 # channel if down_list=false (format like "HN?" not work here)
-net_list  = ["TO"]                                              # network list 
+net_list  = ["TO"]                                              # network list
 sta_list  = ["*"]                                               # station (using a station list is way either compared to specifying stations one by one)
 start_date = ["2015_01_01_0_0_0"]                               # start date of download
 end_date   = ["2015_01_01_12_0_0"]                               # end date of download
@@ -80,7 +80,7 @@ MAX_MEM   = 5.0                                                 # maximum memory
 # we expect no parameters need to be changed below
 
 # time tags
-starttime = obspy.UTCDateTime(start_date[0])       
+starttime = obspy.UTCDateTime(start_date[0])
 endtime   = obspy.UTCDateTime(end_date[0])
 if flag:
     print('station.list selected [%s] for data from %s to %s with %sh interval'%(down_list,starttime,endtime,inc_hours))
@@ -89,7 +89,7 @@ if flag:
 prepro_para = {'rm_resp':rm_resp,'respdir':respdir,'freqmin':freqmin,'freqmax':freqmax,'samp_freq':samp_freq,'start_date':\
     start_date,'end_date':end_date,'inc_hours':inc_hours,'cc_len':cc_len,'step':step,'MAX_MEM':MAX_MEM,'lamin':lamin,\
     'lamax':lamax,'lomin':lomin,'lomax':lomax,'ncomp':ncomp}
-metadata = os.path.join(direc,'download_info.txt') 
+metadata = os.path.join(direc,'download_info.txt')
 
 # prepare station info (existing station list vs. fetching from client)
 if down_list:
@@ -97,7 +97,7 @@ if down_list:
         raise IOError('file %s not exist! double check!' % dlist)
 
     # read station info from list
-    locs = pd.read_csv(dlist)                   
+    locs = pd.read_csv(dlist)
     nsta = len(locs)
     chan = list(locs.iloc[:]['channel'])
     net  = list(locs.iloc[:]['network'])
@@ -166,18 +166,18 @@ size = comm.Get_size()
 if rank==0:
     if not os.path.isdir(rootpath):os.mkdir(rootpath)
     if not os.path.isdir(direc):os.mkdir(direc)
-    
+
     # output station list
-    if not down_list:     
+    if not down_list:
         dict = {'network':net,'station':sta,'channel':chan,'latitude':lat,'longitude':lon,'elevation':elev}
-        locs = pd.DataFrame(dict)        
+        locs = pd.DataFrame(dict)
         locs.to_csv(os.path.join(direc,'station.txt'),index=False)
-    
+
     # save parameters for future reference
     fout = open(metadata,'w')
     fout.write(str(prepro_para));fout.close()
 
-    # get MPI variables ready 
+    # get MPI variables ready
     all_chunk = noise_module.get_event_list(start_date[0],end_date[0],inc_hours)
     if len(all_chunk)<1:
         raise ValueError('Abort! no data chunk between %s and %s' % (start_date[0],end_date[0]))
@@ -190,13 +190,13 @@ splits = comm.bcast(splits,root=0)
 all_chunk  = comm.bcast(all_chunk,root=0)
 extra = splits % size
 
-# MPI: loop through each time chunk 
+# MPI: loop through each time chunk
 for ick in range(rank,splits,size):
 
     s1=obspy.UTCDateTime(all_chunk[ick])
-    s2=obspy.UTCDateTime(all_chunk[ick+1]) 
-    date_info = {'starttime':s1,'endtime':s2} 
-    
+    s2=obspy.UTCDateTime(all_chunk[ick+1])
+    date_info = {'starttime':s1,'endtime':s2}
+
     # keep a track of the channels already exists
     num_records = np.zeros(nsta,dtype=np.int16)
 
@@ -230,11 +230,11 @@ for ick in range(rank,splits,size):
             except Exception as e:
                 print(e);continue
 
-            # add the inventory for all components + all time of this tation         
+            # add the inventory for all components + all time of this tation
             try:
-                ds.add_stationxml(sta_inv) 
-            except Exception: 
-                pass   
+                ds.add_stationxml(sta_inv)
+            except Exception:
+                pass
 
             try:
                 # get data
@@ -244,8 +244,8 @@ for ick in range(rank,splits,size):
                 t1=time.time()
             except Exception as e:
                 print(e,'for',sta[ista]);continue
-                
-            # preprocess to clean data  
+
+            # preprocess to clean data
             print(sta[ista])
             tr = noise_module.preprocess_raw(tr,sta_inv,prepro_para,date_info)
             t2 = time.time()
@@ -269,15 +269,15 @@ comm.barrier()
 rootpath  = './'                # root path for this data processing
 CCFDIR    = os.path.join(rootpath,'CCF')                                    # dir to store CC data
 DATADIR   = os.path.join(rootpath,'RAW_DATA')                               # dir where noise data is located
-local_data_path = os.path.join(rootpath,'2016_*') 
+local_data_path = os.path.join(rootpath,'2016_*')
 
 #-------some control parameters--------
-input_fmt   = 'asdf'                                                        # string: 'asdf', 'sac','mseed' 
+input_fmt   = 'asdf'                                                        # string: 'asdf', 'sac','mseed'
 freq_norm   = 'rma'                                                         # 'no' for no whitening, or 'rma', 'one_bit' for normalization
 time_norm   = 'no'                                                          # 'no' for no normalization, or 'rma', 'one_bit' for normalization
 cc_method   = 'xcorr'                                                       # select between 'raw', 'deconv' and 'coherency'
 flag        = False                                                         # print intermediate variables and computing time for debugging purpose
-acorr_only  = False                                                         # only perform auto-correlation 
+acorr_only  = False                                                         # only perform auto-correlation
 xcorr_only  = False                                                         # only perform cross-correlation or not
 ncomp       = 3                                                             # 1 or 3 component data (needed to decide whether do rotation)
 
@@ -286,7 +286,7 @@ stationxml = False                                                          # st
 rm_resp   = 'no'                                                            # select 'no' to not remove response and use 'inv','spectrum','RESP', or 'polozeros' to remove response
 respdir   = os.path.join(rootpath,'resp')                                   # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
 
-# pre-processing parameters 
+# pre-processing parameters
 cc_len    = 1800                                                            # basic unit of data length for fft (sec)
 step      = 450                                                             # overlapping between each cc_len (sec)
 smooth_N  = 10                                                              # moving window length for time/freq domain normalization if selected (points)
@@ -313,8 +313,8 @@ if input_fmt == 'asdf':
     freqmax   = down_info['freqmax']
     start_date = down_info['start_date']
     end_date   = down_info['end_date']
-    inc_hours  = down_info['inc_hours']  
-    #ncomp      = down_info['ncomp'] 
+    inc_hours  = down_info['inc_hours']
+    #ncomp      = down_info['ncomp']
 else:   # sac or mseed format
     samp_freq = 20
     freqmin   = 0.05
@@ -335,7 +335,7 @@ fc_para={'samp_freq':samp_freq,'dt':dt,'cc_len':cc_len,'step':step,'freqmin':fre
     'maxlag':maxlag,'max_over_std':max_over_std,'MAX_MEM':MAX_MEM,'ncomp':ncomp,'stationxml':stationxml,\
     'rm_resp':rm_resp,'respdir':respdir,'input_fmt':input_fmt}
 # save fft metadata for future reference
-fc_metadata  = os.path.join(CCFDIR,'fft_cc_data.txt')       
+fc_metadata  = os.path.join(CCFDIR,'fft_cc_data.txt')
 
 #######################################
 ###########PROCESSING SECTION##########
@@ -348,8 +348,8 @@ size = comm.Get_size()
 
 if rank == 0:
     if not os.path.isdir(CCFDIR):os.mkdir(CCFDIR)
-    
-    # save metadata 
+
+    # save metadata
     fout = open(fc_metadata,'w')
     fout.write(str(fc_para));fout.close()
 
@@ -381,16 +381,16 @@ if input_fmt != 'asdf': nsta = comm.bcast(nsta,root=0)
 
 # MPI loop: loop through each user-defined time chunk
 for ick in range (rank,splits,size):
-    t10=time.time()   
+    t10=time.time()
 
     #############LOADING NOISE DATA AND DO FFT##################
 
     # get the tempory file recording cc process
     if input_fmt == 'asdf':
         tmpfile = os.path.join(CCFDIR,tdir[ick].split('/')[-1].split('.')[0]+'.tmp')
-    else: 
+    else:
         tmpfile = os.path.join(CCFDIR,tdir[ick].split('/')[-1]+'.tmp')
-    
+
     # check whether time chunk been processed or not
     if os.path.isfile(tmpfile):
         ftemp = open(tmpfile,'r')
@@ -400,10 +400,10 @@ for ick in range (rank,splits,size):
         else:
             ftemp.close()
             os.remove(tmpfile)
-    
+
     # retrive station information
     if input_fmt == 'asdf':
-        ds=pyasdf.ASDFDataSet(tdir[ick],mpi=False,mode='r') 
+        ds=pyasdf.ASDFDataSet(tdir[ick],mpi=False,mode='r')
         sta_list = ds.waveforms.list()
         nsta=ncomp*len(sta_list)
         print('found %d stations in total'%nsta)
@@ -425,9 +425,9 @@ for ick in range (rank,splits,size):
     fft_array = np.zeros((nsta,nseg_chunk*(nnfft//2)),dtype=np.complex64)
     fft_std   = np.zeros((nsta,nseg_chunk),dtype=np.float32)
     fft_flag  = np.zeros(nsta,dtype=np.int16)
-    fft_time  = np.zeros((nsta,nseg_chunk),dtype=np.float64) 
+    fft_time  = np.zeros((nsta,nseg_chunk),dtype=np.float64)
     # station information (for every channel)
-    station=[];network=[];channel=[];clon=[];clat=[];location=[];elevation=[]     
+    station=[];network=[];channel=[];clon=[];clat=[];location=[];elevation=[]
 
     # loop through all stations
     iii = 0
@@ -443,10 +443,10 @@ for ick in range (rank,splits,size):
                 continue
             sta,net,lon,lat,elv,loc = noise_module.sta_info_from_inv(inv1)
 
-            # get days information: works better than just list the tags 
+            # get days information: works better than just list the tags
             all_tags = ds.waveforms[tmps].get_waveform_tags()
             if len(all_tags)==0:continue
-            
+
         else: # get station information
             all_tags = [1]
             sta = tmps.split('/')[-1]
@@ -489,7 +489,7 @@ for ick in range (rank,splits,size):
             fft_time[iii]  = dataS_t
             iii+=1
             del trace_stdS,dataS_t,dataS,source_white,data
-    
+
     if input_fmt == 'asdf': del ds
 
     # check whether array size is enough
@@ -498,19 +498,19 @@ for ick in range (rank,splits,size):
 
     #############PERFORM CROSS-CORRELATION##################
     ftmp = open(tmpfile,'w')
-    # make cross-correlations 
+    # make cross-correlations
     for iiS in range(iii):
         fft1 = fft_array[iiS]
         source_std = fft_std[iiS]
         sou_ind = np.where((source_std<fc_para['max_over_std'])&(source_std>0)&(np.isnan(source_std)==0))[0]
         if not fft_flag[iiS] or not len(sou_ind): continue
-                
+
         t0=time.time()
         #-----------get the smoothed source spectrum for decon later----------
         sfft1 = noise_module.smooth_source_spect(fc_para,fft1)
         sfft1 = sfft1.reshape(N,Nfft2)
         t1=time.time()
-        if flag: 
+        if flag:
             print('smoothing source takes %6.4fs' % (t1-t0))
 
         # get index right for auto/cross correlation
@@ -522,7 +522,7 @@ for ick in range (rank,splits,size):
         for iiR in range(istart,iend):
             if flag:print('receiver: %s %s' % (station[iiR],network[iiR]))
             if not fft_flag[iiR]: continue
-                
+
             fft2 = fft_array[iiR];sfft2 = fft2.reshape(N,Nfft2)
             receiver_std = fft_std[iiR]
 
@@ -538,7 +538,7 @@ for ick in range (rank,splits,size):
             #---------------keep daily cross-correlation into a hdf5 file--------------
             if input_fmt == 'asdf':
                 tname = tdir[ick].split('/')[-1]
-            else: 
+            else:
                 tname = tdir[ick].split('/')[-1]+'.h5'
             cc_h5 = os.path.join(CCFDIR,tname)
             crap  = np.zeros(corr.shape,dtype=corr.dtype)
@@ -557,7 +557,7 @@ for ick in range (rank,splits,size):
 
             t4=time.time()
             if flag:print('read S %6.4fs, cc %6.4fs, write cc %6.4fs'% ((t1-t0),(t3-t2),(t4-t3)))
-            
+
             del fft2,sfft2,receiver_std
         del fft1,sfft1,source_std
 
@@ -580,7 +580,7 @@ rootpath  = './'                                                    # root path 
 CCFDIR    = os.path.join(rootpath,'CCF')                            # dir where CC data is stored
 STACKDIR  = os.path.join(rootpath,'STACK')                          # dir where stacked data is going to
 locations = os.path.join(rootpath,'RAW_DATA/station.txt')           # station info including network,station,channel,latitude,longitude,elevation
-if not os.path.isfile(locations): 
+if not os.path.isfile(locations):
     raise ValueError('Abort! station info is needed for this script')
 
 # define new stacking para
@@ -589,7 +589,7 @@ flag         = False                                                # output int
 stack_method = 'linear'                                             # linear, pws, robust, nroot, selective, auto_covariance or all
 
 # new rotation para
-rotation     = True                                                 # rotation from E-N-Z to R-T-Z 
+rotation     = True                                                 # rotation from E-N-Z to R-T-Z
 correction   = False                                                # angle correction due to mis-orientation
 if rotation and correction:
     corrfile = os.path.join(rootpath,'meso_angles.txt')             # csv file containing angle info to be corrected
@@ -619,7 +619,7 @@ substack_len= fc_para['substack_len']
 # cross component info
 if ncomp==1:
     enz_system = ['ZZ']
-else: 
+else:
     enz_system = ['EE','EN','EZ','NE','NN','NZ','ZE','ZN','ZZ']
 
 rtz_components = ['ZR','ZT','ZZ','RR','RT','RZ','TR','TT','TZ']
@@ -641,7 +641,7 @@ stack_para={'samp_freq':samp_freq,
             'rotation':rotation,
             'correction':correction}
 # save fft metadata for future reference
-stack_metadata  = os.path.join(STACKDIR,'stack_data.txt') 
+stack_metadata  = os.path.join(STACKDIR,'stack_data.txt')
 
 #######################################
 ###########PROCESSING SECTION##########
@@ -654,7 +654,7 @@ size = comm.Get_size()
 
 if rank == 0:
     if not os.path.isdir(STACKDIR):os.mkdir(STACKDIR)
-    # save metadata 
+    # save metadata
     fout = open(stack_metadata,'w')
     fout.write(str(stack_para));fout.close()
 
@@ -698,8 +698,8 @@ for ipair in range (rank,splits,size):
     idir  = ttr[0]
 
     # continue when file is done
-    toutfn = os.path.join(STACKDIR,idir+'/'+pairs_all[ipair]+'.tmp')   
-    if os.path.isfile(toutfn):continue        
+    toutfn = os.path.join(STACKDIR,idir+'/'+pairs_all[ipair]+'.tmp')
+    if os.path.isfile(toutfn):continue
 
     # crude estimation on memory needs (assume float32)
     nccomp     = ncomp*ncomp
@@ -717,7 +717,7 @@ for ipair in range (rank,splits,size):
         raise ValueError('Require %5.3fG memory but only %5.3fG provided)! Cannot load cc data all once!' % (memory_size,MAX_MEM))
     if flag:
         print('Good on memory (need %5.2f G and %s G provided)!' % (memory_size,MAX_MEM))
-        
+
     # allocate array to store fft data/info
     cc_array = np.zeros((num_chunck*num_segmts,npts_segmt),dtype=np.float32)
     cc_time  = np.zeros(num_chunck*num_segmts,dtype=np.float)
@@ -726,25 +726,25 @@ for ipair in range (rank,splits,size):
 
     # loop through all time-chuncks
     iseg = 0
-    dtype = pairs_all[ipair] 
+    dtype = pairs_all[ipair]
     for ifile in ccfiles:
 
         # load the data from daily compilation
         ds=pyasdf.ASDFDataSet(ifile,mpi=False,mode='r')
         try:
             path_list   = ds.auxiliary_data[dtype].list()
-            tparameters = ds.auxiliary_data[dtype][path_list[0]].parameters 
-        except Exception: 
+            tparameters = ds.auxiliary_data[dtype][path_list[0]].parameters
+        except Exception:
             if flag:print('continue! no pair of %s in %s'%(dtype,ifile))
             continue
-        
+
         if ncomp==3 and len(path_list)<9:
             if flag:print('continue! not enough cross components for %s in %s'%(dtype,ifile))
             continue
 
         if len(path_list) >9:
             raise ValueError('more than 9 cross-component exists for %s %s! please double check'%(ifile,dtype))
-                   
+
         # load the 9-component data, which is in order in the ASDF
         for tpath in path_list:
             cmp1 = tpath.split('_')[0]
@@ -774,8 +774,8 @@ for ipair in range (rank,splits,size):
 
     # continue when there is no data
     if iseg <= 1: continue
-    outfn = pairs_all[ipair]+'.h5'         
-    if flag:print('ready to output to %s'%(outfn))                     
+    outfn = pairs_all[ipair]+'.h5'
+    if flag:print('ready to output to %s'%(outfn))
 
     # matrix used for rotation
     if rotation:bigstack=np.zeros(shape=(9,npts_segmt),dtype=np.float32)
@@ -790,7 +790,7 @@ for ipair in range (rank,splits,size):
         indx = np.where(cc_comp==comp)[0]
 
         # jump if there are not enough data
-        if len(indx)<2: 
+        if len(indx)<2:
             iflag=0;break
 
         t2=time.time()
@@ -810,22 +810,22 @@ for ipair in range (rank,splits,size):
             tparameters['ngood'] = nstacks
             if stack_method != 'all':
                 data_type = 'Allstack_'+stack_method
-                ds.add_auxiliary_data(data=allstacks1, 
-                                      data_type=data_type, 
-                                      path=comp, 
+                ds.add_auxiliary_data(data=allstacks1,
+                                      data_type=data_type,
+                                      path=comp,
                                       parameters=tparameters)
             else:
-                ds.add_auxiliary_data(data=allstacks1, 
-                                      data_type='Allstack_linear', 
-                                      path=comp, 
+                ds.add_auxiliary_data(data=allstacks1,
+                                      data_type='Allstack_linear',
+                                      path=comp,
                                       parameters=tparameters)
-                ds.add_auxiliary_data(data=allstacks2, 
-                                      data_type='Allstack_pws', 
-                                      path=comp, 
+                ds.add_auxiliary_data(data=allstacks2,
+                                      data_type='Allstack_pws',
+                                      path=comp,
                                       parameters=tparameters)
-                ds.add_auxiliary_data(data=allstacks3, 
-                                      data_type='Allstack_robust', 
-                                      path=comp, 
+                ds.add_auxiliary_data(data=allstacks3,
+                                      data_type='Allstack_robust',
+                                      path=comp,
                                       parameters=tparameters)
 
         # keep a track of all sub-stacked data from S1
@@ -835,11 +835,11 @@ for ipair in range (rank,splits,size):
                     tparameters['time']  = stamps_final[ii]
                     tparameters['ngood'] = ngood_final[ii]
                     data_type = 'T'+str(int(stamps_final[ii]))
-                    ds.add_auxiliary_data(data=cc_final[ii], 
-                                          data_type=data_type, 
-                                          path=comp, 
-                                          parameters=tparameters)            
-        
+                    ds.add_auxiliary_data(data=cc_final[ii],
+                                          data_type=data_type,
+                                          path=comp,
+                                          parameters=tparameters)
+
         t3 = time.time()
         if flag:print('takes %6.2fs to stack one component with %s stacking method' %(t3-t1,stack_method))
 
@@ -858,9 +858,9 @@ for ipair in range (rank,splits,size):
                 tparameters['ngood'] = nstacks
                 data_type = 'Allstack_'+stack_method
                 with pyasdf.ASDFDataSet(stack_h5,mpi=False) as ds2:
-                    ds2.add_auxiliary_data(data=bigstack_rotated[icomp], 
-                                           data_type=data_type, 
-                                           path=comp, 
+                    ds2.add_auxiliary_data(data=bigstack_rotated[icomp],
+                                           data_type=data_type,
+                                           path=comp,
                                            parameters=tparameters)
         else:
             bigstack_rotated  = noise_module.rotation(bigstack,tparameters,locs,flag)
@@ -873,23 +873,23 @@ for ipair in range (rank,splits,size):
                 tparameters['time']  = stamps_final[0]
                 tparameters['ngood'] = nstacks
                 with pyasdf.ASDFDataSet(stack_h5,mpi=False) as ds2:
-                    ds2.add_auxiliary_data(data=bigstack_rotated[icomp], 
-                                           data_type='Allstack_linear', 
-                                           path=comp, 
-                                           parameters=tparameters)    
-                    ds2.add_auxiliary_data(data=bigstack_rotated1[icomp], 
-                                           data_type='Allstack_pws', 
-                                           path=comp, 
+                    ds2.add_auxiliary_data(data=bigstack_rotated[icomp],
+                                           data_type='Allstack_linear',
+                                           path=comp,
                                            parameters=tparameters)
-                    ds2.add_auxiliary_data(data=bigstack_rotated2[icomp], 
-                                           data_type='Allstack_robust', 
-                                           path=comp, 
+                    ds2.add_auxiliary_data(data=bigstack_rotated1[icomp],
+                                           data_type='Allstack_pws',
+                                           path=comp,
+                                           parameters=tparameters)
+                    ds2.add_auxiliary_data(data=bigstack_rotated2[icomp],
+                                           data_type='Allstack_robust',
+                                           path=comp,
                                            parameters=tparameters)
 
     t4 = time.time()
     if flag:print('takes %6.2fs to stack/rotate all station pairs %s' %(t4-t1,pairs_all[ipair]))
 
-    # write file stamps 
+    # write file stamps
     ftmp = open(toutfn,'w');ftmp.write('done');ftmp.close()
 
 tt1 = time.time()
@@ -899,5 +899,3 @@ comm.barrier()
 # merge all path_array and output
 if rank == 0:
     sys.exit()
-
-    

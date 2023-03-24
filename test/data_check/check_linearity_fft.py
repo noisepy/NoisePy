@@ -1,10 +1,10 @@
-import pyasdf 
-import numpy as np 
+import pyasdf
+import numpy as np
 import scipy.fftpack
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
 
 '''
-this script takes a chunk of noise spectrum for a station pair and 
+this script takes a chunk of noise spectrum for a station pair and
 compare their cross-correlation functions computed using two schemes:
 one is averaging the frequency domain and the other is in the time
 domain

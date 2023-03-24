@@ -1,7 +1,7 @@
 import obspy
 import glob
 import os
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
 
 event = '/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/noise_data/Event_2010_???'
 cc_len = 3600

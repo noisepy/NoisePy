@@ -11,7 +11,7 @@ see below website:
 
 * Github repository of *NoisePy*: https://github.com/mdenolle/NoisePy
 
-If you use NoisePy for your research and prepare publications, please consider citing **NoisePy**: 
+If you use NoisePy for your research and prepare publications, please consider citing **NoisePy**:
 
 * Jiang, C., Denolle, M. 2020. NoisePy: a new high-performance python tool for ambient noise seismology. Seismological Research Letters. 91, 1853-1866. `DOI:10.1785/0220190364 <https://pubs.geoscienceworld.org/ssa/srl/article-abstract/91/3/1853/583390/NoisePy-A-New-High-Performance-Python-Tool-for?redirectedFrom=fulltext>`_.
 
@@ -31,7 +31,7 @@ Functionality
 * Save seismic data in `ASDF <https://asdf-definition.readthedocs.io/en/latest/>`_ format, which convinently assembles meta, wavefrom and auxililary data into one single file (`Tutorials <https://github.com/SeismicData/pyasdf/blob/master/doc/tutorial.rst>`_ on reading/writing ASDF files)
 * Offers high flexibility to handle messy SAC/miniSEED data stored on your local machine and convert them into ASDF format data that could easily be pluged into NoisePy
 * Performs fast and easy cross-correlation with functionality to run in parallel through `MPI <https://en.wikipedia.org/wiki/Message_Passing_Interface>`_
-* Includes a series of monitoring functions to measure dv/v on the resulted cross-correlation functions using some recently developed new methods (see our papers for more details) 
+* Includes a series of monitoring functions to measure dv/v on the resulted cross-correlation functions using some recently developed new methods (see our papers for more details)
 
 
 .. toctree::
@@ -43,4 +43,3 @@ Functionality
     tutorial
     examples
     applications
-

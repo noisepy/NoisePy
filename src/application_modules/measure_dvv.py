@@ -20,17 +20,17 @@ register_matplotlib_converters()
 '''
 this application script of NoisePy is to perform dv/v analysis on the resulted cross-correlation
 functions from S2. Note that, to use this script, the `keep_substack` parameter in S2 has to be turned
-`True` when running S2. So the sub-stacked waveforms can be saved and further to be compared with the 
+`True` when running S2. So the sub-stacked waveforms can be saved and further to be compared with the
 all-stacked waveforms to measure dv/v.
 
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
          Marine Denolle (mdenolle@fas.harvard.edu)
 
 NOTE:
-    0) this script is only showing an example of how dv/v can be measured on the resulted file from S2, and 
+    0) this script is only showing an example of how dv/v can be measured on the resulted file from S2, and
     the users need to expand/modify this script in order to apply for regional studies;
     1) See Yuan et al., (2019) for more details on the comparison of different methods for mesuring dv/v as
-    well as the numerical validation. 
+    well as the numerical validation.
 '''
 
 ############################################
@@ -52,10 +52,10 @@ ccomp = 'ZZ'                                                                # cr
 vmin = 0.8                                                                  # minimum velocity of the direct waves -> start of the coda window
 lwin = 150                                                                  # window length in sec for the coda waves
 
-# basic parameters 
+# basic parameters
 freq    = [0.1,0.2,0.3,0.5]                                                   # targeted frequency band for waveform monitoring
 nfreq   = len(freq)-1
-onelag  = False                                                             # make measurement one one lag or two 
+onelag  = False                                                             # make measurement one one lag or two
 norm_flag  = True                                                           # whether to normalize the cross-correlation waveforms
 do_stretch = True                                                           # use strecthing method or not
 do_dtw     = False                                                          # use dynamic time warping method or not
@@ -87,7 +87,7 @@ wvn='morlet'                                                                # wa
 ############ LOAD WAVEFORM DATA ##############
 ##############################################
 
-# load stacked and sub-stacked waveforms 
+# load stacked and sub-stacked waveforms
 with pyasdf.ASDFDataSet(sfile,mode='r') as ds:
     dtype = 'Allstack0'+stack_method
     substacks = ds.auxiliary_data.list()
@@ -110,7 +110,7 @@ ref  = tdata
 tvec_all = np.arange(-maxlag,maxlag+dt,dt)
 # add 20 s to the coda window for plotting purpose
 disp_indx = np.where(np.abs(tvec_all)<=np.max(twin)+20)[0]
-# casual and acasual coda window 
+# casual and acasual coda window
 pwin_indx = np.where((tvec_all>=np.min(twin))&(tvec_all<np.max(twin)))[0]
 nwin_indx = np.where((tvec_all<=-np.min(twin))&(tvec_all>=-np.max(twin)))[0]
 tvec_disp = tvec_all[disp_indx]
@@ -128,11 +128,11 @@ pcor_cc = np.zeros(shape=(nwin),dtype=np.float32)
 ncor_cc = np.zeros(shape=(nwin),dtype=np.float32)
 timestamp = np.empty(nwin,dtype='datetime64[s]')
 
-# tick inc for plotting 
+# tick inc for plotting
 if nwin>100:
     tick_inc = int(nwin/10)
 elif nwin>10:
-    tick_inc = int(nwin/5) 
+    tick_inc = int(nwin/5)
 else:
     tick_inc = 2
 
@@ -141,7 +141,7 @@ with pyasdf.ASDFDataSet(sfile,mode='r') as ds:
 
     # loop through each freq band
     for ifreq in range(nfreq):
-        
+
         # freq parameters
         freq1 = freq[ifreq]
         freq2 = freq[ifreq+1]
@@ -164,11 +164,11 @@ with pyasdf.ASDFDataSet(sfile,mode='r') as ds:
             tcur[igood]  = bandpass(cur[igood],freq1,freq2,int(1/dt),corners=4,zerophase=True)
             if norm_flag:
                 tcur[igood] /= np.max(np.abs(tcur[igood]))
-            
+
             # get cc coeffient
             pcor_cc[igood] = np.corrcoef(tref[pwin_indx],tcur[igood,pwin_indx])[0,1]
             ncor_cc[igood] = np.corrcoef(tref[nwin_indx],tcur[igood,nwin_indx])[0,1]
-            igood += 1   
+            igood += 1
         nwin = igood
 
         ############ PLOT WAVEFORM DATA AND CC ##############
@@ -205,7 +205,7 @@ with pyasdf.ASDFDataSet(sfile,mode='r') as ds:
         ###############################################
         ############ MONITORING PROCESSES #############
         ###############################################
-        
+
         # allocate matrix for dvv and its unc
         dvv_stretch = np.zeros(shape=(nwin,4),dtype=np.float32)
         dvv_dtw  = np.zeros(shape=(nwin,4),dtype=np.float32)
@@ -235,7 +235,7 @@ with pyasdf.ASDFDataSet(sfile,mode='r') as ds:
             if move_win_sec > 0.5*(np.max(twin)-np.min(twin)):
                 raise IOError('twin too small for MWCS')
 
-            # functions with moving window 
+            # functions with moving window
             if do_mwcs:
                 dvv_mwcs[ii,0],dvv_mwcs[ii,1] = noise_module.mwcs_dvv(pref,pcur,move_win_sec,step_sec,para)
                 dvv_mwcs[ii,2],dvv_mwcs[ii,3] = noise_module.mwcs_dvv(nref,ncur,move_win_sec,step_sec,para)

@@ -1,8 +1,8 @@
 import os
 import scipy
-import pyasdf 
-import numpy as np 
-import matplotlib.pyplot as plt 
+import pyasdf
+import numpy as np
+import matplotlib.pyplot as plt
 from scipy.fftpack import fft,ifft,next_fast_len
 
 '''
@@ -19,7 +19,7 @@ freqmax = 0.0336
 with pyasdf.ASDFDataSet(sfile,mode='r') as ds:
     # extract common variables
     station_list = ds.waveforms.list()
-    
+
     # loop through each station
     for ista in station_list:
         chan_list = ds.waveforms[ista].get_waveform_tags()

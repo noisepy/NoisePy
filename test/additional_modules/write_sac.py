@@ -35,7 +35,7 @@ if not os.path.isdir(os.path.join(STACKDIR,'STACK_SAC')):
 for ii in range(nfiles):
 
     with pyasdf.ASDFDataSet(ALLFILES[ii],mode='r') as ds:
-        
+
         #-----get station info from file name-----
         fname = ALLFILES[ii].split('/')[-1]
         staS = fname.split('s')[0]
@@ -77,14 +77,14 @@ for ii in range(nfiles):
                         sac.write(filename,byteorder='big')
 
                     if out_TXT:
-                        
+
                         #-----------output name and read data-------------
                         temp = netS+'.'+staS+'_'+netR+'.'+staR+'_'+comp+'.dat'
                         if not os.path.isdir(os.path.join(STACKDIR,'STACK_DAT')):
                             os.mkdir(os.path.join(STACKDIR,'STACK_DAT'))
                         filename = os.path.join(STACKDIR,'STACK_DAT',temp)
                         corr = ds.auxiliary_data[dtype][comp].data[:]
-                        
+
                         #-------make an array for output-------
                         npts = len(corr)
                         indx = npts//2
@@ -97,5 +97,5 @@ for ii in range(nfiles):
                             data[1,2+jj] = corr[indx+jj]
                             data[2,2+jj] = corr[indx-jj]
                             tt = tt+dt
-                        
+
                         np.savetxt(filename,np.transpose(data))

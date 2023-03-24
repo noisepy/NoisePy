@@ -61,7 +61,7 @@ def fftw_comp_2D_loops_cache():
         pyfftw.interfaces.cache.enable()
         t4 = time.time()
         fft3 = pyfftw.interfaces.scipy_fftpack.fft(a,axis=1)
-        t5 = time.time()        
+        t5 = time.time()
         print('fft takes %f %f %f %f' % (t1-t0,t2-t1,t3-t2,t5-t4))
 
 

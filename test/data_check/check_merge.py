@@ -9,11 +9,11 @@ from obspy.clients.fdsn import Client
 sys.path.insert(1,'../../src')
 import noise_module
 
-# download the data 
+# download the data
 time1 = '2016-07-13T00:00:00.000000Z'
 time2 = '2016-07-15T00:00:00.000000Z'
 
-client = Client('IRIS') 
+client = Client('IRIS')
 tr = client.get_waveforms(network='XD', station='MD12', channel='BHZ', location='*', \
         starttime = time1, endtime=time2, attach_response=True)
 
