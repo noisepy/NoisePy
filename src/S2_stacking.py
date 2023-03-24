@@ -185,7 +185,6 @@ def stack(rootpath: str, stack_method: str):
             raise ValueError('Require %5.3fG memory but only %5.3fG provided)! Cannot load cc data all once!' % (memory_size,MAX_MEM))
         if flag:
             print('Good on memory (need %5.2f G and %s G provided)!' % (memory_size,MAX_MEM))
-
         # allocate array to store fft data/info
         cc_array = np.zeros((num_chunck*num_segmts,npts_segmt),dtype=np.float32)
         cc_time  = np.zeros(num_chunck*num_segmts,dtype=np.float)
@@ -205,6 +204,16 @@ def stack(rootpath: str, stack_method: str):
             except Exception:
                 if flag:print('continue! no pair of %s in %s'%(dtype,ifile))
                 continue
+
+            # seperate auto and cross-correlation
+            if (fauto==1):
+                if ncomp==3 and len(path_list)<6:
+                    if flag:print('continue! not enough cross components for auto-correlation %s in %s'%(dtype,ifile))
+                    continue
+            else:
+                if ncomp==3 and len(path_list)<9:
+                    if flag:print('continue! not enough cross components for cross-correlation %s in %s'%(dtype,ifile))
+                    continue
 
             # seperate auto and cross-correlation
             if (fauto==1):
