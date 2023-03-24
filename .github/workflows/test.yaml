@@ -25,7 +25,7 @@ jobs:
       uses: actions/cache@v3
       with:
         key: download_data_2
-        path: ${{env.RUNNER_TEMP}}
+        path: ${{runner.temp}}
   s1_cross_correlate:
     strategy:
       fail-fast: true
@@ -44,7 +44,7 @@ jobs:
       uses: actions/cache@v3
       with:
         key: download_data_2
-        path: ${{env.RUNNER_TEMP}}
+        path: ${{runner.temp}}
     - name: Test Cross-Correlation (S1)
       working-directory: ./src
       run: python noisepy.py cross_correlate --path $RUNNER_TEMP 
