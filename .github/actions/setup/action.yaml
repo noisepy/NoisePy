@@ -22,6 +22,6 @@ runs:
         pip3 install --upgrade pip
         apk add py3-mpi4py
     - name: Install project
-      shell: bash
+      shell: sh
       run: |
         pip install "."
