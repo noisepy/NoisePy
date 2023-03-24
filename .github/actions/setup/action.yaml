@@ -7,12 +7,19 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Setup Python
-      uses: actions/setup-python@v4.5.0
-      with:
-        python-version: ${{inputs.python-version}}
-    - name: Setup MPI
-      uses: mpi4py/setup-mpi@v1
+    # - name: Setup Python
+    #   uses: actions/setup-python@v4.5.0
+    #   with:
+    #     python-version: ${{inputs.python-version}}
+    # - name: Setup MPI
+      # uses: mpi4py/setup-mpi@v1
+    - name: Install prerequisites
+      shell: bash
+      run: |
+        apk add --update --no-cache python3
+        python3 -m ensurepip
+        pip3 install --upgrade pip
+        apk add py3-mpi4py
     - name: Install project
       shell: bash
       run: |
