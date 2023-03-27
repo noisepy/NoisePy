@@ -1,6 +1,6 @@
-import pyasdf
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import pyasdf
 
 CCFile = "/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/CCF_opt"
 maxlag = 800

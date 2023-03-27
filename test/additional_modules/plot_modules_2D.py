@@ -1,11 +1,13 @@
-import os
 import glob
+import os
+
+import matplotlib.pyplot as plt
+import numpy as np
 import obspy
 import pyasdf
-import numpy as np
-import noise_module
-import matplotlib.pyplot as plt
 from obspy.signal.filter import bandpass
+
+import noise_module
 
 '''
 this script is an updated version of plot_modules.py to plot the CCFs in 2D

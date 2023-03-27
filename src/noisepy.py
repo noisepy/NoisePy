@@ -1,8 +1,10 @@
 import argparse
-import obspy
 import os
 import typing
 from enum import Enum
+
+import obspy
+
 from S0A_download_ASDF_MPI import download
 from S1_fft_cc_MPI import cross_correlate
 from S2_stacking import stack

@@ -1,10 +1,12 @@
+import glob
+import os
 import sys
 import time
-import obspy
-import pyasdf
-import os, glob
+
 import numpy as np
+import obspy
 import pandas as pd
+import pyasdf
 from mpi4py import MPI
 from obspy import UTCDateTime
 from obspy.clients.fdsn import Client

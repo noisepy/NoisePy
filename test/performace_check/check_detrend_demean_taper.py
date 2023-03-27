@@ -1,14 +1,15 @@
-import os
 import glob
-import obspy
-import scipy
+import os
 import time
-import pyasdf
-import numpy as np
-from numba import jit
-from scipy import signal
+
 import matplotlib.pyplot as plt
+import numpy as np
+import obspy
+import pyasdf
+import scipy
+from numba import jit
 from obspy.core.util.base import _get_function_from_entry_point
+from scipy import signal
 
 '''
 check efficiency of detrend, demean

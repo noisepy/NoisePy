@@ -1,6 +1,7 @@
-import pyasdf
-import time
 import sys
+import time
+
+import pyasdf
 
 sys.path.insert(1,'../../src')
 import noise_module

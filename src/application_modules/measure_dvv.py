@@ -1,20 +1,23 @@
+import datetime
+import glob
+import os
 import sys
 import time
-import obspy
-import pyasdf
-import os, glob
-import datetime
-import numpy as np
-import pandas as pd
-from mpi4py import MPI
+
 import matplotlib.pyplot as plt
+import numpy as np
+import obspy
+import pandas as pd
+import pyasdf
+from mpi4py import MPI
 from obspy.signal.filter import bandpass
 
 sys.path.insert(1,'../')
-import noise_module
-
 # register datetime converter
 from pandas.plotting import register_matplotlib_converters
+
+import noise_module
+
 register_matplotlib_converters()
 
 '''

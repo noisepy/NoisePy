@@ -1,5 +1,6 @@
-import pyasdf
 import np
+import pyasdf
+
 
 def read_asdf(tfile):
 

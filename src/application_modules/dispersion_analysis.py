@@ -1,11 +1,12 @@
+import glob
 import os
 import sys
-import glob
-import scipy
-import pycwt
-import pyasdf
-import numpy as np
+
 import matplotlib.pyplot as plt
+import numpy as np
+import pyasdf
+import pycwt
+import scipy
 
 sys.path.insert(1,'../')
 import noise_module

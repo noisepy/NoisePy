@@ -1,14 +1,15 @@
+import glob
 import os
 import sys
-import glob
-import obspy
-import scipy
-import pyasdf
-import numpy as np
+
 import matplotlib
 import matplotlib.pyplot as plt
-from scipy.fftpack import next_fast_len
+import numpy as np
+import obspy
+import pyasdf
+import scipy
 from obspy.signal.filter import bandpass
+from scipy.fftpack import next_fast_len
 
 '''
 Ensembles of plotting functions to display intermediate/final waveforms from the NoisePy package.

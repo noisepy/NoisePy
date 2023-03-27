@@ -1,9 +1,10 @@
-import os
 import glob
+import os
+
+import matplotlib.pyplot as plt
+import numpy as np
 import obspy
 import pyasdf
-import numpy as np
-import matplotlib.pyplot as plt
 from obspy.signal.filter import bandpass
 
 '''
