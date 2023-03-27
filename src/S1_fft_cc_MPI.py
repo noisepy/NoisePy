@@ -298,9 +298,7 @@ def cross_correlate(rootpath: str):
 
                 # load fft data in memory for cross-correlations
                 data = source_white[:,:Nfft2]
-                data= data.reshape(data.size)
-                # pad for the case of rFFT (half spectrum)
-                fft_array[iii] = np.pad(data, (0, fft_array[iii].shape[0] - data.size), 'constant')
+                fft_array[iii] = data.reshape(data.size)
                 fft_std[iii]   = trace_stdS
                 fft_flag[iii]  = 1
                 fft_time[iii]  = dataS_t
@@ -325,8 +323,7 @@ def cross_correlate(rootpath: str):
             t0=time.time()
             #-----------get the smoothed source spectrum for decon later----------
             sfft1 = noise_module.smooth_source_spect(fc_para,fft1)
-            sfft1_halved= sfft1[0:(int(sfft1.size/2))]
-            sfft1 = sfft1_halved.reshape(N,Nfft2)
+            sfft1 = sfft1.reshape(N,Nfft2)
             t1=time.time()
             if flag:
                 print('smoothing source takes %6.4fs' % (t1-t0))
@@ -362,8 +359,7 @@ def cross_correlate(rootpath: str):
                 if not fft_flag[iiR]: continue
 
                 fft2 = fft_array[iiR]
-                fft2_halved= fft2[0:(int(fft2.size/2))]
-                sfft2 = fft2_halved.reshape(N,Nfft2)
+                sfft2 = fft2.reshape(N,Nfft2)
                 receiver_std = fft_std[iiR]
 
                 #---------- check the existence of earthquakes ----------

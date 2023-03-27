@@ -1472,8 +1472,8 @@ def whiten_1D(timeseries, fft_para, n_taper):
     smooth_N  = fft_para['smooth_N']
 
     nfft = next_fast_len(len(timeseries))
-    spec = np.fft.rfft(timeseries, nfft)
-    freq = np.fft.rfftfreq(nfft, d=delta)
+    spec = np.fft.fft(timeseries, nfft)
+    freq = np.fft.fftfreq(nfft, d=delta)
 
     ix0 = np.argmin(np.abs(freq - freqmin))
     ix1 = np.argmin(np.abs(freq - freqmax))
@@ -1534,8 +1534,8 @@ def whiten_2D(timeseries, fft_para, n_taper):
     smooth_N  = fft_para['smooth_N']
 
     nfft = next_fast_len(timeseries.shape[1])
-    spec = np.fft.rfftn(timeseries, s=[nfft])
-    freq = np.fft.rfftfreq(nfft, d=delta)
+    spec = np.fft.fftn(timeseries, s=[nfft])
+    freq = np.fft.fftfreq(nfft, d=delta)
 
     ix0 = np.argmin(np.abs(freq - freqmin))
     ix1 = np.argmin(np.abs(freq - freqmax))
