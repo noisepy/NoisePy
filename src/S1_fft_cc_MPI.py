@@ -47,7 +47,6 @@ rootpath  = os.path.join(os.path.expanduser('~'), 'Documents/SCAL')         # ro
 
 # some control parameters
 input_fmt   = 'h5'                                                          # string: 'h5', 'sac','mseed'
-freq_norm   = 'rma'                                                         # 'no' for no whitening, or 'rma' for running-mean average, 'phase_only' for sign-bit normalization in freq domain.
 time_norm   = 'no'                                                          # 'no' for no normalization, or 'rma', 'one_bit' for normalization in time domain
 cc_method   = 'xcorr'                                                       # 'xcorr' for pure cross correlation, 'deconv' for deconvolution; FOR "COHERENCY" PLEASE set freq_norm to "rma", time_norm to "no" and cc_method to "xcorr"
 flag        = True                                                          # print intermediate variables and computing time for debugging purpose
@@ -78,7 +77,16 @@ max_over_std = 10                                                           # th
 # maximum memory allowed per core in GB
 MAX_MEM = 4.0
 
-def cross_correlate(rootpath: str):
+
+def cross_correlate(rootpath: str, freq_norm: str):
+    """
+        Perform the cross-correlation analysis
+
+            Parameters:
+                    rootpath (str): Directory to load data from
+                    freq_norm (int): 'no' for no whitening, or 'rma' for running-mean average, 'phase_only' for sign-bit normalization in freq domain.
+    """
+
     CCFDIR    = os.path.join(rootpath,'CCF')                                    # dir to store CC data
     DATADIR   = os.path.join(rootpath,'RAW_DATA')                               # dir where noise data is located
     locations = os.path.join(DATADIR,'station.txt')                             # station info including network,station,channel,latitude,longitude,elevation: only needed when input_fmt is not h5 for asdf

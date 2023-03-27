@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: cross_correlate",
+      "type": "python",
+      "preLaunchTask": "Remove CCF",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/noisepy.py",
+      "args": [
+        "cross_correlate",
+        "--freq_norm",
+        "rma"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": true
+    }
+  ]
+}

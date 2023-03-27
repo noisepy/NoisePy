@@ -215,16 +215,6 @@ def stack(rootpath: str, stack_method: str):
                     if flag:print('continue! not enough cross components for cross-correlation %s in %s'%(dtype,ifile))
                     continue
 
-            # seperate auto and cross-correlation
-            if (fauto==1):
-                if ncomp==3 and len(path_list)<6:
-                    if flag:print('continue! not enough cross components for auto-correlation %s in %s'%(dtype,ifile))
-                    continue
-            else:
-                if ncomp==3 and len(path_list)<9:
-                    if flag:print('continue! not enough cross components for cross-correlation %s in %s'%(dtype,ifile))
-                    continue
-
             if len(path_list) >9:
                 raise ValueError('more than 9 cross-component exists for %s %s! please double check'%(ifile,dtype))
 

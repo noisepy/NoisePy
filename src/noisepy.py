@@ -27,7 +27,7 @@ def main(args: typing.Any):
     if args.step == Step.DOWNLOAD:
         download(args.path, args.channels, args.stations, [args.start], [args.end], args.inc_hours)
     if args.step == Step.CROSS_CORRELATE:
-        cross_correlate(args.path)
+        cross_correlate(args.path, args.freq_norm)
     if args.step == Step.STACK:
         stack(args.path, args.method)
 
@@ -46,6 +46,7 @@ if __name__ == "__main__":
     # Cross_correlate arguments
     cc_parser = subparsers.add_parser(Step.CROSS_CORRELATE.name.lower(), formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     cc_parser.add_argument("--path", type=str, default=os.path.join(os.path.expanduser('~'), default_data_path), help="Directory to look for input files")
+    cc_parser.add_argument("--freq_norm", choices=["rma", "no", "phase_only"], default="rma")
     # Stack arguments
     stack_parser = subparsers.add_parser(Step.STACK.name.lower(), formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     stack_parser.add_argument("--path", type=str, default=os.path.join(os.path.expanduser('~'), default_data_path), help="Directory to look for input files")
