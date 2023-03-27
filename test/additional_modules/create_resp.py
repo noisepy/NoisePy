@@ -1,12 +1,13 @@
-import numpy as np
-import scipy
-import obspy
+import glob
 import os
 import sys
-import glob
-import pandas as pd
+
 import matplotlib.pyplot as plt
-from obspy.signal.invsim import evalresp,invert_spectrum,cosine_sac_taper
+import numpy as np
+import obspy
+import pandas as pd
+import scipy
+from obspy.signal.invsim import cosine_sac_taper, evalresp, invert_spectrum
 from obspy.signal.util import _npts2nfft
 
 #-----directory to station list and response files--------

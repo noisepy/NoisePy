@@ -1,9 +1,10 @@
 import os
-import scipy
-import pyasdf
-import numpy as np
+
 import matplotlib.pyplot as plt
-from scipy.fftpack import fft,ifft,next_fast_len
+import numpy as np
+import pyasdf
+import scipy
+from scipy.fftpack import fft, ifft, next_fast_len
 
 '''
 look at the spectra of the raw UW noise data

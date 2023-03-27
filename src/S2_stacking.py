@@ -1,11 +1,14 @@
+import glob
+import os
 import sys
 import time
-import pyasdf
-import os, glob
+
 import numpy as np
-import noise_module
 import pandas as pd
+import pyasdf
 from mpi4py import MPI
+
+import noise_module
 
 if not sys.warnoptions:
     import warnings

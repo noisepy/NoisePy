@@ -1,14 +1,15 @@
-import os
 import glob
+import os
 import time
-import obspy
-import scipy
-import pyasdf
-import numpy as np
+
 import matplotlib.pyplot as plt
-from scipy.signal import hilbert
-from scipy.fftpack import next_fast_len
+import numpy as np
+import obspy
+import pyasdf
+import scipy
 from obspy.signal.filter import bandpass
+from scipy.fftpack import next_fast_len
+from scipy.signal import hilbert
 
 '''
 check the performance of all different stacking method for noise cross-correlations.

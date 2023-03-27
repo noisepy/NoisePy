@@ -1,10 +1,11 @@
-import numpy as np
 import time
+
+import matplotlib.pyplot as plt
+import numpy as np
 import pyasdf
 import scipy
-from scipy.fftpack.helper import next_fast_len
 from obspy.signal.util import _npts2nfft
-import matplotlib.pyplot as plt
+from scipy.fftpack.helper import next_fast_len
 
 '''
 this script compares the computational efficiency of the two numpy function

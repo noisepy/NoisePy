@@ -1,15 +1,17 @@
+import datetime
+import glob
 import os
 import sys
-import glob
-import obspy
-import datetime
-import numpy as np
-import scipy.signal
-import noise_module
-from numba import jit
+
 import matplotlib.pyplot as plt
-from obspy.signal.filter import bandpass,lowpass
+import numpy as np
+import obspy
+import scipy.signal
+from numba import jit
+from obspy.signal.filter import bandpass, lowpass
 from obspy.signal.util import _npts2nfft
+
+import noise_module
 
 sys.path.insert(1,'../../src')
 import noise_module

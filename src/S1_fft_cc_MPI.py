@@ -1,15 +1,18 @@
 import gc
+import glob
+import os
 import sys
 import time
 from typing import List
-import obspy
-import pyasdf
-import os, glob
+
 import numpy as np
+import obspy
 import pandas as pd
-import noise_module
+import pyasdf
 from mpi4py import MPI
 from scipy.fftpack.helper import next_fast_len
+
+import noise_module
 
 # ignore warnings
 if not sys.warnoptions:

@@ -1,6 +1,7 @@
-import pyasdf
 import glob
 import os
+
+import pyasdf
 
 '''
 this script finds the station pairs with stacked cross-correaltion missing one or several components

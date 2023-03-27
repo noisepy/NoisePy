@@ -1,6 +1,5 @@
 import numpy as np
-from numpy import cos,sin
-
+from numpy import cos, sin
 
 # script to check that the rotation is done correctly
 az_test = 45*np.pi/180

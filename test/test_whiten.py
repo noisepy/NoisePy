@@ -1,11 +1,15 @@
-from scipy.fftpack import fft,ifft,next_fast_len
-import scipy
 import sys
+
+import scipy
+from scipy.fftpack import fft, ifft, next_fast_len
+
 sys.path.append('../src/')
-from noise_module import whiten
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 import pytest
+
+from noise_module import whiten
+
 
 def whiten_original(data, fft_para):
     '''
