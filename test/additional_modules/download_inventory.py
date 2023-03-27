@@ -1,9 +1,12 @@
+import glob
+import os
+
 import obspy
 import pyasdf
-import os, glob
-import noise_module
 from obspy import UTCDateTime
 from obspy.clients.fdsn import Client
+
+import noise_module
 
 '''
 Download the station inventory only (this is useful when you have station

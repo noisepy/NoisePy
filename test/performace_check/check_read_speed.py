@@ -1,6 +1,7 @@
-import pyasdf
-import numpy as np
 import time
+
+import numpy as np
+import pyasdf
 
 '''
 this script compares the speed of reading ASDF files with different size

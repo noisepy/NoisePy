@@ -1,8 +1,9 @@
-import os
-import scipy
-import pycwt
 import datetime
+import os
+
 import numpy as np
+import pycwt
+import scipy
 from obspy.core.util.base import _get_function_from_entry_point
 
 

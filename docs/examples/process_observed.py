@@ -1,7 +1,6 @@
+import numpy as np
 import obspy
 from obspy.core.util.geodetics import gps2DistAzimuth
-import numpy as np
-
 from pyasdf import ASDFDataSet
 
 ds = ASDFDataSet("./observed.h5")

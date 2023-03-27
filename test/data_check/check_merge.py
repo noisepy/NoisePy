@@ -1,9 +1,11 @@
+import glob
+import os
 import sys
-import obspy
-import os, glob
-import numpy as np
-from obspy import UTCDateTime
+
 import matplotlib.pyplot as plt
+import numpy as np
+import obspy
+from obspy import UTCDateTime
 from obspy.clients.fdsn import Client
 
 sys.path.insert(1,'../../src')

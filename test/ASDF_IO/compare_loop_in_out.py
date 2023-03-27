@@ -1,6 +1,7 @@
+import time
+
 import numpy as np
 import pyasdf
-import time
 
 '''
 check the efficiency of writing ASDF files in a for loop

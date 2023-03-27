@@ -1,13 +1,14 @@
-import os
 import glob
-import scipy
+import os
 import time
-import pyasdf
-import numpy as np
-from scipy import signal
+
 import matplotlib.pyplot as plt
-from obspy.core.util.base import _get_function_from_entry_point
+import numpy as np
 import obspy
+import pyasdf
+import scipy
+from obspy.core.util.base import _get_function_from_entry_point
+from scipy import signal
 
 '''
 script to test the cut_trace_make_statis function

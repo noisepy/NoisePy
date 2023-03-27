@@ -1,9 +1,10 @@
+import time
+
 import matplotlib.pyplot as plt
-from memory_profiler import profile
 import numpy as np
 import pyfftw
 import scipy
-import time
+from memory_profiler import profile
 
 '''
 test the computation efficiecy and memory requirements for each fft package

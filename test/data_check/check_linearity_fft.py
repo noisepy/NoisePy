@@ -1,7 +1,7 @@
-import pyasdf
-import numpy as np
-import scipy.fftpack
 import matplotlib.pyplot as plt
+import numpy as np
+import pyasdf
+import scipy.fftpack
 
 '''
 this script takes a chunk of noise spectrum for a station pair and

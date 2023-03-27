@@ -1,9 +1,10 @@
+import glob
 import os
 import sys
-import glob
+
+import numpy as np
 import obspy
 import pyasdf
-import numpy as np
 from obspy.io.sac.sactrace import SACTrace
 
 '''
