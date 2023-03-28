@@ -20,10 +20,10 @@ repos:
       - id: isort
         args: ["--profile", "black", "--filter-files"]
 
-   - repo: https://github.com/psf/black
-     rev: 23.1.0
-     hooks:
-       - id: black
+  # - repo: https://github.com/psf/black
+  #   rev: 23.1.0
+  #   hooks:
+  #     - id: black
 
   # - repo: https://github.com/PyCQA/flake8
   #   rev: 6.0.0
