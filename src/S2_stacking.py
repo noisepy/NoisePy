@@ -68,7 +68,7 @@ def stack(rootpath: str, stack_method: str):
     # we expect no parameters need to be changed below
 
     # load fc_para parameters from Step1
-    fc_metadata = os.path.join(CCFDIR,'fft_cc_data.txt')
+    fc_metadata = os.path.join(CCFDIR,'fft_cc_data.txt')   
     fc_para     = eval(open(fc_metadata).read())
     ncomp       = fc_para['ncomp']
     samp_freq   = fc_para['samp_freq']
