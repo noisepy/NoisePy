@@ -304,9 +304,7 @@ def download(rootpath: str, chan_list: List[str], sta_list: List[str], start_dat
                 print(ds,new_tags);print('downloading data %6.2f s; pre-process %6.2f s' % ((t1-t0),(t2-t1)))
 
     tt1=time.time()
-    print('downloading step takes %6.2f s with %6.2f for preprocess' %(tt1-tt0, tp))                    
-    
-    
+    print('downloading step takes %6.2f s with %6.2f for preprocess' %(tt1-tt0, tp))
 
     comm.barrier()
     if rank == 0:
