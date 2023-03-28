@@ -40,9 +40,7 @@ for min_period, max_period in [(27.0, 60.0)]:
         st.detrend("demean")
         st.taper(max_percentage=0.05, type="hann")
 
-        st.interpolate(
-            sampling_rate=sampling_rate, starttime=starttime, npts=npts
-        )
+        st.interpolate(sampling_rate=sampling_rate, starttime=starttime, npts=npts)
 
         station_latitude = inv[0][0].latitude
         station_longitude = inv[0][0].longitude

@@ -11,9 +11,7 @@ if os.path.exists(filename):
 ds = ASDFDataSet(filename)
 
 # Add event
-ds.add_quakeml(
-    "./GCMT_event_SOUTH_SANDWICH_ISLANDS_REGION_Mag_5.6_2010-3-11-6.xml"
-)
+ds.add_quakeml("./GCMT_event_SOUTH_SANDWICH_ISLANDS_REGION_Mag_5.6_2010-3-11-6.xml")
 event = ds.events[0]
 
 # Add waveforms.
