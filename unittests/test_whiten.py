@@ -114,6 +114,7 @@ fft_para = {
     "freq_norm": "phase_only",
 }
 
+
 def whiten1d():
     # 1 D case
     data = np.random.random(1000)
@@ -128,6 +129,7 @@ def whiten1d():
     print("1D ok")
     return white_original, white_new
 
+
 def whiten2d():
     # 2 D case
     data = np.random.random((5, 1000))
@@ -136,7 +138,9 @@ def whiten2d():
 
     for i in range(5):
         assert (
-            np.sqrt(np.sum((white_original[i, 0:500] - white_new[i, 0:500]) ** 2) / 500.0)
+            np.sqrt(
+                np.sum((white_original[i, 0:500] - white_new[i, 0:500]) ** 2) / 500.0
+            )
             < 0.01 * white_new[i, :].max()
         )
     print("2D ok")
