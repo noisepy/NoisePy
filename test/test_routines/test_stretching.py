@@ -1,11 +1,8 @@
 import os
 import sys
-
-import numpy as np
-
-sys.path.append(os.getcwd())
 import time
 
+import numpy as np
 import pytest
 from obspy.signal.invsim import cosine_taper
 
