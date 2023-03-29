@@ -38,9 +38,7 @@ def process(this_station_group, other_station_group):
     if (
         not hasattr(this_station_group, "StationXML")
         or not hasattr(this_station_group, "preprocessed_27s_to_60s")
-        or not hasattr(
-            other_station_group, "preprocessed_synthetic_27s_to_60s"
-        )
+        or not hasattr(other_station_group, "preprocessed_synthetic_27s_to_60s")
     ):
         return
 
