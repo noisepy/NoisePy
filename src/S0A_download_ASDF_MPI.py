@@ -19,9 +19,10 @@ from obspy.clients.fdsn import Client
 
 if not sys.warnoptions:
     import warnings
+
     warnings.simplefilter("ignore")
 
-'''
+"""
 This script:
     1) downloads sesimic data located in a broad region defined by user or using a pre-compiled station list;
     2) cleans up raw traces by removing gaps, instrumental response, downsampling and trimming to a day length;
@@ -44,95 +45,125 @@ NOTE:
     manually by the users that no stations with same name but different location codes occurs.
 
 Enjoy the NoisePy journey!
-'''
+"""
 
 #########################################################
 ################ PARAMETER SECTION ######################
 #########################################################
-tt0=time.time()
+tt0 = time.time()
 
 # download parameters
-client    = Client('SCEDC')                                     # client/data center. see https://docs.obspy.org/packages/obspy.clients.fdsn.html for a list
-down_list = False                                               # download stations from a pre-compiled list or not
-flag      = False                                               # print progress when running the script; recommend to use it at the begining
-samp_freq = 20                                                  # targeted sampling rate at X samples per seconds
-rm_resp   = 'no'                                                # select 'no' to not remove response and use 'inv','spectrum','RESP', or 'polozeros' to remove response
-freqmin   = 0.05                                                # pre filtering frequency bandwidth
-freqmax   = 2                                                   # note this cannot exceed Nquist freq
+client = Client(
+    "SCEDC"
+)  # client/data center. see https://docs.obspy.org/packages/obspy.clients.fdsn.html for a list
+down_list = False  # download stations from a pre-compiled list or not
+flag = (
+    False  # print progress when running the script; recommend to use it at the begining
+)
+samp_freq = 20  # targeted sampling rate at X samples per seconds
+rm_resp = "no"  # select 'no' to not remove response and use 'inv','spectrum','RESP', or 'polozeros' to remove response
+freqmin = 0.05  # pre filtering frequency bandwidth
+freqmax = 2  # note this cannot exceed Nquist freq
 
 # targeted region/station information: only needed when down_list is False
-lamin,lamax,lomin,lomax = 32.9,35.9,-120.7,-118.5               # regional box: min lat, min lon, max lat, max lon (-114.0)
-net_list  = ["CI"]                                              # network list
+lamin, lamax, lomin, lomax = (
+    32.9,
+    35.9,
+    -120.7,
+    -118.5,
+)  # regional box: min lat, min lon, max lat, max lon (-114.0)
+net_list = ["CI"]  # network list
 
 # get rough estimate of memory needs to ensure it now below up in S1
-cc_len    = 1800                                                # basic unit of data length for fft (s)
-step      = 450                                                 # overlapping between each cc_len (s)
-MAX_MEM   = 5.0                                                 # maximum memory allowed per core in GB
+cc_len = 1800  # basic unit of data length for fft (s)
+step = 450  # overlapping between each cc_len (s)
+MAX_MEM = 5.0  # maximum memory allowed per core in GB
 
 ##################################################
 # we expect no parameters need to be changed below
 
 
-def download(rootpath: str, chan_list: List[str], sta_list: List[str], start_date: List[str], end_date: List[str], inc_hours: int):
-    direc  = os.path.join(rootpath,'RAW_DATA')                      # where to store the downloaded data
-    dlist  = os.path.join(direc,'station.txt')                      # CSV file for station location info
-    respdir   = os.path.join(rootpath,'resp')                       # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
+def download(
+    rootpath: str,
+    chan_list: List[str],
+    sta_list: List[str],
+    start_date: List[str],
+    end_date: List[str],
+    inc_hours: int,
+):
+    direc = os.path.join(rootpath, "RAW_DATA")  # where to store the downloaded data
+    dlist = os.path.join(direc, "station.txt")  # CSV file for station location info
+    respdir = os.path.join(
+        rootpath, "resp"
+    )  # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
     # time tags
     starttime = obspy.UTCDateTime(start_date[0])
-    endtime   = obspy.UTCDateTime(end_date[0])
+    endtime = obspy.UTCDateTime(end_date[0])
     if flag:
-        print('station.list selected [%s] for data from %s to %s with %sh interval'%(down_list,starttime,endtime,inc_hours))
-    print(f"""Download
+        print(
+            "station.list selected [%s] for data from %s to %s with %sh interval"
+            % (down_list, starttime, endtime, inc_hours)
+        )
+    print(
+        f"""Download
         From: {starttime}
         To: {endtime}
         Stations: {sta_list}
         Channels: {chan_list}
-        """)
-    ncomp      = len(chan_list)
+        """
+    )
+    ncomp = len(chan_list)
     # assemble parameters used for pre-processing
-    prepro_para = {'rm_resp':rm_resp,
-                'respdir':respdir,
-                'freqmin':freqmin,
-                'freqmax':freqmax,
-                'samp_freq':samp_freq,
-                'start_date':str(starttime),
-                'end_date':str(endtime),
-                'inc_hours':inc_hours,
-                'cc_len':cc_len,
-                'step':step,
-                'MAX_MEM':MAX_MEM,
-                'lamin':lamin,
-                'lamax':lamax,
-                'lomin':lomin,
-                'lomax':lomax,
-                'ncomp':ncomp}
-    metadata = os.path.join(direc,'download_info.txt')
+    prepro_para = {
+        "rm_resp": rm_resp,
+        "respdir": respdir,
+        "freqmin": freqmin,
+        "freqmax": freqmax,
+        "samp_freq": samp_freq,
+        "start_date": str(starttime),
+        "end_date": str(endtime),
+        "inc_hours": inc_hours,
+        "cc_len": cc_len,
+        "step": step,
+        "MAX_MEM": MAX_MEM,
+        "lamin": lamin,
+        "lamax": lamax,
+        "lomin": lomin,
+        "lomax": lomax,
+        "ncomp": ncomp,
+    }
+    metadata = os.path.join(direc, "download_info.txt")
 
     # prepare station info (existing station list vs. fetching from client)
     if down_list:
         if not os.path.isfile(dlist):
-            raise IOError('file %s not exist! double check!' % dlist)
+            raise IOError("file %s not exist! double check!" % dlist)
 
         # read station info from list
         locs = pd.read_csv(dlist)
         nsta = len(locs)
-        chan = list(locs.iloc[:]['channel'])
-        net  = list(locs.iloc[:]['network'])
-        sta  = list(locs.iloc[:]['station'])
-        lat  = list(locs.iloc[:]['latitude'])
-        lon  = list(locs.iloc[:]['longitude'])
+        chan = list(locs.iloc[:]["channel"])
+        net = list(locs.iloc[:]["network"])
+        sta = list(locs.iloc[:]["station"])
+        lat = list(locs.iloc[:]["latitude"])
+        lon = list(locs.iloc[:]["longitude"])
 
         # location info: useful for some occasion
         try:
-            location = list(locs.iloc[:]['location'])
+            location = list(locs.iloc[:]["location"])
         except Exception as e:
-            location = ['*']*nsta
+            location = ["*"] * nsta
 
     else:
-
         # calculate the total number of channels to download
-        sta=[];net=[];chan=[];location=[];lon=[];lat=[];elev=[]
-        nsta=0
+        sta = []
+        net = []
+        chan = []
+        location = []
+        lon = []
+        lat = []
+        elev = []
+        nsta = 0
 
         # loop through specified network, station and channel lists
         for inet in net_list:
@@ -140,19 +171,21 @@ def download(rootpath: str, chan_list: List[str], sta_list: List[str], start_dat
                 for ichan in chan_list:
                     # gather station info
                     try:
-                        inv = client.get_stations(network=inet,
-                                                station=ista,
-                                                channel=ichan,
-                                                location='*',
-                                                starttime=starttime,
-                                                endtime=endtime,
-                                                minlatitude=lamin,
-                                                maxlatitude=lamax,
-                                                minlongitude=lomin,
-                                                maxlongitude=lomax,
-                                                level='response')
+                        inv = client.get_stations(
+                            network=inet,
+                            station=ista,
+                            channel=ichan,
+                            location="*",
+                            starttime=starttime,
+                            endtime=endtime,
+                            minlatitude=lamin,
+                            maxlatitude=lamax,
+                            minlongitude=lomin,
+                            maxlongitude=lomax,
+                            level="response",
+                        )
                     except Exception as e:
-                        print('Abort at L126 in S0A due to '+str(e))
+                        print("Abort at L126 in S0A due to " + str(e))
                         sys.exit()
 
                     for K in inv:
@@ -166,29 +199,32 @@ def download(rootpath: str, chan_list: List[str], sta_list: List[str], start_dat
                             # sometimes one station has many locations and here we only get the first location
                             if tsta[0].location_code:
                                 location.append(tsta[0].location_code)
-                            else: location.append('*')
-                            nsta+=1
-        prepro_para['nsta'] = nsta
+                            else:
+                                location.append("*")
+                            nsta += 1
+        prepro_para["nsta"] = nsta
 
     # rough estimation on memory needs (assume float32 dtype)
-    nsec_chunk = inc_hours/24*86400
-    nseg_chunk = int(np.floor((nsec_chunk-cc_len)/step))+1
-    npts_chunk = int(nseg_chunk*cc_len*samp_freq)
-    memory_size = nsta*npts_chunk*4/1024**3
+    nsec_chunk = inc_hours / 24 * 86400
+    nseg_chunk = int(np.floor((nsec_chunk - cc_len) / step)) + 1
+    npts_chunk = int(nseg_chunk * cc_len * samp_freq)
+    memory_size = nsta * npts_chunk * 4 / 1024**3
     if memory_size > MAX_MEM:
-        raise ValueError('Require %5.3fG memory but only %5.3fG provided)! Reduce inc_hours to avoid this issue!' % (memory_size,MAX_MEM))
-
+        raise ValueError(
+            "Require %5.3fG memory but only %5.3fG provided)! Reduce inc_hours to avoid this issue!"
+            % (memory_size, MAX_MEM)
+        )
 
     ########################################################
     #################DOWNLOAD SECTION#######################
     ########################################################
 
-    #--------MPI---------
+    # --------MPI---------
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
 
-    if rank==0:
+    if rank == 0:
         if not os.path.isdir(rootpath):
             os.mkdir(rootpath)
         if not os.path.isdir(direc):
@@ -196,76 +232,85 @@ def download(rootpath: str, chan_list: List[str], sta_list: List[str], start_dat
 
         # output station list
         if not down_list:
-            dict = {'network':net,
-                    'station':sta,
-                    'channel':chan,
-                    'latitude':lat,
-                    'longitude':lon,
-                    'elevation':elev}
+            dict = {
+                "network": net,
+                "station": sta,
+                "channel": chan,
+                "latitude": lat,
+                "longitude": lon,
+                "elevation": elev,
+            }
             locs = pd.DataFrame(dict)
-            locs.to_csv(os.path.join(direc,'station.txt'),index=False)
+            locs.to_csv(os.path.join(direc, "station.txt"), index=False)
 
         # save parameters for future reference
-        fout = open(metadata,'w')
-        fout.write(str(prepro_para));fout.close()
+        fout = open(metadata, "w")
+        fout.write(str(prepro_para))
+        fout.close()
 
         # get MPI variables ready
-        all_chunk = noise_module.get_event_list(start_date[0],end_date[0],inc_hours)
-        if len(all_chunk)<1:
-            raise ValueError('Abort! no data chunk between %s and %s' % (start_date[0],end_date[0]))
-        splits = len(all_chunk)-1
+        all_chunk = noise_module.get_event_list(start_date[0], end_date[0], inc_hours)
+        if len(all_chunk) < 1:
+            raise ValueError(
+                "Abort! no data chunk between %s and %s" % (start_date[0], end_date[0])
+            )
+        splits = len(all_chunk) - 1
     else:
-        splits,all_chunk = [None for _ in range(2)]
+        splits, all_chunk = [None for _ in range(2)]
 
     # broadcast the variables
-    splits = comm.bcast(splits,root=0)
-    all_chunk  = comm.bcast(all_chunk,root=0)
+    splits = comm.bcast(splits, root=0)
+    all_chunk = comm.bcast(all_chunk, root=0)
     extra = splits % size
 
     tp = 0
     # MPI: loop through each time chunk
-    for ick in range(rank,splits,size):
-
-        s1=obspy.UTCDateTime(all_chunk[ick])
-        s2=obspy.UTCDateTime(all_chunk[ick+1])
-        date_info = {'starttime':s1,'endtime':s2}
+    for ick in range(rank, splits, size):
+        s1 = obspy.UTCDateTime(all_chunk[ick])
+        s2 = obspy.UTCDateTime(all_chunk[ick + 1])
+        date_info = {"starttime": s1, "endtime": s2}
 
         # keep a track of the channels already exists
-        num_records = np.zeros(nsta,dtype=np.int16)
+        num_records = np.zeros(nsta, dtype=np.int16)
 
         # filename of the ASDF file
-        ff=os.path.join(direc,all_chunk[ick]+'T'+all_chunk[ick+1]+'.h5')
+        ff = os.path.join(direc, all_chunk[ick] + "T" + all_chunk[ick + 1] + ".h5")
         if not os.path.isfile(ff):
-            with pyasdf.ASDFDataSet(ff,mpi=False,compression="gzip-3",mode='w') as ds:
+            with pyasdf.ASDFDataSet(
+                ff, mpi=False, compression="gzip-3", mode="w"
+            ) as ds:
                 pass
         else:
-            with pyasdf.ASDFDataSet(ff,mpi=False,mode='r') as rds:
+            with pyasdf.ASDFDataSet(ff, mpi=False, mode="r") as rds:
                 alist = rds.waveforms.list()
                 for ista in range(nsta):
-                    tname = net[ista]+'.'+sta[ista]
+                    tname = net[ista] + "." + sta[ista]
                     if tname in alist:
-                        num_records[ista] = len(rds.waveforms[tname].get_waveform_tags())
+                        num_records[ista] = len(
+                            rds.waveforms[tname].get_waveform_tags()
+                        )
 
         # appending when file exists
-        with pyasdf.ASDFDataSet(ff,mpi=False,compression="gzip-3",mode='a') as ds:
-
+        with pyasdf.ASDFDataSet(ff, mpi=False, compression="gzip-3", mode="a") as ds:
             # loop through each channel
             for ista in range(nsta):
-
                 # continue when there are alreay data for sta A at day X
                 if num_records[ista] == ncomp:
                     continue
 
                 # get inventory for specific station
                 try:
-                    sta_inv = client.get_stations(network=net[ista],
-                                                station=sta[ista],
-                                                location=location[ista],
-                                                starttime=s1,
-                                                endtime=s2,
-                                                level="response")
+                    sta_inv = client.get_stations(
+                        network=net[ista],
+                        station=sta[ista],
+                        location=location[ista],
+                        starttime=s1,
+                        endtime=s2,
+                        level="response",
+                    )
                 except Exception as e:
-                    print(e);continue
+                    print(e)
+                    continue
 
                 # add the inventory for all components + all time of this tation
                 try:
@@ -275,40 +320,50 @@ def download(rootpath: str, chan_list: List[str], sta_list: List[str], start_dat
 
                 try:
                     # get data
-                    t0=time.time()
-                    tr = client.get_waveforms(network=net[ista],
-                                            station=sta[ista],
-                                            channel=chan[ista],
-                                            location=location[ista],
-                                            starttime=s1,
-                                            endtime=s2)
-                    t1=time.time()
+                    t0 = time.time()
+                    tr = client.get_waveforms(
+                        network=net[ista],
+                        station=sta[ista],
+                        channel=chan[ista],
+                        location=location[ista],
+                        starttime=s1,
+                        endtime=s2,
+                    )
+                    t1 = time.time()
                 except Exception as e:
-                    print(e,'for',sta[ista]);continue
+                    print(e, "for", sta[ista])
+                    continue
 
                 # preprocess to clean data
                 print(sta[ista])
-                tr = noise_module.preprocess_raw(tr,sta_inv,prepro_para,date_info)
+                tr = noise_module.preprocess_raw(tr, sta_inv, prepro_para, date_info)
                 t2 = time.time()
-                tp += t2-t1
+                tp += t2 - t1
 
                 if len(tr):
-                    if location[ista] == '*':
-                        tlocation = str('00')
+                    if location[ista] == "*":
+                        tlocation = str("00")
                     else:
                         tlocation = location[ista]
-                    new_tags = '{0:s}_{1:s}'.format(chan[ista].lower(),tlocation.lower())
-                    ds.add_waveforms(tr,tag=new_tags)
+                    new_tags = "{0:s}_{1:s}".format(
+                        chan[ista].lower(), tlocation.lower()
+                    )
+                    ds.add_waveforms(tr, tag=new_tags)
 
-                #if flag:
-                print(ds,new_tags);print('downloading data %6.2f s; pre-process %6.2f s' % ((t1-t0),(t2-t1)))
+                # if flag:
+                print(ds, new_tags)
+                print(
+                    "downloading data %6.2f s; pre-process %6.2f s"
+                    % ((t1 - t0), (t2 - t1))
+                )
 
-    tt1=time.time()
-    print('downloading step takes %6.2f s with %6.2f for preprocess' %(tt1-tt0, tp))
+    tt1 = time.time()
+    print("downloading step takes %6.2f s with %6.2f for preprocess" % (tt1 - tt0, tp))
 
     comm.barrier()
     if rank == 0:
         sys.exit()
+
 
 # Point people to new entry point:
 if __name__ == "__main__":

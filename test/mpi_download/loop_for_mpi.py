@@ -3,14 +3,15 @@ import sys
 import numpy as np
 from mpi4py import MPI
 
-'''
+"""
 a script to test configuration of MPI loop
-'''
+"""
+
 
 def test1():
     data = np.random.rand(10)
 
-    #--------MPI---------
+    # --------MPI---------
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
@@ -21,19 +22,19 @@ def test1():
     else:
         splits = [None for _ in range(1)]
 
-    splits = comm.bcast(splits,root=0)
+    splits = comm.bcast(splits, root=0)
 
-    for ii in range(rank,splits,size):
+    for ii in range(rank, splits, size):
         tdata = data[ii]
-        print('index %d rank %d and data %f' %(ii,rank,tdata))
+        print("index %d rank %d and data %f" % (ii, rank, tdata))
 
     comm.barrier()
     if rank == 0:
         sys.exit()
+
 
 def test2():
-
-    #--------MPI---------
+    # --------MPI---------
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
@@ -43,22 +44,22 @@ def test2():
         splits = len(data)
         print(data)
     else:
-        splits,data = [None for _ in range(2)]
+        splits, data = [None for _ in range(2)]
 
-    splits = comm.bcast(splits,root=0)
-    data   = comm.bcast(data,root=0)
+    splits = comm.bcast(splits, root=0)
+    data = comm.bcast(data, root=0)
 
-    for ii in range(rank,splits,size):
+    for ii in range(rank, splits, size):
         tdata = data[ii]
-        print('index %d rank %d and data %f' %(ii,rank,tdata))
+        print("index %d rank %d and data %f" % (ii, rank, tdata))
 
     comm.barrier()
     if rank == 0:
         sys.exit()
+
 
 def test3():
-
-    #--------MPI---------
+    # --------MPI---------
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
@@ -68,28 +69,30 @@ def test3():
         splits = len(data)
         print(data)
     else:
-        splits,data = [None for _ in range(2)]
+        splits, data = [None for _ in range(2)]
 
-    splits = comm.bcast(splits,root=0)
-    data   = comm.bcast(data,root=0)
-    extra  = splits%size
+    splits = comm.bcast(splits, root=0)
+    data = comm.bcast(data, root=0)
+    extra = splits % size
 
-    for ii in range(rank,splits+size-extra,size):
-        if ii<splits:
+    for ii in range(rank, splits + size - extra, size):
+        if ii < splits:
             tdata = data[ii]
-            print('index %d rank %d and data %f' %(ii,rank,tdata))
+            print("index %d rank %d and data %f" % (ii, rank, tdata))
 
     comm.barrier()
     if rank == 0:
         sys.exit()
 
+
 def main():
-    print('start test1')
+    print("start test1")
     test1()
-    print('now for test2')
+    print("now for test2")
     test2()
-    print('good for test3')
+    print("good for test3")
     test3()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
