@@ -7,8 +7,18 @@ on:
 
 env:
   python_version: 3.8
-  # testdir: ~/test
 jobs:
+  unit_tests:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v3.3.0
+    - name: Setup NoisePy
+      uses: ./.github/actions/setup
+      with:
+        python-version: ${{env.python_version}}
+    - name: pytest
+      run: PYTHONPATH=src pytest unittests/.
   s0_download:
     runs-on: ubuntu-22.04
     steps:
