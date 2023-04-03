@@ -23,6 +23,9 @@ Jiang, C. and Denolle, M. "NoisePy: a new high-performance python tool for seism
 # Installation
 The nature of NoisePy being composed of python scripts allows flexible package installation, which is essentially to build dependent libraries the scripts and related functions live upon. We recommend using [conda](https://docs.conda.io/en/latest/) or [pip](https://pypi.org/project/pip/) to install the library due to their convenience. Below are command lines we have tested to create a python environment to run NoisePy. Note that the test is performed on `macOS Mojave (10.14.5)`, so it could be slightly different for other OS.
 
+> **Note**
+> As an alternative, you can run the [docker container](https://github.com/mdenolle/NoisePy/pkgs/container/noisepy) version of NoisePy. See instructions [here](aws.md).
+
 
 ### Note the order of the command lines below matters ###
 
