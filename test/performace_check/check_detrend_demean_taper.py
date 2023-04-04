@@ -1,13 +1,8 @@
 import glob
-import os
 import time
 
-import matplotlib.pyplot as plt
 import numpy as np
 import obspy
-import pyasdf
-import scipy
-from numba import jit
 from obspy.core.util.base import _get_function_from_entry_point
 from scipy import signal
 
@@ -130,7 +125,6 @@ def test_1d(sacfile):
     """
     tr = obspy.read(sacfile)
     tdata = tr[0].data
-    ndata = tr[0].data
 
     # detrend, demean using obspy functions
     t0 = time.time()
@@ -168,7 +162,6 @@ def test_2d(sacfile):
     # read data
     tr = obspy.read(sacfile)
     tdata = tr[0].data
-    ndata = tr[0].data
 
     # sliding
     t0 = time.time()
@@ -198,9 +191,7 @@ def test_2d(sacfile):
     dataS = taper(dataS)
     t3 = time.time()
 
-    print(
-        "2D: it takes %6.3f (%d traces) in total with new" % (t3 - t2, dataS.shape[0])
-    )
+    print("2D: it takes %6.3f (%d traces) in total with new" % (t3 - t2, dataS.shape[0]))
 
 
 def main():

@@ -57,9 +57,7 @@ client = Client(
     "SCEDC"
 )  # client/data center. see https://docs.obspy.org/packages/obspy.clients.fdsn.html for a list
 down_list = False  # download stations from a pre-compiled list or not
-flag = (
-    False  # print progress when running the script; recommend to use it at the begining
-)
+flag = False  # print progress when running the script; recommend to use it at the begining
 samp_freq = 20  # targeted sampling rate at X samples per seconds
 rm_resp = "no"  # select 'no' to not remove response and use 'inv','spectrum','RESP', or 'polozeros' to remove response
 freqmin = 0.05  # pre filtering frequency bandwidth
@@ -151,7 +149,7 @@ def download(
         # location info: useful for some occasion
         try:
             location = list(locs.iloc[:]["location"])
-        except Exception as e:
+        except Exception:
             location = ["*"] * nsta
 
     else:
@@ -216,7 +214,7 @@ def download(
         )
 
     ########################################################
-    #################DOWNLOAD SECTION#######################
+    # ###############DOWNLOAD SECTION#######################
     ########################################################
 
     # --------MPI---------
@@ -261,8 +259,6 @@ def download(
     # broadcast the variables
     splits = comm.bcast(splits, root=0)
     all_chunk = comm.bcast(all_chunk, root=0)
-    extra = splits % size
-
     tp = 0
     # MPI: loop through each time chunk
     for ick in range(rank, splits, size):
@@ -276,9 +272,7 @@ def download(
         # filename of the ASDF file
         ff = os.path.join(direc, all_chunk[ick] + "T" + all_chunk[ick + 1] + ".h5")
         if not os.path.isfile(ff):
-            with pyasdf.ASDFDataSet(
-                ff, mpi=False, compression="gzip-3", mode="w"
-            ) as ds:
+            with pyasdf.ASDFDataSet(ff, mpi=False, compression="gzip-3", mode="w") as ds:
                 pass
         else:
             with pyasdf.ASDFDataSet(ff, mpi=False, mode="r") as rds:
@@ -286,9 +280,7 @@ def download(
                 for ista in range(nsta):
                     tname = net[ista] + "." + sta[ista]
                     if tname in alist:
-                        num_records[ista] = len(
-                            rds.waveforms[tname].get_waveform_tags()
-                        )
+                        num_records[ista] = len(rds.waveforms[tname].get_waveform_tags())
 
         # appending when file exists
         with pyasdf.ASDFDataSet(ff, mpi=False, compression="gzip-3", mode="a") as ds:
@@ -345,17 +337,12 @@ def download(
                         tlocation = str("00")
                     else:
                         tlocation = location[ista]
-                    new_tags = "{0:s}_{1:s}".format(
-                        chan[ista].lower(), tlocation.lower()
-                    )
+                    new_tags = "{0:s}_{1:s}".format(chan[ista].lower(), tlocation.lower())
                     ds.add_waveforms(tr, tag=new_tags)
 
                 # if flag:
                 print(ds, new_tags)
-                print(
-                    "downloading data %6.2f s; pre-process %6.2f s"
-                    % ((t1 - t0), (t2 - t1))
-                )
+                print("downloading data %6.2f s; pre-process %6.2f s" % ((t1 - t0), (t2 - t1)))
 
     tt1 = time.time()
     print("downloading step takes %6.2f s with %6.2f for preprocess" % (tt1 - tt0, tp))

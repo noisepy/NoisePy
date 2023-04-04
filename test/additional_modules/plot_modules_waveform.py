@@ -3,7 +3,6 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
-import obspy
 import pyasdf
 from obspy.signal.filter import bandpass
 
@@ -54,9 +53,7 @@ def plot_spectrum(sfile, iday, icomp):
                     waveform = np.real(np.fft.irfft(spect[ii])[0:nfft])
                     plt.subplot(211)
                     plt.loglog(freq, np.abs(spect[ii]), "k-")
-                    plt.title(
-                        "station %s %s @ %s; std %4.1f" % (sta, icomp, iday, std[ii])
-                    )
+                    plt.title("station %s %s @ %s; std %4.1f" % (sta, icomp, iday, std[ii]))
                     plt.subplot(212)
                     plt.plot(np.arange(0, nfft - 2) * dt, waveform, "k-")
                     plt.plot([0, nfft * dt], [0, 0], "r--", linewidth=1)
@@ -154,9 +151,7 @@ def plot_moveout(sfile, freqmin, freqmax, net1=None, sta1=None, comp1=None):
                 # ---------read parameters and copy data-----------
                 dist = ds.auxiliary_data[isource][ireceiver].parameters["dist"]
                 data = ds.auxiliary_data[isource][ireceiver].data[:]
-                data = bandpass(
-                    data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-                )
+                data = bandpass(data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
                 data = data / max(data)
                 npts = len(data)
                 indx0 = npts // 2
@@ -169,9 +164,7 @@ def plot_moveout(sfile, freqmin, freqmax, net1=None, sta1=None, comp1=None):
                     color,
                     linewidth=0.8,
                 )
-                plt.title(
-                    "%s %s filtered @%4.1f-%4.1f Hz" % (sta1, comp1, freqmin, freqmax)
-                )
+                plt.title("%s %s filtered @%4.1f-%4.1f Hz" % (sta1, comp1, freqmin, freqmax))
                 plt.xlabel("time (s)")
                 plt.ylabel("offset (km)")
                 plt.text(maxlag * 0.9, dist + 0.5, sta2, fontsize=6)
@@ -207,9 +200,7 @@ def plot_moveout(sfile, freqmin, freqmax, net1=None, sta1=None, comp1=None):
                 # ------------get parameters and copy data-------------
                 dist = ds.auxiliary_data[isource][ireceiver].parameters["dist"]
                 data = ds.auxiliary_data[isource][ireceiver].data[:]
-                data = bandpass(
-                    data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-                )
+                data = bandpass(data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
                 data = data / max(data)
                 npts = len(data)
                 indx0 = npts // 2
@@ -222,9 +213,7 @@ def plot_moveout(sfile, freqmin, freqmax, net1=None, sta1=None, comp1=None):
                     color,
                     linewidth=0.8,
                 )
-                plt.title(
-                    "%s %s filtered @%4.1f-%4.1f Hz" % (sta1, comp1, freqmin, freqmax)
-                )
+                plt.title("%s %s filtered @%4.1f-%4.1f Hz" % (sta1, comp1, freqmin, freqmax))
                 plt.xlabel("time (s)")
                 plt.ylabel("offset (km)")
                 plt.text(maxlag * 0.9, dist + 0.5, sta2, fontsize=6)
@@ -282,9 +271,7 @@ def plot_moveout_stack(sdir, sta, freqmin, freqmax, ccomp, maxlag=None, tag=None
                     # ---------read parameters and copy data-----------
                     dist = ds.auxiliary_data[tag][ccomp].parameters["dist"]
                     data = ds.auxiliary_data[tag][ccomp].data[:]
-                    data = bandpass(
-                        data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-                    )
+                    data = bandpass(data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
                     data = data / max(data)
                     npts = len(data)
                     indx0 = npts // 2
@@ -295,8 +282,7 @@ def plot_moveout_stack(sdir, sta, freqmin, freqmax, ccomp, maxlag=None, tag=None
                     if iflip:
                         plt.plot(
                             tt,
-                            np.flip(data[indx0 - tindx : indx0 + tindx + 1], axis=0)
-                            + dist,
+                            np.flip(data[indx0 - tindx : indx0 + tindx + 1], axis=0) + dist,
                             "k",
                             linewidth=0.8,
                         )
@@ -322,9 +308,7 @@ def plot_moveout_stack(sdir, sta, freqmin, freqmax, ccomp, maxlag=None, tag=None
         plt.show()
 
 
-def plot_moveout_stack_comp(
-    sdir1, sdir2, sdir3, freqmin, freqmax, ccomp, maxlag=None, tag=None
-):
+def plot_moveout_stack_comp(sdir1, sdir2, sdir3, freqmin, freqmax, ccomp, maxlag=None, tag=None):
     """
     updated version of plot_moveout_stack_comp to compare the cross-crrelation functions from several
     methods, including decon, coherence, raw cross-correlation with T/F normalization
@@ -368,9 +352,7 @@ def plot_moveout_stack_comp(
                     # ---------read parameters and copy data-----------
                     dist = ds.auxiliary_data[tag][ccomp].parameters["dist"]
                     data = ds.auxiliary_data[tag][ccomp].data[:]
-                    data = bandpass(
-                        data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-                    )
+                    data = bandpass(data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
                     data = data / max(data)
                     npts = len(data)
                     indx0 = npts // 2
@@ -441,9 +423,7 @@ def plot_moveout_stack_comp(
         plt.show()
 
 
-def plot_cc_2lags(
-    sfile, freqmin, freqmax, net1, sta1, comp1, net2=None, sta2=None, comp2=None
-):
+def plot_cc_2lags(sfile, freqmin, freqmax, net1, sta1, comp1, net2=None, sta2=None, comp2=None):
     """
     this script plots the two lags of the cross-correlation functions to compare
     the symmetry of the waveforms
@@ -471,17 +451,13 @@ def plot_cc_2lags(
                 # --------read dist info to infer travel time window---------
                 dist = ds.auxiliary_data[isource][ireceiver].parameters["dist"]
                 data = ds.auxiliary_data[isource][ireceiver].data[:]
-                data = bandpass(
-                    data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-                )
+                data = bandpass(data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
                 npts = len(data)
                 indx0 = npts // 2
                 tindx = int(maxlag / dt)
                 # -------positive lag and flip negative lags----------
                 plt.plot(tt, data[indx0 : indx0 + tindx + 1], "r-", linewidth=1)
-                plt.plot(
-                    tt, np.flip(data[indx0 - tindx : indx0 + 1]), "g-", linewidth=1
-                )
+                plt.plot(tt, np.flip(data[indx0 - tindx : indx0 + 1]), "g-", linewidth=1)
                 plt.title(
                     "%s_%s_%s_%s %6.1f km @%4.1f-%4.1f Hz"
                     % (sta1, comp1, sta2, comp2, dist, freqmin, freqmax)
@@ -496,27 +472,19 @@ def plot_cc_2lags(
                 sta2 = ireceiver.split("s")[1]
                 dist = ds.auxiliary_data[isource][ireceiver].parameters["dist"]
                 data1 = ds.auxiliary_data[isource][ireceiver].data[:]
-                data1 = bandpass(
-                    data1, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-                )
+                data1 = bandpass(data1, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
                 ireceiver = rlist[3 * ir + 1]
                 data2 = ds.auxiliary_data[isource][ireceiver].data[:]
-                data2 = bandpass(
-                    data2, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-                )
+                data2 = bandpass(data2, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
                 ireceiver = rlist[3 * ir + 2]
                 data3 = ds.auxiliary_data[isource][ireceiver].data[:]
-                data3 = bandpass(
-                    data3, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-                )
+                data3 = bandpass(data3, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
                 npts = len(data1)
                 indx0 = npts // 2
                 tindx = int(maxlag / dt)
                 # -------plot positive lag and flip negative lags----------
                 plt.subplot(311)
-                plt.plot(
-                    tt, data1[indx0 : indx0 + tindx + 1] / max(data1), "r-", linewidth=1
-                )
+                plt.plot(tt, data1[indx0 : indx0 + tindx + 1] / max(data1), "r-", linewidth=1)
                 plt.plot(
                     tt,
                     np.flip(data1[indx0 - tindx : indx0 + 1]) / max(data1),
@@ -530,9 +498,7 @@ def plot_cc_2lags(
                 plt.legend(["positive", "negative"], loc="upper right")
                 # ----3 cross components---
                 plt.subplot(312)
-                plt.plot(
-                    tt, data2[indx0 : indx0 + tindx + 1] / max(data2), "r-", linewidth=1
-                )
+                plt.plot(tt, data2[indx0 : indx0 + tindx + 1] / max(data2), "r-", linewidth=1)
                 plt.plot(
                     tt,
                     np.flip(data2[indx0 - tindx : indx0 + 1]) / max(data2),
@@ -540,9 +506,7 @@ def plot_cc_2lags(
                     linewidth=1,
                 )
                 plt.subplot(313)
-                plt.plot(
-                    tt, data3[indx0 : indx0 + tindx + 1] / max(data3), "r-", linewidth=1
-                )
+                plt.plot(tt, data3[indx0 : indx0 + tindx + 1] / max(data3), "r-", linewidth=1)
                 plt.plot(
                     tt,
                     np.flip(data3[indx0 - tindx : indx0 + 1]) / max(data3),
@@ -595,9 +559,7 @@ def plot_cc_withtime(
                 dist = ds.auxiliary_data[source][recever].parameters["dist"]
                 iday = afiles[ii].split("/")[-1].split(".")[0]
                 data = ds.auxiliary_data[source][recever].data[:]
-                data = bandpass(
-                    data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-                )
+                data = bandpass(data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
                 # --normalize the data----
                 data = data / max(data)
                 npts = len(data)
@@ -614,17 +576,13 @@ def plot_cc_withtime(
 
         plt.grid(True)
         if stackdir:
-            stackfile = os.path.join(
-                stackdir, net1 + "." + sta1 + "_" + net2 + "." + sta2 + ".h5"
-            )
+            stackfile = os.path.join(stackdir, net1 + "." + sta1 + "_" + net2 + "." + sta2 + ".h5")
             # ----plot stacked one----
             with pyasdf.ASDFDataSet(stackfile, mode="r") as stack_ds:
                 ccomp = comp1[-1] + comp2[-1]
                 tags = "Allstacked"
                 data = stack_ds.auxiliary_data[tags][ccomp].data[:]
-                data = bandpass(
-                    data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-                )
+                data = bandpass(data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
                 data = data / max(data)
                 indx0 = len(data) // 2
                 plt.plot(
@@ -633,9 +591,7 @@ def plot_cc_withtime(
                     "b-",
                     linewidth=1,
                 )
-                plt.plot(
-                    tt, data[indx0 - tindx : indx0 + tindx + 1] - 2, "b-", linewidth=1
-                )
+                plt.plot(tt, data[indx0 - tindx : indx0 + tindx + 1] - 2, "b-", linewidth=1)
         # ---------highlight zero time------------
         plt.plot([0, 0], [0, ii * 2], "r--", linewidth=1.5)
         plt.title(
@@ -666,9 +622,7 @@ def plot_cc_withtime(
                     dist = ds.auxiliary_data[source][recever].parameters["dist"]
                     iday = afiles[ii].split("/")[-1].split(".")[0]
                     data = ds.auxiliary_data[source][recever].data[:]
-                    data = bandpass(
-                        data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-                    )
+                    data = bandpass(data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
                     # --normalize the data----
                     data = data / max(data)
                     npts = len(data)
@@ -693,9 +647,7 @@ def plot_cc_withtime(
                     ccomp = comp1[-1] + comp2[-1]
                     tags = "Allstacked"
                     data = stack_ds.auxiliary_data[tags][ccomp].data[:]
-                    data = bandpass(
-                        data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-                    )
+                    data = bandpass(data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
                     data = data / max(data)
                     indx0 = len(data) // 2
                     plt.plot(
@@ -755,9 +707,7 @@ def plot_cc_withtime_stack(ccffile, freqmin, freqmax, ccomp, maxlag=None):
                 # -----in case there is no data on that day-----
                 try:
                     data = ds.auxiliary_data[iday][ccomp].data[:]
-                    data = bandpass(
-                        data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-                    )
+                    data = bandpass(data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
 
                     # --normalize the data----
                     data = data / max(data)
@@ -817,9 +767,7 @@ def plot_ZH_pmotion(sfile, freqmin, freqmax, net1, sta1, net2=None, sta2=None):
             dist = ds.auxiliary_data[isource][chan[0]].parameters["dist"]
             # -----------component 1--------------
             data = ds.auxiliary_data[isource][chan[0]].data[:]
-            data = bandpass(
-                data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-            )
+            data = bandpass(data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
             # --normalize the data----
             data = data / max(data)
             npts = len(data)
@@ -829,15 +777,11 @@ def plot_ZH_pmotion(sfile, freqmin, freqmax, net1, sta1, net2=None, sta2=None):
             plt.subplot(421)
             plt.plot(tt, data[indx0 - tindx : indx0 + tindx + 1], "k-", linewidth=0.5)
             plt.text(maxlag * 0.9, 0.8, "ZZ", fontsize=10)
-            plt.title(
-                "%s, dist:%4.1fkm @ %4.1f-%4.1f Hz" % (isource, dist, freqmin, freqmax)
-            )
+            plt.title("%s, dist:%4.1fkm @ %4.1f-%4.1f Hz" % (isource, dist, freqmin, freqmax))
 
             # ---------component 2------------
             data1 = ds.auxiliary_data[isource][chan[1]].data[:]
-            data1 = bandpass(
-                data1, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-            )
+            data1 = bandpass(data1, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
             data1 = data1 / max(data1)
             plt.subplot(423)
             plt.plot(tt, data1[indx0 - tindx : indx0 + tindx + 1], "k-", linewidth=0.5)
@@ -845,9 +789,7 @@ def plot_ZH_pmotion(sfile, freqmin, freqmax, net1, sta1, net2=None, sta2=None):
 
             # ---------component 3---------------
             data2 = ds.auxiliary_data[isource][chan[2]].data[:]
-            data2 = bandpass(
-                data2, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-            )
+            data2 = bandpass(data2, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
             data2 = data2 / max(data2)
             plt.subplot(425)
             plt.plot(tt, data2[indx0 - tindx : indx0 + tindx + 1], "k-", linewidth=0.5)
@@ -855,9 +797,7 @@ def plot_ZH_pmotion(sfile, freqmin, freqmax, net1, sta1, net2=None, sta2=None):
 
             # --------component 4-------------
             data3 = ds.auxiliary_data[isource][chan[3]].data[:]
-            data3 = bandpass(
-                data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-            )
+            data3 = bandpass(data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
             data3 = data3 / max(data3)
             plt.subplot(427)
             plt.plot(tt, data3[indx0 - tindx : indx0 + tindx + 1], "k-", linewidth=0.5)
@@ -914,9 +854,7 @@ def plot_ZH_pmotion(sfile, freqmin, freqmax, net1, sta1, net2=None, sta2=None):
             dist = ds.auxiliary_data[isource][chan[0]].parameters["dist"]
             # -----------component 1--------------
             data = ds.auxiliary_data[isource][chan[0]].data[:]
-            data = bandpass(
-                data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-            )
+            data = bandpass(data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
             # --normalize the data----
             data = data / max(data)
             npts = len(data)
@@ -926,15 +864,11 @@ def plot_ZH_pmotion(sfile, freqmin, freqmax, net1, sta1, net2=None, sta2=None):
             plt.subplot(421)
             plt.plot(tt, data[indx0 - tindx : indx0 + tindx + 1], "k-", linewidth=0.5)
             plt.text(maxlag * 0.9, 0.8, "ZZ", fontsize=10)
-            plt.title(
-                "%s, dist:%4.1fkm @ %4.1f-%4.1f Hz" % (isource, dist, freqmin, freqmax)
-            )
+            plt.title("%s, dist:%4.1fkm @ %4.1f-%4.1f Hz" % (isource, dist, freqmin, freqmax))
 
             # ---------component 2------------
             data1 = ds.auxiliary_data[isource][chan[1]].data[:]
-            data1 = bandpass(
-                data1, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-            )
+            data1 = bandpass(data1, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
             data1 = data1 / max(data1)
             plt.subplot(423)
             plt.plot(tt, data1[indx0 - tindx : indx0 + tindx + 1], "k-", linewidth=0.5)
@@ -942,9 +876,7 @@ def plot_ZH_pmotion(sfile, freqmin, freqmax, net1, sta1, net2=None, sta2=None):
 
             # ---------component 3---------------
             data2 = ds.auxiliary_data[isource][chan[2]].data[:]
-            data2 = bandpass(
-                data2, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-            )
+            data2 = bandpass(data2, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
             data2 = data2 / max(data2)
             plt.subplot(425)
             plt.plot(tt, data2[indx0 - tindx : indx0 + tindx + 1], "k-", linewidth=0.5)
@@ -952,9 +884,7 @@ def plot_ZH_pmotion(sfile, freqmin, freqmax, net1, sta1, net2=None, sta2=None):
 
             # --------component 4-------------
             data3 = ds.auxiliary_data[isource][chan[3]].data[:]
-            data3 = bandpass(
-                data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-            )
+            data3 = bandpass(data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
             data3 = data3 / max(data3)
             plt.subplot(427)
             plt.plot(tt, data3[indx0 - tindx : indx0 + tindx + 1], "k-", linewidth=0.5)
@@ -1104,9 +1034,7 @@ def plot_ZH_pmotion_stack(sfile, freqmin, freqmax, t0, t1, maxlag, tags=None):
     plt.show()
 
 
-def plot_multi_freq(
-    sfile, freqmin, freqmax, nfreq, net1, sta1, comp1, net2, sta2, comp2
-):
+def plot_multi_freq(sfile, freqmin, freqmax, nfreq, net1, sta1, comp1, net2, sta2, comp2):
     """
     plot the stacked ccfs for sta1-sta2 at multi-frequency bands between freqmin-freqmax.
     this may be useful to show the dispersive property of the surface waves, which could
@@ -1361,12 +1289,8 @@ def compare_c2_c3_waveforms(c2file, c3file, maxlag, c2_maxlag, dt):
     dt: time increment
     """
 
-    c2file = (
-        "/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/CCF/2010_01_11.h5"
-    )
-    c3file = (
-        "/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/CCF_C3/2010_01_11.h5"
-    )
+    c2file = "/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/CCF/2010_01_11.h5"
+    c3file = "/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/CCF_C3/2010_01_11.h5"
     maxlag = 1000
     c2_maxlag = 1800
     dt = 0.05

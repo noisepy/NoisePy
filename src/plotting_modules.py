@@ -1,8 +1,6 @@
-import glob
 import os
 import sys
 
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import obspy
@@ -24,7 +22,7 @@ Specifically, this plotting module includes functions of:
 
 
 #############################################################################
-###############PLOTTING FUNCTIONS FOR FILES FROM S0##########################
+# #############PLOTTING FUNCTIONS FOR FILES FROM S0##########################
 #############################################################################
 def plot_waveform(sfile, net, sta, freqmin, freqmax, savefig=False, sdir=None):
     """
@@ -88,9 +86,7 @@ def plot_waveform(sfile, net, sta, freqmin, freqmax, savefig=False, sdir=None):
         data = np.zeros(shape=(ncomp, npts), dtype=np.float32)
         for ii in range(ncomp):
             data[ii] = ds.waveforms[tsta][tcomp[ii]][0].data
-            data[ii] = bandpass(
-                data[ii], freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-            )
+            data[ii] = bandpass(data[ii], freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
         plt.figure(figsize=(9, 6))
         plt.subplot(311)
         plt.plot(tt, data[0], "k-", linewidth=1)
@@ -111,9 +107,7 @@ def plot_waveform(sfile, net, sta, freqmin, freqmax, savefig=False, sdir=None):
         if savefig:
             if not os.path.isdir(sdir):
                 os.mkdir(sdir)
-            outfname = sdir + "/{0:s}_{1:s}.{2:s}.pdf".format(
-                sfile.split(".")[0], net, sta
-            )
+            outfname = sdir + "/{0:s}_{1:s}.{2:s}.pdf".format(sfile.split(".")[0], net, sta)
             plt.savefig(outfname, format="pdf", dpi=400)
             plt.close()
         else:
@@ -121,7 +115,7 @@ def plot_waveform(sfile, net, sta, freqmin, freqmax, savefig=False, sdir=None):
 
 
 #############################################################################
-###############PLOTTING FUNCTIONS FOR FILES FROM S1##########################
+# #############PLOTTING FUNCTIONS FOR FILES FROM S1##########################
 #############################################################################
 
 
@@ -144,7 +138,7 @@ def plot_substack_cc(sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir=
     """
     # open data for read
     if savefig:
-        if sdir == None:
+        if sdir is None:
             print("no path selected! save figures in the default path")
 
     try:
@@ -225,8 +219,7 @@ def plot_substack_cc(sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir=
                 aspect="auto",
             )
             ax.set_title(
-                "%s.%s.%s  %s.%s.%s  dist:%5.2fkm"
-                % (net1, sta1, chan1, net2, sta2, chan2, dist)
+                "%s.%s.%s  %s.%s.%s  dist:%5.2fkm" % (net1, sta1, chan1, net2, sta2, chan2, dist)
             )
             ax.set_xlabel("time [s]")
             ax.set_xticks(t)
@@ -255,7 +248,7 @@ def plot_substack_cc(sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir=
 
             # save figure or just show
             if savefig:
-                if sdir == None:
+                if sdir is None:
                     sdir = sfile.split(".")[0]
                 if not os.path.isdir(sdir):
                     os.mkdir(sdir)
@@ -268,9 +261,7 @@ def plot_substack_cc(sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir=
                 plt.show()
 
 
-def plot_substack_cc_spect(
-    sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir="./"
-):
+def plot_substack_cc_spect(sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir="./"):
     """
     display the 2D matrix of the cross-correlation functions for a time-chunck.
 
@@ -289,7 +280,7 @@ def plot_substack_cc_spect(
     """
     # open data for read
     if savefig:
-        if sdir == None:
+        if sdir is None:
             print("no path selected! save figures in the default path")
 
     try:
@@ -369,8 +360,7 @@ def plot_substack_cc_spect(
                 aspect="auto",
             )
             ax[0].set_title(
-                "%s.%s.%s  %s.%s.%s  dist:%5.2f km"
-                % (net1, sta1, chan1, net2, sta2, chan2, dist)
+                "%s.%s.%s  %s.%s.%s  dist:%5.2f km" % (net1, sta1, chan1, net2, sta2, chan2, dist)
             )
             ax[0].set_xlabel("time [s]")
             ax[0].set_xticks(t)
@@ -396,7 +386,7 @@ def plot_substack_cc_spect(
 
             # save figure or just show
             if savefig:
-                if sdir == None:
+                if sdir is None:
                     sdir = sfile.split(".")[0]
                 if not os.path.isdir(sdir):
                     os.mkdir(sdir)
@@ -410,7 +400,7 @@ def plot_substack_cc_spect(
 
 
 #############################################################################
-###############PLOTTING FUNCTIONS FOR FILES FROM S2##########################
+# #############PLOTTING FUNCTIONS FOR FILES FROM S2##########################
 #############################################################################
 
 
@@ -441,7 +431,7 @@ def plot_substack_all(
     """
     # open data for read
     if savefig:
-        if sdir == None:
+        if sdir is None:
             print("no path selected! save figures in the default path")
 
     paths = ccomp
@@ -487,9 +477,7 @@ def plot_substack_all(
             # timestamp[ii] = obspy.UTCDateTime(ttime[ii])
             # cc matrix
             data[ii] = ds.auxiliary_data[itype][paths].data[indx1:indx2]
-            data[ii] = bandpass(
-                data[ii], freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-            )
+            data[ii] = bandpass(data[ii], freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
             amax[ii] = np.max(data[ii])
             data[ii] /= amax[ii]
         except Exception as e:
@@ -509,9 +497,7 @@ def plot_substack_all(
     else:
         tick_inc = 2
     fig, ax = plt.subplots(2, sharex=False, figsize=figsize)
-    ax[0].matshow(
-        data, cmap="seismic", extent=[-disp_lag, disp_lag, nwin, 0], aspect="auto"
-    )
+    ax[0].matshow(data, cmap="seismic", extent=[-disp_lag, disp_lag, nwin, 0], aspect="auto")
     ax[0].set_title(
         "%s dist:%5.2f km filtered at %4.2f-%4.2fHz"
         % (sfile.split("/")[-1], dist, freqmin, freqmax)
@@ -532,7 +518,7 @@ def plot_substack_all(
     ax[1].legend(["relative amp", "ngood"], loc="upper right")
     # save figure or just show
     if savefig:
-        if sdir == None:
+        if sdir is None:
             sdir = sfile.split(".")[0]
         if not os.path.isdir(sdir):
             os.mkdir(sdir)
@@ -572,7 +558,7 @@ def plot_substack_all_spect(
     """
     # open data for read
     if savefig:
-        if sdir == None:
+        if sdir is None:
             print("no path selected! save figures in the default path")
 
     paths = ccomp
@@ -623,9 +609,7 @@ def plot_substack_all_spect(
             tdata = ds.auxiliary_data[itype][paths].data[indx1:indx2]
             spec[ii] = scipy.fftpack.fft(tdata, nfft, axis=0)[: nfft // 2]
             spec[ii] /= np.max(np.abs(spec[ii]))
-            data[ii] = bandpass(
-                tdata, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-            )
+            data[ii] = bandpass(tdata, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
             amax[ii] = np.max(data[ii])
             data[ii] /= amax[ii]
         except Exception as e:
@@ -640,9 +624,7 @@ def plot_substack_all_spect(
     # plotting
     tick_inc = 50
     fig, ax = plt.subplots(3, sharex=False, figsize=figsize)
-    ax[0].matshow(
-        data, cmap="seismic", extent=[-disp_lag, disp_lag, nwin, 0], aspect="auto"
-    )
+    ax[0].matshow(data, cmap="seismic", extent=[-disp_lag, disp_lag, nwin, 0], aspect="auto")
     ax[0].set_title("%s dist:%5.2f km" % (sfile.split("/")[-1], dist))
     ax[0].set_xlabel("time [s]")
     ax[0].set_ylabel("wavefroms")
@@ -650,9 +632,7 @@ def plot_substack_all_spect(
     ax[0].set_yticks(np.arange(0, nwin, step=tick_inc))
     ax[0].set_yticklabels(timestamp[0:nwin:tick_inc])
     ax[0].xaxis.set_ticks_position("bottom")
-    ax[1].matshow(
-        np.abs(spec), cmap="seismic", extent=[freq[0], freq[-1], nwin, 0], aspect="auto"
-    )
+    ax[1].matshow(np.abs(spec), cmap="seismic", extent=[freq[0], freq[-1], nwin, 0], aspect="auto")
     ax[1].set_xlabel("freq [Hz]")
     ax[1].set_ylabel("amplitudes")
     ax[1].set_yticks(np.arange(0, nwin, step=tick_inc))
@@ -665,7 +645,7 @@ def plot_substack_all_spect(
     ax[2].legend(["relative amp", "ngood"], loc="upper right")
     # save figure or just show
     if savefig:
-        if sdir == None:
+        if sdir is None:
             sdir = sfile.split(".")[0]
         if not os.path.isdir(sdir):
             os.mkdir(sdir)
@@ -708,7 +688,7 @@ def plot_all_moveout(
     """
     # open data for read
     if savefig:
-        if sdir == None:
+        if sdir is None:
             print("no path selected! save figures in the default path")
 
     path = ccomp
@@ -752,9 +732,7 @@ def plot_all_moveout(
             print("continue! cannot read %s " % sfile)
             continue
 
-        data[ii] = bandpass(
-            tdata, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-        )
+        data[ii] = bandpass(tdata, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
 
     # average cc
     ntrace = int(np.round(np.max(dist) + 0.51) / dist_inc)
@@ -792,12 +770,7 @@ def plot_all_moveout(
     # save figure or show
     if savefig:
         outfname = (
-            sdir
-            + "/moveout_allstack_"
-            + str(stack_method)
-            + "_"
-            + str(dist_inc)
-            + "kmbin.pdf"
+            sdir + "/moveout_allstack_" + str(stack_method) + "_" + str(dist_inc) + "kmbin.pdf"
         )
         fig.savefig(outfname, format="pdf", dpi=400)
         plt.close()
@@ -838,7 +811,7 @@ def plot_all_moveout_1D_1comp(
     """
     # open data for read
     if savefig:
-        if sdir == None:
+        if sdir is None:
             print("no path selected! save figures in the default path")
 
     receiver = sta + ".h5"
@@ -879,16 +852,13 @@ def plot_all_moveout_1D_1comp(
         try:
             # load data to variables
             dist = ds.auxiliary_data[dtype][ccomp].parameters["dist"]
-            ngood = ds.auxiliary_data[dtype][ccomp].parameters["ngood"]
             tdata = ds.auxiliary_data[dtype][ccomp].data[indx1:indx2]
 
         except Exception:
             print("continue! cannot read %s " % sfile)
             continue
 
-        tdata = bandpass(
-            tdata, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-        )
+        tdata = bandpass(tdata, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
         tdata /= np.max(tdata, axis=0)
 
         if iflip:
@@ -947,7 +917,7 @@ def plot_all_moveout_1D_9comp(
     """
     # open data for read
     if savefig:
-        if sdir == None:
+        if sdir is None:
             print("no path selected! save figures in the default path")
 
     receiver = sta + ".h5"
@@ -993,7 +963,6 @@ def plot_all_moveout_1D_9comp(
             try:
                 # load data to variables
                 dist = ds.auxiliary_data[dtype][comp].parameters["dist"]
-                ngood = ds.auxiliary_data[dtype][comp].parameters["ngood"]
                 tdata = ds.auxiliary_data[dtype][comp].data[indx1:indx2]
 
             except Exception:
@@ -1002,9 +971,7 @@ def plot_all_moveout_1D_9comp(
 
             if dist > mdist:
                 continue
-            tdata = bandpass(
-                tdata, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-            )
+            tdata = bandpass(tdata, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
             tdata /= np.max(tdata, axis=0)
 
             if iflip:

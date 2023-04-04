@@ -23,9 +23,18 @@ repos:
   - repo: https://github.com/psf/black
     rev: 23.1.0
     hooks:
-      - id: black
+    - id: black
+      args:
+        - --line-length=100
+
 
   - repo: https://github.com/PyCQA/flake8
     rev: 6.0.0
     hooks:
       - id: flake8
+        additional_dependencies:
+          - flake8-black
+        exclude: .git,__pycache__,build,dist
+        args:
+          - --max-line-length=100
+          - --extend-ignore=E203,E266,E501,W503, BLK100, F811

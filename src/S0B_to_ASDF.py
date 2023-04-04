@@ -1,4 +1,3 @@
-import gc
 import glob
 import os
 import sys
@@ -36,7 +35,7 @@ NOTE:
 """
 
 #######################################################
-################PARAMETER SECTION######################
+# ###############PARAMETER SECTION#####################
 #######################################################
 tt0 = time.time()
 
@@ -111,7 +110,7 @@ prepro_para = {
 metadata = os.path.join(RAWDATA, "download_info.txt")
 
 ##########################################################
-#################PROCESSING SECTION#######################
+# ###############PROCESSING SECTION#######################
 ##########################################################
 
 # ---------MPI-----------
@@ -245,9 +244,7 @@ for ick in range(rank, splits, size):
         # ready for output
         ff = os.path.join(RAWDATA, all_chunk[ick] + "T" + all_chunk[ick + 1] + ".h5")
         if not os.path.isfile(ff):
-            with pyasdf.ASDFDataSet(
-                ff, mpi=False, compression="gzip-3", mode="w"
-            ) as ds:
+            with pyasdf.ASDFDataSet(ff, mpi=False, compression="gzip-3", mode="w") as ds:
                 pass
 
         with pyasdf.ASDFDataSet(ff, mpi=False, compression="gzip-3", mode="a") as ds:
@@ -262,13 +259,7 @@ for ick in range(rank, splits, size):
             ds.add_waveforms(tr, tag=new_tags)
 
     t3 = time.time()
-    print(
-        "it takes "
-        + str(t3 - t0)
-        + " s to process "
-        + str(inc_hours)
-        + "h length in step 0B"
-    )
+    print("it takes " + str(t3 - t0) + " s to process " + str(inc_hours) + "h length in step 0B")
 
 tt1 = time.time()
 print("step0B takes " + str(tt1 - tt0) + " s")

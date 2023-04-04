@@ -36,9 +36,7 @@ big_rot = np.asarray(
     ]
 )
 az_rot = np.asarray([[cos(az_test), -sin(az_test)], [sin(az_test), cos(az_test)]])
-baz_rot = np.asarray(
-    [[-cos(baz_test), -sin(baz_test)], [sin(baz_test), -cos(baz_test)]]
-)
+baz_rot = np.asarray([[-cos(baz_test), -sin(baz_test)], [sin(baz_test), -cos(baz_test)]])
 #
 # crap=np.zeros(shape=(9,npts))
 crap = np.asarray([1, 0, 0, 0])  # just an EE signal
@@ -69,29 +67,17 @@ tcorr[0] = -cosb * crap[7] - sinb * crap[6]
 tcorr[1] = sinb * crap[7] - cosb * crap[6]
 tcorr[2] = crap[8]
 tcorr[3] = (
-    -cosa * cosb * crap[4]
-    - cosa * sinb * crap[3]
-    - sina * cosb * crap[1]
-    - sina * sinb * crap[0]
+    -cosa * cosb * crap[4] - cosa * sinb * crap[3] - sina * cosb * crap[1] - sina * sinb * crap[0]
 )
 tcorr[4] = (
-    cosa * sinb * crap[4]
-    - cosa * cosb * crap[3]
-    + sina * sinb * crap[1]
-    - sina * cosb * crap[0]
+    cosa * sinb * crap[4] - cosa * cosb * crap[3] + sina * sinb * crap[1] - sina * cosb * crap[0]
 )
 tcorr[5] = cosa * crap[5] + sina * crap[2]
 tcorr[6] = (
-    sina * cosb * crap[4]
-    + sina * sinb * crap[3]
-    - cosa * cosb * crap[1]
-    - cosa * sinb * crap[0]
+    sina * cosb * crap[4] + sina * sinb * crap[3] - cosa * cosb * crap[1] - cosa * sinb * crap[0]
 )
 tcorr[7] = (
-    -sina * sinb * crap[4]
-    + sina * cosb * crap[3]
-    + cosa * sinb * crap[1]
-    - cosa * cosb * crap[0]
+    -sina * sinb * crap[4] + sina * cosb * crap[3] + cosa * sinb * crap[1] - cosa * cosb * crap[0]
 )
 tcorr[8] = -sina * crap[5] + cosa * crap[2]
 print(tcorr)

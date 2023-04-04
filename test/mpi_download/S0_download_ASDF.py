@@ -1,17 +1,16 @@
-import glob
 import os
 import sys
 import time
 
-import numpy as np
 import obspy
 import pandas as pd
 import pyasdf
-from obspy import UTCDateTime
 from obspy.clients.fdsn import Client
 
-sys.path.insert(1, "../../src")
 import noise_module
+
+sys.path.insert(1, "../../src")
+
 
 """
 This script:
@@ -28,7 +27,7 @@ A beginning of nice NoisePy journey!
 """
 
 ###############################
-#######PARAMETER SECTION#######
+# #####PARAMETER SECTION#######
 ###############################
 tt0 = time.time()
 
@@ -148,7 +147,7 @@ else:
 
 
 ##################################
-########DOWNLOAD SECTION##########
+# ######DOWNLOAD SECTION##########
 ##################################
 
 # loop through each time chunck
@@ -199,17 +198,12 @@ for ick in range(len(all_chunck) - 1):
             t2 = time.time()
 
             if len(tr):
-                new_tags = "{0:s}_{1:s}".format(
-                    chan[ista].lower(), location[ista].lower()
-                )
+                new_tags = "{0:s}_{1:s}".format(chan[ista].lower(), location[ista].lower())
                 print(new_tags)
                 ds.add_waveforms(tr, tag=new_tags)
             if flag:
                 print(ds)
-                print(
-                    "downloading data %6.2f s; pre-process %6.2f s"
-                    % ((t1 - t0), (t2 - t1))
-                )
+                print("downloading data %6.2f s; pre-process %6.2f s" % ((t1 - t0), (t2 - t1)))
 
 tt1 = time.time()
 print("downloading step takes %6.2f s" % (tt1 - tt0))

@@ -1,15 +1,10 @@
-import os
-
 import monitor_modules
 import numpy as np
-import obspy
 import pyasdf
 import pycwt
 import scipy
-from obspy.signal.filter import bandpass
 from obspy.signal.invsim import cosine_taper
 from obspy.signal.regression import linear_regression
-from scipy.fftpack import next_fast_len
 
 """
 a compilation of all available core functions for computing phase delays based on ambient noise interferometry
@@ -40,13 +35,9 @@ def load_waveforms(sfile, para):
     # load useful variables
     twin = para["twin"]
     comp = para["ccomp"]
-    freq = para["freq"]
     dt = para["dt"]
     tmin = np.min(twin)
     tmax = np.max(twin)
-    fmin = np.min(freq)
-    fmax = np.max(freq)
-    norm_flag = para["norm_flag"]
 
     with pyasdf.ASDFDataSet(sfile, mode="r") as ds:
         slist = ds.auxiliary_data.list()
@@ -237,9 +228,7 @@ def dtw_dvv(ref, cur, para, maxLag, b, direction):
     # want to make sure you're doing things in the proper directions in each
     # step!!!
     dist = monitor_modules.accumulateErrorFunction(direction, err, npts, maxLag, b)
-    stbar = monitor_modules.backtrackDistanceFunction(
-        -1 * direction, dist, err, -maxLag, b
-    )
+    stbar = monitor_modules.backtrackDistanceFunction(-1 * direction, dist, err, -maxLag, b)
     stbarTime = stbar * dt  # convert from samples to time
 
     # linear regression to get dv/v
@@ -290,10 +279,8 @@ def mwcs_dvv(ref, cur, moving_window_length, slide_step, para, smoothing_half_wi
     freq = para["freq"]
     dt = para["dt"]
     tmin = np.min(twin)
-    tmax = np.max(twin)
     fmin = np.min(freq)
     fmax = np.max(freq)
-    tvect = np.arange(tmin, tmax, dt)
 
     # parameter initialize
     delta_t = []
@@ -334,14 +321,10 @@ def mwcs_dvv(ref, cur, moving_window_length, slide_step, para, smoothing_half_wi
         X = fref * (fcur.conj())
         if smoothing_half_win != 0:
             dcur = np.sqrt(
-                monitor_modules.smooth(
-                    fcur2, window="hanning", half_win=smoothing_half_win
-                )
+                monitor_modules.smooth(fcur2, window="hanning", half_win=smoothing_half_win)
             )
             dref = np.sqrt(
-                monitor_modules.smooth(
-                    fref2, window="hanning", half_win=smoothing_half_win
-                )
+                monitor_modules.smooth(fref2, window="hanning", half_win=smoothing_half_win)
             )
             X = monitor_modules.smooth(X, window="hanning", half_win=smoothing_half_win)
         else:
@@ -423,9 +406,7 @@ def mwcs_dvv(ref, cur, moving_window_length, slide_step, para, smoothing_half_wi
 
         # ---------do linear regression-----------
         # m, a, em, ea = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=False)
-        m0, em0 = linear_regression(
-            time_axis[indx], delta_t[indx], w, intercept_origin=True
-        )
+        m0, em0 = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=True)
 
     else:
         print("not enough points to estimate dv/v")
@@ -458,7 +439,6 @@ def WCC_dvv(ref, cur, moving_window_length, slide_step, para):
     twin = para["twin"]
     dt = para["dt"]
     tmin = np.min(twin)
-    tmax = np.max(twin)
 
     # parameter initialize
     delta_t = []
@@ -667,14 +647,10 @@ def wts_allfreq(
     Written by Congcong Yuan (30 Jun, 2019)
     """
     # common variables
-    twin = para["twin"]
     freq = para["freq"]
     dt = para["dt"]
-    tmin = np.min(twin)
-    tmax = np.max(twin)
     fmin = np.min(freq)
     fmax = np.max(freq)
-    tvec = np.arange(tmin, tmax, dt)
 
     # apply cwt on two traces
     cwt1, sj, freq, coi, _, _ = pycwt.cwt(cur, dt, dj, s0, J, wvn)
@@ -764,14 +740,10 @@ def wtdtw_allfreq(
     Written by Congcong Yuan (30 Jun, 2019)
     """
     # common variables
-    twin = para["twin"]
     freq = para["freq"]
     dt = para["dt"]
-    tmin = np.min(twin)
-    tmax = np.max(twin)
     fmin = np.min(freq)
     fmax = np.max(freq)
-    tvec = np.arange(tmin, tmax) * dt
 
     # apply cwt on two traces
     cwt1, sj, freq, coi, _, _ = pycwt.cwt(cur, dt, dj, s0, J, wvn)

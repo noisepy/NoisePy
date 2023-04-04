@@ -1,15 +1,14 @@
 import os
 import sys
-
-import numpy as np
-
-sys.path.append(os.getcwd())
 import time
 
+import numpy as np
 import pytest
 from obspy.signal.invsim import cosine_taper
 
 from noise_module import stretching, stretching_vect
+
+sys.path.append(os.getcwd())
 
 # This short script is intended as a test for the stretching routine
 # it takes a generic sine curve with known stretching factor and ensures

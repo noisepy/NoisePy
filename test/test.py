@@ -1,4 +1,3 @@
-import datetime
 import gc
 import glob
 import os
@@ -10,12 +9,12 @@ import obspy
 import pandas as pd
 import pyasdf
 from mpi4py import MPI
-from obspy import UTCDateTime
 from obspy.clients.fdsn import Client
 from scipy.fftpack.helper import next_fast_len
 
-sys.path.insert(1, "src")
 import noise_module
+
+sys.path.insert(1, "src")
 
 if not sys.warnoptions:
     import warnings
@@ -45,7 +44,7 @@ Enjoy the NoisePy journey!
 """
 
 #########################################################
-################ PARAMETER SECTION ######################
+# ############## PARAMETER SECTION ######################
 #########################################################
 tt0 = time.time()
 
@@ -59,9 +58,7 @@ client = Client(
     "IRIS"
 )  # client/data center. see https://docs.obspy.org/packages/obspy.clients.fdsn.html for a list
 down_list = False  # download stations from a pre-compiled list or not
-flag = (
-    False  # print progress when running the script; recommend to use it at the begining
-)
+flag = False  # print progress when running the script; recommend to use it at the begining
 samp_freq = 2  # targeted sampling rate at X samples per seconds
 rm_resp = "no"  # select 'no' to not remove response and use 'inv','spectrum','RESP', or 'polozeros' to remove response
 respdir = os.path.join(
@@ -146,7 +143,7 @@ if down_list:
     # location info: useful for some occasion
     try:
         location = list(locs.iloc[:]["location"])
-    except Exception as e:
+    except Exception:
         location = ["*"] * nsta
 
 else:
@@ -212,7 +209,7 @@ if memory_size > MAX_MEM:
 
 
 ########################################################
-#################DOWNLOAD SECTION#######################
+# ###############DOWNLOAD SECTION#######################
 ########################################################
 
 # --------MPI---------
@@ -247,9 +244,7 @@ if rank == 0:
     # get MPI variables ready
     all_chunk = noise_module.get_event_list(start_date[0], end_date[0], inc_hours)
     if len(all_chunk) < 1:
-        raise ValueError(
-            "Abort! no data chunk between %s and %s" % (start_date[0], end_date[0])
-        )
+        raise ValueError("Abort! no data chunk between %s and %s" % (start_date[0], end_date[0]))
     splits = len(all_chunk) - 1
 else:
     splits, all_chunk = [None for _ in range(2)]
@@ -340,10 +335,7 @@ for ick in range(rank, splits, size):
 
             if flag:
                 print(ds, new_tags)
-                print(
-                    "downloading data %6.2f s; pre-process %6.2f s"
-                    % ((t1 - t0), (t2 - t1))
-                )
+                print("downloading data %6.2f s; pre-process %6.2f s" % ((t1 - t0), (t2 - t1)))
 
 tt1 = time.time()
 print("downloading step takes %6.2f s" % (tt1 - tt0))
@@ -366,9 +358,7 @@ xcorr_only = False  # only perform cross-correlation or not
 ncomp = 3  # 1 or 3 component data (needed to decide whether do rotation)
 
 # station/instrument info for input_fmt=='sac' or 'mseed'
-stationxml = (
-    False  # station.XML file used to remove instrument response for SAC/miniseed data
-)
+stationxml = False  # station.XML file used to remove instrument response for SAC/miniseed data
 rm_resp = "no"  # select 'no' to not remove response and use 'inv','spectrum','RESP', or 'polozeros' to remove response
 respdir = os.path.join(
     rootpath, "resp"
@@ -377,9 +367,7 @@ respdir = os.path.join(
 # pre-processing parameters
 cc_len = 1800  # basic unit of data length for fft (sec)
 step = 450  # overlapping between each cc_len (sec)
-smooth_N = (
-    10  # moving window length for time/freq domain normalization if selected (points)
-)
+smooth_N = 10  # moving window length for time/freq domain normalization if selected (points)
 
 # cross-correlation parameters
 maxlag = 200  # lags of cross-correlation to save (sec)
@@ -451,7 +439,7 @@ fc_para = {
 fc_metadata = os.path.join(CCFDIR, "fft_cc_data.txt")
 
 #######################################
-###########PROCESSING SECTION##########
+# #########PROCESSING SECTION##########
 #######################################
 
 # --------MPI---------
@@ -502,7 +490,7 @@ if input_fmt != "asdf":
 for ick in range(rank, splits, size):
     t10 = time.time()
 
-    #############LOADING NOISE DATA AND DO FFT##################
+    # ###########LOADING NOISE DATA AND DO FFT##################
 
     # get the tempory file recording cc process
     if input_fmt == "asdf":
@@ -567,7 +555,7 @@ for ick in range(rank, splits, size):
             # get station and inventory
             try:
                 inv1 = ds.waveforms[tmps]["StationXML"]
-            except Exception as e:
+            except Exception:
                 print("abort! no stationxml for %s in file %s" % (tmps, tdir[ick]))
                 continue
             sta, net, lon, lat, elv, loc = noise_module.sta_info_from_inv(inv1)
@@ -642,16 +630,14 @@ for ick in range(rank, splits, size):
     if iii != nsta:
         print("it seems some stations miss data in download step, but it is OKAY!")
 
-    #############PERFORM CROSS-CORRELATION##################
+    # ###########PERFORM CROSS-CORRELATION##################
     ftmp = open(tmpfile, "w")
     # make cross-correlations
     for iiS in range(iii):
         fft1 = fft_array[iiS]
         source_std = fft_std[iiS]
         sou_ind = np.where(
-            (source_std < fc_para["max_over_std"])
-            & (source_std > 0)
-            & (np.isnan(source_std) == 0)
+            (source_std < fc_para["max_over_std"]) & (source_std > 0) & (np.isnan(source_std) == 0)
         )[0]
         if not fft_flag[iiS] or not len(sou_ind):
             continue
@@ -715,19 +701,11 @@ for ick in range(rank, splits, size):
                     "latR": clat[iiR],
                 }
                 comp = channel[iiS][-1] + channel[iiR][-1]
-                parameters = noise_module.cc_parameters(
-                    fc_para, coor, tcorr, ncorr, comp
-                )
+                parameters = noise_module.cc_parameters(fc_para, coor, tcorr, ncorr, comp)
 
                 # source-receiver pair
                 data_type = (
-                    network[iiS]
-                    + "."
-                    + station[iiS]
-                    + "_"
-                    + network[iiR]
-                    + "."
-                    + station[iiR]
+                    network[iiS] + "." + station[iiS] + "_" + network[iiR] + "." + station[iiR]
                 )
                 path = channel[iiS] + "_" + channel[iiR]
                 crap[:] = corr[:]
@@ -752,8 +730,7 @@ for ick in range(rank, splits, size):
             t4 = time.time()
             if flag:
                 print(
-                    "read S %6.4fs, cc %6.4fs, write cc %6.4fs"
-                    % ((t1 - t0), (t3 - t2), (t4 - t3))
+                    "read S %6.4fs, cc %6.4fs, write cc %6.4fs" % ((t1 - t0), (t3 - t2), (t4 - t3))
                 )
 
             del fft2, sfft2, receiver_std
@@ -771,10 +748,7 @@ for ick in range(rank, splits, size):
     print("unreadable garbarge", n)
 
     t11 = time.time()
-    print(
-        "it takes %6.2fs to process the chunk of %s"
-        % (t11 - t10, tdir[ick].split("/")[-1])
-    )
+    print("it takes %6.2fs to process the chunk of %s" % (t11 - t10, tdir[ick].split("/")[-1]))
 
 tt1 = time.time()
 print("it takes %6.2fs to process step 1 in total" % (tt1 - tt0))
@@ -856,7 +830,7 @@ stack_para = {
 stack_metadata = os.path.join(STACKDIR, "stack_data.txt")
 
 #######################################
-###########PROCESSING SECTION##########
+# #########PROCESSING SECTION##########
 #######################################
 
 # --------MPI---------
@@ -936,9 +910,7 @@ for ipair in range(rank, splits, size):
             % (memory_size, MAX_MEM)
         )
     if flag:
-        print(
-            "Good on memory (need %5.2f G and %s G provided)!" % (memory_size, MAX_MEM)
-        )
+        print("Good on memory (need %5.2f G and %s G provided)!" % (memory_size, MAX_MEM))
 
     # allocate array to store fft data/info
     cc_array = np.zeros((num_chunck * num_segmts, npts_segmt), dtype=np.float32)
@@ -962,16 +934,12 @@ for ipair in range(rank, splits, size):
 
         if ncomp == 3 and len(path_list) < 9:
             if flag:
-                print(
-                    "continue! not enough cross components for %s in %s"
-                    % (dtype, ifile)
-                )
+                print("continue! not enough cross components for %s in %s" % (dtype, ifile))
             continue
 
         if len(path_list) > 9:
             raise ValueError(
-                "more than 9 cross-component exists for %s %s! please double check"
-                % (ifile, dtype)
+                "more than 9 cross-component exists for %s %s! please double check" % (ifile, dtype)
             )
 
         # load the 9-component data, which is in order in the ASDF
@@ -1039,9 +1007,7 @@ for ipair in range(rank, splits, size):
             allstacks2,
             allstacks3,
             nstacks,
-        ) = noise_module.stacking(
-            cc_array[indx], cc_time[indx], cc_ngood[indx], stack_para
-        )
+        ) = noise_module.stacking(cc_array[indx], cc_time[indx], cc_ngood[indx], stack_para)
         if not len(allstacks1):
             continue
         if rotation:
@@ -1127,12 +1093,8 @@ for ipair in range(rank, splits, size):
                     )
         else:
             bigstack_rotated = noise_module.rotation(bigstack, tparameters, locs, flag)
-            bigstack_rotated1 = noise_module.rotation(
-                bigstack1, tparameters, locs, flag
-            )
-            bigstack_rotated2 = noise_module.rotation(
-                bigstack2, tparameters, locs, flag
-            )
+            bigstack_rotated1 = noise_module.rotation(bigstack1, tparameters, locs, flag)
+            bigstack_rotated2 = noise_module.rotation(bigstack2, tparameters, locs, flag)
 
             # write to file
             for icomp in range(nccomp):
@@ -1161,10 +1123,7 @@ for ipair in range(rank, splits, size):
 
     t4 = time.time()
     if flag:
-        print(
-            "takes %6.2fs to stack/rotate all station pairs %s"
-            % (t4 - t1, pairs_all[ipair])
-        )
+        print("takes %6.2fs to stack/rotate all station pairs %s" % (t4 - t1, pairs_all[ipair]))
 
     # write file stamps
     ftmp = open(toutfn, "w")

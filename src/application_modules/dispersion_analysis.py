@@ -1,4 +1,3 @@
-import glob
 import os
 import sys
 
@@ -8,8 +7,10 @@ import pyasdf
 import pycwt
 import scipy
 
-sys.path.insert(1, "../")
 import noise_module
+
+sys.path.insert(1, "../")
+
 
 """
 this application script of NoisePy is to measure group velocity on the resulted cross-correlation
@@ -42,7 +43,9 @@ outdir = os.path.join(
 
 # data type and cross-component
 stack_method = "linear"  # which stacked data to measure dispersion info
-lag_type = "sym"  # options to do measurements on the 'neg', 'pos' or 'sym' lag (average of neg and pos)
+lag_type = (
+    "sym"  # options to do measurements on the 'neg', 'pos' or 'sym' lag (average of neg and pos)
+)
 ncomp = 3
 if ncomp == 1:
     rtz_system = ["ZZ"]
@@ -116,9 +119,7 @@ for comp in rtz_system:
     elif lag_type == "sym":
         data = 0.5 * tdata[indx:] + 0.5 * np.flip(tdata[: indx + 1], axis=0)
     else:
-        raise ValueError(
-            "parameter of lag_type (L35) is not right! please double check"
-        )
+        raise ValueError("parameter of lag_type (L35) is not right! please double check")
 
     # trim the data according to vel window
     pt1 = int(dist / vmax / dt)

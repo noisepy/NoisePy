@@ -1,22 +1,17 @@
-import datetime
-import glob
 import os
 import sys
-import time
 
 import matplotlib.pyplot as plt
 import numpy as np
 import obspy
-import pandas as pd
 import pyasdf
-from mpi4py import MPI
 from obspy.signal.filter import bandpass
-
-sys.path.insert(1, "../")
-# register datetime converter
 from pandas.plotting import register_matplotlib_converters
 
 import noise_module
+
+sys.path.insert(1, "../")
+# register datetime converter
 
 register_matplotlib_converters()
 
@@ -177,9 +172,7 @@ with pyasdf.ASDFDataSet(sfile, mode="r") as ds:
             except Exception:
                 continue
             timestamp[igood] = obspy.UTCDateTime(np.float(substacks[ii + 2][1:]))
-            tcur[igood] = bandpass(
-                cur[igood], freq1, freq2, int(1 / dt), corners=4, zerophase=True
-            )
+            tcur[igood] = bandpass(cur[igood], freq1, freq2, int(1 / dt), corners=4, zerophase=True)
             if norm_flag:
                 tcur[igood] /= np.max(np.abs(tcur[igood]))
 
@@ -202,31 +195,22 @@ with pyasdf.ASDFDataSet(sfile, mode="r") as ds:
         )
         ax0.plot([0, 0], [0, nwin], "k--", linewidth=2)
         ax0.set_title(
-            "%s, dist:%5.2fkm, filter @%4.2f-%4.2fHz"
-            % (sfile.split("/")[-1], dist, freq1, freq2)
+            "%s, dist:%5.2fkm, filter @%4.2f-%4.2fHz" % (sfile.split("/")[-1], dist, freq1, freq2)
         )
         ax0.set_xlabel("time [s]")
         ax0.set_ylabel("wavefroms")
         ax0.set_yticks(np.arange(0, nwin, step=tick_inc))
         # shade the coda part
         ax0.fill(
-            np.concatenate(
-                (tvec_all[nwin_indx], np.flip(tvec_all[nwin_indx], axis=0)), axis=0
-            ),
-            np.concatenate(
-                (np.ones(len(nwin_indx)) * 0, np.ones(len(nwin_indx)) * nwin), axis=0
-            ),
+            np.concatenate((tvec_all[nwin_indx], np.flip(tvec_all[nwin_indx], axis=0)), axis=0),
+            np.concatenate((np.ones(len(nwin_indx)) * 0, np.ones(len(nwin_indx)) * nwin), axis=0),
             "c",
             alpha=0.3,
             linewidth=1,
         )
         ax0.fill(
-            np.concatenate(
-                (tvec_all[pwin_indx], np.flip(tvec_all[pwin_indx], axis=0)), axis=0
-            ),
-            np.concatenate(
-                (np.ones(len(nwin_indx)) * 0, np.ones(len(nwin_indx)) * nwin), axis=0
-            ),
+            np.concatenate((tvec_all[pwin_indx], np.flip(tvec_all[pwin_indx], axis=0)), axis=0),
+            np.concatenate((np.ones(len(nwin_indx)) * 0, np.ones(len(nwin_indx)) * nwin), axis=0),
             "y",
             alpha=0.3,
         )
@@ -344,57 +328,33 @@ with pyasdf.ASDFDataSet(sfile, mode="r") as ds:
         ax3 = plt.subplot(313)
         legend_mark = []
         if do_stretch:
-            ax3.plot(
-                timestamp[:igood], dvv_stretch[:, 0], "yo-", markersize=6, linewidth=0.5
-            )
-            ax3.plot(
-                timestamp[:igood], dvv_stretch[:, 2], "co-", markersize=6, linewidth=0.5
-            )
+            ax3.plot(timestamp[:igood], dvv_stretch[:, 0], "yo-", markersize=6, linewidth=0.5)
+            ax3.plot(timestamp[:igood], dvv_stretch[:, 2], "co-", markersize=6, linewidth=0.5)
             legend_mark.append("str+")
             legend_mark.append("str-")
         if do_dtw:
-            ax3.plot(
-                timestamp[:igood], dvv_dtw[:, 0], "yv-", markersize=6, linewidth=0.5
-            )
-            ax3.plot(
-                timestamp[:igood], dvv_dtw[:, 2], "cv-", markersize=6, linewidth=0.5
-            )
+            ax3.plot(timestamp[:igood], dvv_dtw[:, 0], "yv-", markersize=6, linewidth=0.5)
+            ax3.plot(timestamp[:igood], dvv_dtw[:, 2], "cv-", markersize=6, linewidth=0.5)
             legend_mark.append("dtw+")
             legend_mark.append("dtw-")
         if do_mwcs:
-            ax3.plot(
-                timestamp[:igood], dvv_mwcs[:, 0], "ys-", markersize=6, linewidth=0.5
-            )
-            ax3.plot(
-                timestamp[:igood], dvv_mwcs[:, 2], "cs-", markersize=6, linewidth=0.5
-            )
+            ax3.plot(timestamp[:igood], dvv_mwcs[:, 0], "ys-", markersize=6, linewidth=0.5)
+            ax3.plot(timestamp[:igood], dvv_mwcs[:, 2], "cs-", markersize=6, linewidth=0.5)
             legend_mark.append("mwcs+")
             legend_mark.append("mwcs-")
         if do_mwcc:
-            ax3.plot(
-                timestamp[:igood], dvv_wcc[:, 0], "y*-", markersize=6, linewidth=0.5
-            )
-            ax3.plot(
-                timestamp[:igood], dvv_wcc[:, 2], "c*-", markersize=6, linewidth=0.5
-            )
+            ax3.plot(timestamp[:igood], dvv_wcc[:, 0], "y*-", markersize=6, linewidth=0.5)
+            ax3.plot(timestamp[:igood], dvv_wcc[:, 2], "c*-", markersize=6, linewidth=0.5)
             legend_mark.append("wcc+")
             legend_mark.append("wcc-")
         if do_wts:
-            ax3.plot(
-                timestamp[:igood], dvv_wts[:, 0], "yx-", markersize=6, linewidth=0.5
-            )
-            ax3.plot(
-                timestamp[:igood], dvv_wts[:, 2], "cx-", markersize=6, linewidth=0.5
-            )
+            ax3.plot(timestamp[:igood], dvv_wts[:, 0], "yx-", markersize=6, linewidth=0.5)
+            ax3.plot(timestamp[:igood], dvv_wts[:, 2], "cx-", markersize=6, linewidth=0.5)
             legend_mark.append("wts+")
             legend_mark.append("wts-")
         if do_wxs:
-            ax3.plot(
-                timestamp[:igood], dvv_wxs[:, 0], "yp-", markersize=6, linewidth=0.5
-            )
-            ax3.plot(
-                timestamp[:igood], dvv_wxs[:, 2], "cp-", markersize=6, linewidth=0.5
-            )
+            ax3.plot(timestamp[:igood], dvv_wxs[:, 0], "yp-", markersize=6, linewidth=0.5)
+            ax3.plot(timestamp[:igood], dvv_wxs[:, 2], "cp-", markersize=6, linewidth=0.5)
             legend_mark.append("wxs+")
             legend_mark.append("wxs-")
         ax3.legend(legend_mark, loc="upper right")

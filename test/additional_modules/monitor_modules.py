@@ -1,6 +1,3 @@
-import datetime
-import os
-
 import numpy as np
 import pycwt
 import scipy
@@ -155,9 +152,7 @@ def computeErrorFunction(u1, u0, nSample, lag, norm="L2"):
     """
 
     if lag >= nSample:
-        raise ValueError(
-            "computeErrorFunction:lagProblem", "lag must be smaller than nSample"
-        )
+        raise ValueError("computeErrorFunction:lagProblem", "lag must be smaller than nSample")
 
     # Allocate error function variable
     err = np.zeros([nSample, 2 * lag + 1])

@@ -1,18 +1,16 @@
-import glob
 import os
 import sys
 import time
 
-import numpy as np
 import obspy
 import pandas as pd
 import pyasdf
 from mpi4py import MPI
-from obspy import UTCDateTime
 from obspy.clients.fdsn import Client
 
-sys.path.insert(1, "../../src")
 import noise_module
+
+sys.path.insert(1, "../../src")
 
 """
 This script:
@@ -31,7 +29,7 @@ A beginning of NoisePy journey!
 """
 
 ###############################
-#######PARAMETER SECTION#######
+# #####PARAMETER SECTION#######
 ###############################
 tt0 = time.time()
 
@@ -51,7 +49,9 @@ oput_CSV = True  # output station.list to a CSV file to be used in later stackin
 flag = True  # print progress when running the script
 NewFreq = 10  # resampling at X samples per seconds
 rm_resp = False  # boolean to remove instrumental response
-respdir = "none"  # output response directory (has to be given if rm_resp is true and other than inv)
+respdir = (
+    "none"  # output response directory (has to be given if rm_resp is true and other than inv)
+)
 freqmin = 0.05  # pre filtering frequency bandwidth
 freqmax = 4
 
@@ -151,7 +151,7 @@ else:
 
 
 ##################################
-########DOWNLOAD SECTION##########
+# ######DOWNLOAD SECTION##########
 ##################################
 
 # --------MPI---------
@@ -162,9 +162,7 @@ size = comm.Get_size()
 if rank == 0:
     all_chunck = noise_module.get_event_list(start_date[0], end_date[0], inc_hours)
     if all_chunck < 1:
-        raise ValueError(
-            "Abort! no data chunck between %s and %s" % (start_date[0], end_date[0])
-        )
+        raise ValueError("Abort! no data chunck between %s and %s" % (start_date[0], end_date[0]))
     splits = len(all_chunck) - 1
 else:
     splits, all_chunck = [None for _ in range(2)]
@@ -222,17 +220,12 @@ for ick in range(rank, splits + size - extra, size):
                 t2 = time.time()
 
                 if len(tr):
-                    new_tags = "{0:s}_{1:s}".format(
-                        chan[ista].lower(), location[ista].lower()
-                    )
+                    new_tags = "{0:s}_{1:s}".format(chan[ista].lower(), location[ista].lower())
                     print(new_tags)
                     ds.add_waveforms(tr, tag=new_tags)
                 if flag:
                     print(ds)
-                    print(
-                        "downloading data %6.2f s; pre-process %6.2f s"
-                        % ((t1 - t0), (t2 - t1))
-                    )
+                    print("downloading data %6.2f s; pre-process %6.2f s" % ((t1 - t0), (t2 - t1)))
 
 tt1 = time.time()
 print("downloading step takes %6.2f s" % (tt1 - tt0))

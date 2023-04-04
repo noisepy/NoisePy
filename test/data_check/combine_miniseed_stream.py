@@ -8,13 +8,11 @@ import numpy as np
 import obspy
 import scipy.signal
 from numba import jit
-from obspy.signal.filter import bandpass, lowpass
+from obspy.signal.filter import bandpass
 from obspy.signal.util import _npts2nfft
 
-import noise_module
-
 sys.path.insert(1, "../../src")
-import noise_module
+
 
 """
 a test script for pre-processing data
@@ -23,9 +21,7 @@ modify the parameters and data-path at the end of this script
 """
 
 
-def preprocess_raw(
-    st, downsamp_freq, clean_time=True, pre_filt=None, resp=False, respdir=None
-):
+def preprocess_raw(st, downsamp_freq, clean_time=True, pre_filt=None, resp=False, respdir=None):
     """
     pre-process daily stream of data from IRIS server, including:
 
@@ -77,9 +73,7 @@ def preprocess_raw(
         # -------when starttimes are between sampling points-------
         fric = st[0].stats.starttime.microsecond % (delta * 1e6)
         if fric > 1e-4:
-            st[0].data = segment_interpolate(
-                np.float32(st[0].data), float(fric / delta * 1e6)
-            )
+            st[0].data = segment_interpolate(np.float32(st[0].data), float(fric / delta * 1e6))
             # --reset the time to remove the discrepancy---
             st[0].stats.starttime -= fric * 1e-6
 
@@ -121,9 +115,7 @@ def preprocess_raw(
             st.simulate(paz_remove=paz_sts, pre_filt=pre_filt)
 
         else:
-            raise ValueError(
-                "no such option of resp in preprocess_raw! please double check!"
-            )
+            raise ValueError("no such option of resp in preprocess_raw! please double check!")
 
     # -----fill gaps, trim data and interpolate to ensure all starts at 00:00:00.0------
     if clean_time:
@@ -141,18 +133,16 @@ def portion_gaps(stream):
     # -----check the consistency of sampling rate----
 
     pgaps = 0
-    npts = (stream[-1].stats.endtime - stream[0].stats.starttime) * stream[
-        0
-    ].stats.sampling_rate
+    npts = (stream[-1].stats.endtime - stream[0].stats.starttime) * stream[0].stats.sampling_rate
 
     if len(stream) == 0:
         return pgaps
     else:
         # ----loop through all trace to find gaps----
         for ii in range(len(stream) - 1):
-            pgaps += (
-                stream[ii + 1].stats.starttime - stream[ii].stats.endtime
-            ) * stream[ii].stats.sampling_rate
+            pgaps += (stream[ii + 1].stats.starttime - stream[ii].stats.endtime) * stream[
+                ii
+            ].stats.sampling_rate
 
     return pgaps / npts
 
@@ -228,12 +218,8 @@ def clean_daily_segments(tr):
     """
     # -----all potential-useful time information-----
     stream_time = tr[0].stats.starttime
-    time0 = obspy.UTCDateTime(
-        stream_time.year, stream_time.month, stream_time.day, 0, 0, 0
-    )
-    time1 = obspy.UTCDateTime(
-        stream_time.year, stream_time.month, stream_time.day, 12, 0, 0
-    )
+    time0 = obspy.UTCDateTime(stream_time.year, stream_time.month, stream_time.day, 0, 0, 0)
+    time1 = obspy.UTCDateTime(stream_time.year, stream_time.month, stream_time.day, 12, 0, 0)
     time2 = time1 + datetime.timedelta(hours=12)
 
     # --only keep days with > 0.5-day recordings-
@@ -292,9 +278,7 @@ def check_sample(stream):
 # ---------open a new stream for the mini-seed files------------
 source = obspy.Stream()
 
-sacfiles = glob.glob(
-    "/Users/chengxin/Documents/Harvard/JAKARTA/JKA20miniSEED/*13101*.CHZ"
-)
+sacfiles = glob.glob("/Users/chengxin/Documents/Harvard/JAKARTA/JKA20miniSEED/*13101*.CHZ")
 for ii in range(len(sacfiles)):
     temp = obspy.read(sacfiles[ii])
     source.append(temp[0])

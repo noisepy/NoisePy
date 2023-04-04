@@ -3,7 +3,6 @@ import glob
 import os
 import sys
 import time
-from typing import List
 
 import numpy as np
 import obspy
@@ -22,28 +21,36 @@ if not sys.warnoptions:
 
 """
 This main script of NoisePy:
-    1) read the saved noise data in user-defined chunk of inc_hours, cut them into smaller length segments, do
-    general pre-processing (trend, normalization) and then do FFT;
+    1) read the saved noise data in user-defined chunk of inc_hours, cut them into
+    smaller length segments, do general pre-processing
+    (trend, normalization) and then do FFT;
     2) save all FFT data of the same time chunk in memory;
-    3) performs cross-correlation for all station pairs in the same time chunk and output the sub-stacked (if
-    selected) into ASDF format;
+    3) performs cross-correlation for all station pairs in the same time chunk and
+    output the sub-stacked (if selected) into ASDF format;
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
          Marine Denolle (mdenolle@fas.harvard.edu)
 
 NOTE:
-    0. MOST occasions you just need to change parameters followed with detailed explanations to run the script.
-    1. To read SAC/mseed files, we assume the users have sorted the data by the time chunk they prefer (e.g., 1day)
-        and store them in folders named after the time chunk (e.g, 2010_10_1). modify L135 to find your local data;
-    2. A script of S0B_to_ASDF.py is provided to help clean messy SAC/MSEED data and convert them into ASDF format.
-        the script takes minor time compared to that for cross-correlation. so we recommend to use S0B script for
-        better NoisePy performance. the downside is that it duplicates the continuous noise data on your machine;
-    3. When "coherency" is preferred, please set "freq_norm" to "rma" and "time_norm" to "no" for better performance.
+    0. MOST occasions you just need to change parameters followed with detailed
+    explanations to run the script.
+    1. To read SAC/mseed files, we assume the users have sorted the data
+    by the time chunk they prefer (e.g., 1day)
+        and store them in folders named after the time chunk (e.g, 2010_10_1).
+        modify L135 to find your local data;
+    2. A script of S0B_to_ASDF.py is provided to help clean messy SAC/MSEED data and
+    convert them into ASDF format.
+        the script takes minor time compared to that for cross-correlation.
+        so we recommend to use S0B script for
+        better NoisePy performance. the downside is that it duplicates the
+        continuous noise data on your machine;
+    3. When "coherency" is preferred, please set "freq_norm" to "rma" and "time_norm" to "no"
+    for better performance.
 """
 
 tt0 = time.time()
 
 ########################################
-#########PARAMETER SECTION##############
+# #######PARAMETER SECTION##############
 ########################################
 
 # absolute path parameters
@@ -61,28 +68,28 @@ xcorr_only = True  # only perform cross-correlation or not
 ncomp = 3  # 1 or 3 component data (needed to decide whether do rotation)
 
 # station/instrument info for input_fmt=='sac' or 'mseed'
-stationxml = (
-    False  # station.XML file used to remove instrument response for SAC/miniseed data
-)
+stationxml = False  # station.XML file used to remove instrument response for SAC/miniseed data
 rm_resp = "no"  # select 'no' to not remove response and use 'inv','spectrum','RESP', or 'polozeros' to remove response
 
 # pre-processing parameters
 cc_len = 1800  # basic unit of data length for fft (sec)
 step = 450  # overlapping between each cc_len (sec)
-smooth_N = (
-    10  # moving window length for time/freq domain normalization if selected (points)
-)
+smooth_N = 10  # moving window length for time/freq domain normalization if selected (points)
 
 # cross-correlation parameters
 maxlag = 200  # lags of cross-correlation to save (sec)
 substack = True  # True = smaller stacks within the time chunk. False: it will stack over inc_hours
 # for instance: substack=True, substack_len=cc_len means that you keep ALL of the correlations
 # if substack=True, substack_len=2*cc_len, then you pre-stack every 2 correlation windows.
-substack_len = cc_len  # how long to stack over (for monitoring purpose): need to be multiples of cc_len
+substack_len = (
+    cc_len  # how long to stack over (for monitoring purpose): need to be multiples of cc_len
+)
 smoothspect_N = 10  # moving window length to smooth spectrum amplitude (points)
 
 # criteria for data selection
-max_over_std = 10  # threahold to remove window of bad signals: set it to 10*9 if prefer not to remove them
+max_over_std = (
+    10  # threahold to remove window of bad signals: set it to 10*9 if prefer not to remove them
+)
 
 # maximum memory allowed per core in GB
 MAX_MEM = 4.0
@@ -94,20 +101,23 @@ def cross_correlate(rootpath: str, freq_norm: str):
 
         Parameters:
                 rootpath (str): Directory to load data from
-                freq_norm (int): 'no' for no whitening, or 'rma' for running-mean average, 'phase_only' for sign-bit normalization in freq domain.
+                freq_norm (int): 'no' for no whitening, or 'rma' for running-mean average,
+                'phase_only' for sign-bit normalization in freq domain.
     """
 
     CCFDIR = os.path.join(rootpath, "CCF")  # dir to store CC data
     DATADIR = os.path.join(rootpath, "RAW_DATA")  # dir where noise data is located
     locations = os.path.join(
         DATADIR, "station.txt"
-    )  # station info including network,station,channel,latitude,longitude,elevation: only needed when input_fmt is not h5 for asdf
+    )  # station info including network,station,channel,latitude,longitude,elevation:
+    # only needed when input_fmt is not h5 for asdf
     respdir = os.path.join(
         rootpath, "resp"
     )  # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
     local_data_path = os.path.join(
         rootpath, "2016_*"
-    )  # absolute dir where SAC files are stored: this para is VERY IMPORTANT and has to be RIGHT if input_fmt is not h5 for asdf!!!
+    )  # absolute dir where SAC files are stored: this para is VERY IMPORTANT and
+    # has to be RIGHT if input_fmt is not h5 for asdf!!!
 
     # read station list
     if input_fmt != "h5":
@@ -170,7 +180,7 @@ def cross_correlate(rootpath: str, freq_norm: str):
     fc_metadata = os.path.join(CCFDIR, "fft_cc_data.txt")
 
     #######################################
-    ###########PROCESSING SECTION##########
+    # #########PROCESSING SECTION##########
     #######################################
 
     # --------MPI---------
@@ -221,7 +231,7 @@ def cross_correlate(rootpath: str, freq_norm: str):
     for ick in range(rank, splits, size):
         t10 = time.time()
 
-        #############LOADING NOISE DATA AND DO FFT##################
+        # ###########LOADING NOISE DATA AND DO FFT##################
 
         # get the tempory file recording cc process
         if input_fmt == "h5":
@@ -288,7 +298,7 @@ def cross_correlate(rootpath: str, freq_norm: str):
                 # get station and inventory
                 try:
                     inv1 = ds.waveforms[tmps]["StationXML"]
-                except Exception as e:
+                except Exception:
                     print("abort! no stationxml for %s in file %s" % (tmps, tdir[ick]))
                     continue
                 sta, net, lon, lat, elv, loc = noise_module.sta_info_from_inv(inv1)
@@ -365,7 +375,7 @@ def cross_correlate(rootpath: str, freq_norm: str):
         if iii != nsta:
             print("it seems some stations miss data in download step, but it is OKAY!")
 
-        #############PERFORM CROSS-CORRELATION##################
+        # ###########PERFORM CROSS-CORRELATION##################
         ftmp = open(tmpfile, mode="w")
         # make cross-correlations
         for iiS in range(iii):
@@ -393,7 +403,9 @@ def cross_correlate(rootpath: str, freq_norm: str):
             #             if ncomp==1:
             #                 iend=np.minimum(iiS+ncomp,iii)
             #             else:
-            #                 if (channel[iiS][-1]=='Z'): # THIS IS NOT GENERALIZABLE. WE need to change this to the order there are bugs that shifts the components
+            #                 if (channel[iiS][-1]=='Z'): # THIS IS NOT GENERALIZABLE. WE need to
+            #                                               change this to the order there are
+            #                                               bugs that shifts the components
             #                     iend=np.minimum(iiS+1,iii)
             #                 elif (channel[iiS][-1]=='N'):
             #                     iend=np.minimum(iiS+2,iii)
@@ -417,10 +429,7 @@ def cross_correlate(rootpath: str, freq_norm: str):
                     if station[iiR] != station[iiS]:
                         continue
                 if flag:
-                    print(
-                        "receiver: %s %s %s"
-                        % (station[iiR], network[iiR], channel[iiR])
-                    )
+                    print("receiver: %s %s %s" % (station[iiR], network[iiR], channel[iiR]))
                 if not fft_flag[iiR]:
                     continue
 
@@ -460,19 +469,11 @@ def cross_correlate(rootpath: str, freq_norm: str):
                         "latR": clat[iiR],
                     }
                     comp = channel[iiS][-1] + channel[iiR][-1]
-                    parameters = noise_module.cc_parameters(
-                        fc_para, coor, tcorr, ncorr, comp
-                    )
+                    parameters = noise_module.cc_parameters(fc_para, coor, tcorr, ncorr, comp)
 
                     # source-receiver pair
                     data_type = (
-                        network[iiS]
-                        + "."
-                        + station[iiS]
-                        + "_"
-                        + network[iiR]
-                        + "."
-                        + station[iiR]
+                        network[iiS] + "." + station[iiS] + "_" + network[iiR] + "." + station[iiR]
                     )
                     path = channel[iiS] + "_" + channel[iiR]
                     crap[:] = corr[:]
@@ -516,10 +517,7 @@ def cross_correlate(rootpath: str, freq_norm: str):
         print("unreadable garbarge", n)
 
         t11 = time.time()
-        print(
-            "it takes %6.2fs to process the chunk of %s"
-            % (t11 - t10, tdir[ick].split("/")[-1])
-        )
+        print("it takes %6.2fs to process the chunk of %s" % (t11 - t10, tdir[ick].split("/")[-1]))
 
     tt1 = time.time()
     print("it takes %6.2fs to process step 1 in total" % (tt1 - tt0))

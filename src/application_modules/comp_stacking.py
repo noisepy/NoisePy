@@ -1,10 +1,8 @@
 import glob
-import os
 import time
 
 import matplotlib.pyplot as plt
 import numpy as np
-import obspy
 import pyasdf
 import scipy
 from obspy.signal.filter import bandpass
@@ -144,9 +142,7 @@ def robust_stack(cc_array, epsilon):
         w = w / np.sum(w)
         newstack = np.sum((w * cc_array.T).T, axis=0)  # /len(cc_array[:,1])
         res = (
-            np.linalg.norm(newstack - stack, ord=1)
-            / np.linalg.norm(newstack)
-            / len(cc_array[:, 1])
+            np.linalg.norm(newstack - stack, ord=1) / np.linalg.norm(newstack) / len(cc_array[:, 1])
         )
         nstep += 1
         if nstep > 10:
@@ -328,13 +324,9 @@ for sfile in sfiles:
 
     # do filtering if needed
     if do_filter:
-        slinear = bandpass(
-            slinear, fqmin, fqmax, int(1 / dt), corners=4, zerophase=True
-        )
+        slinear = bandpass(slinear, fqmin, fqmax, int(1 / dt), corners=4, zerophase=True)
         spws = bandpass(spws, fqmin, fqmax, int(1 / dt), corners=4, zerophase=True)
-        srobust = bandpass(
-            srobust, fqmin, fqmax, int(1 / dt), corners=4, zerophase=True
-        )
+        srobust = bandpass(srobust, fqmin, fqmax, int(1 / dt), corners=4, zerophase=True)
         sACF = bandpass(sACF, fqmin, fqmax, int(1 / dt), corners=4, zerophase=True)
         nroot = bandpass(nroot, fqmin, fqmax, int(1 / dt), corners=4, zerophase=True)
         sstack = bandpass(sstack, fqmin, fqmax, int(1 / dt), corners=4, zerophase=True)
@@ -362,9 +354,7 @@ for sfile in sfiles:
     ax[1].plot(tvec, sACF / np.max(sACF) + 6)
     ax[1].plot(tvec, nroot / np.max(nroot) + 8)
     ax[1].plot(tvec, sstack / np.max(sstack) + 10)
-    ax[1].legend(
-        ["linear", "robust", "pws", "ACF", "nroot", "selective"], loc="lower left"
-    )
+    ax[1].legend(["linear", "robust", "pws", "ACF", "nroot", "selective"], loc="lower left")
     ax[1].set_xlabel("time [s]")
 
     # cc coeff variations

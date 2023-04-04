@@ -1,15 +1,11 @@
-import glob
-import os
 import sys
 
 import matplotlib.pyplot as plt
-import numpy as np
-import obspy
-from obspy import UTCDateTime
 from obspy.clients.fdsn import Client
 
-sys.path.insert(1, "../../src")
 import noise_module
+
+sys.path.insert(1, "../../src")
 
 # download the data
 time1 = "2016-07-13T00:00:00.000000Z"

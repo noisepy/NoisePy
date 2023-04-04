@@ -36,7 +36,7 @@ NOTE:
 tt0 = time.time()
 
 ########################################
-#########PARAMETER SECTION##############
+# #######PARAMETER SECTION##############
 ########################################
 
 
@@ -118,7 +118,7 @@ def stack(rootpath: str, stack_method: str):
     stack_metadata = os.path.join(STACKDIR, "stack_data.txt")
 
     #######################################
-    ###########PROCESSING SECTION##########
+    # #########PROCESSING SECTION##########
     #######################################
 
     # --------MPI---------
@@ -204,10 +204,7 @@ def stack(rootpath: str, stack_method: str):
                 % (memory_size, MAX_MEM)
             )
         if flag:
-            print(
-                "Good on memory (need %5.2f G and %s G provided)!"
-                % (memory_size, MAX_MEM)
-            )
+            print("Good on memory (need %5.2f G and %s G provided)!" % (memory_size, MAX_MEM))
         # allocate array to store fft data/info
         cc_array = np.zeros((num_chunck * num_segmts, npts_segmt), dtype=np.float32)
         cc_time = np.zeros(num_chunck * num_segmts, dtype=np.float)
@@ -306,7 +303,6 @@ def stack(rootpath: str, stack_method: str):
                 iflag = 0
                 break
 
-            t2 = time.time()
             stack_h5 = os.path.join(STACKDIR, idir + "/" + outfn)
             # output stacked data
             (
@@ -317,9 +313,7 @@ def stack(rootpath: str, stack_method: str):
                 allstacks2,
                 allstacks3,
                 nstacks,
-            ) = noise_module.stacking(
-                cc_array[indx], cc_time[indx], cc_ngood[indx], stack_para
-            )
+            ) = noise_module.stacking(cc_array[indx], cc_time[indx], cc_ngood[indx], stack_para)
             if not len(allstacks1):
                 continue
             if rotation:
@@ -388,9 +382,7 @@ def stack(rootpath: str, stack_method: str):
             tparameters["station_source"] = ssta
             tparameters["station_receiver"] = rsta
             if stack_method != "all":
-                bigstack_rotated = noise_module.rotation(
-                    bigstack, tparameters, locs, flag
-                )
+                bigstack_rotated = noise_module.rotation(bigstack, tparameters, locs, flag)
 
                 # write to file
                 for icomp in range(nccomp):
@@ -406,15 +398,9 @@ def stack(rootpath: str, stack_method: str):
                             parameters=tparameters,
                         )
             else:
-                bigstack_rotated = noise_module.rotation(
-                    bigstack, tparameters, locs, flag
-                )
-                bigstack_rotated1 = noise_module.rotation(
-                    bigstack1, tparameters, locs, flag
-                )
-                bigstack_rotated2 = noise_module.rotation(
-                    bigstack2, tparameters, locs, flag
-                )
+                bigstack_rotated = noise_module.rotation(bigstack, tparameters, locs, flag)
+                bigstack_rotated1 = noise_module.rotation(bigstack1, tparameters, locs, flag)
+                bigstack_rotated2 = noise_module.rotation(bigstack2, tparameters, locs, flag)
 
                 # write to file
                 for icomp in range(nccomp):
@@ -443,10 +429,7 @@ def stack(rootpath: str, stack_method: str):
 
         t4 = time.time()
         if flag:
-            print(
-                "takes %6.2fs to stack/rotate all station pairs %s"
-                % (t4 - t1, pairs_all[ipair])
-            )
+            print("takes %6.2fs to stack/rotate all station pairs %s" % (t4 - t1, pairs_all[ipair]))
 
         # write file stamps
         ftmp = open(toutfn, "w")

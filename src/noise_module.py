@@ -1,10 +1,7 @@
-import copy
-
 # import pyasdf
 import datetime
 import glob
 import os
-import time
 
 import numpy as np
 import obspy
@@ -14,11 +11,11 @@ import scipy
 from numba import jit
 from obspy.core.inventory import Channel, Inventory, Network, Site, Station
 from obspy.core.util.base import _get_function_from_entry_point
-from obspy.signal.filter import bandpass, lowpass
+from obspy.signal.filter import bandpass
 from obspy.signal.invsim import cosine_taper
 from obspy.signal.regression import linear_regression
 from obspy.signal.util import _npts2nfft
-from scipy.fftpack import fft, ifft, next_fast_len
+from scipy.fftpack import next_fast_len
 from scipy.signal import hilbert
 
 """
@@ -121,12 +118,8 @@ def make_timestamps(prepro_para):
             for ii in range(nfiles):
                 try:
                     tr = obspy.read(allfiles[ii])
-                    all_stimes[ii, 0] = tr[0].stats.starttime - obspy.UTCDateTime(
-                        1970, 1, 1
-                    )
-                    all_stimes[ii, 1] = tr[0].stats.endtime - obspy.UTCDateTime(
-                        1970, 1, 1
-                    )
+                    all_stimes[ii, 0] = tr[0].stats.starttime - obspy.UTCDateTime(1970, 1, 1)
+                    all_stimes[ii, 1] = tr[0].stats.endtime - obspy.UTCDateTime(1970, 1, 1)
                 except Exception as e:
                     print(e)
                     continue
@@ -227,9 +220,7 @@ def preprocess_raw(st, inv, prepro_para, date_info):
         st.merge(method=1, fill_value=0)
     st[0].taper(max_percentage=0.05, max_length=50)  # taper window
     st[0].data = np.float32(
-        bandpass(
-            st[0].data, pre_filt[0], pre_filt[-1], df=sps, corners=4, zerophase=True
-        )
+        bandpass(st[0].data, pre_filt[0], pre_filt[-1], df=sps, corners=4, zerophase=True)
     )
 
     # make downsampling if needed
@@ -241,9 +232,7 @@ def preprocess_raw(st, inv, prepro_para, date_info):
         # when starttimes are between sampling points
         fric = st[0].stats.starttime.microsecond % (delta * 1e6)
         if fric > 1e-4:
-            st[0].data = segment_interpolate(
-                np.float32(st[0].data), float(fric / (delta * 1e6))
-            )
+            st[0].data = segment_interpolate(np.float32(st[0].data), float(fric / (delta * 1e6)))
             # --reset the time to remove the discrepancy---
             st[0].stats.starttime -= fric * 1e-6
 
@@ -260,16 +249,12 @@ def preprocess_raw(st, inv, prepro_para, date_info):
             if not inv[0][0][0].response:
                 raise ValueError("no response found in the inventory! abort!")
             elif inv[0][0][0].response == obspy.core.inventory.response.Response():
-                raise ValueError(
-                    "The response found in the inventory is empty (no stages)! abort!"
-                )
+                raise ValueError("The response found in the inventory is empty (no stages)! abort!")
             else:
                 try:
                     print("removing response for %s using inv" % st[0])
                     st[0].attach_response(inv)
-                    st[0].remove_response(
-                        output=rm_resp_out, pre_filt=pre_filt, water_level=60
-                    )
+                    st[0].remove_response(output=rm_resp_out, pre_filt=pre_filt, water_level=60)
                 except Exception:
                     print(
                         "WARNING: Failed to remove response from %s. Returning empty stream."
@@ -560,14 +545,10 @@ def noise_processing(fft_para, dataS):
     if time_norm != "no":
         if time_norm == "one_bit":  # sign normalization
             white = np.sign(dataS)
-        elif (
-            time_norm == "rma"
-        ):  # running mean: normalization over smoothed absolute average
+        elif time_norm == "rma":  # running mean: normalization over smoothed absolute average
             white = np.zeros(shape=dataS.shape, dtype=dataS.dtype)
             for kkk in range(N):
-                white[kkk, :] = dataS[kkk, :] / moving_ave(
-                    np.abs(dataS[kkk, :]), smooth_N
-                )
+                white[kkk, :] = dataS[kkk, :] / moving_ave(np.abs(dataS[kkk, :]), smooth_N)
 
     else:  # don't normalize
         white = dataS
@@ -685,13 +666,9 @@ def correlate(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
     if substack:
         if substack_len == cc_len:
             # choose to keep all fft data for a day
-            s_corr = np.zeros(
-                shape=(nwin, Nfft), dtype=np.float32
-            )  # stacked correlation
+            s_corr = np.zeros(shape=(nwin, Nfft), dtype=np.float32)  # stacked correlation
             ampmax = np.zeros(nwin, dtype=np.float32)
-            n_corr = np.zeros(
-                nwin, dtype=np.int16
-            )  # number of correlations for each substack
+            n_corr = np.zeros(nwin, dtype=np.int16)  # number of correlations for each substack
             t_corr = dataS_t  # timestamp
             crap = np.zeros(Nfft, dtype=np.complex64)
             for i in range(nwin):
@@ -702,9 +679,7 @@ def correlate(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
                 )  # remove the mean in freq domain (spike at t=0)
                 crap[-(Nfft2) + 1 :] = np.flip(np.conj(crap[1:(Nfft2)]), axis=0)
                 crap[0] = complex(0, 0)
-                s_corr[i, :] = np.real(
-                    np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0))
-                )
+                s_corr[i, :] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
 
             # remove abnormal data
             ampmax = np.max(s_corr, axis=1)
@@ -727,16 +702,12 @@ def correlate(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
 
             for istack in range(nstack):
                 # find the indexes of all of the windows that start or end within
-                itime = np.where(
-                    (dataS_t >= tstart) & (dataS_t < tstart + substack_len)
-                )[0]
+                itime = np.where((dataS_t >= tstart) & (dataS_t < tstart + substack_len))[0]
                 if len(itime) == 0:
                     tstart += substack_len
                     continue
 
-                crap[:Nfft2] = np.mean(
-                    corr[itime, :], axis=0
-                )  # linear average of the correlation
+                crap[:Nfft2] = np.mean(corr[itime, :], axis=0)  # linear average of the correlation
                 crap[:Nfft2] = crap[:Nfft2] - np.mean(
                     crap[:Nfft2]
                 )  # remove the mean in freq domain (spike at t=0)
@@ -881,16 +852,12 @@ def correlate_nonlinear_stack(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
 
             for istack in range(nstack):
                 # find the indexes of all of the windows that start or end within
-                itime = np.where(
-                    (dataS_t >= tstart) & (dataS_t < tstart + substack_len)
-                )[0]
+                itime = np.where((dataS_t >= tstart) & (dataS_t < tstart + substack_len))[0]
                 if len(itime) == 0:
                     tstart += substack_len
                     continue
 
-                crap[:Nfft2] = np.mean(
-                    corr[itime, :], axis=0
-                )  # linear average of the correlation
+                crap[:Nfft2] = np.mean(corr[itime, :], axis=0)  # linear average of the correlation
                 crap[:Nfft2] = crap[:Nfft2] - np.mean(
                     crap[:Nfft2]
                 )  # remove the mean in freq domain (spike at t=0)
@@ -1004,8 +971,6 @@ def stacking(cc_array, cc_time, cc_ngood, stack_para):
     # load useful parameters from dict
     samp_freq = stack_para["samp_freq"]
     smethod = stack_para["stack_method"]
-    start_date = stack_para["start_date"]
-    end_date = stack_para["end_date"]
     npts = cc_array.shape[1]
 
     # remove abnormal data
@@ -1030,8 +995,6 @@ def stacking(cc_array, cc_time, cc_ngood, stack_para):
         allstacks1 = np.zeros(npts, dtype=np.float32)
         allstacks2 = np.zeros(npts, dtype=np.float32)
         allstacks3 = np.zeros(npts, dtype=np.float32)
-        allstacks4 = np.zeros(npts, dtype=np.float32)
-        allstacks5 = np.zeros(npts, dtype=np.float32)
 
         if smethod == "linear":
             allstacks1 = np.mean(cc_array, axis=0)
@@ -1047,8 +1010,6 @@ def stacking(cc_array, cc_time, cc_ngood, stack_para):
             allstacks1 = np.mean(cc_array, axis=0)
             allstacks2 = pws(cc_array, samp_freq)
             allstacks3, w, nstep = robust_stack(cc_array, 0.001)
-            allstacks4 = adaptive_filter(cc_array, 1)
-            allstacks5 = nroot_stack(cc_array, 2)
         nstacks = np.sum(cc_ngood)
 
     # good to return
@@ -1108,9 +1069,7 @@ def stacking_rma(cc_array, cc_time, cc_ngood, stack_para):
 
             # loop through each time
             for ii in range(nstack):
-                sindx = np.where(
-                    (cc_time >= ttime) & (cc_time < ttime + rma_substack * 3600)
-                )[0]
+                sindx = np.where((cc_time >= ttime) & (cc_time < ttime + rma_substack * 3600))[0]
 
                 # when there are data in the time window
                 if len(sindx):
@@ -1535,9 +1494,8 @@ def taper(data):
 # @jit(nopython = True)
 
 
-def moving_ave(
-    A, N
-):  ## change the moving average calculation to take as input N the full window length to smooth
+# change the moving average calculation to take as input N the full window length to smooth
+def moving_ave(A, N):
     """
     Alternative function for moving average for an array.
     PARAMETERS:
@@ -1562,9 +1520,8 @@ def moving_ave(
     return B
 
 
-def moving_ave_2D(
-    A, N
-):  ## change the moving average calculation to take as input N the full window length to smooth
+# change the moving average calculation to take as input N the full window length to smooth
+def moving_ave_2D(A, N):
     """
     Alternative function for moving average for an array.
     PARAMETERS:
@@ -1586,9 +1543,7 @@ def moving_ave_2D(
     temp[:, -N:] = np.repeat(np.expand_dims(temp[:, -N - 1], axis=-1), N, axis=-1)
     # convolve with a boxcar and normalize, and use only central portion of the result
     # with length equal to the original array, discarding the added leading and trailing samples
-    B = scipy.signal.convolve2d(
-        temp, np.expand_dims(np.ones(N) / N, axis=0), mode="same"
-    )[:, N:-N]
+    B = scipy.signal.convolve2d(temp, np.expand_dims(np.ones(N) / N, axis=0), mode="same")[:, N:-N]
     return B
 
 
@@ -1623,9 +1578,7 @@ def robust_stack(cc_array, epsilon):
         w = w / np.sum(w)
         newstack = np.sum((w * cc_array.T).T, axis=0)  # /len(cc_array[:,1])
         res = (
-            np.linalg.norm(newstack - stack, ord=1)
-            / np.linalg.norm(newstack)
-            / len(cc_array[:, 1])
+            np.linalg.norm(newstack - stack, ord=1) / np.linalg.norm(newstack) / len(cc_array[:, 1])
         )
         nstep += 1
         if nstep > 10:
@@ -1647,9 +1600,7 @@ def selective_stack(cc_array, epsilon):
 
     Written by Marine Denolle
     """
-    res = 9e9  # residuals
     cc = np.ones(cc_array.shape[0])
-    nstep = 0
     newstack = np.mean(cc_array, axis=0)
     for i in range(cc_array.shape[0]):
         cc[i] = np.sum(np.multiply(newstack, cc_array[i, :].T))
@@ -1766,9 +1717,7 @@ def whiten_2D(timeseries, fft_para, n_taper):
     if smooth_N <= 1:
         spec_out[:, ix00:ix11] = np.exp(1.0j * np.angle(spec_out[:, ix00:ix11]))
     else:
-        spec_out[:, ix00:ix11] /= moving_ave_2D(
-            np.abs(spec_out[:, ix00:ix11]), smooth_N
-        )
+        spec_out[:, ix00:ix11] /= moving_ave_2D(np.abs(spec_out[:, ix00:ix11]), smooth_N)
 
     x = np.linspace(np.pi / 2.0, np.pi, ix0 - ix00)
     spec_out[:, ix00:ix0] *= np.cos(x) ** 2
@@ -1808,9 +1757,7 @@ def whiten(data, fft_para, n_taper=100):
 
     elif data.ndim == 2:
         FFTRawSign = whiten_2D(data, fft_para, n_taper)
-        arr_out = np.zeros(
-            (FFTRawSign.shape[0], (FFTRawSign.shape[1] - 1) * 2 + 1), dtype=complex
-        )
+        arr_out = np.zeros((FFTRawSign.shape[0], (FFTRawSign.shape[1] - 1) * 2 + 1), dtype=complex)
         arr_out[:, FFTRawSign.shape[1] :] = FFTRawSign[:, 1:].conjugate()[::-1]
     return FFTRawSign
 
@@ -1989,9 +1936,7 @@ def get_cc(s1, s_ref):
     cc = np.zeros(s1.shape[0])
     s_ref_norm = np.linalg.norm(s_ref)
     for i in range(s1.shape[0]):
-        cc[i] = (
-            np.sum(np.multiply(s1[i, :], s_ref)) / np.linalg.norm(s1[i, :]) / s_ref_norm
-        )
+        cc[i] = np.sum(np.multiply(s1[i, :], s_ref)) / np.linalg.norm(s1[i, :]) / s_ref_norm
     return cc
 
 
@@ -2298,10 +2243,8 @@ def mwcs_dvv(ref, cur, moving_window_length, slide_step, para, smoothing_half_wi
     freq = para["freq"]
     dt = para["dt"]
     tmin = np.min(twin)
-    tmax = np.max(twin)
     fmin = np.min(freq)
     fmax = np.max(freq)
-    tvect = np.arange(tmin, tmax, dt)
 
     # parameter initialize
     delta_t = []
@@ -2423,9 +2366,7 @@ def mwcs_dvv(ref, cur, moving_window_length, slide_step, para, smoothing_half_wi
 
         # ---------do linear regression-----------
         # m, a, em, ea = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=False)
-        m0, em0 = linear_regression(
-            time_axis[indx], delta_t[indx], w, intercept_origin=True
-        )
+        m0, em0 = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=True)
 
     else:
         print("not enough points to estimate dv/v for mwcs")
@@ -2460,7 +2401,6 @@ def WCC_dvv(ref, cur, moving_window_length, slide_step, para):
     twin = para["twin"]
     dt = para["dt"]
     tmin = np.min(twin)
-    tmax = np.max(twin)
 
     # parameter initialize
     delta_t = []
@@ -2599,9 +2539,7 @@ def wxs_dvv(
 
     # follow MWCS to do two steps of linear regression
     if not allfreq:
-        delta_t_m, delta_t_unc = np.zeros(npts, dtype=np.float32), np.zeros(
-            npts, dtype=np.float32
-        )
+        delta_t_m, delta_t_unc = np.zeros(npts, dtype=np.float32), np.zeros(npts, dtype=np.float32)
         # assume the tvec is the time window to measure dt
         for it in range(npts):
             w = 1 / WCT[freq_indin, it]
@@ -2629,9 +2567,7 @@ def wxs_dvv(
     # convert phase directly to delta_t for all frequencies
     else:
         # convert phase delay to time delay
-        delta_t = phase / (
-            2 * np.pi * freq[:, None]
-        )  # normalize phase by (2*pi*frequency)
+        delta_t = phase / (2 * np.pi * freq[:, None])  # normalize phase by (2*pi*frequency)
         dvv, err = np.zeros(freq_indin.shape), np.zeros(freq_indin.shape)
 
         # loop through freq for linear regression
@@ -2645,9 +2581,7 @@ def wxs_dvv(
                 w[~np.isfinite(w)] = 1.0
 
                 # m, a, em, ea = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=False)
-                m, em = linear_regression(
-                    tvec, delta_t[ifreq], w, intercept_origin=True
-                )
+                m, em = linear_regression(tvec, delta_t[ifreq], w, intercept_origin=True)
                 dvv[ii], err[ii] = -m, em
             else:
                 print("not enough points to estimate dv/v for wts")
@@ -2692,14 +2626,10 @@ def wts_dvv(
     Written by Congcong Yuan (30 Jun, 2019)
     """
     # common variables
-    twin = para["twin"]
     freq = para["freq"]
     dt = para["dt"]
-    tmin = np.min(twin)
-    tmax = np.max(twin)
     fmin = np.min(freq)
     fmax = np.max(freq)
-    tvec = np.arange(tmin, tmax, dt)
 
     # apply cwt on two traces
     cwt1, sj, freq, coi, _, _ = pycwt.cwt(cur, dt, dj, s0, J, wvn)
@@ -2803,14 +2733,10 @@ def wtdtw_allfreq(
     Written by Congcong Yuan (30 Jun, 2019)
     """
     # common variables
-    twin = para["twin"]
     freq = para["freq"]
     dt = para["dt"]
-    tmin = np.min(twin)
-    tmax = np.max(twin)
     fmin = np.min(freq)
     fmax = np.max(freq)
-    tvec = np.arange(tmin, tmax) * dt
 
     # apply cwt on two traces
     cwt1, sj, freq, coi, _, _ = pycwt.cwt(cur, dt, dj, s0, J, wvn)
@@ -2941,9 +2867,7 @@ def computeErrorFunction(u1, u0, nSample, lag, norm="L2"):
     """
 
     if lag >= nSample:
-        raise ValueError(
-            "computeErrorFunction:lagProblem", "lag must be smaller than nSample"
-        )
+        raise ValueError("computeErrorFunction:lagProblem", "lag must be smaller than nSample")
 
     # Allocate error function variable
     err = np.zeros([nSample, 2 * lag + 1])
@@ -3237,9 +3161,6 @@ def wct_modified(
     S12 = wavelet.smooth(W12 / scales, dt, dj, sj)
     WCT = np.abs(S12) ** 2 / (S1 * S2)
     aWCT = np.angle(W12)
-
-    # Calculate cross spectrum & its amplitude
-    WXS, WXA = W12, np.abs(S12)
 
     # Calculates the significance using Monte Carlo simulations with 95%
     # confidence as a function of scale.
