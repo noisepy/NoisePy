@@ -457,10 +457,6 @@ def stack(rootpath: str, stack_method: str):
     print("it takes %6.2fs to process step 2 in total" % (tt1 - tt0))
     comm.barrier()
 
-    # merge all path_array and output
-    if rank == 0:
-        sys.exit()
-
 
 # Point people to new entry point:
 if __name__ == "__main__":
