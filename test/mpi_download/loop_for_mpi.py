@@ -28,10 +28,6 @@ def test1():
         tdata = data[ii]
         print("index %d rank %d and data %f" % (ii, rank, tdata))
 
-    comm.barrier()
-    if rank == 0:
-        sys.exit()
-
 
 def test2():
     # --------MPI---------
@@ -54,8 +50,6 @@ def test2():
         print("index %d rank %d and data %f" % (ii, rank, tdata))
 
     comm.barrier()
-    if rank == 0:
-        sys.exit()
 
 
 def test3():
@@ -79,10 +73,6 @@ def test3():
         if ii < splits:
             tdata = data[ii]
             print("index %d rank %d and data %f" % (ii, rank, tdata))
-
-    comm.barrier()
-    if rank == 0:
-        sys.exit()
 
 
 def main():

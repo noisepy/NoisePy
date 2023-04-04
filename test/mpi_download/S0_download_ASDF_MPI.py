@@ -237,5 +237,3 @@ for ick in range(rank, splits + size - extra, size):
 tt1 = time.time()
 print("downloading step takes %6.2f s" % (tt1 - tt0))
 comm.barrier()
-if rank == 0:
-    sys.exit()

@@ -274,5 +274,3 @@ tt1 = time.time()
 print("step0B takes " + str(tt1 - tt0) + " s")
 
 comm.barrier()
-if rank == 0:
-    sys.exit()
