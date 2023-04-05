@@ -25,7 +25,8 @@ repos:
     hooks:
     - id: black
       args:
-        - --line-length=100
+        - --line-length=150
+        - --exclude= B950
 
 
   - repo: https://github.com/PyCQA/flake8
@@ -36,5 +37,9 @@ repos:
           - flake8-black
         exclude: .git,__pycache__,build,dist
         args:
-          - --max-line-length=100
-          - --extend-ignore=E203,E266,E501,W503, BLK100, F811
+          - --max-line-length=150
+          - --extend-ignore= E203, E266 BLK100, F811
+        #F811 flags selective_stack from noise_module becuase there are two modules with the same name but different parameters
+        #BLK100 designates where Black would make changes
+        #E266 Too many leading '#' for block comment
+        #E203 Whitespace rule relating to ':' that directly conflicts with black standards
