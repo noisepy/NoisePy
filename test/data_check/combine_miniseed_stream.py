@@ -62,9 +62,7 @@ def preprocess_raw(st, downsamp_freq, clean_time=True, pre_filt=None, resp=False
     if abs(downsamp_freq - sps) > 1e-4:
         # -----low pass filter with corner frequency = 0.9*Nyquist frequency----
         # st[0].data = lowpass(st[0].data,freq=0.4*downsamp_freq,df=sps,corners=4,zerophase=True)
-        st[0].data = bandpass(
-            st[0].data, 0.005, 0.4 * downsamp_freq, df=sps, corners=4, zerophase=True
-        )
+        st[0].data = bandpass(st[0].data, 0.005, 0.4 * downsamp_freq, df=sps, corners=4, zerophase=True)
 
         # ----make downsampling------
         st.interpolate(downsamp_freq, method="weighted_average_slopes")
@@ -140,9 +138,7 @@ def portion_gaps(stream):
     else:
         # ----loop through all trace to find gaps----
         for ii in range(len(stream) - 1):
-            pgaps += (stream[ii + 1].stats.starttime - stream[ii].stats.endtime) * stream[
-                ii
-            ].stats.sampling_rate
+            pgaps += (stream[ii + 1].stats.starttime - stream[ii].stats.endtime) * stream[ii].stats.sampling_rate
 
     return pgaps / npts
 

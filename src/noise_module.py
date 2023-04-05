@@ -131,9 +131,7 @@ def make_timestamps(prepro_para):
                 # all_stimes[ii,0] = obspy.UTCDateTime(year=year,julday=julia)-obspy.UTCDateTime(year=1970,month=1,day=1)
                 month = int(allfiles[ii].split("/")[-2].split("_")[2])
                 day = int(allfiles[ii].split("/")[-2].split("_")[3])
-                all_stimes[ii, 0] = obspy.UTCDateTime(
-                    year=year, month=month, day=day
-                ) - obspy.UTCDateTime(year=1970, month=1, day=1)
+                all_stimes[ii, 0] = obspy.UTCDateTime(year=year, month=month, day=day) - obspy.UTCDateTime(year=1970, month=1, day=1)
                 all_stimes[ii, 1] = all_stimes[ii, 0] + 86400
 
         # save name and time info for later use if the file not exist
@@ -156,7 +154,8 @@ def preprocess_raw(st, inv, prepro_para, date_info):
         3) filter and correct the time if integer time are between sampling points
         4) remove instrument responses with selected methods including:
             "inv"   -> using inventory information to remove_response;
-            "spectrum"   -> use the inverse of response spectrum. (a script is provided in additional_module to estimate response spectrum from RESP files)
+            "spectrum"   -> use the inverse of response spectrum.
+            (a script is provided in additional_module to estimate response spectrum from RESP files)
             "RESP_files" -> use the raw download RESP files
             "polezeros"  -> use pole/zero info for a crude correction of response
         5) trim data to a day-long sequence and interpolate it to ensure starting at 00:00:00.000
@@ -219,9 +218,7 @@ def preprocess_raw(st, inv, prepro_para, date_info):
     if len(st) > 1:
         st.merge(method=1, fill_value=0)
     st[0].taper(max_percentage=0.05, max_length=50)  # taper window
-    st[0].data = np.float32(
-        bandpass(st[0].data, pre_filt[0], pre_filt[-1], df=sps, corners=4, zerophase=True)
-    )
+    st[0].data = np.float32(bandpass(st[0].data, pre_filt[0], pre_filt[-1], df=sps, corners=4, zerophase=True))
 
     # make downsampling if needed
     if abs(samp_freq - sps) > 1e-4:
@@ -256,10 +253,7 @@ def preprocess_raw(st, inv, prepro_para, date_info):
                     st[0].attach_response(inv)
                     st[0].remove_response(output=rm_resp_out, pre_filt=pre_filt, water_level=60)
                 except Exception:
-                    print(
-                        "WARNING: Failed to remove response from %s. Returning empty stream."
-                        % st[0]
-                    )
+                    print("WARNING: Failed to remove response from %s. Returning empty stream." % st[0])
                     st = []
                     return st
 
@@ -324,25 +318,18 @@ def stats2inv(stats, prepro_para, locs=None):
 
     if staxml:
         if not respdir:
-            raise ValueError(
-                "Abort! staxml is selected but no directory is given to access the files"
-            )
+            raise ValueError("Abort! staxml is selected but no directory is given to access the files")
         else:
             invfilelist = glob.glob(os.path.join(respdir, "*" + stats.station + "*"))
             if len(invfilelist) > 0:
                 invfile = invfilelist[0]
                 if len(invfilelist) > 1:
-                    print(
-                        "Warning! More than one StationXML file was found for station %s. Keeping the first file in list."
-                        % stats.station
-                    )
+                    print("Warning! More than one StationXML file was found for station %s. Keeping the first file in list." % stats.station)
                 if os.path.isfile(str(invfile)):
                     inv = obspy.read_inventory(invfile)
                     return inv
             else:
-                raise ValueError(
-                    "Could not find a StationXML file for station: %s." % stats.station
-                )
+                raise ValueError("Could not find a StationXML file for station: %s." % stats.station)
 
     inv = Inventory(networks=[], source="homegrown")
 
@@ -674,9 +661,7 @@ def correlate(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
             for i in range(nwin):
                 n_corr[i] = 1
                 crap[:Nfft2] = corr[i, :]
-                crap[:Nfft2] = crap[:Nfft2] - np.mean(
-                    crap[:Nfft2]
-                )  # remove the mean in freq domain (spike at t=0)
+                crap[:Nfft2] = crap[:Nfft2] - np.mean(crap[:Nfft2])  # remove the mean in freq domain (spike at t=0)
                 crap[-(Nfft2) + 1 :] = np.flip(np.conj(crap[1:(Nfft2)]), axis=0)
                 crap[0] = complex(0, 0)
                 s_corr[i, :] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
@@ -708,14 +693,10 @@ def correlate(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
                     continue
 
                 crap[:Nfft2] = np.mean(corr[itime, :], axis=0)  # linear average of the correlation
-                crap[:Nfft2] = crap[:Nfft2] - np.mean(
-                    crap[:Nfft2]
-                )  # remove the mean in freq domain (spike at t=0)
+                crap[:Nfft2] = crap[:Nfft2] - np.mean(crap[:Nfft2])  # remove the mean in freq domain (spike at t=0)
                 crap[-(Nfft2) + 1 :] = np.flip(np.conj(crap[1:(Nfft2)]), axis=0)
                 crap[0] = complex(0, 0)
-                s_corr[istack, :] = np.real(
-                    np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0))
-                )
+                s_corr[istack, :] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
                 n_corr[istack] = len(itime)  # number of windows stacks
                 t_corr[istack] = tstart  # save the time stamps
                 tstart += substack_len
@@ -818,9 +799,7 @@ def correlate_nonlinear_stack(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
     for i in range(nwin):
         n_corr[i] = 1
         crap[:Nfft2] = corr[i, :]
-        crap[:Nfft2] = crap[:Nfft2] - np.mean(
-            crap[:Nfft2]
-        )  # remove the mean in freq domain (spike at t=0)
+        crap[:Nfft2] = crap[:Nfft2] - np.mean(crap[:Nfft2])  # remove the mean in freq domain (spike at t=0)
         crap[-(Nfft2) + 1 :] = np.flip(np.conj(crap[1:(Nfft2)]), axis=0)
         crap[0] = complex(0, 0)
         s_corr[i, :] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
@@ -858,14 +837,10 @@ def correlate_nonlinear_stack(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
                     continue
 
                 crap[:Nfft2] = np.mean(corr[itime, :], axis=0)  # linear average of the correlation
-                crap[:Nfft2] = crap[:Nfft2] - np.mean(
-                    crap[:Nfft2]
-                )  # remove the mean in freq domain (spike at t=0)
+                crap[:Nfft2] = crap[:Nfft2] - np.mean(crap[:Nfft2])  # remove the mean in freq domain (spike at t=0)
                 crap[-(Nfft2) + 1 :] = np.flip(np.conj(crap[1:(Nfft2)]), axis=0)
                 crap[0] = complex(0, 0)
-                s_corr[istack, :] = np.real(
-                    np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0))
-                )
+                s_corr[istack, :] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
                 n_corr[istack] = len(itime)  # number of windows stacks
                 t_corr[istack] = tstart  # save the time stamps
                 tstart += substack_len
@@ -1178,31 +1153,11 @@ def rotation(bigstack, parameters, locs, flag):
     tcorr[0] = -cosb * bigstack[7] - sinb * bigstack[6]
     tcorr[1] = sinb * bigstack[7] - cosb * bigstack[6]
     tcorr[2] = bigstack[8]
-    tcorr[3] = (
-        -cosa * cosb * bigstack[4]
-        - cosa * sinb * bigstack[3]
-        - sina * cosb * bigstack[1]
-        - sina * sinb * bigstack[0]
-    )
-    tcorr[4] = (
-        cosa * sinb * bigstack[4]
-        - cosa * cosb * bigstack[3]
-        + sina * sinb * bigstack[1]
-        - sina * cosb * bigstack[0]
-    )
+    tcorr[3] = -cosa * cosb * bigstack[4] - cosa * sinb * bigstack[3] - sina * cosb * bigstack[1] - sina * sinb * bigstack[0]
+    tcorr[4] = cosa * sinb * bigstack[4] - cosa * cosb * bigstack[3] + sina * sinb * bigstack[1] - sina * cosb * bigstack[0]
     tcorr[5] = cosa * bigstack[5] + sina * bigstack[2]
-    tcorr[6] = (
-        sina * cosb * bigstack[4]
-        + sina * sinb * bigstack[3]
-        - cosa * cosb * bigstack[1]
-        - cosa * sinb * bigstack[0]
-    )
-    tcorr[7] = (
-        -sina * sinb * bigstack[4]
-        + sina * cosb * bigstack[3]
-        + cosa * sinb * bigstack[1]
-        - cosa * cosb * bigstack[0]
-    )
+    tcorr[6] = sina * cosb * bigstack[4] + sina * sinb * bigstack[3] - cosa * cosb * bigstack[1] - cosa * sinb * bigstack[0]
+    tcorr[7] = -sina * sinb * bigstack[4] + sina * cosb * bigstack[3] + cosa * sinb * bigstack[1] - cosa * cosb * bigstack[0]
     tcorr[8] = -sina * bigstack[5] + cosa * bigstack[2]
 
     return tcorr
@@ -1269,9 +1224,7 @@ def portion_gaps(stream, date_info):
     pgaps = 0
     # loop through all trace to accumulate gaps
     for ii in range(len(stream) - 1):
-        pgaps += (stream[ii + 1].stats.starttime - stream[ii].stats.endtime) * stream[
-            ii
-        ].stats.sampling_rate
+        pgaps += (stream[ii + 1].stats.starttime - stream[ii].stats.endtime) * stream[ii].stats.sampling_rate
     if npts != 0:
         pgaps = pgaps / npts
     if npts == 0:
@@ -1577,9 +1530,7 @@ def robust_stack(cc_array, epsilon):
         # print(w)
         w = w / np.sum(w)
         newstack = np.sum((w * cc_array.T).T, axis=0)  # /len(cc_array[:,1])
-        res = (
-            np.linalg.norm(newstack - stack, ord=1) / np.linalg.norm(newstack) / len(cc_array[:, 1])
-        )
+        res = np.linalg.norm(newstack - stack, ord=1) / np.linalg.norm(newstack) / len(cc_array[:, 1])
         nstep += 1
         if nstep > 10:
             return newstack, w, nstep
@@ -1960,7 +1911,8 @@ quick index of dv/v methods:
 
 def stretching(ref, cur, dv_range, nbtrial, para):
     """
-    This function compares the Reference waveform to stretched/compressed current waveforms to get the relative seismic velocity variation (and associated error).
+    This function compares the Reference waveform to stretched/compressed current waveforms to get the
+    relative seismic velocity variation (and associated error).
     It also computes the correlation coefficient between the Reference waveform and the current waveform.
 
     PARAMETERS:
@@ -1980,9 +1932,11 @@ def stretching(ref, cur, dv_range, nbtrial, para):
     dv: Relative velocity change dv/v (in %)
     cc: correlation coefficient between the reference waveform and the best stretched/compressed current waveform
     cdp: correlation coefficient between the reference waveform and the initial current waveform
-    error: Errors in the dv/v measurements based on Weaver et al (2011), On the precision of noise-correlation interferometry, Geophys. J. Int., 185(3)
+    error: Errors in the dv/v measurements based on Weaver et al (2011),
+    On the precision of noise-correlation interferometry, Geophys. J. Int., 185(3)
 
-    Note: The code first finds the best correlation coefficient between the Reference waveform and the stretched/compressed current waveform among the "nbtrial" values.
+    Note: The code first finds the best correlation coefficient between the Reference waveform and
+    the stretched/compressed current waveform among the "nbtrial" values.
     A refined analysis is then performed around this value to obtain a more precise dv/v measurement .
 
     Originally by L. Viens 04/26/2018 (Viens et al., 2018 JGR)
@@ -2012,9 +1966,7 @@ def stretching(ref, cur, dv_range, nbtrial, para):
         waveform_cur = s
         cof[ii] = np.corrcoef(waveform_ref, waveform_cur)[0, 1]
 
-    cdp = np.corrcoef(cur, ref)[
-        0, 1
-    ]  # correlation coefficient between the reference and initial current waveforms
+    cdp = np.corrcoef(cur, ref)[0, 1]  # correlation coefficient between the reference and initial current waveforms
 
     # find the maximum correlation coefficient
     imax = np.nanargmax(cof)
@@ -2034,9 +1986,7 @@ def stretching(ref, cur, dv_range, nbtrial, para):
         ncof[ii] = np.corrcoef(waveform_ref, waveform_cur)[0, 1]
 
     cc = np.max(ncof)  # Find maximum correlation coefficient of the refined  analysis
-    dv = (
-        100.0 * dtfiner[np.argmax(ncof)] - 100
-    )  # Multiply by 100 to convert to percentage (Epsilon = -dt/t = dv/v)
+    dv = 100.0 * dtfiner[np.argmax(ncof)] - 100  # Multiply by 100 to convert to percentage (Epsilon = -dt/t = dv/v)
 
     # Error computation based on Weaver et al (2011), On the precision of noise-correlation interferometry, Geophys. J. Int., 185(3)
     T = 1 / (fmax - fmin)
@@ -2044,18 +1994,15 @@ def stretching(ref, cur, dv_range, nbtrial, para):
     wc = np.pi * (fmin + fmax)
     t1 = np.min([tmin, tmax])
     t2 = np.max([tmin, tmax])
-    error = 100 * (
-        np.sqrt(1 - X**2)
-        / (2 * X)
-        * np.sqrt((6 * np.sqrt(np.pi / 2) * T) / (wc**2 * (t2**3 - t1**3)))
-    )
+    error = 100 * (np.sqrt(1 - X**2) / (2 * X) * np.sqrt((6 * np.sqrt(np.pi / 2) * T) / (wc**2 * (t2**3 - t1**3))))
 
     return dv, error, cc, cdp
 
 
 def stretching_vect(ref, cur, dv_range, nbtrial, para):
     """
-    This function compares the Reference waveform to stretched/compressed current waveforms to get the relative seismic velocity variation (and associated error).
+    This function compares the Reference waveform to stretched/compressed current waveforms
+    to get the relative seismic velocity variation (and associated error).
     It also computes the correlation coefficient between the Reference waveform and the current waveform.
 
     PARAMETERS:
@@ -2064,7 +2011,8 @@ def stretching_vect(ref, cur, dv_range, nbtrial, para):
     cur: Current waveform (np.ndarray, size N)
     dv_range: absolute bound for the velocity variation; example: dv=0.03 for [-3,3]% of relative velocity change ('float')
     nbtrial: number of stretching coefficient between dvmin and dvmax, no need to be higher than 100  ('float')
-    para: vector of the indices of the cur and ref windows on wich you want to do the measurements (np.ndarray, size tmin*delta:tmax*delta)
+    para: vector of the indices of the cur and ref windows on wich you want to do the
+    measurements (np.ndarray, size tmin*delta:tmax*delta)
     For error computation, we need parameters:
         fmin: minimum frequency of the data
         fmax: maximum frequency of the data
@@ -2075,9 +2023,11 @@ def stretching_vect(ref, cur, dv_range, nbtrial, para):
     dv: Relative velocity change dv/v (in %)
     cc: correlation coefficient between the reference waveform and the best stretched/compressed current waveform
     cdp: correlation coefficient between the reference waveform and the initial current waveform
-    error: Errors in the dv/v measurements based on Weaver et al (2011), On the precision of noise-correlation interferometry, Geophys. J. Int., 185(3)
+    error: Errors in the dv/v measurements based on Weaver et al (2011), On the precision
+    of noise-correlation interferometry, Geophys. J. Int., 185(3)
 
-    Note: The code first finds the best correlation coefficient between the Reference waveform and the stretched/compressed current waveform among the "nbtrial" values.
+    Note: The code first finds the best correlation coefficient between the Reference waveform and
+    the stretched/compressed current waveform among the "nbtrial" values.
     A refined analysis is then performed around this value to obtain a more precise dv/v measurement .
 
     Originally by L. Viens 04/26/2018 (Viens et al., 2018 JGR)
@@ -2098,9 +2048,7 @@ def stretching_vect(ref, cur, dv_range, nbtrial, para):
     dvmin = -np.abs(dv_range)
     dvmax = np.abs(dv_range)
     Eps = 1 + (np.linspace(dvmin, dvmax, nbtrial))
-    cdp = np.corrcoef(cur, ref)[
-        0, 1
-    ]  # correlation coefficient between the reference and initial current waveforms
+    cdp = np.corrcoef(cur, ref)[0, 1]  # correlation coefficient between the reference and initial current waveforms
     waveforms = np.zeros((nbtrial + 1, len(ref)))
     waveforms[0, :] = ref
 
@@ -2129,9 +2077,7 @@ def stretching_vect(ref, cur, dv_range, nbtrial, para):
         waveforms[ii + 1, :] = s
     ncof = np.corrcoef(waveforms)[0][1:]
     cc = np.max(ncof)  # Find maximum correlation coefficient of the refined  analysis
-    dv = (
-        100.0 * dtfiner[np.argmax(ncof)] - 100
-    )  # Multiply by 100 to convert to percentage (Epsilon = -dt/t = dv/v)
+    dv = 100.0 * dtfiner[np.argmax(ncof)] - 100  # Multiply by 100 to convert to percentage (Epsilon = -dt/t = dv/v)
 
     # Error computation based on Weaver et al (2011), On the precision of noise-correlation interferometry, Geophys. J. Int., 185(3)
     T = 1 / (fmax - fmin)
@@ -2139,11 +2085,7 @@ def stretching_vect(ref, cur, dv_range, nbtrial, para):
     wc = np.pi * (fmin + fmax)
     t1 = np.min([tmin, tmax])
     t2 = np.max([tmin, tmax])
-    error = 100 * (
-        np.sqrt(1 - X**2)
-        / (2 * X)
-        * np.sqrt((6 * np.sqrt(np.pi / 2) * T) / (wc**2 * (t2**3 - t1**3)))
-    )
+    error = 100 * (np.sqrt(1 - X**2) / (2 * X) * np.sqrt((6 * np.sqrt(np.pi / 2) * T) / (wc**2 * (t2**3 - t1**3))))
 
     return dv, error, cc, cdp
 
@@ -2462,9 +2404,7 @@ def WCC_dvv(ref, cur, moving_window_length, slide_step, para):
         # simple weight
         w = np.ones(count)
         # m, a, em, ea = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=False)
-        m0, em0 = linear_regression(
-            time_axis.flatten(), delta_t.flatten(), w.flatten(), intercept_origin=True
-        )
+        m0, em0 = linear_regression(time_axis.flatten(), delta_t.flatten(), w.flatten(), intercept_origin=True)
 
     else:
         print("not enough points to estimate dv/v for wcc")
@@ -2520,14 +2460,10 @@ def wxs_dvv(
     npts = len(tvec)
 
     # perform cross coherent analysis, modified from function 'wavelet.cwt'
-    WCT, aWCT, coi, freq, sig = wct_modified(
-        ref, cur, dt, dj=dj, s0=s0, J=J, sig=sig, wavelet=wvn, normalize=True
-    )
+    WCT, aWCT, coi, freq, sig = wct_modified(ref, cur, dt, dj=dj, s0=s0, J=J, sig=sig, wavelet=wvn, normalize=True)
 
     if unwrapflag:
-        phase = np.unwrap(
-            aWCT, axis=-1
-        )  # axis=0, upwrap along time; axis=-1, unwrap along frequency
+        phase = np.unwrap(aWCT, axis=-1)  # axis=0, upwrap along time; axis=-1, unwrap along frequency
     else:
         phase = aWCT
 
@@ -2544,9 +2480,7 @@ def wxs_dvv(
         for it in range(npts):
             w = 1 / WCT[freq_indin, it]
             w[~np.isfinite(w)] = 1.0
-            delta_t_m[it], delta_t_unc[it] = linear_regression(
-                freq[freq_indin] * 2 * np.pi, phase[freq_indin, it], w
-            )
+            delta_t_m[it], delta_t_unc[it] = linear_regression(freq[freq_indin] * 2 * np.pi, phase[freq_indin, it], w)
 
         # new weights for regression
         w2 = 1 / np.mean(WCT[freq_indin, :], axis=0)
@@ -3006,9 +2940,7 @@ def backtrackDistanceFunction(dir, d, err, lmin, b):
         iBegin, iEnd, iInc = nSample - 1, 0, -1
 
     # start from the end (front or back)
-    ll = np.argmin(
-        d[iBegin, :]
-    )  # find minimum accumulated distance at front or back depending on 'dir'
+    ll = np.argmin(d[iBegin, :])  # find minimum accumulated distance at front or back depending on 'dir'
     stbar[iBegin] = ll + lmin  # absolute value of integer shift
 
     # move through all time samples in forward or backward direction
@@ -3068,19 +3000,7 @@ def backtrackDistanceFunction(dir, d, err, lmin, b):
     return stbar
 
 
-def wct_modified(
-    y1,
-    y2,
-    dt,
-    dj=1 / 12,
-    s0=-1,
-    J=-1,
-    sig=True,
-    significance_level=0.95,
-    wavelet="morlet",
-    normalize=True,
-    **kwargs
-):
+def wct_modified(y1, y2, dt, dj=1 / 12, s0=-1, J=-1, sig=True, significance_level=0.95, wavelet="morlet", normalize=True, **kwargs):
     """
         Wavelet coherence transform (WCT).
     ​
@@ -3168,17 +3088,7 @@ def wct_modified(
     if sig:
         a1, b1, c1 = pycwt.ar1(y1)
         a2, b2, c2 = pycwt.ar1(y2)
-        sig = pycwt.wct_significance(
-            a1,
-            a2,
-            dt=dt,
-            dj=dj,
-            s0=s0,
-            J=J,
-            significance_level=significance_level,
-            wavelet=wavelet,
-            **kwargs
-        )
+        sig = pycwt.wct_significance(a1, a2, dt=dt, dj=dj, s0=s0, J=J, significance_level=significance_level, wavelet=wavelet, **kwargs)
     else:
         sig = np.asarray([0])
 

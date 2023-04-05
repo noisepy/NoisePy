@@ -90,10 +90,7 @@ def plot_waveform(sfile, net, sta, freqmin, freqmax, savefig=False, sdir=None):
         plt.figure(figsize=(9, 6))
         plt.subplot(311)
         plt.plot(tt, data[0], "k-", linewidth=1)
-        plt.title(
-            "T\u2080:%s   %s.%s   @%5.3f-%5.2f Hz"
-            % (tr[0].stats.starttime, net, sta, freqmin, freqmax)
-        )
+        plt.title("T\u2080:%s   %s.%s   @%5.3f-%5.2f Hz" % (tr[0].stats.starttime, net, sta, freqmin, freqmax))
         plt.legend([tcomp[0].split("_")[0].upper()], loc="upper left")
         plt.subplot(312)
         plt.plot(tt, data[1], "k-", linewidth=1)
@@ -155,9 +152,7 @@ def plot_substack_cc(sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir=
 
     # only works for cross-correlation with substacks generated
     if not flag:
-        raise ValueError(
-            "seems no substacks have been done! not suitable for this plotting function"
-        )
+        raise ValueError("seems no substacks have been done! not suitable for this plotting function")
 
     # lags for display
     if not disp_lag:
@@ -197,9 +192,7 @@ def plot_substack_cc(sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir=
             tmarks = []
             # load cc for each station-pair
             for ii in range(nwin):
-                data[ii] = bandpass(
-                    data[ii], freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-                )
+                data[ii] = bandpass(data[ii], freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
                 amax[ii] = max(data[ii])
                 data[ii] /= amax[ii]
                 timestamp[ii] = obspy.UTCDateTime(ttime[ii])
@@ -218,9 +211,7 @@ def plot_substack_cc(sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir=
                 extent=[-disp_lag, disp_lag, nwin, 0],
                 aspect="auto",
             )
-            ax.set_title(
-                "%s.%s.%s  %s.%s.%s  dist:%5.2fkm" % (net1, sta1, chan1, net2, sta2, chan2, dist)
-            )
+            ax.set_title("%s.%s.%s  %s.%s.%s  dist:%5.2fkm" % (net1, sta1, chan1, net2, sta2, chan2, dist))
             ax.set_xlabel("time [s]")
             ax.set_xticks(t)
             ax.set_yticks(np.arange(0, nwin, step=tick_inc))
@@ -252,9 +243,7 @@ def plot_substack_cc(sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir=
                     sdir = sfile.split(".")[0]
                 if not os.path.isdir(sdir):
                     os.mkdir(sdir)
-                outfname = sdir + "/{0:s}.{1:s}.{2:s}_{3:s}.{4:s}.{5:s}.pdf".format(
-                    net1, sta1, chan1, net2, sta2, chan2
-                )
+                outfname = sdir + "/{0:s}.{1:s}.{2:s}_{3:s}.{4:s}.{5:s}.pdf".format(net1, sta1, chan1, net2, sta2, chan2)
                 fig.savefig(outfname, format="pdf", dpi=400)
                 plt.close()
             else:
@@ -297,9 +286,7 @@ def plot_substack_cc_spect(sfile, freqmin, freqmax, disp_lag=None, savefig=True,
 
     # only works for cross-correlation with substacks generated
     if not flag:
-        raise ValueError(
-            "seems no substacks have been done! not suitable for this plotting function"
-        )
+        raise ValueError("seems no substacks have been done! not suitable for this plotting function")
 
     # lags for display
     if not disp_lag:
@@ -340,9 +327,7 @@ def plot_substack_cc_spect(sfile, freqmin, freqmax, disp_lag=None, savefig=True,
             for ii in range(nwin):
                 spec[ii] = scipy.fftpack.fft(data[ii], nfft, axis=0)[: nfft // 2]
                 spec[ii] /= np.max(np.abs(spec[ii]), axis=0)
-                data[ii] = bandpass(
-                    data[ii], freqmin, freqmax, int(1 / dt), corners=4, zerophase=True
-                )
+                data[ii] = bandpass(data[ii], freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
                 amax[ii] = max(data[ii])
                 data[ii] /= amax[ii]
                 timestamp[ii] = obspy.UTCDateTime(ttime[ii])
@@ -359,9 +344,7 @@ def plot_substack_cc_spect(sfile, freqmin, freqmax, disp_lag=None, savefig=True,
                 extent=[-disp_lag, disp_lag, nwin, 0],
                 aspect="auto",
             )
-            ax[0].set_title(
-                "%s.%s.%s  %s.%s.%s  dist:%5.2f km" % (net1, sta1, chan1, net2, sta2, chan2, dist)
-            )
+            ax[0].set_title("%s.%s.%s  %s.%s.%s  dist:%5.2f km" % (net1, sta1, chan1, net2, sta2, chan2, dist))
             ax[0].set_xlabel("time [s]")
             ax[0].set_xticks(t)
             ax[0].set_yticks(np.arange(0, nwin, step=tick_inc))
@@ -390,9 +373,7 @@ def plot_substack_cc_spect(sfile, freqmin, freqmax, disp_lag=None, savefig=True,
                     sdir = sfile.split(".")[0]
                 if not os.path.isdir(sdir):
                     os.mkdir(sdir)
-                outfname = sdir + "/{0:s}.{1:s}.{2:s}_{3:s}.{4:s}.{5:s}.pdf".format(
-                    net1, sta1, chan1, net2, sta2, chan2
-                )
+                outfname = sdir + "/{0:s}.{1:s}.{2:s}_{3:s}.{4:s}.{5:s}.pdf".format(net1, sta1, chan1, net2, sta2, chan2)
                 fig.savefig(outfname, format="pdf", dpi=400)
                 plt.close()
             else:
@@ -485,9 +466,7 @@ def plot_substack_all(
             continue
 
         if len(ngood) == 1:
-            raise ValueError(
-                "seems no substacks have been done! not suitable for this plotting function"
-            )
+            raise ValueError("seems no substacks have been done! not suitable for this plotting function")
 
     # plotting
     if nwin > 100:
@@ -498,10 +477,7 @@ def plot_substack_all(
         tick_inc = 2
     fig, ax = plt.subplots(2, sharex=False, figsize=figsize)
     ax[0].matshow(data, cmap="seismic", extent=[-disp_lag, disp_lag, nwin, 0], aspect="auto")
-    ax[0].set_title(
-        "%s dist:%5.2f km filtered at %4.2f-%4.2fHz"
-        % (sfile.split("/")[-1], dist, freqmin, freqmax)
-    )
+    ax[0].set_title("%s dist:%5.2f km filtered at %4.2f-%4.2fHz" % (sfile.split("/")[-1], dist, freqmin, freqmax))
     ax[0].set_xlabel("time [s]")
     ax[0].set_ylabel("wavefroms")
     ax[0].set_xticks(t)
@@ -522,9 +498,7 @@ def plot_substack_all(
             sdir = sfile.split(".")[0]
         if not os.path.isdir(sdir):
             os.mkdir(sdir)
-        outfname = sdir + "/{0:s}_{1:4.2f}_{2:4.2f}Hz.pdf".format(
-            sfile.split("/")[-1], freqmin, freqmax
-        )
+        outfname = sdir + "/{0:s}_{1:4.2f}_{2:4.2f}Hz.pdf".format(sfile.split("/")[-1], freqmin, freqmax)
         fig.savefig(outfname, format="pdf", dpi=400)
         plt.close()
     else:
@@ -617,9 +591,7 @@ def plot_substack_all_spect(
             continue
 
         if len(ngood) == 1:
-            raise ValueError(
-                "seems no substacks have been done! not suitable for this plotting function"
-            )
+            raise ValueError("seems no substacks have been done! not suitable for this plotting function")
 
     # plotting
     tick_inc = 50
@@ -769,9 +741,7 @@ def plot_all_moveout(
 
     # save figure or show
     if savefig:
-        outfname = (
-            sdir + "/moveout_allstack_" + str(stack_method) + "_" + str(dist_inc) + "kmbin.pdf"
-        )
+        outfname = sdir + "/moveout_allstack_" + str(stack_method) + "_" + str(dist_inc) + "kmbin.pdf"
         fig.savefig(outfname, format="pdf", dpi=400)
         plt.close()
     else:

@@ -293,10 +293,7 @@ def plot_moveout_stack(sdir, sta, freqmin, freqmax, ccomp, maxlag=None, tag=None
                             "k",
                             linewidth=0.8,
                         )
-                    plt.title(
-                        "%s %s %s filtered @%4.1f-%4.1f Hz"
-                        % (sdir.split("/")[-1], tag, ccomp, freqmin, freqmax)
-                    )
+                    plt.title("%s %s %s filtered @%4.1f-%4.1f Hz" % (sdir.split("/")[-1], tag, ccomp, freqmin, freqmax))
                     plt.xlabel("time (s)")
                     plt.ylabel("offset (km)")
                     plt.text(maxlag * 0.9, dist + 0.5, receiver, fontsize=6)
@@ -407,10 +404,7 @@ def plot_moveout_stack_comp(sdir1, sdir2, sdir3, freqmin, freqmax, ccomp, maxlag
                             )
                         except Exception:
                             pass
-                    plt.title(
-                        "%s %s %s filtered @%4.1f-%4.1f Hz"
-                        % (sdir1.split("/")[-1], tag, ccomp, freqmin, freqmax)
-                    )
+                    plt.title("%s %s %s filtered @%4.1f-%4.1f Hz" % (sdir1.split("/")[-1], tag, ccomp, freqmin, freqmax))
                     plt.xlabel("time (s)")
                     plt.ylabel("offset (km)")
                     plt.legend(["decon", "coherence", "raw"], loc="lower right")
@@ -458,10 +452,7 @@ def plot_cc_2lags(sfile, freqmin, freqmax, net1, sta1, comp1, net2=None, sta2=No
                 # -------positive lag and flip negative lags----------
                 plt.plot(tt, data[indx0 : indx0 + tindx + 1], "r-", linewidth=1)
                 plt.plot(tt, np.flip(data[indx0 - tindx : indx0 + 1]), "g-", linewidth=1)
-                plt.title(
-                    "%s_%s_%s_%s %6.1f km @%4.1f-%4.1f Hz"
-                    % (sta1, comp1, sta2, comp2, dist, freqmin, freqmax)
-                )
+                plt.title("%s_%s_%s_%s %6.1f km @%4.1f-%4.1f Hz" % (sta1, comp1, sta2, comp2, dist, freqmin, freqmax))
                 plt.legend(["positive", "negative"], loc="upper right")
                 plt.xlabel("time [s]")
                 plt.show()
@@ -491,10 +482,7 @@ def plot_cc_2lags(sfile, freqmin, freqmax, net1, sta1, comp1, net2=None, sta2=No
                     "g-",
                     linewidth=1,
                 )
-                plt.title(
-                    "%s_%s_%s_[ENZ] %6.1f km @%4.1f-%4.1f Hz"
-                    % (sta1, comp1, sta2, dist, freqmin, freqmax)
-                )
+                plt.title("%s_%s_%s_[ENZ] %6.1f km @%4.1f-%4.1f Hz" % (sta1, comp1, sta2, dist, freqmin, freqmax))
                 plt.legend(["positive", "negative"], loc="upper right")
                 # ----3 cross components---
                 plt.subplot(312)
@@ -594,10 +582,7 @@ def plot_cc_withtime(
                 plt.plot(tt, data[indx0 - tindx : indx0 + tindx + 1] - 2, "b-", linewidth=1)
         # ---------highlight zero time------------
         plt.plot([0, 0], [0, ii * 2], "r--", linewidth=1.5)
-        plt.title(
-            "%s_%s_%s_%s dist %6.1f @%4.1f-%4.1f Hz"
-            % (sta1, comp1, sta2, comp2, dist, freqmin, freqmax)
-        )
+        plt.title("%s_%s_%s_%s dist %6.1f @%4.1f-%4.1f Hz" % (sta1, comp1, sta2, comp2, dist, freqmin, freqmax))
         plt.xlabel("time [s]")
         plt.ylabel("days")
         plt.show()
@@ -639,9 +624,7 @@ def plot_cc_withtime(
                     plt.text(maxlag * 0.9, ii * 2, iday, fontsize=6)
 
             if stackdir:
-                stackfile = os.path.join(
-                    stackdir, net1 + "." + sta1 + "_" + net2 + "." + sta2 + ".h5"
-                )
+                stackfile = os.path.join(stackdir, net1 + "." + sta1 + "_" + net2 + "." + sta2 + ".h5")
                 # ----plot stacked one----
                 with pyasdf.ASDFDataSet(stackfile, mode="r") as stack_ds:
                     ccomp = comp1[-1] + comp2[-1]
@@ -665,10 +648,7 @@ def plot_cc_withtime(
             # ---------highlight zero time------------
             plt.grid(True)
             plt.plot([0, 0], [-1, ii * 2 + 3], "r--", linewidth=1.5)
-            plt.title(
-                "%s_%s_%s_%s, dist:%6.1fkm @%4.1f-%4.1f Hz"
-                % (sta1, comp1, sta2, comp2, dist, freqmin, freqmax)
-            )
+            plt.title("%s_%s_%s_%s, dist:%6.1fkm @%4.1f-%4.1f Hz" % (sta1, comp1, sta2, comp2, dist, freqmin, freqmax))
             plt.xlabel("time [s]")
             plt.ylabel("days")
             plt.show()
@@ -735,10 +715,7 @@ def plot_cc_withtime_stack(ccffile, freqmin, freqmax, ccomp, maxlag=None):
 
             # ---------highlight zero time------------
             plt.plot([0, 0], [0, ii * 2], "r--", linewidth=1.5)
-            plt.title(
-                "%s %s, dist:%6.1fkm @%4.1f-%4.1f Hz"
-                % (ccffile.split("/")[-1], ccomp, dist, freqmin, freqmax)
-            )
+            plt.title("%s %s, dist:%6.1fkm @%4.1f-%4.1f Hz" % (ccffile.split("/")[-1], ccomp, dist, freqmin, freqmax))
             plt.xlabel("time [s]")
             plt.ylabel("days")
             plt.show()

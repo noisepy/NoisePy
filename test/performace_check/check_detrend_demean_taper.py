@@ -134,10 +134,7 @@ def test_1d(sacfile):
     t2 = time.time()
     tr[0].taper(max_percentage=0.05, max_length=20)
     t3 = time.time()
-    print(
-        "1D: it takes %6.3f in total with %6.3f %6.3f and %6.3f for obspy"
-        % (t3 - t0, t1 - t0, t2 - t1, t3 - t2)
-    )
+    print("1D: it takes %6.3f in total with %6.3f %6.3f and %6.3f for obspy" % (t3 - t0, t1 - t0, t2 - t1, t3 - t2))
 
     # detrend, demean using newly defined function
     t0 = time.time()
@@ -147,10 +144,7 @@ def test_1d(sacfile):
     t2 = time.time()
     tdata = taper(tdata)
     t3 = time.time()
-    print(
-        "1D: it takes %6.3f in total with %6.3f %6.3f and %6.3f for new"
-        % (t3 - t0, t1 - t0, t2 - t1, t3 - t2)
-    )
+    print("1D: it takes %6.3f in total with %6.3f %6.3f and %6.3f for new" % (t3 - t0, t1 - t0, t2 - t1, t3 - t2))
 
 
 def test_2d(sacfile):
@@ -195,9 +189,7 @@ def test_2d(sacfile):
 
 
 def main():
-    sfiles = glob.glob(
-        "/Users/chengxin/Documents/NoisePy_example/Kanto/CLEAN_DATA//Event_2010_352/*.sac"
-    )
+    sfiles = glob.glob("/Users/chengxin/Documents/NoisePy_example/Kanto/CLEAN_DATA//Event_2010_352/*.sac")
 
     for sacfile in sfiles:
         # test_1d(sacfile)

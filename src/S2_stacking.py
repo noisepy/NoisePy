@@ -55,9 +55,7 @@ MAX_MEM = 4.0
 # TODO: make stack_method an enum
 def stack(rootpath: str, stack_method: str):
     if rotation and correction:
-        corrfile = os.path.join(
-            rootpath, "meso_angles.txt"
-        )  # csv file containing angle info to be corrected
+        corrfile = os.path.join(rootpath, "meso_angles.txt")  # csv file containing angle info to be corrected
         locs = pd.read_csv(corrfile)
     else:
         locs = []
@@ -65,9 +63,7 @@ def stack(rootpath: str, stack_method: str):
     # absolute path parameters
     CCFDIR = os.path.join(rootpath, "CCF")  # dir where CC data is stored
     STACKDIR = os.path.join(rootpath, "STACK")  # dir where stacked data is going to
-    locations = os.path.join(
-        rootpath, "RAW_DATA/station.txt"
-    )  # station info including network,station,channel,latitude,longitude,elevation
+    locations = os.path.join(rootpath, "RAW_DATA/station.txt")  # station info including network,station,channel,latitude,longitude,elevation
     if not os.path.isfile(locations):
         raise ValueError("Abort! station info is needed for this script")
 
@@ -199,10 +195,7 @@ def stack(rootpath: str, stack_method: str):
         memory_size = num_chunck * num_segmts * npts_segmt * 4 / 1024**3
 
         if memory_size > MAX_MEM:
-            raise ValueError(
-                "Require %5.3fG memory but only %5.3fG provided)! Cannot load cc data all once!"
-                % (memory_size, MAX_MEM)
-            )
+            raise ValueError("Require %5.3fG memory but only %5.3fG provided)! Cannot load cc data all once!" % (memory_size, MAX_MEM))
         if flag:
             print("Good on memory (need %5.2f G and %s G provided)!" % (memory_size, MAX_MEM))
         # allocate array to store fft data/info
@@ -229,25 +222,16 @@ def stack(rootpath: str, stack_method: str):
             if fauto == 1:
                 if ncomp == 3 and len(path_list) < 6:
                     if flag:
-                        print(
-                            "continue! not enough cross components for auto-correlation %s in %s"
-                            % (dtype, ifile)
-                        )
+                        print("continue! not enough cross components for auto-correlation %s in %s" % (dtype, ifile))
                     continue
             else:
                 if ncomp == 3 and len(path_list) < 9:
                     if flag:
-                        print(
-                            "continue! not enough cross components for cross-correlation %s in %s"
-                            % (dtype, ifile)
-                        )
+                        print("continue! not enough cross components for cross-correlation %s in %s" % (dtype, ifile))
                     continue
 
             if len(path_list) > 9:
-                raise ValueError(
-                    "more than 9 cross-component exists for %s %s! please double check"
-                    % (ifile, dtype)
-                )
+                raise ValueError("more than 9 cross-component exists for %s %s! please double check" % (ifile, dtype))
 
             # load the 9-component data, which is in order in the ASDF
             for tpath in path_list:
@@ -370,10 +354,7 @@ def stack(rootpath: str, stack_method: str):
 
             t3 = time.time()
             if flag:
-                print(
-                    "takes %6.2fs to stack one component with %s stacking method"
-                    % (t3 - t1, stack_method)
-                )
+                print("takes %6.2fs to stack one component with %s stacking method" % (t3 - t1, stack_method))
 
         # do rotation if needed
         if rotation and iflag:

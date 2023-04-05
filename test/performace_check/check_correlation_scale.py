@@ -1,11 +1,8 @@
-import sys
 import time
 
 import pyasdf
 
 import noise_module
-
-sys.path.insert(1, "../../src")
 
 """
 this script loads an example of daily ccfs and compare the computing
@@ -33,13 +30,9 @@ Nfft = ds.auxiliary_data[comp][day].parameters["nfft"]
 Nseg = ds.auxiliary_data[comp][day].parameters["nseg"]
 
 t0 = time.time()
-corr = noise_module.optimized_correlate1(
-    spect_s[:, :], spect_r[:, :], int(maxlag), dt, Nfft, Nseg, method
-)
+corr = noise_module.optimized_correlate1(spect_s[:, :], spect_r[:, :], int(maxlag), dt, Nfft, Nseg, method)
 t1 = time.time()
-corr = noise_module.optimized_correlate1(
-    spect_s[1, :], spect_r[1, :], int(maxlag), dt, Nfft, 1, method
-)
+corr = noise_module.optimized_correlate1(spect_s[1, :], spect_r[1, :], int(maxlag), dt, Nfft, 1, method)
 t2 = time.time()
 print("it takes %f for %d segments and %f for one segment" % ((t1 - t0), Nseg, (t2 - t1)))
 temp = (t1 - t0) / Nseg

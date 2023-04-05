@@ -141,9 +141,7 @@ def robust_stack(cc_array, epsilon):
         # print(w)
         w = w / np.sum(w)
         newstack = np.sum((w * cc_array.T).T, axis=0)  # /len(cc_array[:,1])
-        res = (
-            np.linalg.norm(newstack - stack, ord=1) / np.linalg.norm(newstack) / len(cc_array[:, 1])
-        )
+        res = np.linalg.norm(newstack - stack, ord=1) / np.linalg.norm(newstack) / len(cc_array[:, 1])
         nstep += 1
         if nstep > 10:
             return newstack, w, nstep

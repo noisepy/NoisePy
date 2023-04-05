@@ -125,9 +125,7 @@ def wcc_dvv(ref, cur, moving_window_length, slide_step, para):
         w = np.ones(count)
         # m, a, em, ea = linear_regression(time_axis[indx], delta_t[indx], w,
         # intercept_origin=False)
-        m0, em0 = linear_regression(
-            time_axis.flatten(), delta_t.flatten(), w.flatten(), intercept_origin=True
-        )
+        m0, em0 = linear_regression(time_axis.flatten(), delta_t.flatten(), w.flatten(), intercept_origin=True)
 
     else:
         print("not enough points to estimate dv/v for wcc")
@@ -202,9 +200,7 @@ def ts_dvv(ref, cur, dv_range, nbtrial, para):
         waveform_cur = s
         cof[ii] = np.corrcoef(waveform_ref, waveform_cur)[0, 1]
 
-    cdp = np.corrcoef(cur, ref)[
-        0, 1
-    ]  # correlation coefficient between the reference and initial current waveforms
+    cdp = np.corrcoef(cur, ref)[0, 1]  # correlation coefficient between the reference and initial current waveforms
 
     # find the maximum correlation coefficient
     imax = np.nanargmax(cof)
@@ -224,9 +220,7 @@ def ts_dvv(ref, cur, dv_range, nbtrial, para):
         ncof[ii] = np.corrcoef(waveform_ref, waveform_cur)[0, 1]
 
     cc = np.max(ncof)  # Find maximum correlation coefficient of the refined  analysis
-    dv = (
-        100.0 * dtfiner[np.argmax(ncof)] - 100
-    )  # Multiply by 100 to convert to percentage (Epsilon = -dt/t = dv/v)
+    dv = 100.0 * dtfiner[np.argmax(ncof)] - 100  # Multiply by 100 to convert to percentage (Epsilon = -dt/t = dv/v)
 
     # Error computation based on Weaver et al (2011), On the precision of noise-correlation
     # interferometry, Geophys. J. Int., 185(3)
@@ -235,11 +229,7 @@ def ts_dvv(ref, cur, dv_range, nbtrial, para):
     wc = np.pi * (fmin + fmax)
     t1 = np.min([tmin, tmax])
     t2 = np.max([tmin, tmax])
-    error = 100 * (
-        np.sqrt(1 - X**2)
-        / (2 * X)
-        * np.sqrt((6 * np.sqrt(np.pi / 2) * T) / (wc**2 * (t2**3 - t1**3)))
-    )
+    error = 100 * (np.sqrt(1 - X**2) / (2 * X) * np.sqrt((6 * np.sqrt(np.pi / 2) * T) / (wc**2 * (t2**3 - t1**3))))
 
     return dv, error, cc, cdp
 
@@ -527,14 +517,10 @@ def wxs_dvv(
     npts = len(tvec)
 
     # perform cross coherent analysis, modified from function 'wavelet.cwt'
-    WCT, aWCT, coi, freq, sig = wct_modified(
-        ref, cur, dt, dj=dj, s0=s0, J=J, sig=sig, wavelet=wvn, normalize=True
-    )
+    WCT, aWCT, coi, freq, sig = wct_modified(ref, cur, dt, dj=dj, s0=s0, J=J, sig=sig, wavelet=wvn, normalize=True)
 
     if unwrapflag:
-        phase = np.unwrap(
-            aWCT, axis=-1
-        )  # axis=0, upwrap along time; axis=-1, unwrap along frequency
+        phase = np.unwrap(aWCT, axis=-1)  # axis=0, upwrap along time; axis=-1, unwrap along frequency
     else:
         phase = aWCT
 
@@ -551,9 +537,7 @@ def wxs_dvv(
         for it in range(npts):
             w = 1 / WCT[freq_indin, itvec[it]]
             w[~np.isfinite(w)] = 1.0
-            delta_t_m[it], delta_t_unc[it] = linear_regression(
-                freq[freq_indin] * 2 * np.pi, phase[freq_indin, itvec[it]], w
-            )
+            delta_t_m[it], delta_t_unc[it] = linear_regression(freq[freq_indin] * 2 * np.pi, phase[freq_indin, itvec[it]], w)
 
         # new weights for regression
         wWCT = WCT[:, itvec]
@@ -893,7 +877,8 @@ def getCoherence(dcs, ds1, ds2):
 
 def computeErrorFunction(u1, u0, nSample, lag, norm="L2"):
     """
-    compute Error Function used in DTW. The error function is equation 1 in Hale, 2013. You could uncomment the
+    compute Error Function used in DTW. The error function is
+    equation 1 in Hale, 2013. You could uncomment the
     L1 norm and comment the L2 norm if you want on Line 29
 
     Parameters
@@ -1054,9 +1039,7 @@ def backtrackDistanceFunction(dir, d, err, lmin, b):
         iBegin, iEnd, iInc = nSample - 1, 0, -1
 
     # start from the end (front or back)
-    ll = np.argmin(
-        d[iBegin, :]
-    )  # find minimum accumulated distance at front or back depending on 'dir'
+    ll = np.argmin(d[iBegin, :])  # find minimum accumulated distance at front or back depending on 'dir'
     stbar[iBegin] = ll + lmin  # absolute value of integer shift
 
     # move through all time samples in forward or backward direction
@@ -1116,19 +1099,7 @@ def backtrackDistanceFunction(dir, d, err, lmin, b):
     return stbar
 
 
-def wct_modified(
-    y1,
-    y2,
-    dt,
-    dj=1 / 12,
-    s0=-1,
-    J=-1,
-    sig=True,
-    significance_level=0.95,
-    wavelet="morlet",
-    normalize=True,
-    **kwargs
-):
+def wct_modified(y1, y2, dt, dj=1 / 12, s0=-1, J=-1, sig=True, significance_level=0.95, wavelet="morlet", normalize=True, **kwargs):
     """
         Wavelet coherence transform (WCT).
     ​
@@ -1216,17 +1187,7 @@ def wct_modified(
     if sig:
         a1, b1, c1 = pycwt.ar1(y1)
         a2, b2, c2 = pycwt.ar1(y2)
-        sig = pycwt.wct_significance(
-            a1,
-            a2,
-            dt=dt,
-            dj=dj,
-            s0=s0,
-            J=J,
-            significance_level=significance_level,
-            wavelet=wavelet,
-            **kwargs
-        )
+        sig = pycwt.wct_significance(a1, a2, dt=dt, dj=dj, s0=s0, J=J, significance_level=significance_level, wavelet=wavelet, **kwargs)
     else:
         sig = np.asarray([0])
 

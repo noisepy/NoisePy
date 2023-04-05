@@ -10,8 +10,6 @@ from obspy.clients.fdsn import Client
 
 import noise_module
 
-sys.path.insert(1, "../../src")
-
 """
 This script:
     1) downloads data chunck on your choice of length and Client or pre-compiled station list;
@@ -41,17 +39,13 @@ if not os.path.isdir(direc):
     os.mkdir(direc)
 
 # download parameters
-client = Client(
-    "GEONET"
-)  # client/data center. see https://docs.obspy.org/packages/obspy.clients.fdsn.html for a list
+client = Client("GEONET")  # client/data center. see https://docs.obspy.org/packages/obspy.clients.fdsn.html for a list
 down_list = False  # download stations from pre-compiled list
 oput_CSV = True  # output station.list to a CSV file to be used in later stacking steps
 flag = True  # print progress when running the script
 NewFreq = 10  # resampling at X samples per seconds
 rm_resp = False  # boolean to remove instrumental response
-respdir = (
-    "none"  # output response directory (has to be given if rm_resp is true and other than inv)
-)
+respdir = "none"  # output response directory (has to be given if rm_resp is true and other than inv)
 freqmin = 0.05  # pre filtering frequency bandwidth
 freqmax = 4
 

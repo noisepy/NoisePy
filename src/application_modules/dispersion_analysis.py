@@ -1,5 +1,4 @@
 import os
-import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,9 +8,6 @@ import scipy
 
 import noise_module
 
-sys.path.insert(1, "../")
-
-
 """
 this application script of NoisePy is to measure group velocity on the resulted cross-correlation
 functions from S2. It uses the wavelet transform to trace the wave energy on multiple frequencies.
@@ -20,10 +16,12 @@ Based on our tests, it generates very similar results to those from Frequency-Ti
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
 
 NOTE:
-    According to Bensen et al., (2007), the centrel frequncy of each narrowband filters (equvalent to
-    wavelet tranformed signal at each scale) would be different from the instaneous frequency calculated
-    using instaneous phase due to spectral linkage. We do not correct this effect in this script. Phase
-    velocity is not calculated here, but could be expaneded using the phase info of wavelet transformed signal.
+    According to Bensen et al., (2007), the centrel frequncy of
+    each narrowband filters (equvalent to wavelet tranformed signal
+    at each scale) would be different from the instaneous frequency calculated
+    using instaneous phase due to spectral linkage. We do not
+    correct this effect in this script. Phase velocity is not calculated here,
+    but could be expaneded using the phase info of wavelet transformed signal.
 """
 
 ############################################
@@ -31,21 +29,13 @@ NOTE:
 ############################################
 
 # input file info
-rootpath = os.path.join(
-    os.path.expanduser("~"), "Documents/NoisePy_example/SCAL"
-)  # root path for this data processing
-sfile = os.path.join(
-    rootpath, "STACK_month/CI.BLC/CI.BLC_CI.BTP.h5"
-)  # ASDF file containing stacked data
-outdir = os.path.join(
-    rootpath, "figures/dispersion"
-)  # dir where to output dispersive image and extracted dispersion
+rootpath = os.path.join(os.path.expanduser("~"), "Documents/NoisePy_example/SCAL")  # root path for this data processing
+sfile = os.path.join(rootpath, "STACK_month/CI.BLC/CI.BLC_CI.BTP.h5")  # ASDF file containing stacked data
+outdir = os.path.join(rootpath, "figures/dispersion")  # dir where to output dispersive image and extracted dispersion
 
 # data type and cross-component
 stack_method = "linear"  # which stacked data to measure dispersion info
-lag_type = (
-    "sym"  # options to do measurements on the 'neg', 'pos' or 'sym' lag (average of neg and pos)
-)
+lag_type = "sym"  # options to do measurements on the 'neg', 'pos' or 'sym' lag (average of neg and pos)
 ncomp = 3
 if ncomp == 1:
     rtz_system = ["ZZ"]

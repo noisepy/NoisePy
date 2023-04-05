@@ -140,9 +140,7 @@ def plot_cc_stack(sfile, freqmin, freqmax, ccomp, maxlag=None):
                 tdata = ds.auxiliary_data[slist[ii]][ccomp].data[indx1 : indx2 + 1]
             except Exception:
                 continue
-            data[ii, :] = bandpass(
-                tdata, freqmin, freqmax, int(1 / delta), corners=4, zerophase=True
-            )
+            data[ii, :] = bandpass(tdata, freqmin, freqmax, int(1 / delta), corners=4, zerophase=True)
             # data[ii,:] = data[ii,:]/max(data[ii,:])
 
     fig, ax = plt.subplots(2, sharex=True)
@@ -301,9 +299,7 @@ def plot_freq_time_stack(sfile, freqmin, freqmax, ccomp, maxlag=None):
                 tdata = ds.auxiliary_data[slist[ii]][ccomp].data[indx1 : indx2 + 1]
             except Exception:
                 continue
-            data[ii, :] = bandpass(
-                tdata, freqmin, freqmax, int(1 / delta), corners=4, zerophase=True
-            )
+            data[ii, :] = bandpass(tdata, freqmin, freqmax, int(1 / delta), corners=4, zerophase=True)
             # data[ii,:] = data[ii,:]/max(data[ii,:])
 
     fig, ax = plt.subplots(2, sharex=True)

@@ -62,9 +62,7 @@ for ii in range(nfiles):
                         temp = netS + "." + staS + "_" + netR + "." + staR + "_" + comp + ".SAC"
 
                         # -------check whether folder exists-------
-                        if not os.path.isdir(
-                            os.path.join(STACKDIR, "STACK_SAC/" + netS + "." + staS)
-                        ):
+                        if not os.path.isdir(os.path.join(STACKDIR, "STACK_SAC/" + netS + "." + staS)):
                             os.mkdir(os.path.join(STACKDIR, "STACK_SAC/" + netS + "." + staS))
                         filename = os.path.join(STACKDIR, "STACK_SAC/" + netS + "." + staS, temp)
 

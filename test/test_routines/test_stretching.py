@@ -1,5 +1,3 @@
-import os
-import sys
 import time
 
 import numpy as np
@@ -7,8 +5,6 @@ import pytest
 from obspy.signal.invsim import cosine_taper
 
 from noise_module import stretching, stretching_vect
-
-sys.path.append(os.getcwd())
 
 # This short script is intended as a test for the stretching routine
 # it takes a generic sine curve with known stretching factor and ensures
@@ -30,9 +26,7 @@ def test_stretching():
     para["twin"] = [0.0, 10.0]
     para["freq"] = [9.9, 10.1]
 
-    dvv, error, cc, cdp = stretching(
-        ref=original_signal, cur=stretched_signal, dv_range=0.05, nbtrial=100, para=para
-    )
+    dvv, error, cc, cdp = stretching(ref=original_signal, cur=stretched_signal, dv_range=0.05, nbtrial=100, para=para)
 
     assert pytest.approx(cc) == 1.0
     assert dvv + 0.5 < para["dt"]  # assert result is -0.5%
@@ -50,9 +44,7 @@ def test_stretching_vect():
     para["twin"] = [0.0, 10.0]
     para["freq"] = [9.9, 10.1]
 
-    dvv, error, cc, cdp = stretching_vect(
-        ref=original_signal, cur=stretched_signal, dv_range=0.05, nbtrial=100, para=para
-    )
+    dvv, error, cc, cdp = stretching_vect(ref=original_signal, cur=stretched_signal, dv_range=0.05, nbtrial=100, para=para)
 
     assert pytest.approx(cc) == 1.0
     assert dvv + 0.5 < para["dt"]  # assert result is -0.5%

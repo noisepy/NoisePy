@@ -54,14 +54,13 @@ tt0 = time.time()
 ########################################
 
 # absolute path parameters
-rootpath = os.path.join(
-    os.path.expanduser("~"), "Documents/SCAL"
-)  # root path for this data processing
+rootpath = os.path.join(os.path.expanduser("~"), "Documents/SCAL")  # root path for this data processing
 
 # some control parameters
 input_fmt = "h5"  # string: 'h5', 'sac','mseed'
 time_norm = "no"  # 'no' for no normalization, or 'rma', 'one_bit' for normalization in time domain
-cc_method = "xcorr"  # 'xcorr' for pure cross correlation, 'deconv' for deconvolution; FOR "COHERENCY" PLEASE set freq_norm to "rma", time_norm to "no" and cc_method to "xcorr"
+cc_method = "xcorr"  # 'xcorr' for pure cross correlation, 'deconv' for deconvolution;
+# FOR "COHERENCY" PLEASE set freq_norm to "rma", time_norm to "no" and cc_method to "xcorr"
 flag = True  # print intermediate variables and computing time for debugging purpose
 acorr_only = False  # only perform auto-correlation
 xcorr_only = True  # only perform cross-correlation or not
@@ -69,7 +68,8 @@ ncomp = 3  # 1 or 3 component data (needed to decide whether do rotation)
 
 # station/instrument info for input_fmt=='sac' or 'mseed'
 stationxml = False  # station.XML file used to remove instrument response for SAC/miniseed data
-rm_resp = "no"  # select 'no' to not remove response and use 'inv','spectrum','RESP', or 'polozeros' to remove response
+rm_resp = "no"  # select 'no' to not remove response and use 'inv','spectrum',
+# 'RESP', or 'polozeros' to remove response
 
 # pre-processing parameters
 cc_len = 1800  # basic unit of data length for fft (sec)
@@ -81,15 +81,11 @@ maxlag = 200  # lags of cross-correlation to save (sec)
 substack = True  # True = smaller stacks within the time chunk. False: it will stack over inc_hours
 # for instance: substack=True, substack_len=cc_len means that you keep ALL of the correlations
 # if substack=True, substack_len=2*cc_len, then you pre-stack every 2 correlation windows.
-substack_len = (
-    cc_len  # how long to stack over (for monitoring purpose): need to be multiples of cc_len
-)
+substack_len = cc_len  # how long to stack over (for monitoring purpose): need to be multiples of cc_len
 smoothspect_N = 10  # moving window length to smooth spectrum amplitude (points)
 
 # criteria for data selection
-max_over_std = (
-    10  # threahold to remove window of bad signals: set it to 10*9 if prefer not to remove them
-)
+max_over_std = 10  # threahold to remove window of bad signals: set it to 10*9 if prefer not to remove them
 
 # maximum memory allowed per core in GB
 MAX_MEM = 4.0
@@ -107,16 +103,10 @@ def cross_correlate(rootpath: str, freq_norm: str):
 
     CCFDIR = os.path.join(rootpath, "CCF")  # dir to store CC data
     DATADIR = os.path.join(rootpath, "RAW_DATA")  # dir where noise data is located
-    locations = os.path.join(
-        DATADIR, "station.txt"
-    )  # station info including network,station,channel,latitude,longitude,elevation:
+    locations = os.path.join(DATADIR, "station.txt")  # station info including network,station,channel,latitude,longitude,elevation:
     # only needed when input_fmt is not h5 for asdf
-    respdir = os.path.join(
-        rootpath, "resp"
-    )  # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
-    local_data_path = os.path.join(
-        rootpath, "2016_*"
-    )  # absolute dir where SAC files are stored: this para is VERY IMPORTANT and
+    respdir = os.path.join(rootpath, "resp")  # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
+    local_data_path = os.path.join(rootpath, "2016_*")  # absolute dir where SAC files are stored: this para is VERY IMPORTANT and
     # has to be RIGHT if input_fmt is not h5 for asdf!!!
 
     # read station list
@@ -269,10 +259,7 @@ def cross_correlate(rootpath: str, freq_norm: str):
         npts_chunk = int(nseg_chunk * cc_len * samp_freq)
         memory_size = nsta * npts_chunk * 4 / 1024**3
         if memory_size > MAX_MEM:
-            raise ValueError(
-                "Require %5.3fG memory but only %5.3fG provided)! Reduce inc_hours to avoid this issue!"
-                % (memory_size, MAX_MEM)
-            )
+            raise ValueError("Require %5.3fG memory but only %5.3fG provided)! Reduce inc_hours to avoid this issue!" % (memory_size, MAX_MEM))
 
         nnfft = int(next_fast_len(int(cc_len * samp_freq)))
         # open array to store fft data/info in memory
@@ -333,9 +320,7 @@ def cross_correlate(rootpath: str, freq_norm: str):
                     continue
 
                 # cut daily-long data into smaller segments (dataS always in 2D)
-                trace_stdS, dataS_t, dataS = noise_module.cut_trace_make_stat(
-                    fc_para, source
-                )  # optimized version:3-4 times faster
+                trace_stdS, dataS_t, dataS = noise_module.cut_trace_make_stat(fc_para, source)  # optimized version:3-4 times faster
                 if not len(dataS):
                     continue
                 N = dataS.shape[0]
@@ -345,10 +330,7 @@ def cross_correlate(rootpath: str, freq_norm: str):
                 Nfft = source_white.shape[1]
                 Nfft2 = Nfft // 2
                 if flag:
-                    print(
-                        "N and Nfft are %d (proposed %d),%d (proposed %d)"
-                        % (N, nseg_chunk, Nfft, nnfft)
-                    )
+                    print("N and Nfft are %d (proposed %d),%d (proposed %d)" % (N, nseg_chunk, Nfft, nnfft))
 
                 # keep track of station info to write into parameter section of ASDF files
                 station.append(sta)
@@ -381,11 +363,7 @@ def cross_correlate(rootpath: str, freq_norm: str):
         for iiS in range(iii):
             fft1 = fft_array[iiS]
             source_std = fft_std[iiS]
-            sou_ind = np.where(
-                (source_std < fc_para["max_over_std"])
-                & (source_std > 0)
-                & (np.isnan(source_std) == 0)
-            )[0]
+            sou_ind = np.where((source_std < fc_para["max_over_std"]) & (source_std > 0) & (np.isnan(source_std) == 0))[0]
             if not fft_flag[iiS] or not len(sou_ind):
                 continue
 
@@ -438,19 +416,13 @@ def cross_correlate(rootpath: str, freq_norm: str):
                 receiver_std = fft_std[iiR]
 
                 # ---------- check the existence of earthquakes ----------
-                rec_ind = np.where(
-                    (receiver_std < fc_para["max_over_std"])
-                    & (receiver_std > 0)
-                    & (np.isnan(receiver_std) == 0)
-                )[0]
+                rec_ind = np.where((receiver_std < fc_para["max_over_std"]) & (receiver_std > 0) & (np.isnan(receiver_std) == 0))[0]
                 bb = np.intersect1d(sou_ind, rec_ind)
                 if len(bb) == 0:
                     continue
 
                 t2 = time.time()
-                corr, tcorr, ncorr = noise_module.correlate(
-                    sfft1[bb, :], sfft2[bb, :], fc_para, Nfft, fft_time[iiR][bb]
-                )
+                corr, tcorr, ncorr = noise_module.correlate(sfft1[bb, :], sfft2[bb, :], fc_para, Nfft, fft_time[iiR][bb])
                 t3 = time.time()
 
                 # ---------------keep daily cross-correlation into a hdf5 file--------------
@@ -472,35 +444,17 @@ def cross_correlate(rootpath: str, freq_norm: str):
                     parameters = noise_module.cc_parameters(fc_para, coor, tcorr, ncorr, comp)
 
                     # source-receiver pair
-                    data_type = (
-                        network[iiS] + "." + station[iiS] + "_" + network[iiR] + "." + station[iiR]
-                    )
+                    data_type = network[iiS] + "." + station[iiS] + "_" + network[iiR] + "." + station[iiR]
                     path = channel[iiS] + "_" + channel[iiR]
                     crap[:] = corr[:]
-                    ccf_ds.add_auxiliary_data(
-                        data=crap, data_type=data_type, path=path, parameters=parameters
-                    )
+                    ccf_ds.add_auxiliary_data(data=crap, data_type=data_type, path=path, parameters=parameters)
                     ftmp.write(
-                        network[iiS]
-                        + "."
-                        + station[iiS]
-                        + "."
-                        + channel[iiS]
-                        + "_"
-                        + network[iiR]
-                        + "."
-                        + station[iiR]
-                        + "."
-                        + channel[iiR]
-                        + "\n"
+                        network[iiS] + "." + station[iiS] + "." + channel[iiS] + "_" + network[iiR] + "." + station[iiR] + "." + channel[iiR] + "\n"
                     )
 
                 t4 = time.time()
                 if flag:
-                    print(
-                        "read S %6.4fs, cc %6.4fs, write cc %6.4fs"
-                        % ((t1 - t0), (t3 - t2), (t4 - t3))
-                    )
+                    print("read S %6.4fs, cc %6.4fs, write cc %6.4fs" % ((t1 - t0), (t3 - t2), (t4 - t3)))
 
                 del fft2, sfft2, receiver_std
             del fft1, sfft1, source_std

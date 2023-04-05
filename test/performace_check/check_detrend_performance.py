@@ -68,12 +68,8 @@ def cut_trace_make_statis(cc_len, step, source, flag):
     dataS = np.zeros(shape=(Nseg, Npts), dtype=np.float32)  # initialize
     # create array of starttime and endtimes.
     for ii, trace in enumerate(source_slice):
-        dataS_t[ii, 0] = source_slice[ii].stats.starttime - obspy.UTCDateTime(
-            1970, 1, 1
-        )  # convert to dataframe
-        dataS_t[ii, 1] = source_slice[ii].stats.endtime - obspy.UTCDateTime(
-            1970, 1, 1
-        )  # convert to dataframe
+        dataS_t[ii, 0] = source_slice[ii].stats.starttime - obspy.UTCDateTime(1970, 1, 1)  # convert to dataframe
+        dataS_t[ii, 1] = source_slice[ii].stats.endtime - obspy.UTCDateTime(1970, 1, 1)  # convert to dataframe
         dataS[ii, 0 : nptsS[ii]] = trace.data
 
     return source_params, dataS_t, dataS

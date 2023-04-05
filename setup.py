@@ -15,8 +15,7 @@ setup(
     description="A High-performance Computing Python Package for Ambient Noise Analysis",
     license="MIT license",
     url="https://github.com/mdenolle/NoisePy",
-    keywords="ambient noise, cross-correlation, seismic monitoring, velocity change "
-    " surface wave dispersion",
+    keywords="ambient noise, cross-correlation, seismic monitoring, velocity change " " surface wave dispersion",
     platforms="OS Independent",
     classifiers=[
         "Environment :: Console",

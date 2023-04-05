@@ -12,9 +12,7 @@ from obspy.signal.util import _npts2nfft
 # resp_dir = '/Users/chengxin/Documents/Harvard/Kanto_basin/instrument/resp_all'
 # locations = '/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/locations.txt'
 resp_dir = "/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/instrument/resp_4types"
-locations = (
-    "/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/instrument/resp_4types/station.lst"
-)
+locations = "/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/instrument/resp_4types/station.lst"
 
 # -----common variables for extracting resp using evalresp function------
 water_level = 60

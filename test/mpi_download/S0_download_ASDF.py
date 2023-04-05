@@ -1,5 +1,4 @@
 import os
-import sys
 import time
 
 import obspy
@@ -8,9 +7,6 @@ import pyasdf
 from obspy.clients.fdsn import Client
 
 import noise_module
-
-sys.path.insert(1, "../../src")
-
 
 """
 This script:
