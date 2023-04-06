@@ -190,8 +190,9 @@ def download(
                             level="response",
                         )
                     except Exception as e:
-                        print("Abort at L126 in S0A due to " + str(e))
-                        sys.exit()
+                        raise Exception(
+                            "Abort at S0A client.get_stations due to " + str(e)
+                        )
 
                     for K in inv:
                         for tsta in K:
@@ -354,8 +355,6 @@ def download(
     print("downloading step takes %6.2f s with %6.2f for preprocess" % (tt1 - tt0, tp))
 
     comm.barrier()
-    if rank == 0:
-        sys.exit()
 
 
 # Point people to new entry point:

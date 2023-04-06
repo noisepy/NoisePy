@@ -3,7 +3,7 @@ import numpy as np
 import scipy
 from scipy.fftpack import next_fast_len
 
-from noise_module import moving_ave, whiten
+from noise_module import whiten
 
 
 def whiten_original(data, fft_para):
@@ -114,43 +114,74 @@ fft_para = {
     "freq_norm": "phase_only",
 }
 
-# 1 D case
-data = np.random.random(1000)
-white_original = whiten_original(data, fft_para)
-white_new = whiten(data, fft_para)
-plt.plot(white_original[0:501].real)
-plt.plot(white_new.real)
-plt.show()
-plt.plot(white_original[100:500].real - white_new[100:500].real)
-plt.show()
-plt.plot(white_original[100:500].imag - white_new[100:500].imag)
-plt.show()
 
-# A strict test does not work because the
-assert (
-    np.sqrt(np.sum((white_original[0:500] - white_new[0:500]) ** 2) / 500.0)
-    < 0.01 * white_new.max()
-)
-print("1D ok")
+def whiten1d():
+    # 1 D case
+    data = np.random.random(1000)
+    white_original = whiten_original(data, fft_para)
+    white_new = whiten(data, fft_para)
 
-# 2 D case
-data = np.random.random((5, 1000))
-white_original = whiten_original(data, fft_para)
-white_new = whiten(data, fft_para)
-
-for i in range(5):
-    plt.plot(white_original[i, 0:501].real)
-    plt.plot(white_new[i, :].real)
-plt.show()
-for i in range(5):
-    plt.plot(white_original[i, 100:500].real - white_new[i, 100:500].real)
-plt.show()
-for i in range(5):
-    plt.plot(white_original[i, 100:500].imag - white_new[i, 100:500].imag)
-plt.show()
-for i in range(5):
+    # A strict test does not work because the
     assert (
-        np.sqrt(np.sum((white_original[i, 0:500] - white_new[i, 0:500]) ** 2) / 500.0)
-        < 0.01 * white_new[i, :].max()
+        np.sqrt(np.sum((white_original[0:500] - white_new[0:500]) ** 2) / 500.0)
+        < 0.01 * white_new.max()
     )
-print("2D ok")
+    print("1D ok")
+    return white_original, white_new
+
+
+def whiten2d():
+    # 2 D case
+    data = np.random.random((5, 1000))
+    white_original = whiten_original(data, fft_para)
+    white_new = whiten(data, fft_para)
+
+    for i in range(5):
+        assert (
+            np.sqrt(
+                np.sum((white_original[i, 0:500] - white_new[i, 0:500]) ** 2) / 500.0
+            )
+            < 0.01 * white_new[i, :].max()
+        )
+    print("2D ok")
+    return white_original, white_new
+
+
+def plot_1d(white_original, white_new):
+    plt.plot(white_original[0:501].real)
+    plt.plot(white_new.real)
+    plt.show()
+    plt.plot(white_original[100:500].real - white_new[100:500].real)
+    plt.show()
+    plt.plot(white_original[100:500].imag - white_new[100:500].imag)
+    plt.show()
+
+
+def plot_2d(white_original, white_new):
+    for i in range(5):
+        plt.plot(white_original[i, 0:501].real)
+        plt.plot(white_new[i, :].real)
+    plt.show()
+    for i in range(5):
+        plt.plot(white_original[i, 100:500].real - white_new[i, 100:500].real)
+    plt.show()
+    for i in range(5):
+        plt.plot(white_original[i, 100:500].imag - white_new[i, 100:500].imag)
+    plt.show()
+
+
+# Use wrappers since test functions are not supposed to return values
+def test_whiten1d():
+    _, _ = whiten1d()
+
+
+def test_whiten2d():
+    _, _ = whiten2d()
+
+
+if __name__ == "__main__":
+    white_original, white_new = whiten1d()
+    plot_1d(white_original, white_new)
+
+    white_original, white_new = whiten2d()
+    plot_2d(white_original, white_new)

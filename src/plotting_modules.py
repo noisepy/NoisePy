@@ -44,8 +44,7 @@ def plot_waveform(sfile, net, sta, freqmin, freqmax, savefig=False, sdir=None):
         ds = pyasdf.ASDFDataSet(sfile, mode="r")
         sta_list = ds.waveforms.list()
     except Exception:
-        print("exit! cannot open %s to read" % sfile)
-        sys.exit()
+        raise Exception("exit! cannot open %s to read" % sfile)
 
     # check whether station exists
     tsta = net + "." + sta
@@ -147,8 +146,7 @@ def plot_substack_cc(sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir=
         dt = ds.auxiliary_data[spairs[0]][path_lists[0]].parameters["dt"]
         maxlag = ds.auxiliary_data[spairs[0]][path_lists[0]].parameters["maxlag"]
     except Exception:
-        print("exit! cannot open %s to read" % sfile)
-        sys.exit()
+        raise Exception("exit! cannot open %s to read" % sfile)
 
     # only works for cross-correlation with substacks generated
     if not flag:
@@ -283,8 +281,7 @@ def plot_substack_cc_spect(sfile, freqmin, freqmax, disp_lag=None, savefig=True,
         dt = ds.auxiliary_data[spairs[0]][path_lists[0]].parameters["dt"]
         maxlag = ds.auxiliary_data[spairs[0]][path_lists[0]].parameters["maxlag"]
     except Exception:
-        print("exit! cannot open %s to read" % sfile)
-        sys.exit()
+        raise Exception("exit! cannot open %s to read" % sfile)
 
     # only works for cross-correlation with substacks generated
     if not flag:
@@ -428,8 +425,7 @@ def plot_substack_all(
         dist = ds.auxiliary_data[dtype_lists[0]][paths].parameters["dist"]
         maxlag = ds.auxiliary_data[dtype_lists[0]][paths].parameters["maxlag"]
     except Exception:
-        print("exit! cannot open %s to read" % sfile)
-        sys.exit()
+        raise Exception("exit! cannot open %s to read" % sfile)
 
     if len(dtype_lists) == 1:
         raise ValueError("Abort! seems no substacks have been done")
@@ -548,8 +544,7 @@ def plot_substack_all_spect(
         dist = ds.auxiliary_data[dtype_lists[0]][paths].parameters["dist"]
         maxlag = ds.auxiliary_data[dtype_lists[0]][paths].parameters["maxlag"]
     except Exception:
-        print("exit! cannot open %s to read" % sfile)
-        sys.exit()
+        raise Exception("exit! cannot open %s to read" % sfile)
 
     if len(dtype_lists) == 1:
         raise ValueError("Abort! seems no substacks have been done")
@@ -676,8 +671,7 @@ def plot_all_moveout(
         maxlag = ds.auxiliary_data[dtype][path].parameters["maxlag"]
         stack_method = dtype.split("0")[-1]
     except Exception:
-        print("exit! cannot open %s to read" % sfiles[0])
-        sys.exit()
+        raise Exception("exit! cannot open %s to read" % sfiles[0])
 
     # lags for display
     if not disp_lag:
@@ -797,8 +791,7 @@ def plot_all_moveout_1D_1comp(
         dt = ds.auxiliary_data[dtype][ccomp].parameters["dt"]
         maxlag = ds.auxiliary_data[dtype][ccomp].parameters["maxlag"]
     except Exception:
-        print("exit! cannot open %s to read" % sfiles[0])
-        sys.exit()
+        raise Exception("exit! cannot open %s to read" % sfiles[0])
 
     # lags for display
     if not disp_lag:
@@ -904,8 +897,7 @@ def plot_all_moveout_1D_9comp(
         dt = ds.auxiliary_data[dtype][ccomp[0]].parameters["dt"]
         maxlag = ds.auxiliary_data[dtype][ccomp[0]].parameters["maxlag"]
     except Exception:
-        print("exit! cannot open %s to read" % sfiles[0])
-        sys.exit()
+        raise Exception("exit! cannot open %s to read" % sfiles[0])
 
     # lags for display
     if not disp_lag:

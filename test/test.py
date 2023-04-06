@@ -183,8 +183,7 @@ else:
                         level="response",
                     )
                 except Exception as e:
-                    print("Abort at L126 in S0A due to " + str(e))
-                    sys.exit()
+                    raise Exception("Abort at L126 in S0A due to " + str(e))
 
                 for K in inv:
                     for tsta in K:
@@ -1116,7 +1115,3 @@ for ipair in range(rank, splits, size):
 tt1 = time.time()
 print("it takes %6.2fs to process step 2 in total" % (tt1 - tt0))
 comm.barrier()
-
-# merge all path_array and output
-if rank == 0:
-    sys.exit()
