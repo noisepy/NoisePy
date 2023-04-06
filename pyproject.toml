@@ -67,7 +67,7 @@ dev = [
 ]
 
 [project.scripts]
-noisepy = "noisepy.seis:noisepy.main_cli"
+noisepy = "noisepy.seis:main.main_cli"
 
 [tool.black]
 line-length = 120
