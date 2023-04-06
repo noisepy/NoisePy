@@ -18,4 +18,4 @@ runs:
       run: |
         python3 -m ensurepip
         pip3 install --upgrade pip
-        pip install "."
+        pip install ".[dev]"
