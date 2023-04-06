@@ -44,7 +44,7 @@ def main(args: typing.Any):
         stack(args.path, args.method)
 
 
-if __name__ == "__main__":
+def main_cli():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="step", required=True)
 
@@ -127,3 +127,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     args.step = Step[args.step.upper()]
     main(args)
+
+
+if __name__ == "__main__":
+    main_cli()
