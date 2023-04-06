@@ -190,9 +190,7 @@ def download(
                             level="response",
                         )
                     except Exception as e:
-                        raise Exception(
-                            "Abort at S0A client.get_stations due to " + str(e)
-                        )
+                        raise Exception("Abort at S0A client.get_stations due to " + str(e))
 
                     for K in inv:
                         for tsta in K:
