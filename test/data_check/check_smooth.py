@@ -1,11 +1,7 @@
-import sys
-import timeit
-
 import matplotlib.pyplot as plt
 import numpy as np
 import obspy
 
-sys.path.insert(1, "../../src")
 import noise_module
 
 """

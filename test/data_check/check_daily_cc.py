@@ -14,8 +14,6 @@ if ds:
         listR = ds.auxiliary_data[isource].list()
 
         for ireceiver in listR:
-            plt.plot(
-                tt, ds.auxiliary_data[isource][ireceiver].data[:], "r", linewidth=1
-            )
+            plt.plot(tt, ds.auxiliary_data[isource][ireceiver].data[:], "r", linewidth=1)
             plt.show()
 del ds

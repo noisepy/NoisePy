@@ -1,3 +1,5 @@
+import time
+
 import pyflex
 from pyasdf import ASDFDataSet
 
@@ -54,9 +56,7 @@ def process(this_station_group, other_station_group):
         if not obs or not syn:
             continue
 
-        windows = pyflex.select_windows(
-            obs, syn, config, event=event, station=stationxml
-        )
+        windows = pyflex.select_windows(obs, syn, config, event=event, station=stationxml)
         print(
             "Station %s.%s component %s picked %i windows"
             % (
@@ -71,8 +71,6 @@ def process(this_station_group, other_station_group):
         all_windows.append(windows)
     return all_windows
 
-
-import time
 
 a = time.time()
 results = ds.process_two_files_without_parallel_output(other_ds, process)

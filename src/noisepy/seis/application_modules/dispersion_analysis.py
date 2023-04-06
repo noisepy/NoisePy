@@ -1,6 +1,4 @@
-import glob
 import os
-import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,7 +6,6 @@ import pyasdf
 import pycwt
 import scipy
 
-sys.path.insert(1, "../")
 import noise_module
 
 """
@@ -19,10 +16,12 @@ Based on our tests, it generates very similar results to those from Frequency-Ti
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
 
 NOTE:
-    According to Bensen et al., (2007), the centrel frequncy of each narrowband filters (equvalent to
-    wavelet tranformed signal at each scale) would be different from the instaneous frequency calculated
-    using instaneous phase due to spectral linkage. We do not correct this effect in this script. Phase
-    velocity is not calculated here, but could be expaneded using the phase info of wavelet transformed signal.
+    According to Bensen et al., (2007), the centrel frequncy of
+    each narrowband filters (equvalent to wavelet tranformed signal
+    at each scale) would be different from the instaneous frequency calculated
+    using instaneous phase due to spectral linkage. We do not
+    correct this effect in this script. Phase velocity is not calculated here,
+    but could be expaneded using the phase info of wavelet transformed signal.
 """
 
 ############################################
@@ -30,15 +29,9 @@ NOTE:
 ############################################
 
 # input file info
-rootpath = os.path.join(
-    os.path.expanduser("~"), "Documents/NoisePy_example/SCAL"
-)  # root path for this data processing
-sfile = os.path.join(
-    rootpath, "STACK_month/CI.BLC/CI.BLC_CI.BTP.h5"
-)  # ASDF file containing stacked data
-outdir = os.path.join(
-    rootpath, "figures/dispersion"
-)  # dir where to output dispersive image and extracted dispersion
+rootpath = os.path.join(os.path.expanduser("~"), "Documents/NoisePy_example/SCAL")  # root path for this data processing
+sfile = os.path.join(rootpath, "STACK_month/CI.BLC/CI.BLC_CI.BTP.h5")  # ASDF file containing stacked data
+outdir = os.path.join(rootpath, "figures/dispersion")  # dir where to output dispersive image and extracted dispersion
 
 # data type and cross-component
 stack_method = "linear"  # which stacked data to measure dispersion info
@@ -116,9 +109,7 @@ for comp in rtz_system:
     elif lag_type == "sym":
         data = 0.5 * tdata[indx:] + 0.5 * np.flip(tdata[: indx + 1], axis=0)
     else:
-        raise ValueError(
-            "parameter of lag_type (L35) is not right! please double check"
-        )
+        raise ValueError("parameter of lag_type (L35) is not right! please double check")
 
     # trim the data according to vel window
     pt1 = int(dist / vmax / dt)

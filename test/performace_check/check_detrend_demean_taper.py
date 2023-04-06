@@ -1,13 +1,8 @@
 import glob
-import os
 import time
 
-import matplotlib.pyplot as plt
 import numpy as np
 import obspy
-import pyasdf
-import scipy
-from numba import jit
 from obspy.core.util.base import _get_function_from_entry_point
 from scipy import signal
 
@@ -130,7 +125,6 @@ def test_1d(sacfile):
     """
     tr = obspy.read(sacfile)
     tdata = tr[0].data
-    ndata = tr[0].data
 
     # detrend, demean using obspy functions
     t0 = time.time()
@@ -140,10 +134,7 @@ def test_1d(sacfile):
     t2 = time.time()
     tr[0].taper(max_percentage=0.05, max_length=20)
     t3 = time.time()
-    print(
-        "1D: it takes %6.3f in total with %6.3f %6.3f and %6.3f for obspy"
-        % (t3 - t0, t1 - t0, t2 - t1, t3 - t2)
-    )
+    print("1D: it takes %6.3f in total with %6.3f %6.3f and %6.3f for obspy" % (t3 - t0, t1 - t0, t2 - t1, t3 - t2))
 
     # detrend, demean using newly defined function
     t0 = time.time()
@@ -153,10 +144,7 @@ def test_1d(sacfile):
     t2 = time.time()
     tdata = taper(tdata)
     t3 = time.time()
-    print(
-        "1D: it takes %6.3f in total with %6.3f %6.3f and %6.3f for new"
-        % (t3 - t0, t1 - t0, t2 - t1, t3 - t2)
-    )
+    print("1D: it takes %6.3f in total with %6.3f %6.3f and %6.3f for new" % (t3 - t0, t1 - t0, t2 - t1, t3 - t2))
 
 
 def test_2d(sacfile):
@@ -168,7 +156,6 @@ def test_2d(sacfile):
     # read data
     tr = obspy.read(sacfile)
     tdata = tr[0].data
-    ndata = tr[0].data
 
     # sliding
     t0 = time.time()
@@ -198,15 +185,11 @@ def test_2d(sacfile):
     dataS = taper(dataS)
     t3 = time.time()
 
-    print(
-        "2D: it takes %6.3f (%d traces) in total with new" % (t3 - t2, dataS.shape[0])
-    )
+    print("2D: it takes %6.3f (%d traces) in total with new" % (t3 - t2, dataS.shape[0]))
 
 
 def main():
-    sfiles = glob.glob(
-        "/Users/chengxin/Documents/NoisePy_example/Kanto/CLEAN_DATA//Event_2010_352/*.sac"
-    )
+    sfiles = glob.glob("/Users/chengxin/Documents/NoisePy_example/Kanto/CLEAN_DATA//Event_2010_352/*.sac")
 
     for sacfile in sfiles:
         # test_1d(sacfile)

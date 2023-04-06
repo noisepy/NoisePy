@@ -1,21 +1,17 @@
 import glob
 import os
-import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
 import obspy
 import pandas as pd
-import scipy
-from obspy.signal.invsim import cosine_sac_taper, evalresp, invert_spectrum
+from obspy.signal.invsim import evalresp, invert_spectrum
 from obspy.signal.util import _npts2nfft
 
 # -----directory to station list and response files--------
 # resp_dir = '/Users/chengxin/Documents/Harvard/Kanto_basin/instrument/resp_all'
 # locations = '/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/locations.txt'
-resp_dir = (
-    "/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/instrument/resp_4types"
-)
+resp_dir = "/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/instrument/resp_4types"
 locations = "/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/instrument/resp_4types/station.lst"
 
 # -----common variables for extracting resp using evalresp function------

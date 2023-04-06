@@ -1,6 +1,3 @@
-import datetime
-import os
-
 import numpy as np
 import pycwt
 import scipy
@@ -155,9 +152,7 @@ def computeErrorFunction(u1, u0, nSample, lag, norm="L2"):
     """
 
     if lag >= nSample:
-        raise ValueError(
-            "computeErrorFunction:lagProblem", "lag must be smaller than nSample"
-        )
+        raise ValueError("computeErrorFunction:lagProblem", "lag must be smaller than nSample")
 
     # Allocate error function variable
     err = np.zeros([nSample, 2 * lag + 1])
@@ -286,9 +281,7 @@ def backtrackDistanceFunction(dir, d, err, lmin, b):
         iBegin, iEnd, iInc = nSample - 1, 0, -1
 
     # start from the end (front or back)
-    ll = np.argmin(
-        d[iBegin, :]
-    )  # find minimum accumulated distance at front or back depending on 'dir'
+    ll = np.argmin(d[iBegin, :])  # find minimum accumulated distance at front or back depending on 'dir'
     stbar[iBegin] = ll + lmin  # absolute value of integer shift
 
     # move through all time samples in forward or backward direction
@@ -349,17 +342,7 @@ def backtrackDistanceFunction(dir, d, err, lmin, b):
 
 
 def wct_modified(
-    y1,
-    y2,
-    dt,
-    dj=1 / 12,
-    s0=-1,
-    J=-1,
-    sig=True,
-    significance_level=0.95,
-    wavelet="morlet",
-    normalize=True,
-    **kwargs
+    y1, y2, dt, dj=1 / 12, s0=-1, J=-1, sig=True, significance_level=0.95, wavelet="morlet", normalize=True, **kwargs
 ):
     """Wavelet coherence transform (WCT).
     The WCT finds regions in time frequency space where the two time
@@ -446,15 +429,7 @@ def wct_modified(
         a1, b1, c1 = pycwt.ar1(y1)
         a2, b2, c2 = pycwt.ar1(y2)
         sig = pycwt.wct_significance(
-            a1,
-            a2,
-            dt=dt,
-            dj=dj,
-            s0=s0,
-            J=J,
-            significance_level=significance_level,
-            wavelet=wavelet,
-            **kwargs
+            a1, a2, dt=dt, dj=dj, s0=s0, J=J, significance_level=significance_level, wavelet=wavelet, **kwargs
         )
     else:
         sig = np.asarray([0])

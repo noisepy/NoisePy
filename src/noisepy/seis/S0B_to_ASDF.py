@@ -1,4 +1,3 @@
-import gc
 import glob
 import os
 import sys
@@ -25,29 +24,31 @@ with the NoisePy package. it is similar to the script of S0A in essence.
 by Chengxin Jiang, Marine Denolle (Jul.30.2019)
 
 NOTE:
-    0. MOST occasions you just need to change parameters followed with detailed explanations to run the script.
-    1. In this script, the station of the same name but of different channels are treated as different stations.
+    0. MOST occasions you just need to change parameters followed
+    with detailed explanations to run the script.
+    1. In this script, the station of the same name but of different
+    channels are treated as different stations.
     2. The bandpass function from obspy will output data in float64 format in default.
-    3. For flexibilty to handle data of messy structures, the code loops through all sub-directory in RAWDATA and collects the
-    starttime and endtime info. this enables us to find all data pieces located in each targeted time window. However, this process
-    significaly slows down the code, particuarly for data of a big station list. we recommend to prepare a csv file (L48) that contains
-    all sac/mseed file names with full path and their associated starttime/endtime info if possible. based on tests, this improves the
+    3. For flexibilty to handle data of messy structures, the code loops
+    through all sub-directory in RAWDATA and collects the
+    starttime and endtime info. this enables us to find all data pieces
+    located in each targeted time window. However, this process
+    significaly slows down the code, particuarly for data of a big station
+    list. we recommend to prepare a csv file (L48) that contains
+    all sac/mseed file names with full path and their associated
+    starttime/endtime info if possible. based on tests, this improves the
     efficiency of the code by 2-3 orders of magnitude.
 """
 
 #######################################################
-################PARAMETER SECTION######################
+# ###############PARAMETER SECTION#####################
 #######################################################
 tt0 = time.time()
 
 # data/file paths
-rootpath = os.path.join(
-    os.path.expanduser("~"), "Documents/SCAL"
-)  # root path for this data processing
+rootpath = os.path.join(os.path.expanduser("~"), "Documents/SCAL")  # root path for this data processing
 RAWDATA = os.path.join(rootpath, "RAW_DATA")  # dir where mseed/SAC files are located
-DATADIR = os.path.join(
-    rootpath, "CLEAN_DATA"
-)  # dir where cleaned data in ASDF format are going to be outputted
+DATADIR = os.path.join(rootpath, "CLEAN_DATA")  # dir where cleaned data in ASDF format are going to be outputted
 locations = os.path.join(
     RAWDATA, "station.txt"
 )  # station info including network,station,channel,latitude,longitude,elevation
@@ -56,7 +57,8 @@ locations = os.path.join(
 input_fmt = "sac"  # input file format between 'sac' and 'mseed'
 samp_freq = 10  # targeted sampling rate
 stationxml = False  # station.XML file exists or not
-rm_resp = "no"  # select 'no' to not remove response and use 'inv','spectrum','RESP', or 'polozeros' to remove response
+rm_resp = "no"  # select 'no' to not remove response and
+# use 'inv','spectrum','RESP', or 'polozeros' to remove response
 respdir = os.path.join(
     rootpath, "resp"
 )  # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
@@ -68,10 +70,9 @@ flag = False  # print intermediate variables and computing time
 wiki_file = os.path.join(
     rootpath, "allfiles_time.txt"
 )  # file containing the path+name for all sac/mseed files and its start-end time
-allfiles_path = os.path.join(
-    DATADIR, "*" + input_fmt
-)  # make sure all sac/mseed files can be found through this format
-messydata = True  # set this to False when daily noise data directory is stored in sub-directory of Event_year_month_day
+allfiles_path = os.path.join(DATADIR, "*" + input_fmt)  # make sure all sac/mseed files can be found through this format
+messydata = True  # set this to False when daily noise data
+# is stored in sub-directory of Event_year_month_day
 ncomp = 1
 
 # targeted time range
@@ -111,7 +112,7 @@ prepro_para = {
 metadata = os.path.join(RAWDATA, "download_info.txt")
 
 ##########################################################
-#################PROCESSING SECTION#######################
+# ###############PROCESSING SECTION#######################
 ##########################################################
 
 # ---------MPI-----------
@@ -147,10 +148,7 @@ if rank == 0:
     all_chunk = noise_module.get_event_list(start_date[0], end_date[0], inc_hours)
     splits = len(all_chunk) - 1
     if splits < 1:
-        raise ValueError(
-            "Abort! no chunk found between %s-%s with inc %s"
-            % (start_date[0], end_date[0], inc_hours)
-        )
+        raise ValueError("Abort! no chunk found between %s-%s with inc %s" % (start_date[0], end_date[0], inc_hours))
 
     # rough estimation on memory needs needed in S1 (assume float32 dtype)
     nsec_chunk = inc_hours / 24 * 86400
@@ -245,9 +243,7 @@ for ick in range(rank, splits, size):
         # ready for output
         ff = os.path.join(RAWDATA, all_chunk[ick] + "T" + all_chunk[ick + 1] + ".h5")
         if not os.path.isfile(ff):
-            with pyasdf.ASDFDataSet(
-                ff, mpi=False, compression="gzip-3", mode="w"
-            ) as ds:
+            with pyasdf.ASDFDataSet(ff, mpi=False, compression="gzip-3", mode="w") as ds:
                 pass
 
         with pyasdf.ASDFDataSet(ff, mpi=False, compression="gzip-3", mode="a") as ds:
@@ -262,13 +258,7 @@ for ick in range(rank, splits, size):
             ds.add_waveforms(tr, tag=new_tags)
 
     t3 = time.time()
-    print(
-        "it takes "
-        + str(t3 - t0)
-        + " s to process "
-        + str(inc_hours)
-        + "h length in step 0B"
-    )
+    print("it takes " + str(t3 - t0) + " s to process " + str(inc_hours) + "h length in step 0B")
 
 tt1 = time.time()
 print("step0B takes " + str(tt1 - tt0) + " s")
