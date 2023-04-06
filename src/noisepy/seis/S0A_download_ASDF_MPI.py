@@ -13,7 +13,7 @@ import pyasdf
 import os
 import numpy as np
 import pandas as pd
-import noise_module
+from . import noise_module
 from mpi4py import MPI
 from obspy.clients.fdsn import Client
 

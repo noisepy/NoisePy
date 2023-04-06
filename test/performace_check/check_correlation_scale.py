@@ -2,7 +2,7 @@ import time
 
 import pyasdf
 
-import noise_module
+from noisepy.seis import noise_module
 
 """
 this script loads an example of daily ccfs and compare the computing

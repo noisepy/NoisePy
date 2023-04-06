@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import obspy
 
-import noise_module
+from noisepy.seis import noise_module
 
 """
 This script compares several different ways for smoothing a signal,

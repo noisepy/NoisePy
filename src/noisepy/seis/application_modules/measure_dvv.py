@@ -7,7 +7,7 @@ import pyasdf
 from obspy.signal.filter import bandpass
 from pandas.plotting import register_matplotlib_converters
 
-import noise_module
+from . import noise_module
 
 # register datetime converter
 

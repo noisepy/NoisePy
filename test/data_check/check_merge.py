@@ -3,7 +3,7 @@ import sys
 import matplotlib.pyplot as plt
 from obspy.clients.fdsn import Client
 
-import noise_module
+from noisepy.seis import noise_module
 
 sys.path.insert(1, "../../src")
 

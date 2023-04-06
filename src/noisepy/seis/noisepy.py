@@ -5,9 +5,9 @@ from enum import Enum
 
 import obspy
 
-from S0A_download_ASDF_MPI import download
-from S1_fft_cc_MPI import cross_correlate
-from S2_stacking import stack
+from .S0A_download_ASDF_MPI import download
+from .S1_fft_cc_MPI import cross_correlate
+from .S2_stacking import stack
 
 # Utility running the different steps from the command line. Defines the arguments for each step
 

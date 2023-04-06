@@ -6,7 +6,7 @@ import pyasdf
 import pycwt
 import scipy
 
-import noise_module
+from . import noise_module
 
 """
 this application script of NoisePy is to measure group velocity on the resulted cross-correlation
