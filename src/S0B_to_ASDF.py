@@ -49,7 +49,9 @@ tt0 = time.time()
 rootpath = os.path.join(os.path.expanduser("~"), "Documents/SCAL")  # root path for this data processing
 RAWDATA = os.path.join(rootpath, "RAW_DATA")  # dir where mseed/SAC files are located
 DATADIR = os.path.join(rootpath, "CLEAN_DATA")  # dir where cleaned data in ASDF format are going to be outputted
-locations = os.path.join(RAWDATA, "station.txt")  # station info including network,station,channel,latitude,longitude,elevation
+locations = os.path.join(
+    RAWDATA, "station.txt"
+)  # station info including network,station,channel,latitude,longitude,elevation
 
 # useful parameters for cleaning the data
 input_fmt = "sac"  # input file format between 'sac' and 'mseed'
@@ -57,13 +59,17 @@ samp_freq = 10  # targeted sampling rate
 stationxml = False  # station.XML file exists or not
 rm_resp = "no"  # select 'no' to not remove response and
 # use 'inv','spectrum','RESP', or 'polozeros' to remove response
-respdir = os.path.join(rootpath, "resp")  # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
+respdir = os.path.join(
+    rootpath, "resp"
+)  # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
 freqmin = 0.02  # pre filtering frequency bandwidth
 freqmax = 4  # note this cannot exceed Nquist freq
 flag = False  # print intermediate variables and computing time
 
 # having this file saves a tons of time: see L95-126 for why
-wiki_file = os.path.join(rootpath, "allfiles_time.txt")  # file containing the path+name for all sac/mseed files and its start-end time
+wiki_file = os.path.join(
+    rootpath, "allfiles_time.txt"
+)  # file containing the path+name for all sac/mseed files and its start-end time
 allfiles_path = os.path.join(DATADIR, "*" + input_fmt)  # make sure all sac/mseed files can be found through this format
 messydata = True  # set this to False when daily noise data
 # is stored in sub-directory of Event_year_month_day
@@ -150,7 +156,10 @@ if rank == 0:
     npts_chunk = int(nseg_chunk * cc_len * samp_freq)
     memory_size = nsta * npts_chunk * 4 / 1024**3
     if memory_size > MAX_MEM:
-        raise ValueError("Require %5.3fG memory but only %5.3fG provided)! Reduce inc_hours to avoid this issue!" % (memory_size, MAX_MEM))
+        raise ValueError(
+            "Require %5.3fG memory but only %5.3fG provided)! Reduce inc_hours to avoid this issue!"
+            % (memory_size, MAX_MEM)
+        )
 else:
     splits, all_chunk, all_stimes, allfiles = [None for _ in range(4)]
 

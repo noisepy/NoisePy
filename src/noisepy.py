@@ -99,7 +99,9 @@ if __name__ == "__main__":
     )
     cc_parser.add_argument("--freq_norm", choices=["rma", "no", "phase_only"], default="rma")
     # Stack arguments
-    stack_parser = subparsers.add_parser(Step.STACK.name.lower(), formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    stack_parser = subparsers.add_parser(
+        Step.STACK.name.lower(), formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
     stack_parser.add_argument(
         "--path",
         type=str,

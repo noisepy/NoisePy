@@ -229,7 +229,9 @@ def ts_dvv(ref, cur, dv_range, nbtrial, para):
     wc = np.pi * (fmin + fmax)
     t1 = np.min([tmin, tmax])
     t2 = np.max([tmin, tmax])
-    error = 100 * (np.sqrt(1 - X**2) / (2 * X) * np.sqrt((6 * np.sqrt(np.pi / 2) * T) / (wc**2 * (t2**3 - t1**3))))
+    error = 100 * (
+        np.sqrt(1 - X**2) / (2 * X) * np.sqrt((6 * np.sqrt(np.pi / 2) * T) / (wc**2 * (t2**3 - t1**3)))
+    )
 
     return dv, error, cc, cdp
 
@@ -537,7 +539,9 @@ def wxs_dvv(
         for it in range(npts):
             w = 1 / WCT[freq_indin, itvec[it]]
             w[~np.isfinite(w)] = 1.0
-            delta_t_m[it], delta_t_unc[it] = linear_regression(freq[freq_indin] * 2 * np.pi, phase[freq_indin, itvec[it]], w)
+            delta_t_m[it], delta_t_unc[it] = linear_regression(
+                freq[freq_indin] * 2 * np.pi, phase[freq_indin, itvec[it]], w
+            )
 
         # new weights for regression
         wWCT = WCT[:, itvec]
@@ -1099,7 +1103,9 @@ def backtrackDistanceFunction(dir, d, err, lmin, b):
     return stbar
 
 
-def wct_modified(y1, y2, dt, dj=1 / 12, s0=-1, J=-1, sig=True, significance_level=0.95, wavelet="morlet", normalize=True, **kwargs):
+def wct_modified(
+    y1, y2, dt, dj=1 / 12, s0=-1, J=-1, sig=True, significance_level=0.95, wavelet="morlet", normalize=True, **kwargs
+):
     """
         Wavelet coherence transform (WCT).
     ​
@@ -1187,7 +1193,9 @@ def wct_modified(y1, y2, dt, dj=1 / 12, s0=-1, J=-1, sig=True, significance_leve
     if sig:
         a1, b1, c1 = pycwt.ar1(y1)
         a2, b2, c2 = pycwt.ar1(y2)
-        sig = pycwt.wct_significance(a1, a2, dt=dt, dj=dj, s0=s0, J=J, significance_level=significance_level, wavelet=wavelet, **kwargs)
+        sig = pycwt.wct_significance(
+            a1, a2, dt=dt, dj=dj, s0=s0, J=J, significance_level=significance_level, wavelet=wavelet, **kwargs
+        )
     else:
         sig = np.asarray([0])
 

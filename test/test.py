@@ -69,7 +69,9 @@ down_list = False  # download stations from a pre-compiled list or not
 flag = False  # print progress when running the script; recommend to use it at the begining
 samp_freq = 2  # targeted sampling rate at X samples per seconds
 rm_resp = "no"  # select 'no' to not remove response and use 'inv','spectrum','RESP', or 'polozeros' to remove response
-respdir = os.path.join(rootpath, "resp")  # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
+respdir = os.path.join(
+    rootpath, "resp"
+)  # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
 freqmin = 0.02  # pre filtering frequency bandwidth
 freqmax = 1  # note this cannot exceed Nquist freq
 
@@ -104,7 +106,10 @@ MAX_MEM = 5.0  # maximum memory allowed per core in GB
 starttime = obspy.UTCDateTime(start_date[0])
 endtime = obspy.UTCDateTime(end_date[0])
 if flag:
-    print("station.list selected [%s] for data from %s to %s with %sh interval" % (down_list, starttime, endtime, inc_hours))
+    print(
+        "station.list selected [%s] for data from %s to %s with %sh interval"
+        % (down_list, starttime, endtime, inc_hours)
+    )
 
 # assemble parameters used for pre-processing
 prepro_para = {
@@ -203,7 +208,10 @@ nseg_chunk = int(np.floor((nsec_chunk - cc_len) / step)) + 1
 npts_chunk = int(nseg_chunk * cc_len * samp_freq)
 memory_size = nsta * npts_chunk * 4 / 1024**3
 if memory_size > MAX_MEM:
-    raise ValueError("Require %5.3fG memory but only %5.3fG provided)! Reduce inc_hours to avoid this issue!" % (memory_size, MAX_MEM))
+    raise ValueError(
+        "Require %5.3fG memory but only %5.3fG provided)! Reduce inc_hours to avoid this issue!"
+        % (memory_size, MAX_MEM)
+    )
 
 
 ########################################################
@@ -358,7 +366,9 @@ ncomp = 3  # 1 or 3 component data (needed to decide whether do rotation)
 # station/instrument info for input_fmt=='sac' or 'mseed'
 stationxml = False  # station.XML file used to remove instrument response for SAC/miniseed data
 rm_resp = "no"  # select 'no' to not remove response and use 'inv','spectrum','RESP', or 'polozeros' to remove response
-respdir = os.path.join(rootpath, "resp")  # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
+respdir = os.path.join(
+    rootpath, "resp"
+)  # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
 
 # pre-processing parameters
 cc_len = 1800  # basic unit of data length for fft (sec)
@@ -522,7 +532,10 @@ for ick in range(rank, splits, size):
     npts_chunk = int(nseg_chunk * cc_len * samp_freq)
     memory_size = nsta * npts_chunk * 4 / 1024**3
     if memory_size > MAX_MEM:
-        raise ValueError("Require %5.3fG memory but only %5.3fG provided)! Reduce inc_hours to avoid this issue!" % (memory_size, MAX_MEM))
+        raise ValueError(
+            "Require %5.3fG memory but only %5.3fG provided)! Reduce inc_hours to avoid this issue!"
+            % (memory_size, MAX_MEM)
+        )
 
     nnfft = int(next_fast_len(int(cc_len * samp_freq)))
     # open array to store fft data/info in memory
@@ -582,7 +595,9 @@ for ick in range(rank, splits, size):
                 continue
 
             # cut daily-long data into smaller segments (dataS always in 2D)
-            trace_stdS, dataS_t, dataS = noise_module.cut_trace_make_stat(fc_para, source)  # optimized version:3-4 times faster
+            trace_stdS, dataS_t, dataS = noise_module.cut_trace_make_stat(
+                fc_para, source
+            )  # optimized version:3-4 times faster
             if not len(dataS):
                 continue
             N = dataS.shape[0]
@@ -656,7 +671,9 @@ for ick in range(rank, splits, size):
             receiver_std = fft_std[iiR]
 
             # ---------- check the existence of earthquakes ----------
-            rec_ind = np.where((receiver_std < fc_para["max_over_std"]) & (receiver_std > 0) & (np.isnan(receiver_std) == 0))[0]
+            rec_ind = np.where(
+                (receiver_std < fc_para["max_over_std"]) & (receiver_std > 0) & (np.isnan(receiver_std) == 0)
+            )[0]
             bb = np.intersect1d(sou_ind, rec_ind)
             if len(bb) == 0:
                 continue
@@ -689,7 +706,18 @@ for ick in range(rank, splits, size):
                 crap[:] = corr[:]
                 ccf_ds.add_auxiliary_data(data=crap, data_type=data_type, path=path, parameters=parameters)
                 ftmp.write(
-                    network[iiS] + "." + station[iiS] + "." + channel[iiS] + "_" + network[iiR] + "." + station[iiR] + "." + channel[iiR] + "\n"
+                    network[iiS]
+                    + "."
+                    + station[iiS]
+                    + "."
+                    + channel[iiS]
+                    + "_"
+                    + network[iiR]
+                    + "."
+                    + station[iiR]
+                    + "."
+                    + channel[iiR]
+                    + "\n"
                 )
 
             t4 = time.time()
@@ -721,7 +749,9 @@ comm.barrier()
 rootpath = "./"  # root path for this data processing
 CCFDIR = os.path.join(rootpath, "CCF")  # dir where CC data is stored
 STACKDIR = os.path.join(rootpath, "STACK")  # dir where stacked data is going to
-locations = os.path.join(rootpath, "RAW_DATA/station.txt")  # station info including network,station,channel,latitude,longitude,elevation
+locations = os.path.join(
+    rootpath, "RAW_DATA/station.txt"
+)  # station info including network,station,channel,latitude,longitude,elevation
 if not os.path.isfile(locations):
     raise ValueError("Abort! station info is needed for this script")
 
@@ -864,7 +894,9 @@ for ipair in range(rank, splits, size):
     memory_size = num_chunck * num_segmts * npts_segmt * 4 / 1024**3
 
     if memory_size > MAX_MEM:
-        raise ValueError("Require %5.3fG memory but only %5.3fG provided)! Cannot load cc data all once!" % (memory_size, MAX_MEM))
+        raise ValueError(
+            "Require %5.3fG memory but only %5.3fG provided)! Cannot load cc data all once!" % (memory_size, MAX_MEM)
+        )
     if flag:
         print("Good on memory (need %5.2f G and %s G provided)!" % (memory_size, MAX_MEM))
 

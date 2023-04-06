@@ -103,10 +103,16 @@ def cross_correlate(rootpath: str, freq_norm: str):
 
     CCFDIR = os.path.join(rootpath, "CCF")  # dir to store CC data
     DATADIR = os.path.join(rootpath, "RAW_DATA")  # dir where noise data is located
-    locations = os.path.join(DATADIR, "station.txt")  # station info including network,station,channel,latitude,longitude,elevation:
+    locations = os.path.join(
+        DATADIR, "station.txt"
+    )  # station info including network,station,channel,latitude,longitude,elevation:
     # only needed when input_fmt is not h5 for asdf
-    respdir = os.path.join(rootpath, "resp")  # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
-    local_data_path = os.path.join(rootpath, "2016_*")  # absolute dir where SAC files are stored: this para is VERY IMPORTANT and
+    respdir = os.path.join(
+        rootpath, "resp"
+    )  # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
+    local_data_path = os.path.join(
+        rootpath, "2016_*"
+    )  # absolute dir where SAC files are stored: this para is VERY IMPORTANT and
     # has to be RIGHT if input_fmt is not h5 for asdf!!!
 
     # read station list
@@ -259,7 +265,10 @@ def cross_correlate(rootpath: str, freq_norm: str):
         npts_chunk = int(nseg_chunk * cc_len * samp_freq)
         memory_size = nsta * npts_chunk * 4 / 1024**3
         if memory_size > MAX_MEM:
-            raise ValueError("Require %5.3fG memory but only %5.3fG provided)! Reduce inc_hours to avoid this issue!" % (memory_size, MAX_MEM))
+            raise ValueError(
+                "Require %5.3fG memory but only %5.3fG provided)! Reduce inc_hours to avoid this issue!"
+                % (memory_size, MAX_MEM)
+            )
 
         nnfft = int(next_fast_len(int(cc_len * samp_freq)))
         # open array to store fft data/info in memory
@@ -320,7 +329,9 @@ def cross_correlate(rootpath: str, freq_norm: str):
                     continue
 
                 # cut daily-long data into smaller segments (dataS always in 2D)
-                trace_stdS, dataS_t, dataS = noise_module.cut_trace_make_stat(fc_para, source)  # optimized version:3-4 times faster
+                trace_stdS, dataS_t, dataS = noise_module.cut_trace_make_stat(
+                    fc_para, source
+                )  # optimized version:3-4 times faster
                 if not len(dataS):
                     continue
                 N = dataS.shape[0]
@@ -363,7 +374,9 @@ def cross_correlate(rootpath: str, freq_norm: str):
         for iiS in range(iii):
             fft1 = fft_array[iiS]
             source_std = fft_std[iiS]
-            sou_ind = np.where((source_std < fc_para["max_over_std"]) & (source_std > 0) & (np.isnan(source_std) == 0))[0]
+            sou_ind = np.where((source_std < fc_para["max_over_std"]) & (source_std > 0) & (np.isnan(source_std) == 0))[
+                0
+            ]
             if not fft_flag[iiS] or not len(sou_ind):
                 continue
 
@@ -416,13 +429,17 @@ def cross_correlate(rootpath: str, freq_norm: str):
                 receiver_std = fft_std[iiR]
 
                 # ---------- check the existence of earthquakes ----------
-                rec_ind = np.where((receiver_std < fc_para["max_over_std"]) & (receiver_std > 0) & (np.isnan(receiver_std) == 0))[0]
+                rec_ind = np.where(
+                    (receiver_std < fc_para["max_over_std"]) & (receiver_std > 0) & (np.isnan(receiver_std) == 0)
+                )[0]
                 bb = np.intersect1d(sou_ind, rec_ind)
                 if len(bb) == 0:
                     continue
 
                 t2 = time.time()
-                corr, tcorr, ncorr = noise_module.correlate(sfft1[bb, :], sfft2[bb, :], fc_para, Nfft, fft_time[iiR][bb])
+                corr, tcorr, ncorr = noise_module.correlate(
+                    sfft1[bb, :], sfft2[bb, :], fc_para, Nfft, fft_time[iiR][bb]
+                )
                 t3 = time.time()
 
                 # ---------------keep daily cross-correlation into a hdf5 file--------------
@@ -449,7 +466,18 @@ def cross_correlate(rootpath: str, freq_norm: str):
                     crap[:] = corr[:]
                     ccf_ds.add_auxiliary_data(data=crap, data_type=data_type, path=path, parameters=parameters)
                     ftmp.write(
-                        network[iiS] + "." + station[iiS] + "." + channel[iiS] + "_" + network[iiR] + "." + station[iiR] + "." + channel[iiR] + "\n"
+                        network[iiS]
+                        + "."
+                        + station[iiS]
+                        + "."
+                        + channel[iiS]
+                        + "_"
+                        + network[iiR]
+                        + "."
+                        + station[iiR]
+                        + "."
+                        + channel[iiR]
+                        + "\n"
                     )
 
                 t4 = time.time()

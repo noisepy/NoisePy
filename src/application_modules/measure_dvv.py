@@ -36,7 +36,9 @@ NOTE:
 ############################################
 
 # input data and targeted component
-rootpath = os.path.join(os.path.expanduser("~"), "Documents/NoisePy_example/SCAL/")  # root path for this data processing
+rootpath = os.path.join(
+    os.path.expanduser("~"), "Documents/NoisePy_example/SCAL/"
+)  # root path for this data processing
 sfile = os.path.join(rootpath, "STACK_month/CI.BLC/CI.BLC_CI.MPI.h5")  # ASDF file containing stacked data
 outdir = os.path.join(rootpath, "figures/monitoring")  # dir where to output dispersive image and extracted dispersion
 if not os.path.isdir(outdir):
@@ -273,8 +275,12 @@ with pyasdf.ASDFDataSet(sfile, mode="r") as ds:
 
             allfreq = False  # average dv/v over the frequency band for wts and wxs
             if do_wts:
-                dvv_wts[ii, 0], dvv_wts[ii, 1] = noise_module.wts_allfreq(pref, pcur, allfreq, para, epsilon, nbtrial, dj, s0, J, wvn)
-                dvv_wts[ii, 2], dvv_wts[ii, 3] = noise_module.wts_allfreq(nref, ncur, allfreq, para, epsilon, nbtrial, dj, s0, J, wvn)
+                dvv_wts[ii, 0], dvv_wts[ii, 1] = noise_module.wts_allfreq(
+                    pref, pcur, allfreq, para, epsilon, nbtrial, dj, s0, J, wvn
+                )
+                dvv_wts[ii, 2], dvv_wts[ii, 3] = noise_module.wts_allfreq(
+                    nref, ncur, allfreq, para, epsilon, nbtrial, dj, s0, J, wvn
+                )
             if do_wxs:
                 dvv_wxs[ii, 0], dvv_wxs[ii, 1] = noise_module.wxs_allfreq(pref, pcur, allfreq, para, dj, s0, J)
                 dvv_wxs[ii, 2], dvv_wxs[ii, 3] = noise_module.wxs_allfreq(nref, ncur, allfreq, para, dj, s0, J)

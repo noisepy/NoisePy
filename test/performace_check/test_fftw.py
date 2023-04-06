@@ -22,23 +22,20 @@ def fftw_comp_2D():
 
     # compare efficiency of three fftw package
     t0 = time.time()
-    fft0 = pyfftw.interfaces.numpy_fft.fft(a)
-    _ = fft0
+    _ = pyfftw.interfaces.numpy_fft.fft(a)
     t1 = time.time()
-    fft1 = np.fft.fft(a)
-    _ = fft1
+    _ = np.fft.fft(a)
     t2 = time.time()
-    fft2 = scipy.fftpack.fft(a)
-    _ = fft2
+    _ = scipy.fftpack.fft(a)
     t3 = time.time()
     print("fft takes %f %f %f" % (t1 - t0, t2 - t1, t3 - t2))
 
     t0 = time.time()
-    fft0 = pyfftw.interfaces.numpy_fft.fft(c)
+    _ = pyfftw.interfaces.numpy_fft.fft(c)
     t1 = time.time()
-    fft1 = np.fft.fft(c)
+    _ = np.fft.fft(c)
     t2 = time.time()
-    fft2 = scipy.fftpack.fft(c)
+    _ = scipy.fftpack.fft(c)
     t3 = time.time()
     print("fft takes %f %f %f" % (t1 - t0, t2 - t1, t3 - t2))
 
@@ -82,18 +79,12 @@ def fftw_comp_2D_loops():
         Npts = 3600 * 20
         a = np.random.rand(Nseg, Npts) * 35
         # compare efficiency of three fftw package
-        t0 = time.time()
-        _ = t0
-        fft0 = pyfftw.interfaces.scipy_fftpack.fft(a, axis=1)
-        _ = fft0
-        t1 = time.time()
-        _ = t1
-        fft1 = np.fft.fft(a, axis=1)
-        _ = fft1
-        t2 = time.time()
-        _ = t2
-        fft2 = scipy.fftpack.fft(a, axis=1)
-        _ = fft2
+        _ = time.time()
+        _ = pyfftw.interfaces.scipy_fftpack.fft(a, axis=1)
+        _ = time.time()
+        _ = np.fft.fft(a, axis=1)
+        _ = time.time()
+        _ = scipy.fftpack.fft(a, axis=1)
 
 
 @profile
@@ -126,13 +117,10 @@ def fftw_comp_1D():
 
     # compare efficiency of three fftw package
     t0 = time.time()
-    fft0 = pyfftw.interfaces.numpy_fft.fft(c)
-    _ = fft0
+    _ = pyfftw.interfaces.numpy_fft.fft(c)
     t1 = time.time()
-    fft1 = np.fft.fft(c)
-    _ = fft1
+    _ = np.fft.fft(c)
     t2 = time.time()
-    fft2 = scipy.fftpack.fft(c)
-    _ = fft2
+    _ = scipy.fftpack.fft(c)
     t3 = time.time()
     print("fft takes %f %f %f" % (t1 - t0, t2 - t1, t3 - t2))

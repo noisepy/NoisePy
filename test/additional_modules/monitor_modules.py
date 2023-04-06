@@ -341,7 +341,9 @@ def backtrackDistanceFunction(dir, d, err, lmin, b):
     return stbar
 
 
-def wct_modified(y1, y2, dt, dj=1 / 12, s0=-1, J=-1, sig=True, significance_level=0.95, wavelet="morlet", normalize=True, **kwargs):
+def wct_modified(
+    y1, y2, dt, dj=1 / 12, s0=-1, J=-1, sig=True, significance_level=0.95, wavelet="morlet", normalize=True, **kwargs
+):
     """Wavelet coherence transform (WCT).
     The WCT finds regions in time frequency space where the two time
     series co-vary, but do not necessarily have high power.
@@ -426,7 +428,9 @@ def wct_modified(y1, y2, dt, dj=1 / 12, s0=-1, J=-1, sig=True, significance_leve
     if sig:
         a1, b1, c1 = pycwt.ar1(y1)
         a2, b2, c2 = pycwt.ar1(y2)
-        sig = pycwt.wct_significance(a1, a2, dt=dt, dj=dj, s0=s0, J=J, significance_level=significance_level, wavelet=wavelet, **kwargs)
+        sig = pycwt.wct_significance(
+            a1, a2, dt=dt, dj=dj, s0=s0, J=J, significance_level=significance_level, wavelet=wavelet, **kwargs
+        )
     else:
         sig = np.asarray([0])
 

@@ -58,7 +58,9 @@ def whiten_original(data, fft_para):
     # Left tapering:
     if axis == 1:
         FFTRawSign[:, 0:low] *= 0
-        FFTRawSign[:, low:left] = np.cos(np.linspace(np.pi / 2.0, np.pi, left - low)) ** 2 * np.exp(1j * np.angle(FFTRawSign[:, low:left]))
+        FFTRawSign[:, low:left] = np.cos(np.linspace(np.pi / 2.0, np.pi, left - low)) ** 2 * np.exp(
+            1j * np.angle(FFTRawSign[:, low:left])
+        )
         # Pass band:
         if freq_norm == "phase_only":
             FFTRawSign[:, left:right] = np.exp(1j * np.angle(FFTRawSign[:, left:right]))
@@ -67,14 +69,18 @@ def whiten_original(data, fft_para):
                 tave = moving_ave(np.abs(FFTRawSign[ii, left:right]), smooth_N)
                 FFTRawSign[ii, left:right] = FFTRawSign[ii, left:right] / tave
         # Right tapering:
-        FFTRawSign[:, right:high] = np.cos(np.linspace(0.0, np.pi / 2.0, high - right)) ** 2 * np.exp(1j * np.angle(FFTRawSign[:, right:high]))
+        FFTRawSign[:, right:high] = np.cos(np.linspace(0.0, np.pi / 2.0, high - right)) ** 2 * np.exp(
+            1j * np.angle(FFTRawSign[:, right:high])
+        )
         FFTRawSign[:, high : Nfft // 2] *= 0
 
         # Hermitian symmetry (because the input is real)
         FFTRawSign[:, -(Nfft // 2) + 1 :] = np.flip(np.conj(FFTRawSign[:, 1 : (Nfft // 2)]), axis=axis)
     else:
         FFTRawSign[0:low] *= 0
-        FFTRawSign[low:left] = np.cos(np.linspace(np.pi / 2.0, np.pi, left - low)) ** 2 * np.exp(1j * np.angle(FFTRawSign[low:left]))
+        FFTRawSign[low:left] = np.cos(np.linspace(np.pi / 2.0, np.pi, left - low)) ** 2 * np.exp(
+            1j * np.angle(FFTRawSign[low:left])
+        )
         # Pass band:
         if freq_norm == "phase_only":
             FFTRawSign[left:right] = np.exp(1j * np.angle(FFTRawSign[left:right]))
@@ -82,7 +88,9 @@ def whiten_original(data, fft_para):
             tave = moving_ave(np.abs(FFTRawSign[left:right]), smooth_N)
             FFTRawSign[left:right] = FFTRawSign[left:right] / tave
         # Right tapering:
-        FFTRawSign[right:high] = np.cos(np.linspace(0.0, np.pi / 2.0, high - right)) ** 2 * np.exp(1j * np.angle(FFTRawSign[right:high]))
+        FFTRawSign[right:high] = np.cos(np.linspace(0.0, np.pi / 2.0, high - right)) ** 2 * np.exp(
+            1j * np.angle(FFTRawSign[right:high])
+        )
         FFTRawSign[high : Nfft // 2] *= 0
 
         # Hermitian symmetry (because the input is real)

@@ -1,15 +1,8 @@
 [flake8]
-max-line-length = 100
+max-line-length = 120
 output-file = flake8_log.txt
 tee = True
-additional_dependencies:
-    - flake8-black
-    exclude: .git,__pycache__,build,dist
-    args:
-        - --max-line-length=100
-        - --extend-ignore= E203, E266 BLK100, F811
-        #F811 flags selective_stack from noise_module becuase there are two modules with the same name but different parameters
-        #BLK100 designates where Black would make changes
-        #E266 Too many leading '#' for block comment
-        #E203 Whitespace rule relating to ':' that directly conflicts with black standards
-
+extend-ignore= E203, E266 BLK100
+#BLK100 designates where Black would make changes
+#E266 Too many leading '#' for block comment
+#E203 Whitespace rule relating to ':' that directly conflicts with black standards

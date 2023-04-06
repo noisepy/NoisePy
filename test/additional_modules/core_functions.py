@@ -105,7 +105,8 @@ def stretching(ref, cur, dv_range, nbtrial, para):
     ----------------
     ref: Reference waveform (np.ndarray, size N)
     cur: Current waveform (np.ndarray, size N)
-    dv_range: absolute bound for the velocity variation; example: dv=0.03 for [-3,3]% of relative velocity change ('float')
+    dv_range: absolute bound for the velocity variation; example: dv=0.03 for [-3,3]%
+    of relative velocity change ('float')
     nbtrial: number of stretching coefficient between dvmin and dvmax, no need to be higher than 100  ('float')
     para: vector of the indices of the cur and ref windows on wich you want to do the measurements
     (np.ndarray, size tmin*delta:tmax*delta)
@@ -174,13 +175,16 @@ def stretching(ref, cur, dv_range, nbtrial, para):
     cc = np.max(ncof)  # Find maximum correlation coefficient of the refined  analysis
     dv = 100.0 * dtfiner[np.argmax(ncof)] - 100  # Multiply by 100 to convert to percentage (Epsilon = -dt/t = dv/v)
 
-    # Error computation based on Weaver et al (2011), On the precision of noise-correlation interferometry, Geophys. J. Int., 185(3)
+    # Error computation based on Weaver et al (2011), On the precision of noise-correlation
+    # interferometry, Geophys. J. Int., 185(3)
     T = 1 / (fmax - fmin)
     X = cc
     wc = np.pi * (fmin + fmax)
     t1 = np.min([tmin, tmax])
     t2 = np.max([tmin, tmax])
-    error = 100 * (np.sqrt(1 - X**2) / (2 * X) * np.sqrt((6 * np.sqrt(np.pi / 2) * T) / (wc**2 * (t2**3 - t1**3))))
+    error = 100 * (
+        np.sqrt(1 - X**2) / (2 * X) * np.sqrt((6 * np.sqrt(np.pi / 2) * T) / (wc**2 * (t2**3 - t1**3)))
+    )
 
     return dv, error, cc, cdp
 

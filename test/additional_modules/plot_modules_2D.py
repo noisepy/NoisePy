@@ -104,7 +104,8 @@ def plot_cc_stack(sfile, freqmin, freqmax, ccomp, maxlag=None):
     """
     plot sub-stacked CCFs for station pair of sfile. waveforms are to be filtered at freqmin-freqmax
 
-    usage: plot_moveout('/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/STACK/E.ABHM/E.ABHM_E.KKHM.h5',0.5,1,'ZZ')
+    usage: plot_moveout('/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW
+    /STACK/E.ABHM/E.ABHM_E.KKHM.h5',0.5,1,'ZZ')
     """
 
     # ---all station pairs----
@@ -263,7 +264,8 @@ def plot_freq_time_stack(sfile, freqmin, freqmax, ccomp, maxlag=None):
     """
     plot the dispersive CCFs in a very narrow frequency band at freqmin-freqmax range
 
-    usage: plot_freq_time_stack('/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/STACK/E.ABHM/E.ABHM_E.KKHM.h5',0.5,1,'ZZ')
+    usage: plot_freq_time_stack('/Users/chengxin/Documents/Harvard/Kanto_basin/
+    Mesonet_BW/STACK/E.ABHM/E.ABHM_E.KKHM.h5',0.5,1,'ZZ')
     """
 
     # ---all station pairs----

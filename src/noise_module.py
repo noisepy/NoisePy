@@ -1,3 +1,7 @@
+# noisemodule.py
+# This file is excluded from this check because it contains two modules with
+# the same name but different inputs
+# noqa: F811
 # import pyasdf
 import datetime
 import glob
@@ -128,10 +132,13 @@ def make_timestamps(prepro_para):
             for ii in range(nfiles):
                 year = int(allfiles[ii].split("/")[-2].split("_")[1])
                 # julia = int(allfiles[ii].split('/')[-2].split('_')[2])
-                # all_stimes[ii,0] = obspy.UTCDateTime(year=year,julday=julia)-obspy.UTCDateTime(year=1970,month=1,day=1)
+                # all_stimes[ii,0] = obspy.UTCDateTime(year=year,julday=julia)
+                # -obspy.UTCDateTime(year=1970,month=1,day=1)
                 month = int(allfiles[ii].split("/")[-2].split("_")[2])
                 day = int(allfiles[ii].split("/")[-2].split("_")[3])
-                all_stimes[ii, 0] = obspy.UTCDateTime(year=year, month=month, day=day) - obspy.UTCDateTime(year=1970, month=1, day=1)
+                all_stimes[ii, 0] = obspy.UTCDateTime(year=year, month=month, day=day) - obspy.UTCDateTime(
+                    year=1970, month=1, day=1
+                )
                 all_stimes[ii, 1] = all_stimes[ii, 0] + 86400
 
         # save name and time info for later use if the file not exist
@@ -164,7 +171,8 @@ def preprocess_raw(st, inv, prepro_para, date_info):
     -----------------------
     st:  obspy stream object, containing noise data to be processed
     inv: obspy inventory object, containing stations info
-    prepro_para: dict containing fft parameters, such as frequency bands and selection for instrument response removal etc.
+    prepro_para: dict containing fft parameters, such as frequency bands and
+    selection for instrument response removal etc.
     date_info:   dict of start and end time of the stream data
     RETURNS:
     -----------------------
@@ -306,7 +314,8 @@ def stats2inv(stats, prepro_para, locs=None):
     PARAMETERS:
     ------------------------
     stats: obspy trace stats object containing all station header info
-    prepro_para: dict containing fft parameters, such as frequency bands and selection for instrument response removal etc.
+    prepro_para: dict containing fft parameters, such as frequency bands and selection for instrument
+    response removal etc.
     locs:  panda data frame of the station list. it is needed for convering miniseed files into ASDF
     RETURNS:
     ------------------------
@@ -324,7 +333,13 @@ def stats2inv(stats, prepro_para, locs=None):
             if len(invfilelist) > 0:
                 invfile = invfilelist[0]
                 if len(invfilelist) > 1:
-                    print("Warning! More than one StationXML file was found for station %s. Keeping the first file in list." % stats.station)
+                    print(
+                        (
+                            "Warning! More than one StationXML file was found for station %s."
+                            + "Keeping the first file in list."
+                        )
+                        % stats.station
+                    )
                 if os.path.isfile(str(invfile)):
                     inv = obspy.read_inventory(invfile)
                     return inv
@@ -514,7 +529,8 @@ def cut_trace_make_stat(fc_para, source):
 def noise_processing(fft_para, dataS):
     """
     this function performs time domain and frequency domain normalization if needed. in real case, we prefer use include
-    the normalization in the cross-correaltion steps by selecting coherency or decon (Prieto et al, 2008, 2009; Denolle et al, 2013)
+    the normalization in the cross-correaltion steps by selecting coherency or decon
+    (Prieto et al, 2008, 2009; Denolle et al, 2013)
     PARMAETERS:
     ------------------------
     fft_para: dictionary containing all useful variables used for fft and cc
@@ -1153,11 +1169,19 @@ def rotation(bigstack, parameters, locs, flag):
     tcorr[0] = -cosb * bigstack[7] - sinb * bigstack[6]
     tcorr[1] = sinb * bigstack[7] - cosb * bigstack[6]
     tcorr[2] = bigstack[8]
-    tcorr[3] = -cosa * cosb * bigstack[4] - cosa * sinb * bigstack[3] - sina * cosb * bigstack[1] - sina * sinb * bigstack[0]
-    tcorr[4] = cosa * sinb * bigstack[4] - cosa * cosb * bigstack[3] + sina * sinb * bigstack[1] - sina * cosb * bigstack[0]
+    tcorr[3] = (
+        -cosa * cosb * bigstack[4] - cosa * sinb * bigstack[3] - sina * cosb * bigstack[1] - sina * sinb * bigstack[0]
+    )
+    tcorr[4] = (
+        cosa * sinb * bigstack[4] - cosa * cosb * bigstack[3] + sina * sinb * bigstack[1] - sina * cosb * bigstack[0]
+    )
     tcorr[5] = cosa * bigstack[5] + sina * bigstack[2]
-    tcorr[6] = sina * cosb * bigstack[4] + sina * sinb * bigstack[3] - cosa * cosb * bigstack[1] - cosa * sinb * bigstack[0]
-    tcorr[7] = -sina * sinb * bigstack[4] + sina * cosb * bigstack[3] + cosa * sinb * bigstack[1] - cosa * cosb * bigstack[0]
+    tcorr[6] = (
+        sina * cosb * bigstack[4] + sina * sinb * bigstack[3] - cosa * cosb * bigstack[1] - cosa * sinb * bigstack[0]
+    )
+    tcorr[7] = (
+        -sina * sinb * bigstack[4] + sina * cosb * bigstack[3] + cosa * sinb * bigstack[1] - cosa * cosb * bigstack[0]
+    )
     tcorr[8] = -sina * bigstack[5] + cosa * bigstack[2]
 
     return tcorr
@@ -1701,7 +1725,8 @@ def whiten(data, fft_para, n_taper=100):
     # Speed up FFT by padding to optimal size for FFTPACK
     if data.ndim == 1:
         FFTRawSign = whiten_1D(data, fft_para, n_taper)
-        # ARR_OUT: Only for consistency with noisepy approach of holding the full spectrum (not just 0 and positive freq. part)
+        # ARR_OUT: Only for consistency with noisepy approach of holding the full
+        # spectrum (not just 0 and positive freq. part)
         arr_out = np.zeros((FFTRawSign.shape[0] - 1) * 2 + 1, dtype=complex)
         arr_out[0 : FFTRawSign.shape[0]] = FFTRawSign
         arr_out[FFTRawSign.shape[0] :] = FFTRawSign[1:].conjugate()[::-1]
@@ -1835,7 +1860,7 @@ def nroot_stack(cc_array, power):
     return nstack
 
 
-def selective_stack(cc_array, epsilon, cc_th):
+def selective_stack(cc_array, epsilon, cc_th):  # noqa: F811
     """
     this is a selective stacking algorithm developed by Jared Bryan/Kurama Okubo.
 
@@ -1919,9 +1944,11 @@ def stretching(ref, cur, dv_range, nbtrial, para):
     ----------------
     ref: Reference waveform (np.ndarray, size N)
     cur: Current waveform (np.ndarray, size N)
-    dv_range: absolute bound for the velocity variation; example: dv=0.03 for [-3,3]% of relative velocity change ('float')
+    dv_range: absolute bound for the velocity variation; example: dv=0.03 for [-3,3]%
+    of relative velocity change ('float')
     nbtrial: number of stretching coefficient between dvmin and dvmax, no need to be higher than 100  ('float')
-    para: vector of the indices of the cur and ref windows on wich you want to do the measurements (np.ndarray, size tmin*delta:tmax*delta)
+    para: vector of the indices of the cur and ref windows on wich you want to do the measurements
+    (np.ndarray, size tmin*delta:tmax*delta)
     For error computation, we need parameters:
         fmin: minimum frequency of the data
         fmax: maximum frequency of the data
@@ -1988,13 +2015,16 @@ def stretching(ref, cur, dv_range, nbtrial, para):
     cc = np.max(ncof)  # Find maximum correlation coefficient of the refined  analysis
     dv = 100.0 * dtfiner[np.argmax(ncof)] - 100  # Multiply by 100 to convert to percentage (Epsilon = -dt/t = dv/v)
 
-    # Error computation based on Weaver et al (2011), On the precision of noise-correlation interferometry, Geophys. J. Int., 185(3)
+    # Error computation based on Weaver et al (2011), On the precision of noise-correlation
+    # interferometry, Geophys. J. Int., 185(3)
     T = 1 / (fmax - fmin)
     X = cc
     wc = np.pi * (fmin + fmax)
     t1 = np.min([tmin, tmax])
     t2 = np.max([tmin, tmax])
-    error = 100 * (np.sqrt(1 - X**2) / (2 * X) * np.sqrt((6 * np.sqrt(np.pi / 2) * T) / (wc**2 * (t2**3 - t1**3))))
+    error = 100 * (
+        np.sqrt(1 - X**2) / (2 * X) * np.sqrt((6 * np.sqrt(np.pi / 2) * T) / (wc**2 * (t2**3 - t1**3)))
+    )
 
     return dv, error, cc, cdp
 
@@ -2009,7 +2039,8 @@ def stretching_vect(ref, cur, dv_range, nbtrial, para):
     ----------------
     ref: Reference waveform (np.ndarray, size N)
     cur: Current waveform (np.ndarray, size N)
-    dv_range: absolute bound for the velocity variation; example: dv=0.03 for [-3,3]% of relative velocity change ('float')
+    dv_range: absolute bound for the velocity variation; example: dv=0.03 for [-3,3]%
+    of relative velocity change ('float')
     nbtrial: number of stretching coefficient between dvmin and dvmax, no need to be higher than 100  ('float')
     para: vector of the indices of the cur and ref windows on wich you want to do the
     measurements (np.ndarray, size tmin*delta:tmax*delta)
@@ -2079,13 +2110,16 @@ def stretching_vect(ref, cur, dv_range, nbtrial, para):
     cc = np.max(ncof)  # Find maximum correlation coefficient of the refined  analysis
     dv = 100.0 * dtfiner[np.argmax(ncof)] - 100  # Multiply by 100 to convert to percentage (Epsilon = -dt/t = dv/v)
 
-    # Error computation based on Weaver et al (2011), On the precision of noise-correlation interferometry, Geophys. J. Int., 185(3)
+    # Error computation based on Weaver et al (2011), On the precision of noise-correlation interferometry,
+    # Geophys. J. Int., 185(3)
     T = 1 / (fmax - fmin)
     X = cc
     wc = np.pi * (fmin + fmax)
     t1 = np.min([tmin, tmax])
     t2 = np.max([tmin, tmax])
-    error = 100 * (np.sqrt(1 - X**2) / (2 * X) * np.sqrt((6 * np.sqrt(np.pi / 2) * T) / (wc**2 * (t2**3 - t1**3))))
+    error = 100 * (
+        np.sqrt(1 - X**2) / (2 * X) * np.sqrt((6 * np.sqrt(np.pi / 2) * T) / (wc**2 * (t2**3 - t1**3)))
+    )
 
     return dv, error, cc, cdp
 
@@ -2446,7 +2480,8 @@ def wxs_dvv(
 
     Originally written by Tim Clements (1 March, 2019)
     Modified by Congcong Yuan (30 June, 2019) based on (Mao et al. 2019).
-    Updated by Chengxin Jiang (10 Oct, 2019) to merge the functionality for mesurements across all frequency and one freq range
+    Updated by Chengxin Jiang (10 Oct, 2019) to merge the functionality for mesurements
+    across all frequency and one freq range
     """
     # common variables
     twin = para["twin"]
@@ -2547,7 +2582,8 @@ def wts_dvv(
     cur: The "Current" timeseries (numpy.ndarray)
     allfreq: a boolen variable to make measurements on all frequency range or not
     para: a dict containing freq/time info of the data matrix
-    dv_range: absolute bound for the velocity variation; example: dv=0.03 for [-3,3]% of relative velocity change (float)
+    dv_range: absolute bound for the velocity variation; example: dv=0.03 for [-3,3]%
+    of relative velocity change (float)
     nbtrial: number of stretching coefficient between dvmin and dvmax, no need to be higher than 100  (float)
     dj, s0, J, sig, wvn: common parameters used in 'wavelet.wct'
     normalize: normalize the wavelet spectrum or not. Default is True
@@ -2654,7 +2690,8 @@ def wtdtw_allfreq(
     cur: The "Current" timeseries (numpy.ndarray)
     allfreq: a boolen variable to make measurements on all frequency range or not
     maxLag: max number of points to search forward and backward.
-    b: b-value to limit strain, which is to limit the maximum velocity perturbation. See equation 11 in (Mikesell et al. 2015)
+    b: b-value to limit strain, which is to limit the maximum velocity perturbation.
+    See equation 11 in (Mikesell et al. 2015)
     direction: direction to accumulate errors (1=forward, -1=backward)
     dj, s0, J, sig, wvn: common parameters used in 'wavelet.wct'
     normalize: normalize the wavelet spectrum or not. Default is True
@@ -3000,7 +3037,9 @@ def backtrackDistanceFunction(dir, d, err, lmin, b):
     return stbar
 
 
-def wct_modified(y1, y2, dt, dj=1 / 12, s0=-1, J=-1, sig=True, significance_level=0.95, wavelet="morlet", normalize=True, **kwargs):
+def wct_modified(
+    y1, y2, dt, dj=1 / 12, s0=-1, J=-1, sig=True, significance_level=0.95, wavelet="morlet", normalize=True, **kwargs
+):
     """
         Wavelet coherence transform (WCT).
     ​
@@ -3088,7 +3127,9 @@ def wct_modified(y1, y2, dt, dj=1 / 12, s0=-1, J=-1, sig=True, significance_leve
     if sig:
         a1, b1, c1 = pycwt.ar1(y1)
         a2, b2, c2 = pycwt.ar1(y2)
-        sig = pycwt.wct_significance(a1, a2, dt=dt, dj=dj, s0=s0, J=J, significance_level=significance_level, wavelet=wavelet, **kwargs)
+        sig = pycwt.wct_significance(
+            a1, a2, dt=dt, dj=dj, s0=s0, J=J, significance_level=significance_level, wavelet=wavelet, **kwargs
+        )
     else:
         sig = np.asarray([0])
 

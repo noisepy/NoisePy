@@ -243,7 +243,9 @@ def plot_substack_cc(sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir=
                     sdir = sfile.split(".")[0]
                 if not os.path.isdir(sdir):
                     os.mkdir(sdir)
-                outfname = sdir + "/{0:s}.{1:s}.{2:s}_{3:s}.{4:s}.{5:s}.pdf".format(net1, sta1, chan1, net2, sta2, chan2)
+                outfname = sdir + "/{0:s}.{1:s}.{2:s}_{3:s}.{4:s}.{5:s}.pdf".format(
+                    net1, sta1, chan1, net2, sta2, chan2
+                )
                 fig.savefig(outfname, format="pdf", dpi=400)
                 plt.close()
             else:
@@ -373,7 +375,9 @@ def plot_substack_cc_spect(sfile, freqmin, freqmax, disp_lag=None, savefig=True,
                     sdir = sfile.split(".")[0]
                 if not os.path.isdir(sdir):
                     os.mkdir(sdir)
-                outfname = sdir + "/{0:s}.{1:s}.{2:s}_{3:s}.{4:s}.{5:s}.pdf".format(net1, sta1, chan1, net2, sta2, chan2)
+                outfname = sdir + "/{0:s}.{1:s}.{2:s}_{3:s}.{4:s}.{5:s}.pdf".format(
+                    net1, sta1, chan1, net2, sta2, chan2
+                )
                 fig.savefig(outfname, format="pdf", dpi=400)
                 plt.close()
             else:

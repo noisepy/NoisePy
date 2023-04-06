@@ -2,7 +2,10 @@ import pyasdf
 
 with pyasdf.ASDFDataSet("./asdf_example.h5", mode="r") as ds:
     # Get dictionary of resource_id -> Lat/Lng pairs
-    events = {str(e.resource_id): [(e.preferred_origin() or e.origins[0]).get(i) for i in ["latitude", "longitude"]] for e in ds.events}
+    events = {
+        str(e.resource_id): [(e.preferred_origin() or e.origins[0]).get(i) for i in ["latitude", "longitude"]]
+        for e in ds.events
+    }
 
     # Loop over all stations.
     for s in ds.waveforms:

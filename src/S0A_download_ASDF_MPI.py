@@ -98,12 +98,17 @@ def download(
 ):
     direc = os.path.join(rootpath, "RAW_DATA")  # where to store the downloaded data
     dlist = os.path.join(direc, "station.txt")  # CSV file for station location info
-    respdir = os.path.join(rootpath, "resp")  # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
+    respdir = os.path.join(
+        rootpath, "resp"
+    )  # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
     # time tags
     starttime = obspy.UTCDateTime(start_date[0])
     endtime = obspy.UTCDateTime(end_date[0])
     if flag:
-        print("station.list selected [%s] for data from %s to %s with %sh interval" % (down_list, starttime, endtime, inc_hours))
+        print(
+            "station.list selected [%s] for data from %s to %s with %sh interval"
+            % (down_list, starttime, endtime, inc_hours)
+        )
     print(
         f"""Download
         From: {starttime}
@@ -211,7 +216,10 @@ def download(
     npts_chunk = int(nseg_chunk * cc_len * samp_freq)
     memory_size = nsta * npts_chunk * 4 / 1024**3
     if memory_size > MAX_MEM:
-        raise ValueError("Require %5.3fG memory but only %5.3fG provided)! Reduce inc_hours to avoid this issue!" % (memory_size, MAX_MEM))
+        raise ValueError(
+            "Require %5.3fG memory but only %5.3fG provided)! Reduce inc_hours to avoid this issue!"
+            % (memory_size, MAX_MEM)
+        )
 
     ########################################################
     # ###############DOWNLOAD SECTION#######################

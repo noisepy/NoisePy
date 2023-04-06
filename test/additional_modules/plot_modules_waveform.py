@@ -404,7 +404,9 @@ def plot_moveout_stack_comp(sdir1, sdir2, sdir3, freqmin, freqmax, ccomp, maxlag
                             )
                         except Exception:
                             pass
-                    plt.title("%s %s %s filtered @%4.1f-%4.1f Hz" % (sdir1.split("/")[-1], tag, ccomp, freqmin, freqmax))
+                    plt.title(
+                        "%s %s %s filtered @%4.1f-%4.1f Hz" % (sdir1.split("/")[-1], tag, ccomp, freqmin, freqmax)
+                    )
                     plt.xlabel("time (s)")
                     plt.ylabel("offset (km)")
                     plt.legend(["decon", "coherence", "raw"], loc="lower right")
@@ -659,7 +661,8 @@ def plot_cc_withtime_stack(ccffile, freqmin, freqmax, ccomp, maxlag=None):
     plot the filtered cross-correlation functions between station-pair sta1-sta2
     for all of the available days stored in ccfdir
 
-    example: plot_cc_withtime('/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/STACK/E.AYHM/E.AYHM_E.ENZM.h5',1,5,'ZZ',50)
+    example: plot_cc_withtime('/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/
+    STACK/E.AYHM/E.AYHM_E.ENZM.h5',1,5,'ZZ',50)
     """
     # ---basic parameters----
     if not maxlag:
@@ -916,7 +919,8 @@ def plot_ZH_pmotion_stack(sfile, freqmin, freqmax, t0, t1, maxlag, tags=None):
     plot the 4 component of ccfs where Rayleigh wave might dominant, and use the particle
     motion to identify the surface wave component
 
-    example: plot_ZH_pmotion('/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/STACK/E.AYHM/E.AYHM_E.BKKM.h5',0.5,1,-15,-5,50)
+    example: plot_ZH_pmotion('/Users/chengxin/Documents/Harvard/Kanto_basin/
+    Mesonet_BW/STACK/E.AYHM/E.AYHM_E.BKKM.h5',0.5,1,-15,-5,50)
     """
     # ---basic parameters----
     chan = ["ZZ", "ZR", "RZ", "RR"]
@@ -1077,7 +1081,8 @@ def plot_multi_freq_stack(sfile, freqmin, freqmax, nfreq, ccomp, tags=None):
     this may be useful to show the dispersive property of the surface waves, which could
     be used together with plot_ZH_pmotion to identify surface wave components
 
-    example: plot_multi_freq_stack('/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/STACK/E.AYHM/E.AYHM_E.BKKM.h5',0.08,6,15,'RR')
+    example: plot_multi_freq_stack('/Users/chengxin/Documents/Harvard/Kanto_basin/
+    Mesonet_BW/STACK/E.AYHM/E.AYHM_E.BKKM.h5',0.08,6,15,'RR')
     """
     # ---basic parameters----
     maxlag = 100

@@ -63,7 +63,9 @@ def stack(rootpath: str, stack_method: str):
     # absolute path parameters
     CCFDIR = os.path.join(rootpath, "CCF")  # dir where CC data is stored
     STACKDIR = os.path.join(rootpath, "STACK")  # dir where stacked data is going to
-    locations = os.path.join(rootpath, "RAW_DATA/station.txt")  # station info including network,station,channel,latitude,longitude,elevation
+    locations = os.path.join(
+        rootpath, "RAW_DATA/station.txt"
+    )  # station info including network,station,channel,latitude,longitude,elevation
     if not os.path.isfile(locations):
         raise ValueError("Abort! station info is needed for this script")
 
@@ -195,7 +197,10 @@ def stack(rootpath: str, stack_method: str):
         memory_size = num_chunck * num_segmts * npts_segmt * 4 / 1024**3
 
         if memory_size > MAX_MEM:
-            raise ValueError("Require %5.3fG memory but only %5.3fG provided)! Cannot load cc data all once!" % (memory_size, MAX_MEM))
+            raise ValueError(
+                "Require %5.3fG memory but only %5.3fG provided)! Cannot load cc data all once!"
+                % (memory_size, MAX_MEM)
+            )
         if flag:
             print("Good on memory (need %5.2f G and %s G provided)!" % (memory_size, MAX_MEM))
         # allocate array to store fft data/info
