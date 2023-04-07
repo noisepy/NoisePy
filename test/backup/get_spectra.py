@@ -4,15 +4,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pyasdf
 import scipy
-from scipy.fftpack import fft, ifft, next_fast_len
+from scipy.fftpack import next_fast_len
 
 """
 look at the spectra of the raw UW noise data
 """
 
-sfile = (
-    "/Volumes/Chengxin/Seattle/RAW_DATA_resp/2018_04_02_00_00_00T2018_04_03_00_00_00.h5"
-)
+sfile = "/Volumes/Chengxin/Seattle/RAW_DATA_resp/2018_04_02_00_00_00T2018_04_03_00_00_00.h5"
 sdir = "/Volumes/Chengxin/Seattle/figures/Apr2nd/raw_spect_resp"
 if not os.path.isfile(sfile):
     raise ValueError("no file %s exists" % sfile)

@@ -4,9 +4,7 @@ import os
 import matplotlib.pyplot as plt
 import obspy
 
-event = (
-    "/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/noise_data/Event_2010_???"
-)
+event = "/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/noise_data/Event_2010_???"
 cc_len = 3600
 step = 1800
 day_dir = glob.glob(event)

@@ -1,15 +1,10 @@
-import os
-
 import monitor_modules
 import numpy as np
-import obspy
 import pyasdf
 import pycwt
 import scipy
-from obspy.signal.filter import bandpass
 from obspy.signal.invsim import cosine_taper
 from obspy.signal.regression import linear_regression
-from scipy.fftpack import next_fast_len
 
 """
 a compilation of all available core functions for computing phase delays based on ambient noise interferometry
@@ -40,13 +35,9 @@ def load_waveforms(sfile, para):
     # load useful variables
     twin = para["twin"]
     comp = para["ccomp"]
-    freq = para["freq"]
     dt = para["dt"]
     tmin = np.min(twin)
     tmax = np.max(twin)
-    fmin = np.min(freq)
-    fmax = np.max(freq)
-    norm_flag = para["norm_flag"]
 
     with pyasdf.ASDFDataSet(sfile, mode="r") as ds:
         slist = ds.auxiliary_data.list()
@@ -107,15 +98,18 @@ def load_waveforms(sfile, para):
 
 def stretching(ref, cur, dv_range, nbtrial, para):
     """
-    This function compares the Reference waveform to stretched/compressed current waveforms to get the relative seismic velocity variation (and associated error).
+    This function compares the Reference waveform to stretched/compressed current waveforms to get the
+    relative seismic velocity variation (and associated error).
     It also computes the correlation coefficient between the Reference waveform and the current waveform.
     PARAMETERS:
     ----------------
     ref: Reference waveform (np.ndarray, size N)
     cur: Current waveform (np.ndarray, size N)
-    dv_range: absolute bound for the velocity variation; example: dv=0.03 for [-3,3]% of relative velocity change ('float')
+    dv_range: absolute bound for the velocity variation; example: dv=0.03 for [-3,3]%
+    of relative velocity change ('float')
     nbtrial: number of stretching coefficient between dvmin and dvmax, no need to be higher than 100  ('float')
-    para: vector of the indices of the cur and ref windows on wich you want to do the measurements (np.ndarray, size tmin*delta:tmax*delta)
+    para: vector of the indices of the cur and ref windows on wich you want to do the measurements
+    (np.ndarray, size tmin*delta:tmax*delta)
 
     For error computation, we need parameters:
         fmin: minimum frequency of the data
@@ -127,8 +121,10 @@ def stretching(ref, cur, dv_range, nbtrial, para):
     dv: Relative velocity change dv/v (in %)
     cc: correlation coefficient between the reference waveform and the best stretched/compressed current waveform
     cdp: correlation coefficient between the reference waveform and the initial current waveform
-    error: Errors in the dv/v measurements based on Weaver et al (2011), On the precision of noise-correlation interferometry, Geophys. J. Int., 185(3)
-    Note: The code first finds the best correlation coefficient between the Reference waveform and the stretched/compressed current waveform among the "nbtrial" values.
+    error: Errors in the dv/v measurements based on Weaver et al (2011), On the precision of
+    noise-correlation interferometry, Geophys. J. Int., 185(3)
+    Note: The code first finds the best correlation coefficient between the Reference waveform and
+    the stretched/compressed current waveform among the "nbtrial" values.
     A refined analysis is then performed around this value to obtain a more precise dv/v measurement .
     Originally by L. Viens 04/26/2018 (Viens et al., 2018 JGR)
     modified by Chengxin Jiang
@@ -157,9 +153,7 @@ def stretching(ref, cur, dv_range, nbtrial, para):
         waveform_cur = s
         cof[ii] = np.corrcoef(waveform_ref, waveform_cur)[0, 1]
 
-    cdp = np.corrcoef(cur, ref)[
-        0, 1
-    ]  # correlation coefficient between the reference and initial current waveforms
+    cdp = np.corrcoef(cur, ref)[0, 1]  # correlation coefficient between the reference and initial current waveforms
 
     # find the maximum correlation coefficient
     imax = np.nanargmax(cof)
@@ -179,20 +173,17 @@ def stretching(ref, cur, dv_range, nbtrial, para):
         ncof[ii] = np.corrcoef(waveform_ref, waveform_cur)[0, 1]
 
     cc = np.max(ncof)  # Find maximum correlation coefficient of the refined  analysis
-    dv = (
-        100.0 * dtfiner[np.argmax(ncof)] - 100
-    )  # Multiply by 100 to convert to percentage (Epsilon = -dt/t = dv/v)
+    dv = 100.0 * dtfiner[np.argmax(ncof)] - 100  # Multiply by 100 to convert to percentage (Epsilon = -dt/t = dv/v)
 
-    # Error computation based on Weaver et al (2011), On the precision of noise-correlation interferometry, Geophys. J. Int., 185(3)
+    # Error computation based on Weaver et al (2011), On the precision of noise-correlation
+    # interferometry, Geophys. J. Int., 185(3)
     T = 1 / (fmax - fmin)
     X = cc
     wc = np.pi * (fmin + fmax)
     t1 = np.min([tmin, tmax])
     t2 = np.max([tmin, tmax])
     error = 100 * (
-        np.sqrt(1 - X**2)
-        / (2 * X)
-        * np.sqrt((6 * np.sqrt(np.pi / 2) * T) / (wc**2 * (t2**3 - t1**3)))
+        np.sqrt(1 - X**2) / (2 * X) * np.sqrt((6 * np.sqrt(np.pi / 2) * T) / (wc**2 * (t2**3 - t1**3)))
     )
 
     return dv, error, cc, cdp
@@ -237,9 +228,7 @@ def dtw_dvv(ref, cur, para, maxLag, b, direction):
     # want to make sure you're doing things in the proper directions in each
     # step!!!
     dist = monitor_modules.accumulateErrorFunction(direction, err, npts, maxLag, b)
-    stbar = monitor_modules.backtrackDistanceFunction(
-        -1 * direction, dist, err, -maxLag, b
-    )
+    stbar = monitor_modules.backtrackDistanceFunction(-1 * direction, dist, err, -maxLag, b)
     stbarTime = stbar * dt  # convert from samples to time
 
     # linear regression to get dv/v
@@ -247,9 +236,7 @@ def dtw_dvv(ref, cur, para, maxLag, b, direction):
         # weights
         w = np.ones(npts)
         # m, a, em, ea = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=False)
-        m0, em0 = linear_regression(
-            tvect.flatten(), stbarTime.flatten(), w.flatten(), intercept_origin=True
-        )
+        m0, em0 = linear_regression(tvect.flatten(), stbarTime.flatten(), w.flatten(), intercept_origin=True)
 
     else:
         print("not enough points to estimate dv/v for dtw")
@@ -290,10 +277,8 @@ def mwcs_dvv(ref, cur, moving_window_length, slide_step, para, smoothing_half_wi
     freq = para["freq"]
     dt = para["dt"]
     tmin = np.min(twin)
-    tmax = np.max(twin)
     fmin = np.min(freq)
     fmax = np.max(freq)
-    tvect = np.arange(tmin, tmax, dt)
 
     # parameter initialize
     delta_t = []
@@ -333,16 +318,8 @@ def mwcs_dvv(ref, cur, moving_window_length, slide_step, para, smoothing_half_wi
         # get cross-spectrum & do filtering
         X = fref * (fcur.conj())
         if smoothing_half_win != 0:
-            dcur = np.sqrt(
-                monitor_modules.smooth(
-                    fcur2, window="hanning", half_win=smoothing_half_win
-                )
-            )
-            dref = np.sqrt(
-                monitor_modules.smooth(
-                    fref2, window="hanning", half_win=smoothing_half_win
-                )
-            )
+            dcur = np.sqrt(monitor_modules.smooth(fcur2, window="hanning", half_win=smoothing_half_win))
+            dref = np.sqrt(monitor_modules.smooth(fref2, window="hanning", half_win=smoothing_half_win))
             X = monitor_modules.smooth(X, window="hanning", half_win=smoothing_half_win)
         else:
             dcur = np.sqrt(fcur2)
@@ -423,9 +400,7 @@ def mwcs_dvv(ref, cur, moving_window_length, slide_step, para, smoothing_half_wi
 
         # ---------do linear regression-----------
         # m, a, em, ea = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=False)
-        m0, em0 = linear_regression(
-            time_axis[indx], delta_t[indx], w, intercept_origin=True
-        )
+        m0, em0 = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=True)
 
     else:
         print("not enough points to estimate dv/v")
@@ -458,7 +433,6 @@ def WCC_dvv(ref, cur, moving_window_length, slide_step, para):
     twin = para["twin"]
     dt = para["dt"]
     tmin = np.min(twin)
-    tmax = np.max(twin)
 
     # parameter initialize
     delta_t = []
@@ -520,9 +494,7 @@ def WCC_dvv(ref, cur, moving_window_length, slide_step, para):
         # simple weight
         w = np.ones(count)
         # m, a, em, ea = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=False)
-        m0, em0 = linear_regression(
-            time_axis.flatten(), delta_t.flatten(), w.flatten(), intercept_origin=True
-        )
+        m0, em0 = linear_regression(time_axis.flatten(), delta_t.flatten(), w.flatten(), intercept_origin=True)
 
     else:
         print("not enough points to estimate dv/v")
@@ -578,14 +550,10 @@ def wxs_allfreq(
     tvec = np.arange(tmin, tmax, dt)
 
     # perform cross coherent analysis, modified from function 'wavelet.cwt'
-    WCT, aWCT, coi, freq, sig = pycwt.wct(
-        cur, ref, dt, dj=dj, s0=s0, J=J, sig=sig, wavelet=wvn, normalize=True
-    )
+    WCT, aWCT, coi, freq, sig = pycwt.wct(cur, ref, dt, dj=dj, s0=s0, J=J, sig=sig, wavelet=wvn, normalize=True)
 
     if unwrapflag:
-        phase = np.unwrap(
-            aWCT, axis=-1
-        )  # axis=0, upwrap along time; axis=-1, unwrap along frequency
+        phase = np.unwrap(aWCT, axis=-1)  # axis=0, upwrap along time; axis=-1, unwrap along frequency
     else:
         phase = aWCT
 
@@ -667,14 +635,10 @@ def wts_allfreq(
     Written by Congcong Yuan (30 Jun, 2019)
     """
     # common variables
-    twin = para["twin"]
     freq = para["freq"]
     dt = para["dt"]
-    tmin = np.min(twin)
-    tmax = np.max(twin)
     fmin = np.min(freq)
     fmax = np.max(freq)
-    tvec = np.arange(tmin, tmax, dt)
 
     # apply cwt on two traces
     cwt1, sj, freq, coi, _, _ = pycwt.cwt(cur, dt, dj, s0, J, wvn)
@@ -764,14 +728,10 @@ def wtdtw_allfreq(
     Written by Congcong Yuan (30 Jun, 2019)
     """
     # common variables
-    twin = para["twin"]
     freq = para["freq"]
     dt = para["dt"]
-    tmin = np.min(twin)
-    tmax = np.max(twin)
     fmin = np.min(freq)
     fmax = np.max(freq)
-    tvec = np.arange(tmin, tmax) * dt
 
     # apply cwt on two traces
     cwt1, sj, freq, coi, _, _ = pycwt.cwt(cur, dt, dj, s0, J, wvn)

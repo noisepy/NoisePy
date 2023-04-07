@@ -1,9 +1,7 @@
 import glob
 import os
-import sys
 
 import numpy as np
-import obspy
 import pyasdf
 from obspy.io.sac.sactrace import SACTrace
 
@@ -61,29 +59,12 @@ for ii in range(nfiles):
                     if out_SAC:
                         # --------read the correlations---------
                         corr = ds.auxiliary_data[dtype][comp].data[:]
-                        temp = (
-                            netS
-                            + "."
-                            + staS
-                            + "_"
-                            + netR
-                            + "."
-                            + staR
-                            + "_"
-                            + comp
-                            + ".SAC"
-                        )
+                        temp = netS + "." + staS + "_" + netR + "." + staR + "_" + comp + ".SAC"
 
                         # -------check whether folder exists-------
-                        if not os.path.isdir(
-                            os.path.join(STACKDIR, "STACK_SAC/" + netS + "." + staS)
-                        ):
-                            os.mkdir(
-                                os.path.join(STACKDIR, "STACK_SAC/" + netS + "." + staS)
-                            )
-                        filename = os.path.join(
-                            STACKDIR, "STACK_SAC/" + netS + "." + staS, temp
-                        )
+                        if not os.path.isdir(os.path.join(STACKDIR, "STACK_SAC/" + netS + "." + staS)):
+                            os.mkdir(os.path.join(STACKDIR, "STACK_SAC/" + netS + "." + staS))
+                        filename = os.path.join(STACKDIR, "STACK_SAC/" + netS + "." + staS, temp)
 
                         # --------write into SAF format----------
                         sac = SACTrace(
@@ -105,18 +86,7 @@ for ii in range(nfiles):
 
                     if out_TXT:
                         # -----------output name and read data-------------
-                        temp = (
-                            netS
-                            + "."
-                            + staS
-                            + "_"
-                            + netR
-                            + "."
-                            + staR
-                            + "_"
-                            + comp
-                            + ".dat"
-                        )
+                        temp = netS + "." + staS + "_" + netR + "." + staR + "_" + comp + ".dat"
                         if not os.path.isdir(os.path.join(STACKDIR, "STACK_DAT")):
                             os.mkdir(os.path.join(STACKDIR, "STACK_DAT"))
                         filename = os.path.join(STACKDIR, "STACK_DAT", temp)

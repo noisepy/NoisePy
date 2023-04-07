@@ -2,11 +2,8 @@ import glob
 import os
 import time
 
-import matplotlib.pyplot as plt
 import numpy as np
 import obspy
-import pyasdf
-import scipy
 from obspy.core.util.base import _get_function_from_entry_point
 from scipy import signal
 
@@ -71,12 +68,8 @@ def cut_trace_make_statis(cc_len, step, source, flag):
     dataS = np.zeros(shape=(Nseg, Npts), dtype=np.float32)  # initialize
     # create array of starttime and endtimes.
     for ii, trace in enumerate(source_slice):
-        dataS_t[ii, 0] = source_slice[ii].stats.starttime - obspy.UTCDateTime(
-            1970, 1, 1
-        )  # convert to dataframe
-        dataS_t[ii, 1] = source_slice[ii].stats.endtime - obspy.UTCDateTime(
-            1970, 1, 1
-        )  # convert to dataframe
+        dataS_t[ii, 0] = source_slice[ii].stats.starttime - obspy.UTCDateTime(1970, 1, 1)  # convert to dataframe
+        dataS_t[ii, 1] = source_slice[ii].stats.endtime - obspy.UTCDateTime(1970, 1, 1)  # convert to dataframe
         dataS[ii, 0 : nptsS[ii]] = trace.data
 
     return source_params, dataS_t, dataS
@@ -120,7 +113,7 @@ def cut_trace_make_statis1(cc_len, step, inc_hours, source, flag):
     indx1 = 0
     for iseg in range(nseg):
         indx2 = indx1 + npts
-        dataS[iseg] = adata[indx1:indx2]
+        dataS[iseg] = data[indx1:indx2]
         trace_madS[iseg] = np.max(np.abs(dataS[iseg])) / all_madS
         trace_stdS[iseg] = np.max(np.abs(dataS[iseg])) / all_stdS
         dataS_t[iseg, 0] = starttime + cc_len * iseg
@@ -289,8 +282,6 @@ for ii in range(nfile):
     t0 = time.time()
     source_params1, dataS_t1, dataS1 = cut_trace_make_statis(cc_len, step, source, 1)
     t1 = time.time()
-    source_params2, dataS_t2, dataS2 = cut_trace_make_statis1(
-        cc_len, step, inc_hours, source, 1
-    )
+    source_params2, dataS_t2, dataS2 = cut_trace_make_statis1(cc_len, step, inc_hours, source, 1)
     t2 = time.time()
     print("v0 and v1 takes %6.2fs and %6.2fs" % (t1 - t0, t2 - t1))

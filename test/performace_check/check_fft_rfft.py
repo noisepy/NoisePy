@@ -41,9 +41,7 @@ with pyasdf.ASDFDataSet(hfile, mode="r") as ds:
     wave3 = scipy.fftpack.ifft(spec3, nfft3)
     t3 = time.time()
     print("fft and rfft takes %f s, %f s and %f s" % (t1 - t0, t2 - t1, t3 - t2))
-    print(
-        "length of spec1 and spec2 are %d %d %d" % (len(spec1), len(spec2), len(spec3))
-    )
+    print("length of spec1 and spec2 are %d %d %d" % (len(spec1), len(spec2), len(spec3)))
 
     freq = np.linspace(0, 10, nfft1)
     plt.subplot(311)

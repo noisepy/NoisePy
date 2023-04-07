@@ -1,39 +1,34 @@
-import datetime
-import glob
 import os
-import sys
-import time
 
 import matplotlib.pyplot as plt
 import numpy as np
 import obspy
-import pandas as pd
 import pyasdf
-from mpi4py import MPI
 from obspy.signal.filter import bandpass
-
-sys.path.insert(1, "../")
-# register datetime converter
 from pandas.plotting import register_matplotlib_converters
 
 import noise_module
 
+# register datetime converter
+
 register_matplotlib_converters()
 
 """
-this application script of NoisePy is to perform dv/v analysis on the resulted cross-correlation
-functions from S2. Note that, to use this script, the `keep_substack` parameter in S2 has to be turned
-`True` when running S2. So the sub-stacked waveforms can be saved and further to be compared with the
-all-stacked waveforms to measure dv/v.
+this application script of NoisePy is to perform dv/v analysis on the
+resulted cross-correlation functions from S2. Note that, to use this script,
+the `keep_substack` parameter in S2 has to be turned `True` when
+running S2. So the sub-stacked waveforms can be saved and
+further to be compared with the all-stacked waveforms to measure dv/v.
 
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
          Marine Denolle (mdenolle@fas.harvard.edu)
 
 NOTE:
-    0) this script is only showing an example of how dv/v can be measured on the resulted file from S2, and
-    the users need to expand/modify this script in order to apply for regional studies;
-    1) See Yuan et al., (2019) for more details on the comparison of different methods for mesuring dv/v as
-    well as the numerical validation.
+    0) this script is only showing an example of how dv/v can be
+    measured on the resulted file from S2, and the users need to
+    expand/modify this script in order to apply for regional studies;
+    1) See Yuan et al., (2019) for more details on the comparison
+    of different methods for mesuring dv/v as well as the numerical validation.
 """
 
 ############################################
@@ -44,12 +39,8 @@ NOTE:
 rootpath = os.path.join(
     os.path.expanduser("~"), "Documents/NoisePy_example/SCAL/"
 )  # root path for this data processing
-sfile = os.path.join(
-    rootpath, "STACK_month/CI.BLC/CI.BLC_CI.MPI.h5"
-)  # ASDF file containing stacked data
-outdir = os.path.join(
-    rootpath, "figures/monitoring"
-)  # dir where to output dispersive image and extracted dispersion
+sfile = os.path.join(rootpath, "STACK_month/CI.BLC/CI.BLC_CI.MPI.h5")  # ASDF file containing stacked data
+outdir = os.path.join(rootpath, "figures/monitoring")  # dir where to output dispersive image and extracted dispersion
 if not os.path.isdir(outdir):
     os.mkdir(outdir)
 
@@ -177,9 +168,7 @@ with pyasdf.ASDFDataSet(sfile, mode="r") as ds:
             except Exception:
                 continue
             timestamp[igood] = obspy.UTCDateTime(np.float(substacks[ii + 2][1:]))
-            tcur[igood] = bandpass(
-                cur[igood], freq1, freq2, int(1 / dt), corners=4, zerophase=True
-            )
+            tcur[igood] = bandpass(cur[igood], freq1, freq2, int(1 / dt), corners=4, zerophase=True)
             if norm_flag:
                 tcur[igood] /= np.max(np.abs(tcur[igood]))
 
@@ -201,32 +190,21 @@ with pyasdf.ASDFDataSet(sfile, mode="r") as ds:
             aspect="auto",
         )
         ax0.plot([0, 0], [0, nwin], "k--", linewidth=2)
-        ax0.set_title(
-            "%s, dist:%5.2fkm, filter @%4.2f-%4.2fHz"
-            % (sfile.split("/")[-1], dist, freq1, freq2)
-        )
+        ax0.set_title("%s, dist:%5.2fkm, filter @%4.2f-%4.2fHz" % (sfile.split("/")[-1], dist, freq1, freq2))
         ax0.set_xlabel("time [s]")
         ax0.set_ylabel("wavefroms")
         ax0.set_yticks(np.arange(0, nwin, step=tick_inc))
         # shade the coda part
         ax0.fill(
-            np.concatenate(
-                (tvec_all[nwin_indx], np.flip(tvec_all[nwin_indx], axis=0)), axis=0
-            ),
-            np.concatenate(
-                (np.ones(len(nwin_indx)) * 0, np.ones(len(nwin_indx)) * nwin), axis=0
-            ),
+            np.concatenate((tvec_all[nwin_indx], np.flip(tvec_all[nwin_indx], axis=0)), axis=0),
+            np.concatenate((np.ones(len(nwin_indx)) * 0, np.ones(len(nwin_indx)) * nwin), axis=0),
             "c",
             alpha=0.3,
             linewidth=1,
         )
         ax0.fill(
-            np.concatenate(
-                (tvec_all[pwin_indx], np.flip(tvec_all[pwin_indx], axis=0)), axis=0
-            ),
-            np.concatenate(
-                (np.ones(len(nwin_indx)) * 0, np.ones(len(nwin_indx)) * nwin), axis=0
-            ),
+            np.concatenate((tvec_all[pwin_indx], np.flip(tvec_all[pwin_indx], axis=0)), axis=0),
+            np.concatenate((np.ones(len(nwin_indx)) * 0, np.ones(len(nwin_indx)) * nwin), axis=0),
             "y",
             alpha=0.3,
         )
@@ -280,12 +258,8 @@ with pyasdf.ASDFDataSet(sfile, mode="r") as ds:
                     cdp,
                 ) = noise_module.stretching(nref, ncur, epsilon, nbtrial, para)
             if do_dtw:
-                dvv_dtw[ii, 0], dvv_dtw[ii, 1], dist = noise_module.dtw_dvv(
-                    pref, pcur, para, mlag, b, direct
-                )
-                dvv_dtw[ii, 2], dvv_dtw[ii, 3], dist = noise_module.dtw_dvv(
-                    nref, ncur, para, mlag, b, direct
-                )
+                dvv_dtw[ii, 0], dvv_dtw[ii, 1], dist = noise_module.dtw_dvv(pref, pcur, para, mlag, b, direct)
+                dvv_dtw[ii, 2], dvv_dtw[ii, 3], dist = noise_module.dtw_dvv(nref, ncur, para, mlag, b, direct)
 
             # check parameters for mwcs
             if move_win_sec > 0.5 * (np.max(twin) - np.min(twin)):
@@ -293,19 +267,11 @@ with pyasdf.ASDFDataSet(sfile, mode="r") as ds:
 
             # functions with moving window
             if do_mwcs:
-                dvv_mwcs[ii, 0], dvv_mwcs[ii, 1] = noise_module.mwcs_dvv(
-                    pref, pcur, move_win_sec, step_sec, para
-                )
-                dvv_mwcs[ii, 2], dvv_mwcs[ii, 3] = noise_module.mwcs_dvv(
-                    nref, ncur, move_win_sec, step_sec, para
-                )
+                dvv_mwcs[ii, 0], dvv_mwcs[ii, 1] = noise_module.mwcs_dvv(pref, pcur, move_win_sec, step_sec, para)
+                dvv_mwcs[ii, 2], dvv_mwcs[ii, 3] = noise_module.mwcs_dvv(nref, ncur, move_win_sec, step_sec, para)
             if do_mwcc:
-                dvv_wcc[ii, 0], dvv_wcc[ii, 1] = noise_module.WCC_dvv(
-                    pref, pcur, move_win_sec, step_sec, para
-                )
-                dvv_wcc[ii, 2], dvv_wcc[ii, 3] = noise_module.WCC_dvv(
-                    pref, pcur, move_win_sec, step_sec, para
-                )
+                dvv_wcc[ii, 0], dvv_wcc[ii, 1] = noise_module.WCC_dvv(pref, pcur, move_win_sec, step_sec, para)
+                dvv_wcc[ii, 2], dvv_wcc[ii, 3] = noise_module.WCC_dvv(pref, pcur, move_win_sec, step_sec, para)
 
             allfreq = False  # average dv/v over the frequency band for wts and wxs
             if do_wts:
@@ -316,12 +282,8 @@ with pyasdf.ASDFDataSet(sfile, mode="r") as ds:
                     nref, ncur, allfreq, para, epsilon, nbtrial, dj, s0, J, wvn
                 )
             if do_wxs:
-                dvv_wxs[ii, 0], dvv_wxs[ii, 1] = noise_module.wxs_allfreq(
-                    pref, pcur, allfreq, para, dj, s0, J
-                )
-                dvv_wxs[ii, 2], dvv_wxs[ii, 3] = noise_module.wxs_allfreq(
-                    nref, ncur, allfreq, para, dj, s0, J
-                )
+                dvv_wxs[ii, 0], dvv_wxs[ii, 1] = noise_module.wxs_allfreq(pref, pcur, allfreq, para, dj, s0, J)
+                dvv_wxs[ii, 2], dvv_wxs[ii, 3] = noise_module.wxs_allfreq(nref, ncur, allfreq, para, dj, s0, J)
 
             """
             allfreq = True     # look at all frequency range
@@ -329,11 +291,15 @@ with pyasdf.ASDFDataSet(sfile, mode="r") as ds:
 
             # functions in wavelet domain to compute dvv for all frequncy
             if do_wts:
-                dfreq,dv_wts1,unc1 = noise_module.wts_allfreq(ref[pwin_indx],cur[pwin_indx],allfreq,para,epsilon,nbtrial,dj,s0,J,wvn)
-                dfreq,dv_wts2,unc2 = noise_module.wts_allfreq(ref[nwin_indx],cur[nwin_indx],allfreq,para,epsilon,nbtrial,dj,s0,J,wvn)
+                dfreq,dv_wts1,unc1 = noise_module.wts_allfreq(ref[pwin_indx],
+                cur[pwin_indx],allfreq,para,epsilon,nbtrial,dj,s0,J,wvn)
+                dfreq,dv_wts2,unc2 = noise_module.wts_allfreq(ref[nwin_indx],
+                cur[nwin_indx],allfreq,para,epsilon,nbtrial,dj,s0,J,wvn)
             if do_wxs:
-                dfreq,dv_wxs1,unc1 = noise_module.wxs_allfreq(ref[pwin_indx],cur[pwin_indx],allfreq,para,dj,s0,J)
-                dfreq,dv_wxs2,unc2 = noise_module.wxs_allfreq(ref[nwin_indx],cur[nwin_indx],allfreq,para,dj,s0,J)
+                dfreq,dv_wxs1,unc1 = noise_module.wxs_allfreq(ref[pwin_indx],
+                cur[pwin_indx],allfreq,para,dj,s0,J)
+                dfreq,dv_wxs2,unc2 = noise_module.wxs_allfreq(ref[nwin_indx],
+                cur[nwin_indx],allfreq,para,dj,s0,J)
             """
 
         ###############################################
@@ -344,57 +310,33 @@ with pyasdf.ASDFDataSet(sfile, mode="r") as ds:
         ax3 = plt.subplot(313)
         legend_mark = []
         if do_stretch:
-            ax3.plot(
-                timestamp[:igood], dvv_stretch[:, 0], "yo-", markersize=6, linewidth=0.5
-            )
-            ax3.plot(
-                timestamp[:igood], dvv_stretch[:, 2], "co-", markersize=6, linewidth=0.5
-            )
+            ax3.plot(timestamp[:igood], dvv_stretch[:, 0], "yo-", markersize=6, linewidth=0.5)
+            ax3.plot(timestamp[:igood], dvv_stretch[:, 2], "co-", markersize=6, linewidth=0.5)
             legend_mark.append("str+")
             legend_mark.append("str-")
         if do_dtw:
-            ax3.plot(
-                timestamp[:igood], dvv_dtw[:, 0], "yv-", markersize=6, linewidth=0.5
-            )
-            ax3.plot(
-                timestamp[:igood], dvv_dtw[:, 2], "cv-", markersize=6, linewidth=0.5
-            )
+            ax3.plot(timestamp[:igood], dvv_dtw[:, 0], "yv-", markersize=6, linewidth=0.5)
+            ax3.plot(timestamp[:igood], dvv_dtw[:, 2], "cv-", markersize=6, linewidth=0.5)
             legend_mark.append("dtw+")
             legend_mark.append("dtw-")
         if do_mwcs:
-            ax3.plot(
-                timestamp[:igood], dvv_mwcs[:, 0], "ys-", markersize=6, linewidth=0.5
-            )
-            ax3.plot(
-                timestamp[:igood], dvv_mwcs[:, 2], "cs-", markersize=6, linewidth=0.5
-            )
+            ax3.plot(timestamp[:igood], dvv_mwcs[:, 0], "ys-", markersize=6, linewidth=0.5)
+            ax3.plot(timestamp[:igood], dvv_mwcs[:, 2], "cs-", markersize=6, linewidth=0.5)
             legend_mark.append("mwcs+")
             legend_mark.append("mwcs-")
         if do_mwcc:
-            ax3.plot(
-                timestamp[:igood], dvv_wcc[:, 0], "y*-", markersize=6, linewidth=0.5
-            )
-            ax3.plot(
-                timestamp[:igood], dvv_wcc[:, 2], "c*-", markersize=6, linewidth=0.5
-            )
+            ax3.plot(timestamp[:igood], dvv_wcc[:, 0], "y*-", markersize=6, linewidth=0.5)
+            ax3.plot(timestamp[:igood], dvv_wcc[:, 2], "c*-", markersize=6, linewidth=0.5)
             legend_mark.append("wcc+")
             legend_mark.append("wcc-")
         if do_wts:
-            ax3.plot(
-                timestamp[:igood], dvv_wts[:, 0], "yx-", markersize=6, linewidth=0.5
-            )
-            ax3.plot(
-                timestamp[:igood], dvv_wts[:, 2], "cx-", markersize=6, linewidth=0.5
-            )
+            ax3.plot(timestamp[:igood], dvv_wts[:, 0], "yx-", markersize=6, linewidth=0.5)
+            ax3.plot(timestamp[:igood], dvv_wts[:, 2], "cx-", markersize=6, linewidth=0.5)
             legend_mark.append("wts+")
             legend_mark.append("wts-")
         if do_wxs:
-            ax3.plot(
-                timestamp[:igood], dvv_wxs[:, 0], "yp-", markersize=6, linewidth=0.5
-            )
-            ax3.plot(
-                timestamp[:igood], dvv_wxs[:, 2], "cp-", markersize=6, linewidth=0.5
-            )
+            ax3.plot(timestamp[:igood], dvv_wxs[:, 0], "yp-", markersize=6, linewidth=0.5)
+            ax3.plot(timestamp[:igood], dvv_wxs[:, 2], "cp-", markersize=6, linewidth=0.5)
             legend_mark.append("wxs+")
             legend_mark.append("wxs-")
         ax3.legend(legend_mark, loc="upper right")
@@ -402,8 +344,6 @@ with pyasdf.ASDFDataSet(sfile, mode="r") as ds:
         ax3.set_ylabel("dv/v [%]")
 
         # save figure or just show
-        outfname = outdir + "/{0:s}_{1:4.2f}_{2:4.2f}Hz.pdf".format(
-            sfile.split("/")[-1], freq1, freq2
-        )
+        outfname = outdir + "/{0:s}_{1:4.2f}_{2:4.2f}Hz.pdf".format(sfile.split("/")[-1], freq1, freq2)
         plt.savefig(outfname, format="pdf", dpi=400)
         plt.close()

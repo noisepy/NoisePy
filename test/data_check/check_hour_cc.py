@@ -1,13 +1,8 @@
-import glob
-import os
-import sys
-
 import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy
 from numba import jit
-from scipy.fftpack import ifft
 
 
 @jit("float32[:](float32[:],int16)")
@@ -60,9 +55,7 @@ fft1 = np.conj(fft1) * fft2 / temp**2
 fft1[0] = complex(0, 0)
 ncorr = np.real(np.fft.ifftshift(scipy.fftpack.ifft(fft1, Nfft, axis=0)))
 
-temp = np.load(
-    "/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/check_again/CCF_hourly/2010_01_01.h5.npy"
-)
+temp = np.load("/Users/chengxin/Documents/Harvard/Kanto_basin/code/KANTO/check_again/CCF_hourly/2010_01_01.h5.npy")
 tcorr = temp[2, :]
 
 plt.subplot(211)

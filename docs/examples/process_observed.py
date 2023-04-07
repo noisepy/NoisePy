@@ -32,9 +32,7 @@ for min_period, max_period in [(27.0, 60.0)]:
         st.taper(max_percentage=0.05, type="hann")
 
         st.attach_response(inv)
-        st.remove_response(
-            output="DISP", pre_filt=pre_filt, zero_mean=False, taper=False
-        )
+        st.remove_response(output="DISP", pre_filt=pre_filt, zero_mean=False, taper=False)
 
         st.detrend("linear")
         st.detrend("demean")

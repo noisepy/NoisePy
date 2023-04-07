@@ -19,9 +19,7 @@ def out_loop(outfn, nloop, shape):
         for ii in range(nloop):
             a = np.random.rand(shape[0], shape[1])
             path = "test{0:d}".format(ii)
-            ds.add_auxiliary_data(
-                data=a, data_type=data_type, path=path, parameters=paramters
-            )
+            ds.add_auxiliary_data(data=a, data_type=data_type, path=path, parameters=paramters)
 
 
 def in_loop(outfn, nloop, shape):
@@ -35,9 +33,7 @@ def in_loop(outfn, nloop, shape):
 
         with pyasdf.ASDFDataSet(outfn) as ds:
             path = "test{0:d}".format(ii)
-            ds.add_auxiliary_data(
-                data=a, data_type=data_type, path=path, parameters=paramters
-            )
+            ds.add_auxiliary_data(data=a, data_type=data_type, path=path, parameters=paramters)
 
 
 def main():

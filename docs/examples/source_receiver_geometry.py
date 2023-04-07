@@ -3,10 +3,7 @@ import pyasdf
 with pyasdf.ASDFDataSet("./asdf_example.h5", mode="r") as ds:
     # Get dictionary of resource_id -> Lat/Lng pairs
     events = {
-        str(e.resource_id): [
-            (e.preferred_origin() or e.origins[0]).get(i)
-            for i in ["latitude", "longitude"]
-        ]
+        str(e.resource_id): [(e.preferred_origin() or e.origins[0]).get(i) for i in ["latitude", "longitude"]]
         for e in ds.events
     }
 
@@ -28,11 +25,7 @@ with pyasdf.ASDFDataSet("./asdf_example.h5", mode="r") as ds:
         # event_ids = [i.decode() for i in event_ids if i]
 
         # Note that this assumes only one event id per waveform.
-        event_ids = set(
-            _i["event_ids"][0]
-            for _i in s.get_waveform_attributes().values()
-            if "event_ids" in _i
-        )
+        event_ids = set(_i["event_ids"][0] for _i in s.get_waveform_attributes().values() if "event_ids" in _i)
 
         for e_id in event_ids:
             if e_id not in events:

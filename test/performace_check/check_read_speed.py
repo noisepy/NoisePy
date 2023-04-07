@@ -1,6 +1,5 @@
 import time
 
-import numpy as np
 import pyasdf
 
 """
@@ -17,9 +16,6 @@ def read_data(sfile, nseg, data_type, path):
         paths = ds.auxiliary_data[data_type].list()
         if path not in paths:
             raise ValueError("%s not in the path list" % path)
-        Nfft = ds.auxiliary_data[data_type][path].parameters["nfft"]
-        data = np.zeros((nseg, Nfft), dtype=np.complex64)
-        data = ds.auxiliary_data[data_type][path].data[:]
 
 
 def read_data1(sfile, indx1, indx2, data_type, path):
@@ -30,10 +26,6 @@ def read_data1(sfile, indx1, indx2, data_type, path):
         paths = ds.auxiliary_data[data_type].list()
         if path not in paths:
             raise ValueError("%s not in the path list" % path)
-        Nfft = ds.auxiliary_data[data_type][path].parameters["nfft"]
-        nseg = indx2 - indx1 + 1
-        data = np.zeros((nseg, Nfft), dtype=np.complex64)
-        data = ds.auxiliary_data[data_type][path].data[indx1:indx2, :]
 
 
 sfile1 = "/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/FFT/test/E.AYHM.h5"

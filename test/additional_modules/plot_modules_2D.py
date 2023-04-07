@@ -3,7 +3,6 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
-import obspy
 import pyasdf
 from obspy.signal.filter import bandpass
 
@@ -87,13 +86,9 @@ def plot_moveout_stack(sdir, freqmin, freqmax, ccomp, maxlag=None, tag=None):
         extent=[-maxlag, maxlag, data.shape[0], 1],
         aspect="auto",
     )
-    new = noise_module.NCF_denoising(
-        data[new_orders][:], np.min([Mdate, data.shape[0]]), Ntau, NSV
-    )
+    new = noise_module.NCF_denoising(data[new_orders][:], np.min([Mdate, data.shape[0]]), Ntau, NSV)
 
-    ax[1].matshow(
-        new, cmap="seismic", extent=[-maxlag, maxlag, data.shape[0], 1], aspect="auto"
-    )
+    ax[1].matshow(new, cmap="seismic", extent=[-maxlag, maxlag, data.shape[0], 1], aspect="auto")
     ax[0].set_title("Filterd Cross-Correlations %s" % (sdir.split("/")[-1]))
     ax[1].set_title("Denoised Cross-Correlations")
     ax[0].xaxis.set_visible(False)
@@ -109,7 +104,8 @@ def plot_cc_stack(sfile, freqmin, freqmax, ccomp, maxlag=None):
     """
     plot sub-stacked CCFs for station pair of sfile. waveforms are to be filtered at freqmin-freqmax
 
-    usage: plot_moveout('/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/STACK/E.ABHM/E.ABHM_E.KKHM.h5',0.5,1,'ZZ')
+    usage: plot_moveout('/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW
+    /STACK/E.ABHM/E.ABHM_E.KKHM.h5',0.5,1,'ZZ')
     """
 
     # ---all station pairs----
@@ -145,9 +141,7 @@ def plot_cc_stack(sfile, freqmin, freqmax, ccomp, maxlag=None):
                 tdata = ds.auxiliary_data[slist[ii]][ccomp].data[indx1 : indx2 + 1]
             except Exception:
                 continue
-            data[ii, :] = bandpass(
-                tdata, freqmin, freqmax, int(1 / delta), corners=4, zerophase=True
-            )
+            data[ii, :] = bandpass(tdata, freqmin, freqmax, int(1 / delta), corners=4, zerophase=True)
             # data[ii,:] = data[ii,:]/max(data[ii,:])
 
     fig, ax = plt.subplots(2, sharex=True)
@@ -244,12 +238,8 @@ def plot_wavefield(sdir, freqmin, freqmax, t0, excitation, tt=3, tag=None):
 
                 if k == len(comp):
                     for icomp in range(len(ccomp)):
-                        lonR[ista] = ds.auxiliary_data[tag][ccomp[icomp]].parameters[
-                            "lonR"
-                        ]
-                        latR[ista] = ds.auxiliary_data[tag][ccomp[icomp]].parameters[
-                            "latR"
-                        ]
+                        lonR[ista] = ds.auxiliary_data[tag][ccomp[icomp]].parameters["lonR"]
+                        latR[ista] = ds.auxiliary_data[tag][ccomp[icomp]].parameters["latR"]
                         tdata = ds.auxiliary_data[tag][ccomp[icomp]].data[:]
                         tdata = bandpass(
                             tdata,
@@ -274,7 +264,8 @@ def plot_freq_time_stack(sfile, freqmin, freqmax, ccomp, maxlag=None):
     """
     plot the dispersive CCFs in a very narrow frequency band at freqmin-freqmax range
 
-    usage: plot_freq_time_stack('/Users/chengxin/Documents/Harvard/Kanto_basin/Mesonet_BW/STACK/E.ABHM/E.ABHM_E.KKHM.h5',0.5,1,'ZZ')
+    usage: plot_freq_time_stack('/Users/chengxin/Documents/Harvard/Kanto_basin/
+    Mesonet_BW/STACK/E.ABHM/E.ABHM_E.KKHM.h5',0.5,1,'ZZ')
     """
 
     # ---all station pairs----
@@ -310,9 +301,7 @@ def plot_freq_time_stack(sfile, freqmin, freqmax, ccomp, maxlag=None):
                 tdata = ds.auxiliary_data[slist[ii]][ccomp].data[indx1 : indx2 + 1]
             except Exception:
                 continue
-            data[ii, :] = bandpass(
-                tdata, freqmin, freqmax, int(1 / delta), corners=4, zerophase=True
-            )
+            data[ii, :] = bandpass(tdata, freqmin, freqmax, int(1 / delta), corners=4, zerophase=True)
             # data[ii,:] = data[ii,:]/max(data[ii,:])
 
     fig, ax = plt.subplots(2, sharex=True)

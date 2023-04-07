@@ -85,9 +85,7 @@ if __name__ == "__main__":
         help="Comma separated list of channels",
         default="BHE,BHN,BHZ",
     )
-    down_parser.add_argument(
-        "--inc_hours", type=int, default=24, help="Time increment size (hrs)"
-    )
+    down_parser.add_argument("--inc_hours", type=int, default=24, help="Time increment size (hrs)")
     # Cross_correlate arguments
     cc_parser = subparsers.add_parser(
         Step.CROSS_CORRELATE.name.lower(),
@@ -99,9 +97,7 @@ if __name__ == "__main__":
         default=os.path.join(os.path.expanduser("~"), default_data_path),
         help="Directory to look for input files",
     )
-    cc_parser.add_argument(
-        "--freq_norm", choices=["rma", "no", "phase_only"], default="rma"
-    )
+    cc_parser.add_argument("--freq_norm", choices=["rma", "no", "phase_only"], default="rma")
     # Stack arguments
     stack_parser = subparsers.add_parser(
         Step.STACK.name.lower(), formatter_class=argparse.ArgumentDefaultsHelpFormatter
