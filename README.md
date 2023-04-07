@@ -9,14 +9,14 @@ Detailed documentation can be found at https://noisepy.readthedocs.io/en/latest/
 [![Build Status](https://travis-ci.com/chengxinjiang/NoisePy.svg?branch=master)](https://travis-ci.com/github/chengxinjiang/NoisePy)
 [![Codecov](https://codecov.io/gh/chengxinjiang/NoisePy/branch/master/graph/badge.svg)](https://codecov.io/gh/chengxinjiang/NoisePy)
 
-<img src="/docs/figures/logo.png" width="800" height="400">
+<img src="https://raw.githubusercontent.com/mdenolle/NoisePy/master/docs/figures/logo.png" width="800" height="400">
 
 # Citation:
 Please cite the following reference if you use the code for your publication:
 Jiang, C. and Denolle, M. "NoisePy: a new high-performance python tool for seismic ambient noise seismology." Seismological Research Letter 91 (3): 1853–1866.
 
 ## Major updates include
-* adding options for several stacking methods such as nth-root, robust-stacking, auto-covariance and selective in S2. A script is added to the folder of application_modules to cross-compare the effects of different stacking method (note that `substack` parameter in S2 has to be `True` in order to use it)
+* adding options for several stacking methods such as nth-root, robust-stacking, auto-covariance and selective. A script is added to the folder of application_modules to cross-compare the effects of different stacking method (note that `substack` parameter in S2 has to be `True` in order to use it)
 * adding a jupter notebook for tutorials on performing seismic monitoring analysis using NoisePy
 * adding a jupter notebook for generating response spectrum for a nodal array (to be done)
 
@@ -28,22 +28,22 @@ The nature of NoisePy being composed of python scripts allows flexible package i
 
 # With Conda:
 ```bash
-conda create -n noisepy python=3.8 pip
-conda activate noisepy
-conda install -c conda-forge openmpi
-pip install -r requirements.txt
+$ conda create -n noisepy python=3.8 pip
+$ conda activate noisepy
+$ conda install -c conda-forge openmpi
+$ pip install noisepy-seis
 ```
 
 # With virtual environment:
 An MPI installation is required. E.g. for macOS using [brew](https://brew.sh/) :
 ```sh
-brew install open-mpi
+$ brew install open-mpi
 ```
 
-```bash
-python -m venv noisepy
-source noisepy/bin/activate
-pip install -r requirements.txt
+```sh
+$ python -m venv noisepy
+$ source noisepy/bin/activate
+$ pip install noisepy-seis
 ```
 To run the code on a single core, open the terminal and activate the noisepy environment before run following command. To run on institutional clusters, see installation notes for individual packages on the module list of the cluster. Examples of installation on Frontera are below.
 
@@ -56,76 +56,76 @@ To run the code on a single core, open the terminal and activate the noisepy env
 
 # Short tutorial
 
-### 0A. Downloading seismic noise data (`src/S0A_download_ASDF_MPI.py`)
-This script (located in the directory of `src`) and its existing parameters allows to download all available broadband CI stations `(BH?)` located in a certain region and operated during 1/Jul/2016-2/Jul/2016 through the SCEC data center.
+### 0A. Downloading seismic noise data
+This command allows to download all available broadband CI stations `(BH?)` located in a certain region and operated during 1/Jul/2016-2/Jul/2016 through the SCEC data center.
 
 In the script, short summary is provided for all input parameters that can be changed according to the user's needs. In the current form of the script, we set `inc_hours=24` to download day-long continous noise data as well as the meta info and store them into a single ASDF file. To increase the signal-to-noise (SNR) of the final cross-correlation functions (see Seats et al.,2012 for more details), we break the day-long sequence into smaller segments, each of `cc_len` (s) long with some overlapping defined by `step`. You may wanto to set `flag` to be `True` if intermediate outputs/operational time is preferred during the downloading process.
 
-```bash
-cd src
-python noisepy.py download
+```sh
+$ noisepy download
 ```
-The data to be downloaded can be customized via command line arguments. See `python noisepy.py download --help` for details.
+The data to be downloaded can be customized via command line arguments. See `noisepy download --help` for details.
 
 If you want to use multiple cores (e.g, 4), run the script with the following command using [mpi4py](https://mpi4py.readthedocs.io/en/stable/).
-```bash
-mpirun -n 4 python noisepy.py download
+```sh
+$ mpirun -n 4 noisepy download
 ```
 
-The outputted files from S0A include ASDF files containing daily-long (24h) continous noise data, a parameter file recording all used parameters in the script of S0A and a CSV file of all station information (more details on reading the ASDF files with downloaded data can be found in docs/src/ASDF.md). The continous waveforms data stored in the ASDF file can be displayed using the plotting modules named as `plotting_modules` in the directory of `src` as shown below.
+The outputted files from the download include ASDF files containing daily-long (24h) continous noise data, a parameter file recording all used parameters in the download and a CSV file of all station information (more details on reading the ASDF files with downloaded data can be found in docs/src/ASDF.md). The continous waveforms data stored in the ASDF file can be displayed using the plotting modules named as `plotting_modules` in the directory of `src` as shown below.
 
 ```python
-import plotting_modules #(cd to your source file directory first before loading this module)
+from noisepy.seis import plotting_modules
 sfile = '/Users/chengxin/Documents/SCAL/RAW_DATA/2016_07_01_00_00_00T2016_07_02_00_00_00.h5'
 plotting_modules.plot_waveform(sfile,'CI','BLC',0.01,0.4)
 ```
-<img src="/docs/figures/waveform3.png" width="600" height="400">
+<img src="https://raw.githubusercontent.com/mdenolle/NoisePy/master/docs/figures/waveform3.png" width="600" height="400">
 
 Note that the script also offers the option to download data from an existing station list in a format same to the outputed CSV file. In this case, `down_list` should be set to `True` at L53. In reality, the downloading speed is dependent on many factors such as the original sampling rate of targeted data, the networks, the data center where it is hosted and the general structure you want to store on your machine etc. We tested a bunch of the parameters to evaluate their performance and the readers are referred to our paper for more details (Jiang et al., 2020).
 
 
 ### 0B. DEAL with local SAC/miniseed files using `S0B_to_ASDF.py`
-If you want to use the NoisePy to handel local data in SAC/miniseed format stored on your own disk, this is the script you need. Most of the variables are the same as those for S0A and thus should be pretty straighforward to follow and change. In this script, it preprocesses the data by merging, detrending, demeaning, downsampling and then trimming before saving them into ASDF format for later NoisePy processing. In particular, we expect the script to deal with very messydata, by which we mean that, seismic data is broken into small pieces and of messy time info such as overlapping time. REMEMBER to set `messydata` at L62 to `True` when you have messy data! (Tutorial on removing instrument response)
+If you want to use the NoisePy to handel local data in SAC/miniseed format stored on your own disk, this is the script you need. Most of the variables are the same as those for the download step and thus should be pretty straighforward to follow and change. In this script, it preprocesses the data by merging, detrending, demeaning, downsampling and then trimming before saving them into ASDF format for later NoisePy processing. In particular, we expect the script to deal with very messydata, by which we mean that, seismic data is broken into small pieces and of messy time info such as overlapping time. REMEMBER to set `messydata` at L62 to `True` when you have messy data! (Tutorial on removing instrument response)
 
 
 
-### 1. Perform cross correlations (`src/S1_fft_cc_MPI.py`)
-This is the core script of NoisePy, which performs [Fourier transform](https://en.wikipedia.org/wiki/Fourier_transform) to all noise data first and loads them into the memory before they are further cross-correlated. This means that we are performing [cross-correlation](https://en.wikipedia.org/wiki/Cross-correlation) in the frequency domain. In the script, we provide several options to calculate the cross correlation, including `raw`, `coherency` and `deconv` (see our paper<sup>*</sup> for detailed definition). We choose `coherency` as an example here. After running the script, it will create a new folder named `CCF`, in which new ASDF files containing all cross-correlation functions between different station pairs are located. It also creates a parameter file of `fft_cc_data.txt` that records all useful parameters used in this script.
+### 1. Perform cross correlations
+This is the core function of NoisePy, which performs [Fourier transform](https://en.wikipedia.org/wiki/Fourier_transform) to all noise data first and loads them into the memory before they are further cross-correlated. This means that we are performing [cross-correlation](https://en.wikipedia.org/wiki/Cross-correlation) in the frequency domain. In the script, we provide several options to calculate the cross correlation, including `raw`, `coherency` and `deconv` (see our paper<sup>*</sup> for detailed definition). We choose `coherency` as an example here. After running the script, it will create a new folder named `CCF`, in which new ASDF files containing all cross-correlation functions between different station pairs are located. It also creates a parameter file of `fft_cc_data.txt` that records all useful parameters used in this script.
+
 
 ```sh
-cd src
-python noisepy.py cross_correlate
+$ noisepy cross_correlate
 ```
-If you downloaded the data to a custom location, specify the `--path` argument. See `python noisepy.py cross_correlate --help` for details.
+If you downloaded the data to a custom location, specify the `--path` argument. See `noisepy cross_correlate --help` for details.
 
 Once you get the cross-correlation file, you can show the daily temporal variation between all station-pair by calling `plot_substack_cc` function in `plotting_modules` as follows. NOTE that to make this plot, the parameter of `substack` has to be set to `True` in S1.
 
 
 ```python
-import plotting_modules
+from noisepy.seis import plotting_modules
 sfile = '/Users/chengxin/Documents/SCAL/CCF/2016_07_01_00_00_00T2016_07_02_00_00_00.h5'
 plotting_modules.plot_substack_cc(sfile,0.1,0.2,200,True,'/Users/chengxin/Documents/SCAL/CCF/figures')
 ```
-<img src="/docs/figures/substack_cc_NN.png" width="400" height="190"><img src="/docs/figures/substack_cc_ZZ.png" width="400" height="190">
+<img src="https://raw.githubusercontent.com/mdenolle/NoisePy/master/docs/figures/substack_cc_NN.png" width="400" height="190"><img src="https://raw.githubusercontent.com/mdenolle/NoisePy/master/docs/figures/substack_cc_ZZ.png" width="400" height="190">
 
 
-### 2. Do stacking (`src/S2_stacking.py`)
-This script is used to assemble and/or stack all cross-correlation functions computed for the staion pairs in S1 and save them into ASDF files for future analysis (e.g., temporal variation and/or dispersion extraction). In particular, there are two options for the stacking process, including linear and phase weighted stacking (pws). See ```python noisepy.py stack --help```
+### 2. Do stacking
+This script is used to assemble and/or stack all cross-correlation functions computed for the staion pairs in the `cross_correlate` step and save them into ASDF files for future analysis (e.g., temporal variation and/or dispersion extraction). In particular, there are two options for the stacking process, including linear and phase weighted stacking (pws). See ```noisepy stack --help```
 
 ```sh
-python noisepy.py stack --method linear
-python noisepy.py stack --method pws
+$ noisepy stack --method linear
+$ noisepy stack --method pws
 ```
 
 In general, the pws produces waveforms with high SNR, and the snapshot below shows the waveform comparison from the two stacking methods. We use the folloing commend lines to make the move-out plot.
 
 ```python
-import plotting_modules,glob
+from noisepy.seis import plotting_modules
+import glob
 sfiles = glob.glob('/Users/chengxin/Documents/SCAL/STACK/*/*.h5')
 plotting_modules.plot_all_moveout(sfiles,'Allstack_linear'0.1,0.2,'ZZ',1,300,True,'/Users/chengxin/Documents/SCAL/STACK') #(move-out for linear stacking)
 plotting_modules.plot_all_moveout(sfiles,'Allstack_pws'0.1,0.2,'ZZ',1,300,True,'/Users/chengxin/Documents/SCAL/STACK')    #(move-out for pws)
 ```
-<img src="/docs/figures/linear_stack1.png" width="400" height="300"><img src="/docs/figures/pws_stack1.png" width="400" height="300">
+<img src="https://raw.githubusercontent.com/mdenolle/NoisePy/master/docs/figures/linear_stack1.png" width="400" height="300"><img src="https://raw.githubusercontent.com/mdenolle/NoisePy/master/docs/figures/pws_stack1.png" width="400" height="300">
 
 Anyway, here just presents one simple example of how NoisePy might work! We strongly encourage you to download the NoisePy package and play it on your own! If you have any  comments and/or suggestions during running the codes, please do not hesitate to contact us through email or open an issue in this github page!
 
