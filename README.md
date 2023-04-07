@@ -154,11 +154,16 @@ Seats, K. J., Jesse F. L., and German A. P. "Improved ambient noise correlation 
 
 # Contributing
 
-After creating the virtual environment with either **pip** o **conda**, install `pre-commit` by running:
+After cloning the repo and creating a virtual environment with either **pip** o **conda**:
 
+Do an editable installation to get the dependencies (from the project root):
+```sh
+$ pip install -e ".[dev]"
 ```
-pip install pre-commit>=3.2.0
-pre-commit install
+
+Install the `pre-commit` hook:
+```sh
+$ pre-commit install
 ```
 
 This will run the linting and formatting checks configured in the project before every commit.
