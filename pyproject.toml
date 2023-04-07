@@ -63,7 +63,6 @@ dev = [
     "pytest>=7.2.2",
     "memory-profiler>=0.61",
     "pre-commit>=3.2",
-    "hatchling>=1.14"
 ]
 
 [project.scripts]
