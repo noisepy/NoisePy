@@ -7,7 +7,7 @@ import pyasdf
 from mpi4py import MPI
 from obspy.clients.fdsn import Client
 
-import noise_module
+from noisepy.seis import noise_module
 
 """
 This script:

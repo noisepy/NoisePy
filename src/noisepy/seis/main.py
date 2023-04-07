@@ -5,9 +5,9 @@ from enum import Enum
 
 import obspy
 
-from S0A_download_ASDF_MPI import download
-from S1_fft_cc_MPI import cross_correlate
-from S2_stacking import stack
+from .S0A_download_ASDF_MPI import download
+from .S1_fft_cc_MPI import cross_correlate
+from .S2_stacking import stack
 
 # Utility running the different steps from the command line. Defines the arguments for each step
 
@@ -44,7 +44,7 @@ def main(args: typing.Any):
         stack(args.path, args.method)
 
 
-if __name__ == "__main__":
+def main_cli():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="step", required=True)
 
@@ -127,3 +127,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     args.step = Step[args.step.upper()]
     main(args)
+
+
+if __name__ == "__main__":
+    main_cli()

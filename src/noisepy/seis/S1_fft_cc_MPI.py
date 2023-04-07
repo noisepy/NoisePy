@@ -11,7 +11,7 @@ import pyasdf
 from mpi4py import MPI
 from scipy.fftpack.helper import next_fast_len
 
-import noise_module
+from . import noise_module
 
 # ignore warnings
 if not sys.warnoptions:

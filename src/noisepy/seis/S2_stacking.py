@@ -8,7 +8,7 @@ import pandas as pd
 import pyasdf
 from mpi4py import MPI
 
-import noise_module
+from . import noise_module
 
 if not sys.warnoptions:
     import warnings
