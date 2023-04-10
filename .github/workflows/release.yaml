@@ -66,11 +66,15 @@ jobs:
     - name: Check pypi packages
       id: check_pkg
       run: |
-        sleep 3
+        sleep 5
         python -m pip install --upgrade pip
+        pushd src
+        latest_version=$(python -c "import noisepy.seis; print(noisepy.seis.__version__)")
+        echo "=== Latest version from source: $latest_version ==="
+        popd
         echo "=== Testing wheel file ==="
         # Install wheel to get dependencies and check import
-        python -m pip install --extra-index-url https://test.pypi.org/simple --upgrade --pre noisepy-seis
+        python -m pip install --extra-index-url https://test.pypi.org/simple --upgrade --pre noisepy-seis==$latest_version
         echo ::set-output name=package-version::$(python -c "import noisepy.seis; print(noisepy.seis.__version__)")
         noisepy --help
         echo "=== Done testing wheel file ==="
