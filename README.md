@@ -28,7 +28,7 @@ Jiang, C. and Denolle, M. "NoisePy: a new high-performance python tool for seism
 * includes a series of monitoring functions to measure dv/v on the resulted cross-correlation functions using some recently developed new methods (see our papers for more details<sup>**</sup>)
 
 # Short tutorial
-A short tutorial on how to use NoisePy-seis can be found in the following Jupyter Notebook: *insert link here* 
+A short tutorial on how to use NoisePy-seis can be found in the following Jupyter Notebook: https://github.com/mdenolle/NoisePy/blob/master/Jupyter_notebook/tutorial.ipynb 
 
 
 This tutorial presents one simple example of how NoisePy might work! We strongly encourage you to download the NoisePy package and play it on your own! If you have any  comments and/or suggestions during running the codes, please do not hesitate to contact us through email or open an issue in this github page!
