@@ -102,6 +102,8 @@ jobs:
     needs: [publish-pypi, test-built-dist]
     runs-on: ubuntu-latest
     steps:
+      - name: Delay for PyPI
+        run: sleep 5 # Wait for the package to be available in PyPI
       - name: Check out the repo
         uses: actions/checkout@v3
       - name: Extract metadata (tags, labels) for Docker
