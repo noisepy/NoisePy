@@ -1,8 +1,11 @@
 name: Release
 
 on:
-  release:
-    types: [published]
+  workflow_run:
+    workflows: [pypi]
+    types:
+      - completed
+  push: { branches: [carlosg/pypi] }
   workflow_dispatch:
 
 env:
@@ -10,8 +13,94 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  build-artifact:
+    name: Build noisepy-seis package
+    runs-on: ubuntu-20.04
+    if: github.repository == 'mdenolle/NoisePy'
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4.5.0
+      with:
+        python-version: 3.9
+
+    - name: Install dependencies
+      run: python -m pip install build
+
+    - name: Build source and wheel distributions
+      run: |
+        python -m build
+        echo ""
+        echo "Generated files:"
+        ls -lh dist/
+    - uses: actions/upload-artifact@v3
+      with:
+        name: releases
+        path: dist
+
+  test-built-dist:
+    name: Test noisepy-seis package
+    needs: build-artifact
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/setup-python@v4.5.0
+      name: Install Python
+      with:
+        python-version: 3.9
+    - uses: actions/download-artifact@v3
+      with:
+        name: releases
+        path: dist
+    - name: List contents of built dist
+      run: |
+        ls -ltrh
+        ls -ltrh dist
+    - name: Publish to Test PyPI
+      uses: pypa/gh-action-pypi-publish@v1.8.5
+      with:
+        password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        repository_url: https://test.pypi.org/legacy/
+        verbose: true
+        skip_existing: true
+    - name: Check pypi packages
+      id: check_pkg
+      run: |
+        sleep 3
+        python -m pip install --upgrade pip
+        echo "=== Testing wheel file ==="
+        # Install wheel to get dependencies and check import
+        python -m pip install --extra-index-url https://test.pypi.org/simple --upgrade --pre noisepy-seis
+        echo ::set-output name=package-version::$(python -c "import noisepy.seis; print(noisepy.seis.__version__)")
+        noisepy --help
+        echo "=== Done testing wheel file ==="
+        echo "=== Testing source tar file ==="
+        # Install tar gz and check import
+        python -m pip uninstall --yes noisepy-seis
+        python -m pip install --extra-index-url https://test.pypi.org/simple --upgrade --pre --no-binary=:all: noisepy-seis
+        python -c "import noisepy.seis; print(noisepy.seis.__version__)"
+        noisepy --help
+        echo "=== Done testing source tar file ==="
+    outputs:
+      package-version: ${{steps.check_pkg.outputs.package-version}}
+  publish-pypi:
+    name: Push noisepy-seis to production pypi
+    needs: test-built-dist
+    if: startsWith(github.ref, 'refs/tags')
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/download-artifact@v3
+      with:
+        name: releases
+        path: dist
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@v1.8.5
+      with:
+        password: ${{ secrets.PYPI_API_TOKEN }}
   push_to_registry:
     name: Push Docker image to Docker Hub
+    needs: [publish-pypi, test-built-dist]
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
@@ -37,3 +126,4 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           push: ${{ github.event_name != 'pull_request' }}
+          build-args: VERSION=${{needs.test-built-dist.outputs.package-version}}
