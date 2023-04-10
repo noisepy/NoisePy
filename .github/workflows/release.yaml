@@ -66,6 +66,11 @@ jobs:
         skip_existing: true
     - name: Setup MPI pre-requisite
       uses: mpi4py/setup-mpi@v1
+    - name: DEBUG
+      run: |
+        echo ${github.ref}
+        echo ${env.GITHUB_REF}
+        echo ${env.GITHUB_REF_TYPE}
     - name: Check pypi packages
       id: check_pkg
       run: |
