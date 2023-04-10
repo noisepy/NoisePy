@@ -22,7 +22,14 @@ jobs:
       uses: actions/setup-python@v4.5.0
       with:
         python-version: 3.9
-
+    - name: Get version from source
+      id: get-version
+      run: |
+        pushd ./src
+        latest-version=$(python -c "import noisepy.seis; print(noisepy.seis.__version__)")
+        echo "=== Latest version from source: $latest-version ==="
+        echo ::set-output name=latest-version::$latest-version
+        popd
     - name: Install dependencies
       run: python -m pip install build
 
@@ -36,7 +43,8 @@ jobs:
       with:
         name: releases
         path: dist
-
+    outputs:
+      package-version: ${{steps.get-version.outputs.latest-version}}
   test-built-dist:
     name: Test noisepy-seis package
     needs: build-artifact
@@ -68,14 +76,9 @@ jobs:
       run: |
         sleep 5
         python -m pip install --upgrade pip
-        pushd src
-        latest_version=$(python -c "import noisepy.seis; print(noisepy.seis.__version__)")
-        echo "=== Latest version from source: $latest_version ==="
-        popd
         echo "=== Testing wheel file ==="
         # Install wheel to get dependencies and check import
-        python -m pip install --extra-index-url https://test.pypi.org/simple --upgrade --pre noisepy-seis==$latest_version
-        echo ::set-output name=package-version::$(python -c "import noisepy.seis; print(noisepy.seis.__version__)")
+        python -m pip install --extra-index-url https://test.pypi.org/simple --upgrade --pre noisepy-seis==${{needs.build-artifact.outputs.package-version}}
         noisepy --help
         echo "=== Done testing wheel file ==="
         echo "=== Testing source tar file ==="
@@ -85,8 +88,6 @@ jobs:
         python -c "import noisepy.seis; print(noisepy.seis.__version__)"
         noisepy --help
         echo "=== Done testing source tar file ==="
-    outputs:
-      package-version: ${{steps.check_pkg.outputs.package-version}}
   publish-pypi:
     name: Push noisepy-seis to production pypi
     needs: test-built-dist
@@ -103,7 +104,7 @@ jobs:
         password: ${{ secrets.PYPI_API_TOKEN }}
   push_to_registry:
     name: Push Docker image to Docker Hub
-    needs: [publish-pypi, test-built-dist]
+    needs: [publish-pypi, build-artifact]
     runs-on: ubuntu-latest
     steps:
       - name: Delay for PyPI
@@ -131,4 +132,4 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           push: ${{ github.event_name != 'pull_request' }}
-          build-args: VERSION=${{needs.test-built-dist.outputs.package-version}}
+          build-args: VERSION=${{needs.build-artifact.outputs.package-version}}
