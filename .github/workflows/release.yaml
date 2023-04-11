@@ -66,27 +66,27 @@ jobs:
       run: |
         # Install local wheel to get the version number
         pip install dist/noisepy_seis*.whl
-        latest-version=$(python -c "import noisepy.seis; print(noisepy.seis.__version__)")
-        echo "latest-version=$latest-version"  >> $GITHUB_OUTPUT
-        echo "=== Got version $latest-version from local wheel install ==="
+        latest_version="$(python -c 'import noisepy.seis; print(noisepy.seis.__version__)')";export latest_version
+        echo "latest_version=$latest_version"  >> $GITHUB_OUTPUT
+        echo "=== Got version $latest_version from local wheel install ==="
         python -m pip uninstall --yes noisepy-seis
         sleep 5
 
         python -m pip install --upgrade pip
         echo "=== Testing wheel file ==="
         # Install wheel to get dependencies and check import
-        python -m pip install --extra-index-url https://test.pypi.org/simple --upgrade --pre noisepy-seis==$latest-version
+        python -m pip install --extra-index-url https://test.pypi.org/simple --upgrade --pre noisepy-seis==$latest_version
         noisepy --help
         echo "=== Done testing wheel file ==="
         echo "=== Testing source tar file ==="
         # Install tar gz and check import
         python -m pip uninstall --yes noisepy-seis
-        python -m pip install --extra-index-url https://test.pypi.org/simple --upgrade --pre --no-binary=:all: noisepy-seis==$latest-version
+        python -m pip install --extra-index-url https://test.pypi.org/simple --upgrade --pre --no-binary=:all: noisepy-seis==$latest_version
         python -c "import noisepy.seis; print(noisepy.seis.__version__)"
         noisepy --help
         echo "=== Done testing source tar file ==="
     outputs:
-      package-version: ${{steps.check_pkg.outputs.latest-version}}
+      package-version: ${{steps.check_pkg.outputs.latest_version}}
   publish-pypi:
     name: Push noisepy-seis to production pypi
     needs: test-built-dist
