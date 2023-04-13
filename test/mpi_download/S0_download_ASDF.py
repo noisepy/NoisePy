@@ -6,7 +6,7 @@ import pandas as pd
 import pyasdf
 from obspy.clients.fdsn import Client
 
-import noise_module
+from noisepy.seis import noise_module
 
 """
 This script:

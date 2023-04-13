@@ -12,7 +12,7 @@ from mpi4py import MPI
 from obspy.clients.fdsn import Client
 from scipy.fftpack.helper import next_fast_len
 
-import noise_module
+from noisepy.seis import noise_module
 
 if not sys.warnoptions:
     import warnings

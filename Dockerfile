@@ -1,15 +1,15 @@
-FROM --platform=$BUILDPLATFORM ubuntu:22.04
+FROM --platform=$BUILDPLATFORM ubuntu:20.04
+
+# Avoid timezone prompts during python installation
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
     apt-get install -y libopenmpi-dev && \
-    apt-get install -y python3 && \
+    apt-get install -y python3.8 && \
     apt-get install -y python3-pip && \
     pip3 install --upgrade pip
 
-# Copy and install requirements first so this layer doesn't change when copy the local files below
-COPY requirements.txt .
-RUN pip3 install -r requirements.txt
-ADD . .
-WORKDIR /src
-ENTRYPOINT ["python3", "noisepy.py"]
+ARG VERSION
+RUN pip3 install noisepy-seis==${VERSION}
+ENTRYPOINT ["noisepy"]
 CMD ["--help"]
