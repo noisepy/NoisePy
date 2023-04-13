@@ -9,18 +9,18 @@ Detailed documentation can be found at https://noisepy.readthedocs.io/en/latest/
 [![Build Status](https://travis-ci.com/chengxinjiang/NoisePy.svg?branch=master)](https://travis-ci.com/github/chengxinjiang/NoisePy)
 [![Codecov](https://codecov.io/gh/chengxinjiang/NoisePy/branch/master/graph/badge.svg)](https://codecov.io/gh/chengxinjiang/NoisePy)
 
-<img src="/docs/figures/logo.png" width="800" height="400">
+<img src="https://raw.githubusercontent.com/mdenolle/NoisePy/master/docs/figures/logo.png" width="800" height="400">
 
 # Citation:
 Please cite the following reference if you use the code for your publication:
 Jiang, C. and Denolle, M. "NoisePy: a new high-performance python tool for seismic ambient noise seismology." Seismological Research Letter 91 (3): 1853–1866.
 
 ## Major updates include
-* adding options for several stacking methods such as nth-root, robust-stacking, auto-covariance and selective in S2. A script is added to the folder of application_modules to cross-compare the effects of different stacking method (note that `substack` parameter in S2 has to be `True` in order to use it)
+* adding options for several stacking methods such as nth-root, robust-stacking, auto-covariance and selective. A script is added to the folder of application_modules to cross-compare the effects of different stacking method (note that `substack` parameter in S2 has to be `True` in order to use it)
 * adding a jupter notebook for tutorials on performing seismic monitoring analysis using NoisePy
 * adding a jupter notebook for generating response spectrum for a nodal array (to be done)
 
-# Instalation 
+# Installation
 The nature of NoisePy being composed of python scripts allows flexible package installation, which is essentially to build dependent libraries the scripts and related functions live upon. We recommend using [conda](https://docs.conda.io/en/latest/) or [pip](https://pypi.org/project/pip/) to install the library due to their convenience. Below are command lines we have tested to create a python environment to run NoisePy. Note that the test is performed on `macOS Mojave (10.14.5)`, so it could be slightly different for other OS.
 
 
@@ -28,22 +28,22 @@ The nature of NoisePy being composed of python scripts allows flexible package i
 
 # With Conda:
 ```bash
-conda create -n noisepy python=3.8 pip
-conda activate noisepy
-conda install -c conda-forge openmpi
-pip install -r requirements.txt
+$ conda create -n noisepy python=3.8 pip
+$ conda activate noisepy
+$ conda install -c conda-forge openmpi
+$ pip install noisepy-seis
 ```
 
 # With virtual environment:
 An MPI installation is required. E.g. for macOS using [brew](https://brew.sh/) :
 ```sh
-brew install open-mpi
+$ brew install open-mpi
 ```
 
-```bash
-python -m venv noisepy
-source noisepy/bin/activate
-pip install -r requirements.txt
+```sh
+$ python -m venv noisepy
+$ source noisepy/bin/activate
+$ pip install noisepy-seis
 ```
 To run the code on a single core, open the terminal and activate the noisepy environment before run following command. To run on institutional clusters, see installation notes for individual packages on the module list of the cluster. Examples of installation on Frontera are below.
 
@@ -69,7 +69,6 @@ Seats, K. J., Jesse F. L., and German A. P. "Improved ambient noise correlation 
 ** Yuan, C., Bryan, J. T., and Denolle, M. "Numerical comparison of time-, frequency- and wavelet-domain methods for coda wave interferometry." _Geophysical Journal International_ 226, no. 2 (2021): 828-846.
 
 
-
 ### Some taxonomy of the NoisePy variables.
 
 * ``station`` refers to the site that has the seismic instruments that records ground shaking.
@@ -85,11 +84,16 @@ Seats, K. J., Jesse F. L., and German A. P. "Improved ambient noise correlation 
 
 # Contributing
 
-After creating the virtual environment with either **pip** o **conda**, install `pre-commit` by running:
+After cloning the repo and creating a virtual environment with either **pip** o **conda**:
 
+Do an editable installation to get the dependencies (from the project root):
+```sh
+$ pip install -e ".[dev]"
 ```
-pip install pre-commit>=3.2.0
-pre-commit install
+
+Install the `pre-commit` hook:
+```sh
+$ pre-commit install
 ```
 
 This will run the linting and formatting checks configured in the project before every commit.
@@ -101,3 +105,4 @@ The following extensions are recommended:
 - [isort](https://marketplace.visualstudio.com/items?itemName=ms-python.isort)
 - [black](https://marketplace.visualstudio.com/items?itemName=ms-python.black-formatter)
 - [flake8](https://marketplace.visualstudio.com/items?itemName=ms-python.flake8)
+
