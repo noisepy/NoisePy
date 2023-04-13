@@ -5,14 +5,7 @@ After cloning the repo and creating a virtual environment with either **pip** o 
 Do an editable installation to get the dependencies (from the project root):
 ```sh
 $ pip install -e ".[dev]"
-Do an editable installation to get the dependencies (from the project root):
-```sh
-$ pip install -e ".[dev]"
-```
 
-Install the `pre-commit` hook:
-```sh
-$ pre-commit install
 
 Install the `pre-commit` hook:
 ```sh

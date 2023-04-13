@@ -10,14 +10,12 @@ Detailed documentation can be found at https://noisepy.readthedocs.io/en/latest/
 [![Codecov](https://codecov.io/gh/chengxinjiang/NoisePy/branch/master/graph/badge.svg)](https://codecov.io/gh/chengxinjiang/NoisePy)
 
 <img src="https://raw.githubusercontent.com/mdenolle/NoisePy/master/docs/figures/logo.png" width="800" height="400">
-<img src="https://raw.githubusercontent.com/mdenolle/NoisePy/master/docs/figures/logo.png" width="800" height="400">
 
 # Citation:
 Please cite the following reference if you use the code for your publication:
 Jiang, C. and Denolle, M. "NoisePy: a new high-performance python tool for seismic ambient noise seismology." Seismological Research Letter 91 (3): 1853–1866.
 
 ## Major updates include
-* adding options for several stacking methods such as nth-root, robust-stacking, auto-covariance and selective. A script is added to the folder of application_modules to cross-compare the effects of different stacking method (note that `substack` parameter in S2 has to be `True` in order to use it)
 * adding options for several stacking methods such as nth-root, robust-stacking, auto-covariance and selective. A script is added to the folder of application_modules to cross-compare the effects of different stacking method (note that `substack` parameter in S2 has to be `True` in order to use it)
 * adding a jupter notebook for tutorials on performing seismic monitoring analysis using NoisePy
 * adding a jupter notebook for generating response spectrum for a nodal array (to be done)
