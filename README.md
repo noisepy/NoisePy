@@ -32,23 +32,14 @@ $ conda create -n noisepy python=3.8 pip
 $ conda activate noisepy
 $ conda install -c conda-forge openmpi
 $ pip install noisepy-seis
-$ conda create -n noisepy python=3.8 pip
-$ conda activate noisepy
-$ conda install -c conda-forge openmpi
-$ pip install noisepy-seis
 ```
 
 # With virtual environment:
 An MPI installation is required. E.g. for macOS using [brew](https://brew.sh/) :
 ```sh
 $ brew install open-mpi
-$ brew install open-mpi
 ```
 
-```sh
-$ python -m venv noisepy
-$ source noisepy/bin/activate
-$ pip install noisepy-seis
 ```sh
 $ python -m venv noisepy
 $ source noisepy/bin/activate
