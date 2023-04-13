@@ -66,7 +66,7 @@ To run the code on a single core, open the terminal and activate the noisepy env
 * includes a series of monitoring functions to measure dv/v on the resulted cross-correlation functions using some recently developed new methods (see our papers for more details<sup>**</sup>)
 
 # Short tutorial
-A short tutorial on how to use NoisePy-seis can be found in the following Jupyter Notebook: https://github.com/mdenolle/NoisePy/blob/master/Jupyter_notebook/tutorial.ipynb 
+A short tutorial on how to use NoisePy-seis can be found in the following Jupyter Notebook: https://github.com/mdenolle/NoisePy/blob/master/Jupyter_notebook/tutorial.ipynb
 
 
 This tutorial presents one simple example of how NoisePy might work! We strongly encourage you to download the NoisePy package and play it on your own! If you have any  comments and/or suggestions during running the codes, please do not hesitate to contact us through email or open an issue in this github page!
@@ -124,4 +124,3 @@ The following extensions are recommended:
 - [isort](https://marketplace.visualstudio.com/items?itemName=ms-python.isort)
 - [black](https://marketplace.visualstudio.com/items?itemName=ms-python.black-formatter)
 - [flake8](https://marketplace.visualstudio.com/items?itemName=ms-python.flake8)
-

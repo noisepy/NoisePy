@@ -2,9 +2,8 @@ import time
 
 import numpy as np
 import pytest
-from obspy.signal.invsim import cosine_taper
-
 from noise_module import stretching, stretching_vect
+from obspy.signal.invsim import cosine_taper
 
 # This short script is intended as a test for the stretching routine
 # it takes a generic sine curve with known stretching factor and ensures
