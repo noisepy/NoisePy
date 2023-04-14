@@ -13,7 +13,7 @@ from noisepy.seis.stores import RawDataStore
 
 from .datatypes import Channel, Station
 
-logger = logging.Logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class ASDFDataStore(RawDataStore):
