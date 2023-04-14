@@ -11,7 +11,7 @@ from datetimerange import DateTimeRange
 from noisepy.seis import noise_module
 from noisepy.seis.stores import RawDataStore
 
-from .datatypes import Channel, Station
+from .datatypes import Channel, ChannelType, Station
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,9 @@ class ASDFDataStore(RawDataStore):
     def get_channels(self, timespan: DateTimeRange) -> List[Channel]:
         ds = pyasdf.ASDFDataSet(self.files[str(timespan)], mode="r")
         stations = [self._create_station(ds, sta) for sta in ds.waveforms.list()]
-        channels = [Channel(tag, sta) for sta in stations for tag in ds.waveforms[str(sta)].get_waveform_tags()]
+        channels = [
+            Channel(ChannelType(tag), sta) for sta in stations for tag in ds.waveforms[str(sta)].get_waveform_tags()
+        ]
         return channels
 
     def get_timespans(self) -> List[DateTimeRange]:
@@ -40,7 +42,7 @@ class ASDFDataStore(RawDataStore):
 
     def read_data(self, timespan: DateTimeRange, chan: Channel) -> np.ndarray:
         ds = pyasdf.ASDFDataSet(self.files[str(timespan)], mode="r")
-        return ds.waveforms[str(chan.station)][chan.type][0].data
+        return ds.waveforms[str(chan.station)][chan.type.name][0].data
 
     def _parse_timespans(self, filename: str) -> DateTimeRange:
         parts = os.path.splitext(os.path.basename(filename))[0].split("T")

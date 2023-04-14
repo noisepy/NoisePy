@@ -10,12 +10,17 @@ class ChannelType:
 
     name: str
 
-    def __init__(self, name):
-        assert len(name) == 3, "A channel type name should be length 3"
-        self.name = name
+    def __post_init__(self):
+        assert (
+            len(self.name) == 3 or len(self.name) == 6
+        ), "A channel type name should be length 3 (e.g. bhn) or 6 (e.g. bhn_00)"
 
     def get_orientation(self) -> str:
-        return self.name[-1]
+        if "_" in self.name:
+            return self.name.split("_")[0][-1]
+        else:
+            assert len(self.name) == 3
+            return self.name[-1]
 
 
 @dataclass
