@@ -2,6 +2,7 @@ import argparse
 import os
 import typing
 from enum import Enum
+from typing import Any, Callable, List
 
 import obspy
 
@@ -21,6 +22,7 @@ class Step(Enum):
     DOWNLOAD = 1
     CROSS_CORRELATE = 2
     STACK = 3
+    ALL = 4
 
 
 def valid_date(d: str) -> str:
@@ -42,23 +44,20 @@ def main(args: typing.Any):
         cross_correlate(args.path, args.freq_norm)
     if args.step == Step.STACK:
         stack(args.path, args.method)
+    if args.step == Step.ALL:
+        download(
+            args.path,
+            args.channels,
+            args.stations,
+            [args.start],
+            [args.end],
+            args.inc_hours,
+        )
+        cross_correlate(args.path, args.freq_norm)
+        stack(args.path, args.method)
 
 
-def main_cli():
-    parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers(dest="step", required=True)
-
-    # Download arguments
-    down_parser = subparsers.add_parser(
-        Step.DOWNLOAD.name.lower(),
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    down_parser.add_argument(
-        "--path",
-        type=str,
-        default=os.path.join(os.path.expanduser("~"), default_data_path),
-        help="Directory for downloading files",
-    )
+def add_download_args(down_parser: argparse.ArgumentParser):
     down_parser.add_argument(
         "--start",
         type=valid_date,
@@ -86,29 +85,23 @@ def main_cli():
         default="BHE,BHN,BHZ",
     )
     down_parser.add_argument("--inc_hours", type=int, default=24, help="Time increment size (hrs)")
-    # Cross_correlate arguments
-    cc_parser = subparsers.add_parser(
-        Step.CROSS_CORRELATE.name.lower(),
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    cc_parser.add_argument(
+
+
+def add_path(parser):
+    parser.add_argument(
         "--path",
         type=str,
         default=os.path.join(os.path.expanduser("~"), default_data_path),
-        help="Directory to look for input files",
+        help="Working directory",
     )
-    cc_parser.add_argument("--freq_norm", choices=["rma", "no", "phase_only"], default="rma")
-    # Stack arguments
-    stack_parser = subparsers.add_parser(
-        Step.STACK.name.lower(), formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-    stack_parser.add_argument(
-        "--path",
-        type=str,
-        default=os.path.join(os.path.expanduser("~"), default_data_path),
-        help="Directory to look for input files",
-    )
-    stack_parser.add_argument(
+
+
+def add_cc_args(parser):
+    parser.add_argument("--freq_norm", choices=["rma", "no", "phase_only"], default="rma")
+
+
+def add_stack_args(parser):
+    parser.add_argument(
         "--method",
         type=str,
         required=True,
@@ -123,6 +116,24 @@ def main_cli():
         ],
         help="Stacking method",
     )
+
+
+def make_step_parser(subparsers: Any, step: Step, parser_config_funcs: List[Callable[[argparse.ArgumentParser], None]]):
+    parser = subparsers.add_parser(
+        step.name.lower(),
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    for config_fn in parser_config_funcs:
+        config_fn(parser)
+
+
+def main_cli():
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest="step", required=True)
+    make_step_parser(subparsers, Step.DOWNLOAD, [add_path, add_download_args])
+    make_step_parser(subparsers, Step.CROSS_CORRELATE, [add_path, add_cc_args])
+    make_step_parser(subparsers, Step.STACK, [add_path, add_stack_args])
+    make_step_parser(subparsers, Step.ALL, [add_path, add_download_args, add_cc_args, add_stack_args])
 
     args = parser.parse_args()
     args.step = Step[args.step.upper()]
