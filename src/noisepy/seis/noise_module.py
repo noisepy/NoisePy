@@ -426,7 +426,7 @@ def stats2inv(stats, prepro_para, locs=None):
     return inv
 
 
-def sta_info_from_inv(inv):
+def sta_info_from_inv(inv: obspy.core.inventory.inventory.Inventory):
     """
     this function outputs station info from the obspy inventory object
     (used in S0B)
