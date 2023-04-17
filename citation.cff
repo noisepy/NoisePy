@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "Please cite the following reference if you use the code for your publication:"
+authors:
+- family-names: "Jiang"
+  given-names: "Chengxin"
+  orcid: "https://orcid.org/0000-0000-0000-0000?" 
+- family-names: "Denolle "
+  given-names: "Marine"
+  orcid: "https://orcid.org/0000-0000-0000-0000?" 
+title: "NoisePy: a new high-performance python tool for seismic ambient noise seismology."
+version: 2.0.4?
+doi: 10.5281/zenodo.1234?
+date-released: 2019-07-19?
+url: "https://github.com/mdenolle/NoisePy.git"
