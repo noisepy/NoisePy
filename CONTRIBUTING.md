@@ -6,7 +6,6 @@ Do an editable installation to get the dependencies (from the project root):
 ```sh
 $ pip install -e ".[dev]"
 
-
 Install the `pre-commit` hook:
 ```sh
 $ pre-commit install
