@@ -41,6 +41,7 @@ dependencies = [
     "pandas>=1.5.3",
     "pyasdf>=0.7.5",
     "pycwt>=0.3.0a22",
+    "diskcache>=5.5",
 ]
 
 
