@@ -18,7 +18,7 @@ jobs:
       with:
         python-version: ${{env.python_version}}
     - name: pytest
-      run: PYTHONPATH=src pytest unittests/.
+      run: PYTHONPATH=src pytest tests/.
   s0_download:
     runs-on: ubuntu-22.04
     steps:
