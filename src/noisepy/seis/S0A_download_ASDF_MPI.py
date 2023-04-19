@@ -97,7 +97,7 @@ def download(
     inc_hours: int,
 ):
     direc = os.path.join(rootpath, "RAW_DATA")  # where to store the downloaded data
-    dlist = os.path.join(direc, "station.txt")  # CSV file for station location info
+    dlist = os.path.join(direc, "stations.csv")  # CSV file for station location info
     respdir = os.path.join(
         rootpath, "resp"
     )  # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
@@ -137,7 +137,7 @@ def download(
         "lomax": lomax,
         "ncomp": ncomp,
     }
-    metadata = os.path.join(direc, "download_info.txt")
+    metadata = os.path.join(direc, "download_info.json")
 
     # prepare station info (existing station list vs. fetching from client)
     if down_list:
@@ -246,7 +246,7 @@ def download(
                 "elevation": elev,
             }
             locs = pd.DataFrame(dict)
-            locs.to_csv(os.path.join(direc, "station.txt"), index=False)
+            locs.to_csv(os.path.join(direc, "station.csv"), index=False)
 
         # save parameters for future reference
         fout = open(metadata, "w")

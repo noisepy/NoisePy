@@ -104,7 +104,7 @@ def cross_correlate(rootpath: str, freq_norm: str):
     CCFDIR = os.path.join(rootpath, "CCF")  # dir to store CC data
     DATADIR = os.path.join(rootpath, "RAW_DATA")  # dir where noise data is located
     locations = os.path.join(
-        DATADIR, "station.txt"
+        DATADIR, "stations.csv"
     )  # station info including network,station,channel,latitude,longitude,elevation:
     # only needed when input_fmt is not h5 for asdf
     respdir = os.path.join(
@@ -123,7 +123,7 @@ def cross_correlate(rootpath: str, freq_norm: str):
 
     # load useful download info if start from ASDF
     if input_fmt == "h5":
-        dfile = os.path.join(DATADIR, "download_info.txt")
+        dfile = os.path.join(DATADIR, "download_info.json")
         down_info = eval(open(dfile).read())
         samp_freq = down_info["samp_freq"]
         freqmin = down_info["freqmin"]
@@ -173,7 +173,7 @@ def cross_correlate(rootpath: str, freq_norm: str):
         "input_fmt": input_fmt,
     }
     # save fft metadata for future reference
-    fc_metadata = os.path.join(CCFDIR, "fft_cc_data.txt")
+    fc_metadata = os.path.join(CCFDIR, "fft_cc_json.json")
 
     #######################################
     # #########PROCESSING SECTION##########

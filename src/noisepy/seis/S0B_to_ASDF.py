@@ -50,7 +50,7 @@ rootpath = os.path.join(os.path.expanduser("~"), "Documents/SCAL")  # root path 
 RAWDATA = os.path.join(rootpath, "RAW_DATA")  # dir where mseed/SAC files are located
 DATADIR = os.path.join(rootpath, "CLEAN_DATA")  # dir where cleaned data in ASDF format are going to be outputted
 locations = os.path.join(
-    RAWDATA, "station.txt"
+    RAWDATA, "stations.csv"
 )  # station info including network,station,channel,latitude,longitude,elevation
 
 # useful parameters for cleaning the data
@@ -68,7 +68,7 @@ flag = False  # print intermediate variables and computing time
 
 # having this file saves a tons of time: see L95-126 for why
 wiki_file = os.path.join(
-    rootpath, "allfiles_time.txt"
+    rootpath, "allfiles_time.csv"
 )  # file containing the path+name for all sac/mseed files and its start-end time
 allfiles_path = os.path.join(DATADIR, "*" + input_fmt)  # make sure all sac/mseed files can be found through this format
 messydata = True  # set this to False when daily noise data
@@ -109,7 +109,7 @@ prepro_para = {
     "ncomp": ncomp,
     "MAX_MEM": MAX_MEM,
 }
-metadata = os.path.join(RAWDATA, "download_info.txt")
+metadata = os.path.join(RAWDATA, "download_info.json")
 
 ##########################################################
 # ###############PROCESSING SECTION#######################
