@@ -7,7 +7,7 @@
       "request": "launch",
       "module": "pytest",
       "args": [
-        "${workspaceFolder}/unittests"
+        "${workspaceFolder}/tests"
       ]
     },
     {

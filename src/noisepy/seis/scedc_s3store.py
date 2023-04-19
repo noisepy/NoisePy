@@ -2,7 +2,7 @@ import glob
 import logging
 import os
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List
 
 import numpy as np
@@ -13,7 +13,7 @@ from obspy.clients.fdsn import Client
 
 from noisepy.seis.stores import RawDataStore
 
-from .datatypes import Channel, Station
+from .datatypes import Channel, ChannelData, Station
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ class SCEDCS3DataStore(RawDataStore):
     def get_timespans(self) -> List[DateTimeRange]:
         return list([DateTimeRange.from_range_text(d) for d in sorted(self.channels.keys())])
 
-    def read_data(self, timespan: DateTimeRange, chan: Channel) -> np.ndarray:
+    def read_data(self, timespan: DateTimeRange, chan: Channel) -> ChannelData:
         # reconstruct the file name from the channel parameters
         chan_str = (
             f"{chan.station.network}{chan.station.name.ljust(5, '_')}{chan.type}{chan.station.location.ljust(3, '_')}"
@@ -73,13 +73,14 @@ class SCEDCS3DataStore(RawDataStore):
         if not os.path.exists(filename):
             logger.warning(f"Could not find file {filename}")
             return np.empty
-        return obspy.read(filename)[0].data
+        stream = obspy.read(filename)[0]
+        return ChannelData(stream.data, stream.stats.sampling_rate, stream.stats.starttime.timestamp)
 
     def _parse_timespan(filename: str) -> DateTimeRange:
         # The SCEDC S3 bucket stores files in the form: CIGMR__LHN___2022002.ms
         year = int(filename[-10:-6])
         day = int(filename[-5:-3])
-        jan1 = datetime(year, 1, 1)
+        jan1 = datetime(year, 1, 1, tzinfo=timezone.utc)
         return DateTimeRange(jan1 + timedelta(days=day - 1), jan1 + timedelta(days=day))
 
     def _parse_channel(filename: str) -> Channel:
