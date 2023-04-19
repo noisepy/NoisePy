@@ -5,7 +5,7 @@ from typing import List
 import numpy as np
 from datetimerange import DateTimeRange
 
-from .datatypes import Channel, CrossCorrelationParameters
+from .datatypes import Channel, ChannelData, CrossCorrelationParameters
 
 
 class DataStore(ABC):
@@ -23,7 +23,7 @@ class DataStore(ABC):
     #     pass
 
     @abstractmethod
-    def get_channels(self) -> List[Channel]:
+    def get_channels(self, timespan: DateTimeRange) -> List[Channel]:
         pass
 
     @abstractmethod
@@ -38,7 +38,7 @@ class RawDataStore(DataStore):
     """
 
     @abstractmethod
-    def read_data(self, timespan: DateTimeRange, chan: Channel) -> np.ndarray:
+    def read_data(self, timespan: DateTimeRange, chan: Channel) -> ChannelData:
         pass
 
 
