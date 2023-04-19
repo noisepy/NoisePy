@@ -2,6 +2,16 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Python: Unit tests",
+      "type": "python",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "${workspaceFolder}/unittests"
+      ],
+      "justMyCode": true
+    },
+    {
       "name": "Python: cross_correlate",
       "type": "python",
       "preLaunchTask": "Remove CCF",

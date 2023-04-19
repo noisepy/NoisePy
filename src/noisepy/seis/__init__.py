@@ -1,4 +1,6 @@
 # no-qa F401
+import logging
+
 from .S0A_download_ASDF_MPI import download  # noqa: F401
 from .S1_fft_cc_MPI import cross_correlate  # noqa: F401
 from .S2_stacking import stack  # noqa: F401
@@ -19,3 +21,6 @@ The main functions exported by the package are:
 - noise_module:     Collection of functions used in the cross_correlate and stacking steps
 - plotting_modules: Utility functions for plotting the data
 """
+
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(module)s %(funcName)s %(message)s")
+logger = logging.getLogger(__name__)
