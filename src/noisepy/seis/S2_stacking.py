@@ -55,7 +55,7 @@ MAX_MEM = 4.0
 # TODO: make stack_method an enum
 def stack(rootpath: str, stack_method: str):
     if rotation and correction:
-        corrfile = os.path.join(rootpath, "meso_angles.txt")  # csv file containing angle info to be corrected
+        corrfile = os.path.join(rootpath, "meso_angles.csv")  # csv file containing angle info to be corrected
         locs = pd.read_csv(corrfile)
     else:
         locs = []
@@ -64,7 +64,7 @@ def stack(rootpath: str, stack_method: str):
     CCFDIR = os.path.join(rootpath, "CCF")  # dir where CC data is stored
     STACKDIR = os.path.join(rootpath, "STACK")  # dir where stacked data is going to
     locations = os.path.join(
-        rootpath, "RAW_DATA/station.txt"
+        rootpath, "RAW_DATA/stations.csv"
     )  # station info including network,station,channel,latitude,longitude,elevation
     if not os.path.isfile(locations):
         raise ValueError("Abort! station info is needed for this script")
@@ -73,7 +73,7 @@ def stack(rootpath: str, stack_method: str):
     # we expect no parameters need to be changed below
 
     # load fc_para parameters from Step1
-    fc_metadata = os.path.join(CCFDIR, "fft_cc_data.txt")
+    fc_metadata = os.path.join(CCFDIR, "fft_cc_json.json")
     fc_para = eval(open(fc_metadata).read())
     ncomp = fc_para["ncomp"]
     samp_freq = fc_para["samp_freq"]
@@ -113,7 +113,7 @@ def stack(rootpath: str, stack_method: str):
         "correction": correction,
     }
     # save fft metadata for future reference
-    stack_metadata = os.path.join(STACKDIR, "stack_data.txt")
+    stack_metadata = os.path.join(STACKDIR, "stack_data.csv")
 
     #######################################
     # #########PROCESSING SECTION##########
