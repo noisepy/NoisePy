@@ -22,19 +22,19 @@ class SCEDCS3DataStore(RawDataStore):
     """
     A data store implementation to read from a directory of miniSEED (.ms) files from the SCEDC S3 bucket.
     Every directory is a a day and each .ms file contains the data for a channel.
-    TODO: How does this compose with S3 / S3FS?
     """
+
+    # TODO: Support reading directly from the S3 bucket
 
     # for checking the filename has the form: CIGMR__LHN___2022002.ms
     file_re = re.compile(r".*[0-9]{7}\.ms$", re.IGNORECASE)
 
-    def __init__(self, directory: str, cache: Dict):
+    def __init__(self, directory: str, inventory_cache: Dict):
         super().__init__()
         self.directory = directory
         msfiles = [f for f in glob.glob(os.path.join(directory, "*.ms")) if self.file_re.match(f) is not None]
         # store a dict of {timerange: list of channels}
         self.channels = {}
-        tmp_channels = []
         timespans = []
         for f in msfiles:
             timespan = SCEDCS3DataStore._parse_timespan(f)
@@ -48,7 +48,7 @@ class SCEDCS3DataStore(RawDataStore):
 
         # some channel information is encoded in the file name, but for lat/lon/elevation we need to
         # query the obspy service
-        inventory = self._get_inventory(timespans, cache)
+        inventory = self._get_inventory(timespans, inventory_cache)
         for ts, tmp_channels in self.channels.items():
             self.channels[ts] = list(
                 map(lambda c: SCEDCS3DataStore._populate_from_inventory(inventory, c), tmp_channels)
@@ -127,7 +127,7 @@ class SCEDCS3DataStore(RawDataStore):
         key = SCEDCS3DataStore._get_cache_key(timespans)
         inventory = cache.get(key, None)
         if inventory is None:
-            logging.info("Inventory cache not found. Fetching from SCEDC")
+            logging.info(f"Inventory not found in cache for key: '{key}'. Fetching from SCEDC.")
             bulk_station_request = [
                 ("*", "*", "*", "*", UTCDateTime(ts.start_datetime), UTCDateTime(ts.end_datetime)) for ts in timespans
             ]
