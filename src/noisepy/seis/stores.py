@@ -5,7 +5,7 @@ from typing import List
 import numpy as np
 from datetimerange import DateTimeRange
 
-from .datatypes import Channel, CrossCorrelationParameters
+from .datatypes import Channel, CrossCorrelationParameters, Station
 
 
 class DataStore(ABC):
@@ -23,12 +23,17 @@ class DataStore(ABC):
     #     pass
 
     @abstractmethod
-    def get_channels(self) -> List[Channel]:
+    def get_channels(self, timespan: DateTimeRange) -> List[Channel]:
         pass
 
     @abstractmethod
     def get_timespans(self) -> List[DateTimeRange]:
         pass
+
+    def get_all_stations(self) -> List[Station]:
+        timespans = self.get_timespans()
+        stations = set(ch.station for ts in timespans for ch in self.get_channels(ts))
+        return list(stations)
 
 
 class RawDataStore(DataStore):

@@ -22,6 +22,9 @@ from obspy.signal.util import _npts2nfft
 from scipy.fftpack import next_fast_len
 from scipy.signal import hilbert
 
+from noisepy.seis.datatypes import ChannelData
+from noisepy.seis.S1_fft_cc_MPI import FFTParameters
+
 """
 This VERY LONG noise module file is necessary to keep the NoisePy working properly. In general,
 the modules are organized based on their functionality in the following way. it includes:
@@ -460,7 +463,7 @@ def sta_info_from_inv(inv: obspy.core.inventory.inventory.Inventory):
     return sta, net, lon, lat, elv, location
 
 
-def cut_trace_make_stat(fc_para, source):
+def cut_trace_make_stat(fc_para: FFTParameters, ch_data: ChannelData):
     """
     this function cuts continous noise data into user-defined segments, estimate the statistics of
     each segment and keep timestamp of each segment for later use. (used in S1)
@@ -479,31 +482,27 @@ def cut_trace_make_stat(fc_para, source):
     dataS_t = []
     dataS = []
 
-    # load parameter from dic
-    inc_hours = fc_para["inc_hours"]
-    cc_len = fc_para["cc_len"]
-    step = fc_para["step"]
-
     # useful parameters for trace sliding
-    nseg = int(np.floor((inc_hours / 24 * 86400 - cc_len) / step))
-    sps = int(source[0].stats.sampling_rate)
-    starttime = source[0].stats.starttime - obspy.UTCDateTime(1970, 1, 1)
+    nseg = int(np.floor((fc_para.inc_hours / 24 * 86400 - fc_para.cc_len) / fc_para.step))
+    # WIP: READ
+    sps = int(ch_data.sampling_rate)
+    starttime = ch_data.starttime
     # copy data into array
-    data = source[0].data
+    data = ch_data.data
 
     # if the data is shorter than the tim chunck, return zero values
-    if data.size < sps * inc_hours * 3600:
+    if data.size < sps * fc_para.inc_hours * 3600:
         return source_params, dataS_t, dataS
 
     # statistic to detect segments that may be associated with earthquakes
     all_madS = mad(data)  # median absolute deviation over all noise window
     all_stdS = np.std(data)  # standard deviation over all noise window
     if all_madS == 0 or all_stdS == 0 or np.isnan(all_madS) or np.isnan(all_stdS):
-        print("continue! madS or stdS equals to 0 for %s" % source)
+        print("continue! madS or stdS equals to 0 for %s")
         return source_params, dataS_t, dataS
 
     # initialize variables
-    npts = cc_len * sps
+    npts = fc_para.cc_len * sps
     # trace_madS = np.zeros(nseg,dtype=np.float32)
     trace_stdS = np.zeros(nseg, dtype=np.float32)
     dataS = np.zeros(shape=(nseg, npts), dtype=np.float32)
@@ -515,8 +514,8 @@ def cut_trace_make_stat(fc_para, source):
         dataS[iseg] = data[indx1:indx2]
         # trace_madS[iseg] = (np.max(np.abs(dataS[iseg]))/all_madS)
         trace_stdS[iseg] = np.max(np.abs(dataS[iseg])) / all_stdS
-        dataS_t[iseg] = starttime + step * iseg
-        indx1 = indx1 + step * sps
+        dataS_t[iseg] = starttime + fc_para.step * iseg
+        indx1 = indx1 + fc_para.step * sps
 
     # 2D array processing
     dataS = demean(dataS)

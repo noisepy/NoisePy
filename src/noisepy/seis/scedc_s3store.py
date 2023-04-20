@@ -73,6 +73,9 @@ class SCEDCS3DataStore(RawDataStore):
         if not os.path.exists(filename):
             logger.warning(f"Could not find file {filename}")
             return np.empty
+        # WIP stream = obspy.read(filename)
+        # trace = stream[0]
+        # trace
         return obspy.read(filename)[0].data
 
     def _parse_timespan(filename: str) -> DateTimeRange:
