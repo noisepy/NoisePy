@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 from datetimerange import DateTimeRange
@@ -6,8 +6,8 @@ from obspy import Inventory
 
 from noisepy.seis.scedc_s3store import SCEDCS3DataStore
 
-timespan1 = DateTimeRange(datetime(2022, 1, 2), datetime(2022, 1, 3))
-timespan2 = DateTimeRange(datetime(2021, 2, 3), datetime(2021, 2, 4))
+timespan1 = DateTimeRange(datetime(2022, 1, 2, tzinfo=timezone.utc), datetime(2022, 1, 3, tzinfo=timezone.utc))
+timespan2 = DateTimeRange(datetime(2021, 2, 3, tzinfo=timezone.utc), datetime(2021, 2, 4, tzinfo=timezone.utc))
 files_dates = [
     ("CIGMR__LHN___2022002.ms", timespan1),
     ("CIGMR__LHN___2021034.ms", timespan2),
@@ -39,8 +39,11 @@ read_channels = [
 
 @pytest.mark.parametrize("channel", read_channels)
 def test_read(store: SCEDCS3DataStore, channel: str):
-    data = store.read_data(timespan1, channel)
-    assert data.size > 0
+    chdata = store.read_data(timespan1, channel)
+    assert chdata.sampling_rate == 1.0
+    assert chdata.start_timestamp >= timespan1.start_datetime.timestamp()
+    assert chdata.start_timestamp < timespan1.end_datetime.timestamp()
+    assert chdata.data.size > 0
 
 
 def test_timespan_channels(store: SCEDCS3DataStore):

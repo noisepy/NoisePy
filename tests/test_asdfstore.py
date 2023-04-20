@@ -13,11 +13,10 @@ def store():
 
 
 def test_get_timespans(store: ASDFDataStore):
-    date_format = "%Y-%m-%dT%H:%M:%S"
     ts = store.get_timespans()
     assert len(ts) == 1
-    assert ts[0].start_datetime == datetime.strptime("2019-02-01T00:00:00", date_format)
-    assert ts[0].end_datetime == datetime.strptime("2019-02-01T01:00:00", date_format)
+    assert ts[0].start_datetime == datetime.fromisoformat("2019-02-01T00:00:00+00:00")
+    assert ts[0].end_datetime == datetime.fromisoformat("2019-02-01T01:00:00+00:00")
 
 
 def test_get_channels(store: ASDFDataStore):
@@ -31,5 +30,7 @@ def test_get_channels(store: ASDFDataStore):
 def test_get_data(store: ASDFDataStore):
     ts = store.get_timespans()[0]
     chan = store.get_channels(ts)[0]
-    data = store.read_data(ts, chan)
-    assert data.size == 72001
+    chdata = store.read_data(ts, chan)
+    assert chdata.data.size == 72001
+    assert chdata.sampling_rate == 20.0
+    assert chdata.start_timestamp == ts.start_datetime.timestamp()

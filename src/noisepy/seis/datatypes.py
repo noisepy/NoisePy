@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from enum import Enum
 
+import numpy as np
+
 
 @dataclass
 class ChannelType:
@@ -59,3 +61,19 @@ class Channel:
 
     def __repr__(self) -> str:
         return f"{self.station}.{self.type}"
+
+
+@dataclass
+class ChannelData:
+    """
+    A 1D time series of channel data
+
+    Attributes:
+        data: series values
+        sampling_rate: In HZ
+        start_timestamp: Seconds since 01/01/1970
+    """
+
+    data: np.ndarray
+    sampling_rate: float
+    start_timestamp: float
