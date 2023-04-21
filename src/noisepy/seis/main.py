@@ -2,20 +2,22 @@ import argparse
 import os
 import typing
 from enum import Enum
+from glob import glob
 from typing import Any, Callable, List
 
 import obspy
 
-from noisepy.seis.asdfstore import ASDFCCStore, ASDFRawDataStore
-from noisepy.seis.datatypes import FFTParameters
-
+from .asdfstore import ASDFCCStore, ASDFRawDataStore
+from .channelcatalog import CSVChannelCatalog, FDSNChannelCatalog
+from .constants import DATE_FORMAT_HELP, STATION_FILE
+from .datatypes import ConfigParameters
 from .S0A_download_ASDF_MPI import download
 from .S1_fft_cc_MPI import cross_correlate
 from .S2_stacking import stack
+from .scedc_s3store import SCEDCS3DataStore
 
 # Utility running the different steps from the command line. Defines the arguments for each step
 
-DATE_FORMAT = "%%Y_%%m_%%d_%%H_%%M_%%S"
 default_start_date = "2016_07_01_0_0_0"  # start date of download
 default_end_date = "2016_07_02_0_0_0"  # end date of download
 default_data_path = "Documents/SCAL"
@@ -33,8 +35,8 @@ def valid_date(d: str) -> str:
     return d
 
 
-def initialize_fft_params(raw_dir: str) -> FFTParameters:
-    params = FFTParameters()
+def initialize_fft_params(raw_dir: str) -> ConfigParameters:
+    params = ConfigParameters()
     dfile = os.path.join(raw_dir, "download_info.txt")
     down_info = eval(open(dfile).read())  # TODO: do proper json/yaml serialization
     params.samp_freq = down_info["samp_freq"]
@@ -47,15 +49,32 @@ def initialize_fft_params(raw_dir: str) -> FFTParameters:
     return params
 
 
+def create_raw_store(raw_dir: str):
+    def count(pat):
+        return len(glob(os.path.join(raw_dir, pat)))
+
+    # Use heuristics around which store to use by the files present
+    if count("*.h5") > 0:
+        return ASDFRawDataStore(raw_dir)
+    else:
+        assert count("*.ms") > 0 or count("*.sac") > 0, f"Can not find any .h5, .ms or .sac files in {raw_dir}"
+        catalog = (
+            CSVChannelCatalog(raw_dir)
+            if os.path.isfile(os.path.join(raw_dir, STATION_FILE))
+            else FDSNChannelCatalog("SCEDC", os.path.join(os.getcwd(), "noisepy_cache"))
+        )
+        return SCEDCS3DataStore(raw_dir, catalog)
+
+
 def main(args: typing.Any):
     def run_cross_correlation():
         raw_dir = os.path.join(args.path, "RAW_DATA")
         ccf_dir = os.path.join(args.path, "CCF")
-        fft_params = initialize_fft_params(raw_dir)  # FFTParameters()
+        fft_params = initialize_fft_params(raw_dir)
 
         fft_params.freq_norm = args.freq_norm
         cc_store = ASDFCCStore(ccf_dir)
-        raw_store = ASDFRawDataStore(raw_dir)
+        raw_store = create_raw_store(raw_dir)
         cross_correlate(raw_store, fft_params, cc_store)
 
     if args.step == Step.DOWNLOAD:
@@ -89,14 +108,14 @@ def add_download_args(down_parser: argparse.ArgumentParser):
         "--start",
         type=valid_date,
         required=True,
-        help="Start date in the format: " + DATE_FORMAT,
+        help="Start date in the format: " + DATE_FORMAT_HELP,
         default=default_start_date,
     )
     down_parser.add_argument(
         "--end",
         type=valid_date,
         required=True,
-        help="End date in the format: " + DATE_FORMAT,
+        help="End date in the format: " + DATE_FORMAT_HELP,
         default=default_end_date,
     )
     down_parser.add_argument(

@@ -8,7 +8,7 @@ import numpy as np
 from mpi4py import MPI
 from scipy.fftpack.helper import next_fast_len
 
-from noisepy.seis.datatypes import ChannelData, FFTParameters
+from noisepy.seis.datatypes import ChannelData, ConfigParameters
 
 from . import noise_module
 from .stores import CrossCorrelationDataStore, RawDataStore
@@ -48,14 +48,8 @@ NOTE:
     for better performance.
 """
 
-tt0 = time.time()
 
-########################################
-# #######PARAMETER SECTION##############
-########################################
-
-
-def cross_correlate(raw_store: RawDataStore, fft_params: FFTParameters, cc_store: CrossCorrelationDataStore):
+def cross_correlate(raw_store: RawDataStore, fft_params: ConfigParameters, cc_store: CrossCorrelationDataStore):
     """
     Perform the cross-correlation analysis
 
@@ -65,35 +59,11 @@ def cross_correlate(raw_store: RawDataStore, fft_params: FFTParameters, cc_store
                 cc_store: Store for saving cross correlations
     """
 
-    # BEGIN WIP
-    # DATADIR = os.path.join(rootpath, "RAW_DATA")  # dir where noise data is located
-    # locations = os.path.join(
-    #     DATADIR, "station.txt"
-    # )  # station info including network,station,channel,latitude,longitude,elevation:
-    # # only needed when input_fmt is not h5 for asdf
-    # respdir = os.path.join(
-    #     rootpath, "resp"
-    # )  # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
-    # local_data_path = os.path.join(
-    #     rootpath, "2016_*"
-    # )  # absolute dir where SAC files are stored: this para is VERY IMPORTANT and
-    # has to be RIGHT if input_fmt is not h5 for asdf!!!
-
-    # read station list
-    # if input_fmt != "h5":
-    #     if not os.path.isfile(locations):
-    #         raise ValueError("Abort! station info is needed for this script")
-    #     locs = pd.read_csv(locations)
-    # END WIP
-    # load useful download info if start from ASDF
-
-    ##################################################
-    # we expect no parameters need to be changed below
-
     #######################################
     # #########PROCESSING SECTION##########
     #######################################
 
+    tt0 = time.time()
     # --------MPI---------
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
@@ -108,44 +78,21 @@ def cross_correlate(raw_store: RawDataStore, fft_params: FFTParameters, cc_store
         splits = len(timespans)
         if splits == 0:
             raise IOError("Abort! no available seismic files for FFT")
-    # WIP: test with MPI
-    # else:
-    #     splits, timespans, nsta = (None, None, None)
-
-    ####
-    # nsta = len(sta_list)
+    else:
+        splits, timespans = (None, None)
 
     # broadcast the variables
     splits = comm.bcast(splits, root=0)
     timespans = comm.bcast(timespans, root=0)
-    # WIP:  nsta = comm.bcast(nsta, root=0)
 
     # MPI loop: loop through each user-defined time chunk
     for ick in range(rank, splits, size):
         t10 = time.time()
         ts = timespans[ick]
+        if cc_store.is_done(ts):
+            continue
 
         # ###########LOADING NOISE DATA AND DO FFT##################
-
-        # WIP: READ DATA, track already completed work
-        # get the tempory file recording cc process
-        # if input_fmt == "h5":
-        #     filename = os.path.basename(tdir[ick])
-        #     filename_noext = os.path.splitext(filename)[0]
-        #     tmpfile = os.path.join(CCFDIR, filename_noext + ".tmp")
-        # else:
-        #     tmpfile = os.path.join(CCFDIR, os.paths.basename(tdir[ick]) + ".tmp")
-
-        # # check whether time chunk been processed or not
-        # if os.path.isfile(tmpfile):
-        #     ftemp = open(tmpfile, "r")
-        #     alines = ftemp.readlines()
-        #     if len(alines) and alines[-1] == "done":
-        #         continue
-        #     else:
-        #         ftemp.close()
-        #         os.remove(tmpfile)
-
         channels = raw_store.get_channels(ts)
         nchannels = len(channels)
         nseg_chunk = check_memory(fft_params, nchannels)
@@ -162,7 +109,7 @@ def cross_correlate(raw_store: RawDataStore, fft_params: FFTParameters, cc_store
         Nfft2: int
         for ix_ch, ch in enumerate(channels):
             ch_data = raw_store.read_data(ts, ch)
-            # WIP: Below the last values for N and Nfft are used?
+            # TODO: Below the last values for N and Nfft are used?
             fft_array[ix_ch], fft_std[ix_ch], fft_time[ix_ch], N, Nfft2 = compute_fft(fft_params, ch_data)
             fft_flag[ix_ch] = fft_array[ix_ch].size > 0
             if not fft_flag[ix_ch]:
@@ -174,7 +121,6 @@ def cross_correlate(raw_store: RawDataStore, fft_params: FFTParameters, cc_store
             logger.warning("it seems some stations miss data in download step, but it is OKAY!")
 
         # ###########PERFORM CROSS-CORRELATION##################
-        # ftmp = open(tmpfile, mode="w")
         # make cross-correlations
         for iiS in range(len(channels)):
             src_chan = channels[iiS]
@@ -229,6 +175,9 @@ def cross_correlate(raw_store: RawDataStore, fft_params: FFTParameters, cc_store
                 if not fft_flag[iiR]:
                     continue
 
+                if cc_store.contains(ts, src_chan, rec_chan, fft_params):
+                    continue
+
                 fft2 = fft_array[iiR]
                 sfft2 = fft2.reshape(N, Nfft2)
                 receiver_std = fft_std[iiR]
@@ -271,6 +220,7 @@ def cross_correlate(raw_store: RawDataStore, fft_params: FFTParameters, cc_store
 
         t11 = time.time()
         print("it takes %6.2fs to process the chunk of %s" % (t11 - t10, ts))
+        cc_store.mark_done(ts)
 
     tt1 = time.time()
     print("it takes %6.2fs to process step 1 in total" % (tt1 - tt0))
@@ -278,10 +228,7 @@ def cross_correlate(raw_store: RawDataStore, fft_params: FFTParameters, cc_store
 
 
 def compute_fft(
-    fft_params: FFTParameters,
-    ch_data: ChannelData
-    # WIP: ) -> Tuple[np.ndarray[Any, np.dtype[np.complex128]], np.ndarray[np.dtype.float32],
-    # np.ndarray[np.dtype.float64], int, int]:
+    fft_params: ConfigParameters, ch_data: ChannelData
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, int, int]:
     if ch_data.data.size == 0:
         return (np.empty, np.empty, np.empty)
@@ -310,7 +257,7 @@ def compute_fft(
     return fft, std, fft_time, N, Nfft2
 
 
-def check_memory(params: FFTParameters, nsta: int) -> int:
+def check_memory(params: ConfigParameters, nsta: int) -> int:
     # maximum memory allowed per core in GB
     MAX_MEM = 4.0
     # crude estimation on memory needs (assume float32)

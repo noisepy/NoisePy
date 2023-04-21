@@ -11,19 +11,23 @@ class ChannelType:
     """
 
     name: str
+    location: str = ""
 
     def __post_init__(self):
         assert (
             len(self.name) == 3 or len(self.name) == 6
         ), "A channel type name should be length 3 (e.g. bhn) or 6 (e.g. bhn_00)"
-        # comp = source[0].stats.channel
-        # WIP: Fix to handle 'bhn_00'
-        # comp = ch.type
-        # if comp[-1] == "U":
-        #     comp.replace("U", "Z")
+        if "_" in self.name:
+            parts = self.name.split("_")
+            self.name = parts[0]
+            self.location = parts[1]
 
-    def get_basename(self):
-        return self.name[0:3]
+        # Japanese channels use 'U' (up) for the vertical direction. Here we normalize to 'z'
+        if self.name[-1] == "U":
+            self.name = self.name.replace("U", "Z")
+
+    def __repr__(self) -> str:
+        return f"{self.name}_{self.location}"
 
     def get_orientation(self) -> str:
         if "_" in self.name:
@@ -55,7 +59,7 @@ class CorrelationMethod(Enum):
 
 
 @dataclass
-class FFTParameters:
+class ConfigParameters:
     dt: float = 1.0
     start_date: str = ""  # TODO: can we make this datetime?
     end_date: str = ""
@@ -94,7 +98,7 @@ class FFTParameters:
         self.dt = 1.0 / self.samp_freq
         assert self.substack_len % self.cc_len == 0
 
-    # TODO: Remove once all uses of FFTParameters have been converted to use strongly typed access
+    # TODO: Remove once all uses of ConfigParameters have been converted to use strongly typed access
     def __getitem__(self, key):
         return self.__dict__[key]
 

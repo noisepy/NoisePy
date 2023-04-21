@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 import pytest
 from datetimerange import DateTimeRange
-from obspy import Inventory
+from test_channelcatalog import MockCatalog
 
 from noisepy.seis.scedc_s3store import SCEDCS3DataStore
 
@@ -23,11 +23,7 @@ def test_parsefilename(file: str, expected: DateTimeRange):
 def store():
     import os
 
-    key = SCEDCS3DataStore._get_cache_key([timespan1])
-    # This avoids the call to the SCEDC service during unit testing
-    # by populating an in-memory cache with an empty Inventory
-    cache = {key: Inventory()}
-    return SCEDCS3DataStore(os.path.join(os.path.dirname(__file__), "./data/s3scedc"), cache)
+    return SCEDCS3DataStore(os.path.join(os.path.dirname(__file__), "./data/s3scedc"), MockCatalog())
 
 
 read_channels = [

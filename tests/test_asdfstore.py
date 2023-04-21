@@ -23,7 +23,7 @@ def test_get_channels(store: ASDFRawDataStore):
     ts = store.get_timespans()[0]
     chans = store.get_channels(ts)
     assert len(chans) == 1
-    assert chans[0].type.name == "bhn_00"
+    assert str(chans[0].type) == "bhn_00"
     assert chans[0].station.name == "BAK"
 
 
