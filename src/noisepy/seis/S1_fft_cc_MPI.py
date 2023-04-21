@@ -1,15 +1,17 @@
 import gc
 import logging
-import os
 import sys
 import time
+from typing import Tuple
 
 import numpy as np
 from mpi4py import MPI
 from scipy.fftpack.helper import next_fast_len
 
+from noisepy.seis.datatypes import ChannelData, FFTParameters
+
 from . import noise_module
-from .stores import RawDataStore
+from .stores import CrossCorrelationDataStore, RawDataStore
 
 logger = logging.getLogger(__name__)
 # ignore warnings
@@ -52,61 +54,17 @@ tt0 = time.time()
 # #######PARAMETER SECTION##############
 ########################################
 
-# some control parameters
-input_fmt = "h5"  # string: 'h5', 'sac','mseed'
-acorr_only = False  # only perform auto-correlation
-xcorr_only = True  # only perform cross-correlation or not
 
-
-class FFTParameters:
-    samp_freq: float
-    dt: float
-    cc_len: int = 1800  # basic unit of data length for fft (sec)
-    # pre-processing parameters
-    step: int = 450  # overlapping between each cc_len (sec)
-    freqmin: float
-    freqmax: float
-    freq_norm: str
-    time_norm: str = "no"  # 'no' for no normalization, or 'rma', 'one_bit' for normalization in time domain
-    cc_method: str = "xcorr"  # 'xcorr' for pure cross correlation, 'deconv' for deconvolution;
-    # FOR "COHERENCY" PLEASE set freq_norm to "rma", time_norm to "no" and cc_method to "xcorr"
-    smooth_N: int = 10  # moving window length for time/freq domain normalization if selected (points)
-    start_date: str  # TODO: can we make this datetime?
-    end_date: str
-    inc_hours: int
-    substack: bool = True  # True = smaller stacks within the time chunk. False: it will stack over inc_hours
-    substack_len: int = 1800  # how long to stack over (for monitoring purpose): need to be multiples of cc_len
-    # cross-correlation parameters
-    maxlag: int = 200  # lags of cross-correlation to save (sec)
-    # if substack=True, substack_len=2*cc_len, then you pre-stack every 2 correlation windows.
-    # for instance: substack=True, substack_len=cc_len means that you keep ALL of the correlations
-    substack: bool = True
-
-    smoothspect_N: int = 10  # moving window length to smooth spectrum amplitude (points)
-    # criteria for data selection
-    max_over_std: int = 10  # threahold to remove window of bad signals: set it to 10*9 if prefer not to remove them
-    ncomp: int = 3  # 1 or 3 component data (needed to decide whether do rotation)
-    # station/instrument info for input_fmt=='sac' or 'mseed'
-    stationxml: bool = False  # station.XML file used to remove instrument response for SAC/miniseed data
-    rm_resp: str = "no"  # select 'no' to not remove response and use 'inv','spectrum',
-    # 'RESP', or 'polozeros' to remove response
-
-    def __post_init__(self):
-        self.dt = 1.0 / self.samp_freq
-        assert self.substack_len % self.cc_len == 0
-
-
-def cross_correlate(rootpath: str, raw_store: RawDataStore, params: FFTParameters):
+def cross_correlate(raw_store: RawDataStore, fft_params: FFTParameters, cc_store: CrossCorrelationDataStore):
     """
     Perform the cross-correlation analysis
 
         Parameters:
-                rootpath (str): Directory to load data from
-                freq_norm (int): 'no' for no whitening, or 'rma' for running-mean average,
-                'phase_only' for sign-bit normalization in freq domain.
+                raw_store: Store to load data from
+                fft_params: Parameters for the FFT calculations
+                cc_store: Store for saving cross correlations
     """
 
-    CCFDIR = os.path.join(rootpath, "CCF")  # dir to store CC data
     # BEGIN WIP
     # DATADIR = os.path.join(rootpath, "RAW_DATA")  # dir where noise data is located
     # locations = os.path.join(
@@ -128,30 +86,9 @@ def cross_correlate(rootpath: str, raw_store: RawDataStore, params: FFTParameter
     #     locs = pd.read_csv(locations)
     # END WIP
     # load useful download info if start from ASDF
-    # WIP: Parameter init
-    # if input_fmt == "h5":
-    #     dfile = os.path.join(DATADIR, "download_info.txt")
-    #     down_info = eval(open(dfile).read())
-    #     samp_freq = down_info["samp_freq"]
-    #     freqmin = down_info["freqmin"]
-    #     freqmax = down_info["freqmax"]
-    #     start_date = down_info["start_date"]
-    #     end_date = down_info["end_date"]
-    #     inc_hours = down_info["inc_hours"]
-    #     ncomp = down_info["ncomp"]
-    # else:  # sac or mseed format
-    #     samp_freq = 20
-    #     freqmin = 0.05
-    #     freqmax = 2
-    #     start_date = "2016_07_01_0_0_0"
-    #     end_date = "2016_07_02_0_0_0"
-    #     inc_hours = 24
 
     ##################################################
     # we expect no parameters need to be changed below
-
-    # save fft metadata for future reference
-    fc_metadata = os.path.join(CCFDIR, "fft_cc_data.txt")
 
     #######################################
     # #########PROCESSING SECTION##########
@@ -163,55 +100,24 @@ def cross_correlate(rootpath: str, raw_store: RawDataStore, params: FFTParameter
     size = comm.Get_size()
 
     if rank == 0:
-        if not os.path.isdir(CCFDIR):
-            os.mkdir(CCFDIR)
-
         # save metadata
-        fout = open(fc_metadata, "w")
-        fout.write(str(params))
-        fout.close()
+        cc_store.save_parameters(fft_params)
 
         # set variables to broadcast
-        # BEGIN WIP:
-        # if input_fmt == "h5":
-        #     tdir = sorted(glob.glob(os.path.join(DATADIR, "*.h5")))
-        # else:
-        #     tdir = sorted(glob.glob(local_data_path))
-        #     if len(tdir) == 0:
-        #         raise ValueError("No data file in %s", DATADIR)
-        #     # get nsta by loop through all event folder
-        #     nsta = 0
-        #     for ii in range(len(tdir)):
-        #         tnsta = len(glob.glob(os.path.join(tdir[ii], "*" + input_fmt)))
-        #         if nsta < tnsta:
-        #             nsta = tnsta
-
-        # nchunk = len(tdir)
         timespans = raw_store.get_timespans()
         splits = len(timespans)
         if splits == 0:
             raise IOError("Abort! no available seismic files for FFT")
-        # sta_list = raw_store.get_all_stations()
-        # nsta = len(sta_list)
-    else:
-        splits, tdir, nsta = (None, None, None)
-        # if input_fmt == "h5":
-        #     splits, tdir = [None for _ in range(2)]
-        # else:
-        #     splits, tdir, nsta = [None for _ in range(3)]
+    # WIP: test with MPI
+    # else:
+    #     splits, timespans, nsta = (None, None, None)
 
     ####
-    # nsta: Number of channels
-    # sta_list: List of channels
-    # END WIP
-    sta_list = raw_store.get_all_stations()
-    nsta = len(sta_list)
-    nseg_chunk = check_memory(params, nsta)
+    # nsta = len(sta_list)
 
     # broadcast the variables
     splits = comm.bcast(splits, root=0)
-    tdir = comm.bcast(tdir, root=0)
-    # if input_fmt != "h5":
+    timespans = comm.bcast(timespans, root=0)
     # WIP:  nsta = comm.bcast(nsta, root=0)
 
     # MPI loop: loop through each user-defined time chunk
@@ -221,7 +127,7 @@ def cross_correlate(rootpath: str, raw_store: RawDataStore, params: FFTParameter
 
         # ###########LOADING NOISE DATA AND DO FFT##################
 
-        # WIP: READ DATA
+        # WIP: READ DATA, track already completed work
         # get the tempory file recording cc process
         # if input_fmt == "h5":
         #     filename = os.path.basename(tdir[ick])
@@ -240,142 +146,56 @@ def cross_correlate(rootpath: str, raw_store: RawDataStore, params: FFTParameter
         #         ftemp.close()
         #         os.remove(tmpfile)
 
-        # retrive station information
-        # if input_fmt == "h5":
-        #     ds = pyasdf.ASDFDataSet(tdir[ick], mpi=False, mode="r")
-        #     sta_list = ds.waveforms.list()
-        #     nsta = ncomp * len(sta_list)
-        #     print("found %d stations in total" % nsta)
-        # else:
-        #     sta_list = sorted(glob.glob(os.path.join(tdir[ick], "*" + input_fmt)))
-        # if len(sta_list) == 0:
-        #     print("continue! no data in %s" % tdir[ick])
-        #     continue
-
-        nnfft = int(next_fast_len(int(params.cc_len * params.samp_freq)))
-        # open array to store fft data/info in memory
-        fft_array = np.zeros((nsta, nseg_chunk * (nnfft // 2)), dtype=np.complex64)
-        fft_std = np.zeros((nsta, nseg_chunk), dtype=np.float32)
-        fft_flag = np.zeros(nsta, dtype=np.int16)
-        fft_time = np.zeros((nsta, nseg_chunk), dtype=np.float64)
-        # station information (for every channel)
-        station = []
-        network = []
-        channel = []
-        # clon = []
-        # clat = []
-        # location = []
-        # elevation = []
-
         channels = raw_store.get_channels(ts)
-        # loop through all stations
-        iii = 0
-        for ch in channels:
-            # BEGIN WIP: MAIN LOOP
-            # for ista in range(len(sta_list)):
-            #     tmps = sta_list[ista]
+        nchannels = len(channels)
+        nseg_chunk = check_memory(fft_params, nchannels)
+        nnfft = int(next_fast_len(int(fft_params.cc_len * fft_params.samp_freq)))
+        # open array to store fft data/info in memory
+        fft_array = np.zeros((nchannels, nseg_chunk * (nnfft // 2)), dtype=np.complex64)
+        fft_std = np.zeros((nchannels, nseg_chunk), dtype=np.float32)
+        fft_flag = np.zeros(nchannels, dtype=np.int16)
+        fft_time = np.zeros((nchannels, nseg_chunk), dtype=np.float64)
 
-            #     if input_fmt == "h5":
-            #         # get station and inventory
-            #         try:
-            #             inv1 = ds.waveforms[tmps]["StationXML"]
-            #         except Exception:
-            #             print("abort! no stationxml for %s in file %s" % (tmps, tdir[ick]))
-            #             continue
-            #         sta, net, lon, lat, elv, loc = noise_module.sta_info_from_inv(inv1)
-
-            #         # get days information: works better than just list the tags
-            #         all_tags = ds.waveforms[tmps].get_waveform_tags()
-            #         if len(all_tags) == 0:
-            #             continue
-
-            #     else:  # get station information
-            #         all_tags = [1]
-            #         sta = tmps.split("/")[-1]
-
-            #     # ----loop through each stream----
-            #     for itag in range(len(all_tags)):
-            #         if flag:
-            #             print("working on station %s and trace %s" % (sta, all_tags[itag]))
-
-            #         # read waveform data
-            #         if input_fmt == "h5":
-            #             source = ds.waveforms[tmps][all_tags[itag]]
-            #         else:
-            #             source = obspy.read(tmps)
-            #             inv1 = noise_module.stats2inv(source[0].stats, fc_para, locs)
-            #             sta, net, lon, lat, elv, loc = noise_module.sta_info_from_inv(inv1)
-            # END WIP
-            # channel info
-
-            # comp = source[0].stats.channel
-            comp = ch.type
-            if comp[-1] == "U":
-                comp.replace("U", "Z")
-            # if len(source) == 0:
-            #     continue
-
+        logger.debug(f"nseg_chunk: {nseg_chunk}, nnfft: {nnfft}")
+        # loop through all channels
+        N: int
+        Nfft2: int
+        for ix_ch, ch in enumerate(channels):
             ch_data = raw_store.read_data(ts, ch)
-            # cut daily-long data into smaller segments (dataS always in 2D)
-            trace_stdS, dataS_t, dataS = noise_module.cut_trace_make_stat(
-                params, ch_data
-            )  # optimized version:3-4 times faster
-            if not len(dataS):
-                continue
-            N = dataS.shape[0]
-
-            # do normalization if needed
-            source_white = noise_module.noise_processing(params, dataS)
-            Nfft = source_white.shape[1]
-            Nfft2 = Nfft // 2
-            logger.debug("N and Nfft are %d (proposed %d),%d (proposed %d)" % (N, nseg_chunk, Nfft, nnfft))
-
-            # keep track of station info to write into parameter section of ASDF files
-            # WIP: Remove?
-            # station.append(sta)
-            # network.append(net)
-            # channel.append(comp)
-            # clon.append(lon)
-            # clat.append(lat)
-            # location.append(loc)
-            # elevation.append(elv)
-
-            # load fft data in memory for cross-correlations
-            data = source_white[:, :Nfft2]
-            fft_array[iii] = data.reshape(data.size)
-            fft_std[iii] = trace_stdS
-            fft_flag[iii] = 1
-            fft_time[iii] = dataS_t
-            iii += 1
-            del trace_stdS, dataS_t, dataS, source_white, data
-
-        if input_fmt == "h5":
-            del ds
+            # WIP: Below the last values for N and Nfft are used?
+            fft_array[ix_ch], fft_std[ix_ch], fft_time[ix_ch], N, Nfft2 = compute_fft(fft_params, ch_data)
+            fft_flag[ix_ch] = fft_array[ix_ch].size > 0
+            if not fft_flag[ix_ch]:
+                logger.warning(f"No data available for channel '{ch}', skipped")
+        Nfft = Nfft2 * 2
 
         # check whether array size is enough
-        if iii != nsta:
-            print("it seems some stations miss data in download step, but it is OKAY!")
+        if np.sum(fft_flag) != nchannels:
+            logger.warning("it seems some stations miss data in download step, but it is OKAY!")
 
         # ###########PERFORM CROSS-CORRELATION##################
         # ftmp = open(tmpfile, mode="w")
         # make cross-correlations
-        for iiS in range(iii):
+        for iiS in range(len(channels)):
+            src_chan = channels[iiS]
             fft1 = fft_array[iiS]
             source_std = fft_std[iiS]
-            sou_ind = np.where((source_std < params.max_over_std) & (source_std > 0) & (np.isnan(source_std) == 0))[0]
+            sou_ind = np.where((source_std < fft_params.max_over_std) & (source_std > 0) & (np.isnan(source_std) == 0))[
+                0
+            ]
             if not fft_flag[iiS] or not len(sou_ind):
                 continue
 
             t0 = time.time()
             # -----------get the smoothed source spectrum for decon later----------
-            sfft1 = noise_module.smooth_source_spect(params, fft1)
+            sfft1 = noise_module.smooth_source_spect(fft_params, fft1)
             sfft1 = sfft1.reshape(N, Nfft2)
             t1 = time.time()
             logger.debug("smoothing source takes %6.4fs" % (t1 - t0))
 
             # get index right for auto/cross correlation
             istart = iiS
-            iend = iii
+            iend = nchannels
             #             if ncomp==1:
             #                 iend=np.minimum(iiS+ncomp,iii)
             #             else:
@@ -388,7 +208,7 @@ def cross_correlate(rootpath: str, raw_store: RawDataStore, params: FFTParameter
             #                 else:
             #                     iend=np.minimum(iiS+ncomp,iii)
 
-            #         if xcorr_only:
+            #         if fft_params.xcorr_only:
             #             if ncomp==1:
             #                 istart=np.minimum(iiS+ncomp,iii)
             #             else:
@@ -401,10 +221,11 @@ def cross_correlate(rootpath: str, raw_store: RawDataStore, params: FFTParameter
 
             # -----------now loop III for each receiver B----------
             for iiR in range(istart, iend):
-                if acorr_only:
-                    if station[iiR] != station[iiS]:
+                rec_chan = channels[iiR]
+                if fft_params.acorr_only:
+                    if src_chan.station != rec_chan.station:
                         continue
-                logger.debug("receiver: %s %s %s" % (station[iiR], network[iiR], channel[iiR]))
+                logger.debug(f"receiver: {rec_chan}")
                 if not fft_flag[iiR]:
                     continue
 
@@ -414,67 +235,32 @@ def cross_correlate(rootpath: str, raw_store: RawDataStore, params: FFTParameter
 
                 # ---------- check the existence of earthquakes ----------
                 rec_ind = np.where(
-                    (receiver_std < params.max_over_stdmax_over_std)
-                    & (receiver_std > 0)
-                    & (np.isnan(receiver_std) == 0)
+                    (receiver_std < fft_params.max_over_std) & (receiver_std > 0) & (np.isnan(receiver_std) == 0)
                 )[0]
                 bb = np.intersect1d(sou_ind, rec_ind)
                 if len(bb) == 0:
                     continue
 
                 t2 = time.time()
-                corr, tcorr, ncorr = noise_module.correlate(sfft1[bb, :], sfft2[bb, :], params, Nfft, fft_time[iiR][bb])
+                corr, tcorr, ncorr = noise_module.correlate(
+                    sfft1[bb, :], sfft2[bb, :], fft_params, Nfft, fft_time[iiR][bb]
+                )
                 t3 = time.time()
 
-                # ---------------keep daily cross-correlation into a hdf5 file--------------
-                tname = os.path.basename(tdir[ick])
-                if input_fmt != "h5":
-                    tname += ".h5"
-
-                # WIP: WRITE
-                # cc_h5 = os.path.join(CCFDIR, tname)
-                # crap = np.zeros(corr.shape, dtype=corr.dtype)
-
-                # with pyasdf.ASDFDataSet(cc_h5, mpi=False) as ccf_ds:
-                #     coor = {
-                #         "lonS": clon[iiS],
-                #         "latS": clat[iiS],
-                #         "lonR": clon[iiR],
-                #         "latR": clat[iiR],
-                #     }
-                #     comp = channel[iiS][-1] + channel[iiR][-1]
-                #     parameters = noise_module.cc_parameters(params, coor, tcorr, ncorr, comp)
-
-                #     # source-receiver pair
-                #     data_type = network[iiS] + "." + station[iiS] + "_" + network[iiR] + "." + station[iiR]
-                #     path = channel[iiS] + "_" + channel[iiR]
-                #     crap[:] = corr[:]
-                #     ccf_ds.add_auxiliary_data(data=crap, data_type=data_type, path=path, parameters=parameters)
-                #     ftmp.write(
-                #         network[iiS]
-                #         + "."
-                #         + station[iiS]
-                #         + "."
-                #         + channel[iiS]
-                #         + "_"
-                #         + network[iiR]
-                #         + "."
-                #         + station[iiR]
-                #         + "."
-                #         + channel[iiR]
-                #         + "\n"
-                #     )
-
+                coor = {
+                    "lonS": src_chan.station.lon,
+                    "latS": src_chan.station.lat,
+                    "lonR": rec_chan.station.lon,
+                    "latR": rec_chan.station.lat,
+                }
+                comp = src_chan.type.get_orientation() + rec_chan.type.get_orientation()
+                parameters = noise_module.cc_parameters(fft_params, coor, tcorr, ncorr, comp)
+                cc_store.append(ts, src_chan, rec_chan, fft_params, parameters, corr)
                 t4 = time.time()
                 logger.debug("read S %6.4fs, cc %6.4fs, write cc %6.4fs" % ((t1 - t0), (t3 - t2), (t4 - t3)))
 
                 del fft2, sfft2, receiver_std
             del fft1, sfft1, source_std
-
-        # create a stamp to show time chunk being done
-        # WIP:
-        # ftmp.write("done")
-        # ftmp.close()
 
         fft_array = []
         fft_std = []
@@ -484,11 +270,44 @@ def cross_correlate(rootpath: str, raw_store: RawDataStore, params: FFTParameter
         print("unreadable garbarge", n)
 
         t11 = time.time()
-        print("it takes %6.2fs to process the chunk of %s" % (t11 - t10, tdir[ick].split("/")[-1]))
+        print("it takes %6.2fs to process the chunk of %s" % (t11 - t10, ts))
 
     tt1 = time.time()
     print("it takes %6.2fs to process step 1 in total" % (tt1 - tt0))
     comm.barrier()
+
+
+def compute_fft(
+    fft_params: FFTParameters,
+    ch_data: ChannelData
+    # WIP: ) -> Tuple[np.ndarray[Any, np.dtype[np.complex128]], np.ndarray[np.dtype.float32],
+    # np.ndarray[np.dtype.float64], int, int]:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, int, int]:
+    if ch_data.data.size == 0:
+        return (np.empty, np.empty, np.empty)
+
+    # cut daily-long data into smaller segments (dataS always in 2D)
+    trace_stdS, dataS_t, dataS = noise_module.cut_trace_make_stat(
+        fft_params, ch_data
+    )  # optimized version:3-4 times faster
+    if not len(dataS):
+        return (np.empty, np.empty, np.empty)
+
+    N = dataS.shape[0]
+
+    # do normalization if needed
+    source_white = noise_module.noise_processing(fft_params, dataS)
+    Nfft = source_white.shape[1]
+    Nfft2 = Nfft // 2
+    logger.debug(f"N and Nfft are {N}, {Nfft}")
+
+    # load fft data in memory for cross-correlations
+    data = source_white[:, :Nfft2]
+    fft = data.reshape(data.size)
+    std = trace_stdS
+    fft_time = dataS_t
+    del trace_stdS, dataS_t, dataS, source_white, data
+    return fft, std, fft_time, N, Nfft2
 
 
 def check_memory(params: FFTParameters, nsta: int) -> int:

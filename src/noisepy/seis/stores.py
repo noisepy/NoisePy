@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import List
+from typing import Any, Dict, List
 
 import numpy as np
 from datetimerange import DateTimeRange
 
-from .datatypes import Channel, ChannelData, CrossCorrelationParameters, Station
+from .datatypes import Channel, ChannelData, FFTParameters
 
 
 class DataStore(ABC):
@@ -30,11 +30,6 @@ class DataStore(ABC):
     def get_timespans(self) -> List[DateTimeRange]:
         pass
 
-    def get_all_stations(self) -> List[Station]:
-        timespans = self.get_timespans()
-        stations = set(ch.station for ts in timespans for ch in self.get_channels(ts))
-        return list(stations)
-
 
 class RawDataStore(DataStore):
     """
@@ -47,9 +42,13 @@ class RawDataStore(DataStore):
         pass
 
 
-class CrossCorrelationDataStore(DataStore):
+class CrossCorrelationDataStore:
     @abstractmethod
-    def contains(self, timespan: DateTimeRange, chan1: Channel, chan2: Channel):
+    def contains(self, timespan: DateTimeRange, chan1: Channel, chan2: Channel, parameters: FFTParameters) -> bool:
+        pass
+
+    @abstractmethod
+    def save_parameters(self, parameters: FFTParameters):
         pass
 
     @abstractmethod
@@ -58,7 +57,8 @@ class CrossCorrelationDataStore(DataStore):
         timespan: DateTimeRange,
         chan1: Channel,
         chan2: Channel,
-        parameters: CrossCorrelationParameters,
+        parameters: FFTParameters,
+        cc_params: Dict[str, Any],
         data: np.ndarray,
     ):
         pass

@@ -21,13 +21,14 @@
     {
       "name": "Python: cross_correlate",
       "type": "python",
-      "preLaunchTask": "Remove CCF",
       "request": "launch",
-      "program": "${workspaceFolder}/src/noisepy.py",
+      "module": "noisepy.seis.main",
       "args": [
         "cross_correlate",
         "--freq_norm",
-        "rma"
+        "rma",
+        "--path",
+        "${userHome}/s3tmp/tiny"
       ],
       "console": "integratedTerminal",
       "justMyCode": true

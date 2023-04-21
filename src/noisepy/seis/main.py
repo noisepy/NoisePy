@@ -6,6 +6,9 @@ from typing import Any, Callable, List
 
 import obspy
 
+from noisepy.seis.asdfstore import ASDFCCStore, ASDFRawDataStore
+from noisepy.seis.datatypes import FFTParameters
+
 from .S0A_download_ASDF_MPI import download
 from .S1_fft_cc_MPI import cross_correlate
 from .S2_stacking import stack
@@ -30,7 +33,31 @@ def valid_date(d: str) -> str:
     return d
 
 
+def initialize_fft_params(raw_dir: str) -> FFTParameters:
+    params = FFTParameters()
+    dfile = os.path.join(raw_dir, "download_info.txt")
+    down_info = eval(open(dfile).read())  # TODO: do proper json/yaml serialization
+    params.samp_freq = down_info["samp_freq"]
+    params.freqmin = down_info["freqmin"]
+    params.freqmax = down_info["freqmax"]
+    params.start_date = down_info["start_date"]
+    params.end_date = down_info["end_date"]
+    params.inc_hours = down_info["inc_hours"]
+    params.ncomp = down_info["ncomp"]
+    return params
+
+
 def main(args: typing.Any):
+    def run_cross_correlation():
+        raw_dir = os.path.join(args.path, "RAW_DATA")
+        ccf_dir = os.path.join(args.path, "CCF")
+        fft_params = initialize_fft_params(raw_dir)  # FFTParameters()
+
+        fft_params.freq_norm = args.freq_norm
+        cc_store = ASDFCCStore(ccf_dir)
+        raw_store = ASDFRawDataStore(raw_dir)
+        cross_correlate(raw_store, fft_params, cc_store)
+
     if args.step == Step.DOWNLOAD:
         download(
             args.path,
@@ -41,7 +68,7 @@ def main(args: typing.Any):
             args.inc_hours,
         )
     if args.step == Step.CROSS_CORRELATE:
-        cross_correlate(args.path, args.freq_norm)
+        run_cross_correlation()
     if args.step == Step.STACK:
         stack(args.path, args.method)
     if args.step == Step.ALL:
@@ -53,7 +80,7 @@ def main(args: typing.Any):
             [args.end],
             args.inc_hours,
         )
-        cross_correlate(args.path, args.freq_norm)
+        run_cross_correlation()
         stack(args.path, args.method)
 
 
