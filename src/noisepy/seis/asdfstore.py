@@ -69,13 +69,14 @@ class ASDFCCStore(CrossCorrelationDataStore):
         self.directory = directory
         Path(directory).mkdir(exist_ok=True)
 
+    # CrossCorrelationDataStore implementation
     def contains(
         self, timespan: DateTimeRange, src_chan: Channel, rec_chan: Channel, parameters: ConfigParameters
     ) -> bool:
-        data_type = self._get_data_type(src_chan, rec_chan)
-        contains = self._contains(timespan, data_type)
+        station_pair = self._get_station_pair(src_chan, rec_chan)
+        contains = self._contains(timespan, station_pair)
         if contains:
-            logger.info(f"Cross-correlation {data_type} already exists")
+            logger.info(f"Cross-correlation {station_pair} already exists")
         return contains
 
     def save_parameters(self, parameters: ConfigParameters):
@@ -95,12 +96,16 @@ class ASDFCCStore(CrossCorrelationDataStore):
         cc_params: Dict[str, Any],
         corr: np.ndarray,
     ):
-        # source-receiver pair
-        path = f"{src_chan.type}_{rec_chan.type}"
-        data_type = self._get_data_type(src_chan, rec_chan)
+        # source-receiver pair: e.g. CI.ARV_CI.BAK
+        station_pair = self._get_station_pair(src_chan, rec_chan)
+        # channels, e.g. bhn_00_bhn_00
+        channels = f"{src_chan.type}_{rec_chan.type}"
         data = np.zeros(corr.shape, dtype=corr.dtype)
         data[:] = corr[:]
-        self._add_aux_data(timespan, cc_params, data_type, path, data)
+        self._add_aux_data(timespan, cc_params, station_pair, channels, data)
+
+    def mark_done(self, timespan: DateTimeRange):
+        self._add_aux_data(timespan, {}, PROGRESS_DATATYPE, DONE_PATH, np.zeros(0))
 
     def is_done(self, timespan: DateTimeRange):
         done = self._contains(timespan, PROGRESS_DATATYPE, DONE_PATH)
@@ -108,12 +113,10 @@ class ASDFCCStore(CrossCorrelationDataStore):
             logger.info(f"Timespan {timespan} already computed")
         return done
 
-    def mark_done(self, timespan: DateTimeRange):
-        self._add_aux_data(timespan, {}, PROGRESS_DATATYPE, DONE_PATH, np.zeros(0))
-
     def read(self, chan1: Channel, chan2: Channel, start: datetime, end: datetime) -> np.ndarray:
         pass
 
+    # private helper methods
     def _contains(self, timespan: DateTimeRange, data_type: str, path: str = None):
         filename = self._get_filename(timespan)
         if not os.path.isfile(filename):
@@ -131,7 +134,7 @@ class ASDFCCStore(CrossCorrelationDataStore):
         with pyasdf.ASDFDataSet(filename, mpi=False) as ccf_ds:
             ccf_ds.add_auxiliary_data(data=data, data_type=data_type, path=path, parameters=params)
 
-    def _get_data_type(self, src_chan, rec_chan):
+    def _get_station_pair(self, src_chan, rec_chan):
         return f"{src_chan.station}_{rec_chan.station}"
 
     def _get_filename(self, timespan: DateTimeRange) -> str:
@@ -139,8 +142,3 @@ class ASDFCCStore(CrossCorrelationDataStore):
             self.directory,
             f"{timespan.start_datetime.strftime(DATE_FORMAT)}T{timespan.end_datetime.strftime(DATE_FORMAT)}.h5",
         )
-
-
-def get_channel_pair_key(src_chan: Channel, rec_chan: Channel) -> str:
-    # E.g. CI.BAK.BHZ_CI.BAK.BHZ
-    return f"{src_chan.station}.{src_chan.type}_{rec_chan.station}.{rec_chan.type}"
