@@ -231,14 +231,14 @@ def compute_fft(
     fft_params: ConfigParameters, ch_data: ChannelData
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, int, int]:
     if ch_data.data.size == 0:
-        return (np.empty, np.empty, np.empty)
+        return (np.empty, np.empty, np.empty, 0, 0)
 
     # cut daily-long data into smaller segments (dataS always in 2D)
     trace_stdS, dataS_t, dataS = noise_module.cut_trace_make_stat(
         fft_params, ch_data
     )  # optimized version:3-4 times faster
     if not len(dataS):
-        return (np.empty, np.empty, np.empty)
+        return (np.empty, np.empty, np.empty, 0, 0)
 
     N = dataS.shape[0]
 

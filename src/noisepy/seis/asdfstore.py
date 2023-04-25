@@ -98,8 +98,8 @@ class ASDFCCStore(CrossCorrelationDataStore):
     ):
         # source-receiver pair: e.g. CI.ARV_CI.BAK
         station_pair = self._get_station_pair(src_chan, rec_chan)
-        # channels, e.g. bhn_00_bhn_00
-        channels = f"{src_chan.type}_{rec_chan.type}"
+        # channels, e.g. bhn_bhn
+        channels = f"{src_chan.type.name}_{rec_chan.type.name}"
         data = np.zeros(corr.shape, dtype=corr.dtype)
         data[:] = corr[:]
         self._add_aux_data(timespan, cc_params, station_pair, channels, data)

@@ -8,6 +8,8 @@ import scipy
 from obspy.signal.filter import bandpass
 from scipy.fftpack import next_fast_len
 
+from noisepy.seis.constants import PROGRESS_DATATYPE
+
 """
 Ensembles of plotting functions to display intermediate/final waveforms from the NoisePy package.
 by Chengxin Jiang @Harvard (May.04.2019)
@@ -164,6 +166,8 @@ def plot_substack_cc(sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir=
     indx2 = indx1 + 2 * int(disp_lag / dt) + 1
 
     for spair in spairs:
+        if spair == PROGRESS_DATATYPE:
+            continue
         ttr = spair.split("_")
         net1, sta1 = ttr[0].split(".")
         net2, sta2 = ttr[1].split(".")
