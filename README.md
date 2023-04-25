@@ -24,22 +24,22 @@ The nature of NoisePy being composed of python scripts allows flexible package i
 
 # With Conda:
 ```bash
-$ conda create -n noisepy python=3.8 pip
-$ conda activate noisepy
-$ conda install -c conda-forge openmpi
-$ pip install noisepy-seis
+conda create -n noisepy python=3.8 pip
+conda activate noisepy
+conda install -c conda-forge openmpi
+pip install noisepy-seis
 ```
 
 # With virtual environment:
 An MPI installation is required. E.g. for macOS using [brew](https://brew.sh/) :
-```sh
-$ brew install open-mpi
+```bash
+brew install open-mpi
 ```
 
-```sh
-$ python -m venv noisepy
-$ source noisepy/bin/activate
-$ pip install noisepy-seis
+```bash
+python -m venv noisepy
+source noisepy/bin/activate
+pip install noisepy-seis
 ```
 To run the code on a single core, open the terminal and activate the noisepy environment before run following command. To run on institutional clusters, see installation notes for individual packages on the module list of the cluster. Examples of installation on Frontera are below.
 
@@ -59,7 +59,7 @@ This tutorial presents one simple example of how NoisePy might work! We strongly
 Chengxin Jiang (chengxinjiang@gmail.com)
 Marine Denolle (mdenolle@uw.edu).
 
-#### Reference
+#### Peer-Reviewed Publications Referenced
 Seats, K. J., Jesse F. L., and German A. P. "Improved ambient noise correlation functions using Welch′ s method." _Geophysical Journal International_ 188, no. 2 (2012): 513-523.
 *Jiang, C. and Denolle, M. "NoisePy: a new high-performance python tool for seismic ambient noise seismology." _Seismological Research Letter_ 91, no. 3 (2020): 1853–1866..
 ** Yuan, C., Bryan, J. T., and Denolle, M. "Numerical comparison of time-, frequency- and wavelet-domain methods for coda wave interferometry." _Geophysical Journal International_ 226, no. 2 (2021): 828-846.
