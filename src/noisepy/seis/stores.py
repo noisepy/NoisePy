@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import List
+from typing import Any, Dict, List
 
 import numpy as np
 from datetimerange import DateTimeRange
 
-from .datatypes import Channel, ChannelData, CrossCorrelationParameters
+from .datatypes import Channel, ChannelData, ConfigParameters
 
 
 class DataStore(ABC):
@@ -42,9 +42,15 @@ class RawDataStore(DataStore):
         pass
 
 
-class CrossCorrelationDataStore(DataStore):
+class CrossCorrelationDataStore:
     @abstractmethod
-    def contains(self, timespan: DateTimeRange, chan1: Channel, chan2: Channel):
+    def contains(
+        self, timespan: DateTimeRange, src_chan: Channel, rec_chan: Channel, parameters: ConfigParameters
+    ) -> bool:
+        pass
+
+    @abstractmethod
+    def save_parameters(self, parameters: ConfigParameters):
         pass
 
     @abstractmethod
@@ -53,9 +59,18 @@ class CrossCorrelationDataStore(DataStore):
         timespan: DateTimeRange,
         chan1: Channel,
         chan2: Channel,
-        parameters: CrossCorrelationParameters,
+        parameters: ConfigParameters,
+        cc_params: Dict[str, Any],
         data: np.ndarray,
     ):
+        pass
+
+    @abstractmethod
+    def is_done(self, timespan: DateTimeRange):
+        pass
+
+    @abstractmethod
+    def mark_done(self, timespan: DateTimeRange):
         pass
 
     @abstractmethod
