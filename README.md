@@ -11,39 +11,46 @@ Detailed documentation can be found at https://noisepy.readthedocs.io/en/latest/
 
 <img src="https://raw.githubusercontent.com/mdenolle/NoisePy/master/docs/figures/logo.png" width="800" height="400">
 
-## Major updates include
-* adding options for several stacking methods such as nth-root, robust-stacking, auto-covariance and selective. A script is added to the folder of application_modules to cross-compare the effects of different stacking method (note that `substack` parameter in S2 has to be `True` in order to use it)
-* adding a jupter notebook for tutorials on performing seismic monitoring analysis using NoisePy
-* adding a jupter notebook for generating response spectrum for a nodal array (to be done)
+## Major updates coming
+NoisePy is going through a major refactoring to make this package easier to use and contribute.
 
 # Installation
-The nature of NoisePy being composed of python scripts allows flexible package installation, which is essentially to build dependent libraries the scripts and related functions live upon. We recommend using [conda](https://docs.conda.io/en/latest/) or [pip](https://pypi.org/project/pip/) to install the library due to their convenience. Below are command lines we have tested to create a python environment to run NoisePy. Note that the test is performed on `macOS Mojave (10.14.5)`, so it could be slightly different for other OS.
+The nature of NoisePy being composed of python scripts allows flexible package installation, which is essentially to build dependent libraries the scripts and related functions live upon. We recommend using [conda](https://docs.conda.io/en/latest/) or [pip](https://pypi.org/project/pip/) to install the library due to their convenience. Below are command lines we have tested to create a python environment to run NoisePy. Note that the test is performed on `macOS Big Sur (11.7)`, so it could be slightly different for other OS.
 
 
 ### Note the order of the command lines below matters ###
 
 # With Conda:
 ```bash
-$ conda create -n noisepy python=3.8 pip
-$ conda activate noisepy
-$ conda install -c conda-forge openmpi
-$ pip install noisepy-seis
+conda create -n noisepy python=3.8 pip
+conda activate noisepy
+conda install -c conda-forge openmpi
+pip install noisepy-seis
 ```
 
 # With virtual environment:
 An MPI installation is required. E.g. for macOS using [brew](https://brew.sh/) :
-```sh
-$ brew install open-mpi
+```bash
+brew install open-mpi
 ```
 
-```sh
-$ python -m venv noisepy
-$ source noisepy/bin/activate
-$ pip install noisepy-seis
+```bash
+python -m venv noisepy
+source noisepy/bin/activate
+pip install noisepy-seis
 ```
 To run the code on a single core, open the terminal and activate the noisepy environment before run following command. To run on institutional clusters, see installation notes for individual packages on the module list of the cluster. Examples of installation on Frontera are below.
 
+
+# Deploy using Docker
+We use I/O on disk, so users need root access to the file system. To install rootless docker, see instructions [here](https://docs.docker.com/engine/security/rootless/#install).
+```bash
+docker pull  ghcr.io/mdenolle/noisepy:latest
+docker run -v ~/tmp:/tmp cross_correlate --path /tmp
+```
+
 # Functionality
+Here is a list of features of the package:
 * download continous noise data based on obspy's core functions of [get_station](https://docs.obspy.org/packages/autogen/obspy.clients.fdsn.client.Client.get_stations.html) and [get_waveforms](https://docs.obspy.org/packages/autogen/obspy.clients.fdsn.client.Client.get_waveforms.html)
 * save seismic data in [ASDF](https://asdf-definition.readthedocs.io/en/latest/) format, which convinently assembles meta, wavefrom and auxililary data into one single file ([Tutorials](https://github.com/SeismicData/pyasdf/blob/master/doc/tutorial.rst) on reading/writing ASDF files)
 * offers high flexibility to handle messy SAC/miniSEED data stored on your local machine and convert them into ASDF format data that could easily be pluged into NoisePy
@@ -59,7 +66,7 @@ This tutorial presents one simple example of how NoisePy might work! We strongly
 Chengxin Jiang (chengxinjiang@gmail.com)
 Marine Denolle (mdenolle@uw.edu).
 
-#### Reference
+#### Peer-Reviewed Publications Referenced
 Seats, K. J., Jesse F. L., and German A. P. "Improved ambient noise correlation functions using Welch′ s method." _Geophysical Journal International_ 188, no. 2 (2012): 513-523.
 *Jiang, C. and Denolle, M. "NoisePy: a new high-performance python tool for seismic ambient noise seismology." _Seismological Research Letter_ 91, no. 3 (2020): 1853–1866..
 ** Yuan, C., Bryan, J. T., and Denolle, M. "Numerical comparison of time-, frequency- and wavelet-domain methods for coda wave interferometry." _Geophysical Journal International_ 226, no. 2 (2021): 828-846.
