@@ -33,6 +33,7 @@ class ChannelType:
         if "_" in self.name:
             return self.name.split("_")[0][-1]
         else:
+            print(self.name)
             assert len(self.name) == 3
             return self.name[-1]
 
@@ -60,17 +61,19 @@ class CorrelationMethod(Enum):
 
 @dataclass
 class ConfigParameters:
-    dt: float = 1.0
+    dt: float = 0.05   # TODO: dt should be 1/sampling rate
     start_date: str = ""  # TODO: can we make this datetime?
     end_date: str = ""
-    samp_freq: float = 20
-    cc_len: int = 1800  # basic unit of data length for fft (sec)
+    samp_freq: float = 20  # TODO: change this samp_freq for the obspy "sampling_rate"
+    cc_len: float = 1800.  # basic unit of data length for fft (sec)
     # pre-processing parameters
-    step: int = 450  # overlapping between each cc_len (sec)
+    step: float = 450.  # overlapping between each cc_len (sec)
     freqmin: float = 0.05
     freqmax: float = 2.0
-    freq_norm: str = "rma"
-    time_norm: str = "no"  # 'no' for no normalization, or 'rma', 'one_bit' for normalization in time domain
+    freq_norm: str = "rma"  # choose between "rma" for a soft whitenning or "no" for no whitening
+    #  TODO: change "no" for "None", and add "one_bit" as an option
+    time_norm: str = "no"  # 'no' for no normalization, or 'rma', 'one_bit' for normalization in time domain,
+    # TODO: change time_norm option from "no" to "None"
     cc_method: str = "xcorr"  # 'xcorr' for pure cross correlation, 'deconv' for deconvolution;
     # FOR "COHERENCY" PLEASE set freq_norm to "rma", time_norm to "no" and cc_method to "xcorr"
     smooth_N: int = 10  # moving window length for time/freq domain normalization if selected (points)
@@ -128,5 +131,5 @@ class ChannelData:
     """
 
     data: np.ndarray
-    sampling_rate: float
+    sampling_rate: int
     start_timestamp: float

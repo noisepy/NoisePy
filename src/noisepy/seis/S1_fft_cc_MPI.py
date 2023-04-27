@@ -96,7 +96,7 @@ def cross_correlate(raw_store: RawDataStore, fft_params: ConfigParameters, cc_st
         channels = raw_store.get_channels(ts)
         nchannels = len(channels)
         nseg_chunk = check_memory(fft_params, nchannels)
-        nnfft = int(next_fast_len(int(fft_params.cc_len * fft_params.samp_freq)))
+        nnfft = int(next_fast_len(int(fft_params.cc_len * fft_params.samp_freq)))   # samp_freq should be sampling_rate
         # open array to store fft data/info in memory
         fft_array = np.zeros((nchannels, nseg_chunk * (nnfft // 2)), dtype=np.complex64)
         fft_std = np.zeros((nchannels, nseg_chunk), dtype=np.float32)
@@ -195,7 +195,7 @@ def cross_correlate(raw_store: RawDataStore, fft_params: ConfigParameters, cc_st
                     sfft1[bb, :], sfft2[bb, :], fft_params, Nfft, fft_time[iiR][bb]
                 )
                 t3 = time.time()
-
+                print(src_chan)
                 coor = {
                     "lonS": src_chan.station.lon,
                     "latS": src_chan.station.lat,
@@ -203,6 +203,7 @@ def cross_correlate(raw_store: RawDataStore, fft_params: ConfigParameters, cc_st
                     "latR": rec_chan.station.lat,
                 }
                 comp = src_chan.type.get_orientation() + rec_chan.type.get_orientation()
+                print(comp)
                 parameters = noise_module.cc_parameters(fft_params, coor, tcorr, ncorr, comp)
                 cc_store.append(ts, src_chan, rec_chan, fft_params, parameters, corr)
                 t4 = time.time()

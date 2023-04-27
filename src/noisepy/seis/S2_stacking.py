@@ -221,8 +221,8 @@ def stack(rootpath: str, stack_method: str):
             except Exception:
                 if flag:
                     print("continue! no pair of %s in %s" % (dtype, ifile))
-                continue
-
+                continue          
+            print(path_list)
             # seperate auto and cross-correlation
             if fauto == 1:
                 if ncomp == 3 and len(path_list) < 6:
