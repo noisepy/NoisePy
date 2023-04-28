@@ -343,6 +343,7 @@ def download(
                     else:
                         tlocation = location[ista]
                     new_tags = "{0:s}_{1:s}".format(chan[ista].lower(), tlocation.lower())
+                    print(new_tags)
                     ds.add_waveforms(tr, tag=new_tags)
 
                 # if flag:

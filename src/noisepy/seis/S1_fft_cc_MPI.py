@@ -168,6 +168,8 @@ def cross_correlate(raw_store: RawDataStore, fft_params: ConfigParameters, cc_st
             # -----------now loop III for each receiver B----------
             for iiR in range(istart, iend):
                 rec_chan = channels[iiR]
+                print(rec_chan)
+                print(src_chan)
                 if fft_params.acorr_only:
                     if src_chan.station != rec_chan.station:
                         continue
