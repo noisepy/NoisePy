@@ -519,10 +519,10 @@ def cut_trace_make_stat(fc_para: ConfigParameters, ch_data: ChannelData):
         return source_params, dataS_t, dataS
 
     # initialize variables
-    npts = fc_para.cc_len * sps
+    npts = int(fc_para.cc_len * sps)
     # trace_madS = np.zeros(nseg,dtype=np.float32)
     trace_stdS = np.zeros(nseg, dtype=np.float32)
-    dataS = np.zeros(shape=(nseg, npts), dtype=np.float32)
+    dataS = np.zeros(shape=(int(nseg), int(npts)), dtype=np.float32)
     dataS_t = np.zeros(nseg, dtype=np.float)
 
     indx1 = 0
@@ -532,7 +532,7 @@ def cut_trace_make_stat(fc_para: ConfigParameters, ch_data: ChannelData):
         # trace_madS[iseg] = (np.max(np.abs(dataS[iseg]))/all_madS)
         trace_stdS[iseg] = np.max(np.abs(dataS[iseg])) / all_stdS
         dataS_t[iseg] = starttime + fc_para.step * iseg
-        indx1 = indx1 + fc_para.step * sps
+        indx1 = indx1 + int(fc_para.step) * sps
 
     # 2D array processing
     dataS = demean(dataS)
@@ -1134,7 +1134,7 @@ def stacking_rma(cc_array, cc_time, cc_ngood, stack_para):
     )
 
 
-def rotation(bigstack, parameters, locs, flag):
+def rotation(bigstack, parameters, locs):
     """
     this function transfers the Green's tensor from a E-N-Z system into a R-T-Z one
 

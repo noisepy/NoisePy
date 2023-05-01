@@ -6,7 +6,7 @@ import pytest
 from datetimerange import DateTimeRange
 
 from noisepy.seis.asdfstore import ASDFCCStore, ASDFRawDataStore
-from noisepy.seis.datatypes import Channel, ConfigParameters, Station
+from noisepy.seis.datatypes import Channel, ChannelType, ConfigParameters, Station
 
 
 @pytest.fixture
@@ -55,8 +55,8 @@ def test_ccstore(ccstore: ASDFCCStore):
     data = np.zeros(0)
     ts1 = make_1dts(datetime.now())
     ts2 = make_1dts(ts1.end_datetime)
-    src = Channel("foo", Station("nw", "sta1", -1, -1, -1, ""))
-    rec = Channel("bar", Station("nw", "sta2", -1, -1, -1, ""))
+    src = Channel(ChannelType("foo"), Station("nw", "sta1", -1, -1, -1, ""))
+    rec = Channel(ChannelType("bar"), Station("nw", "sta2", -1, -1, -1, ""))
 
     # assert empty state
     assert not ccstore.is_done(ts1)

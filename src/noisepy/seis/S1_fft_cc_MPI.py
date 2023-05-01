@@ -96,7 +96,7 @@ def cross_correlate(raw_store: RawDataStore, fft_params: ConfigParameters, cc_st
         channels = raw_store.get_channels(ts)
         nchannels = len(channels)
         nseg_chunk = check_memory(fft_params, nchannels)
-        nnfft = int(next_fast_len(int(fft_params.cc_len * fft_params.samp_freq)))
+        nnfft = int(next_fast_len(int(fft_params.cc_len * fft_params.samp_freq)))  # samp_freq should be sampling_rate
         # open array to store fft data/info in memory
         fft_array = np.zeros((nchannels, nseg_chunk * (nnfft // 2)), dtype=np.complex64)
         fft_std = np.zeros((nchannels, nseg_chunk), dtype=np.float32)
@@ -121,8 +121,7 @@ def cross_correlate(raw_store: RawDataStore, fft_params: ConfigParameters, cc_st
             logger.warning("it seems some stations miss data in download step, but it is OKAY!")
 
         # ###########PERFORM CROSS-CORRELATION##################
-        # make cross-correlations
-        for iiS in range(len(channels)):
+        for iiS in range(nchannels):  # looping over the channel source
             src_chan = channels[iiS]
             fft1 = fft_array[iiS]
             source_std = fft_std[iiS]
@@ -131,7 +130,6 @@ def cross_correlate(raw_store: RawDataStore, fft_params: ConfigParameters, cc_st
             ]
             if not fft_flag[iiS] or not len(sou_ind):
                 continue
-
             t0 = time.time()
             # -----------get the smoothed source spectrum for decon later----------
             sfft1 = noise_module.smooth_source_spect(fft_params, fft1)
@@ -140,7 +138,7 @@ def cross_correlate(raw_store: RawDataStore, fft_params: ConfigParameters, cc_st
             logger.debug("smoothing source takes %6.4fs" % (t1 - t0))
 
             # get index right for auto/cross correlation
-            istart = iiS
+            istart = iiS  # start at the channel source / only fills the upper right triangle matrix of channel pairs
             iend = nchannels
             #             if ncomp==1:
             #                 iend=np.minimum(iiS+ncomp,iii)
@@ -174,7 +172,6 @@ def cross_correlate(raw_store: RawDataStore, fft_params: ConfigParameters, cc_st
                 logger.debug(f"receiver: {rec_chan}")
                 if not fft_flag[iiR]:
                     continue
-
                 if cc_store.contains(ts, src_chan, rec_chan, fft_params):
                     continue
 
@@ -195,7 +192,6 @@ def cross_correlate(raw_store: RawDataStore, fft_params: ConfigParameters, cc_st
                     sfft1[bb, :], sfft2[bb, :], fft_params, Nfft, fft_time[iiR][bb]
                 )
                 t3 = time.time()
-
                 coor = {
                     "lonS": src_chan.station.lon,
                     "latS": src_chan.station.lat,
@@ -231,14 +227,14 @@ def compute_fft(
     fft_params: ConfigParameters, ch_data: ChannelData
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, int, int]:
     if ch_data.data.size == 0:
-        return (np.empty, np.empty, np.empty)
+        return (np.empty, np.empty, np.empty, 0, 0)
 
     # cut daily-long data into smaller segments (dataS always in 2D)
     trace_stdS, dataS_t, dataS = noise_module.cut_trace_make_stat(
         fft_params, ch_data
     )  # optimized version:3-4 times faster
     if not len(dataS):
-        return (np.empty, np.empty, np.empty)
+        return (np.empty, np.empty, np.empty, 0, 0)
 
     N = dataS.shape[0]
 
