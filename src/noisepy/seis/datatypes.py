@@ -61,13 +61,13 @@ class CorrelationMethod(Enum):
 
 @dataclass
 class ConfigParameters:
-    dt: float = 0.05   # TODO: dt should be 1/sampling rate
+    dt: float = 0.05  # TODO: dt should be 1/sampling rate
     start_date: str = ""  # TODO: can we make this datetime?
     end_date: str = ""
     samp_freq: float = 20  # TODO: change this samp_freq for the obspy "sampling_rate"
-    cc_len: float = 1800.  # basic unit of data length for fft (sec)
+    cc_len: float = 1800.0  # basic unit of data length for fft (sec)
     # pre-processing parameters
-    step: float = 450.  # overlapping between each cc_len (sec)
+    step: float = 450.0  # overlapping between each cc_len (sec)
     freqmin: float = 0.05
     freqmax: float = 2.0
     freq_norm: str = "rma"  # choose between "rma" for a soft whitenning or "no" for no whitening
