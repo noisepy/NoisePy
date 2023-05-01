@@ -74,9 +74,13 @@ class ASDFCCStore(CrossCorrelationDataStore):
         self, timespan: DateTimeRange, src_chan: Channel, rec_chan: Channel, parameters: ConfigParameters
     ) -> bool:
         station_pair = self._get_station_pair(src_chan, rec_chan)
-        contains = self._contains(timespan, station_pair)
+        channel_pair = self._get_channel_pair(src_chan, rec_chan)
+        print("in ASDFCCstore checking things")
+        print(f"station pair {station_pair}")
+        print(f"channel pair {channel_pair}")
+        contains = self._contains(timespan, station_pair, channel_pair)
         if contains:
-            logger.info(f"Cross-correlation {station_pair} already exists")
+            logger.info(f"Cross-correlation {station_pair} and {channel_pair} already exists")
         return contains
 
     def save_parameters(self, parameters: ConfigParameters):
@@ -136,6 +140,12 @@ class ASDFCCStore(CrossCorrelationDataStore):
 
     def _get_station_pair(self, src_chan, rec_chan):
         return f"{src_chan.station}_{rec_chan.station}"
+
+    def _get_channel_pair(self, src_chan, rec_chan):
+        comp1 = str(src_chan.type)
+        comp2 = str(rec_chan.type)
+        print(comp1)
+        return f"{comp1[:3]}_{comp2[:3]}"
 
     def _get_filename(self, timespan: DateTimeRange) -> str:
         return os.path.join(

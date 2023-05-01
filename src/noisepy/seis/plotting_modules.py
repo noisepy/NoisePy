@@ -1,3 +1,4 @@
+import logging
 import os
 
 import matplotlib.pyplot as plt
@@ -9,6 +10,8 @@ from obspy.signal.filter import bandpass
 from scipy.fftpack import next_fast_len
 
 from noisepy.seis.constants import PROGRESS_DATATYPE
+
+logging.getLogger("matplotlib.font_manager").disabled = True
 
 """
 Ensembles of plotting functions to display intermediate/final waveforms from the NoisePy package.

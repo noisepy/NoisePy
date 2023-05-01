@@ -10,7 +10,7 @@ readme = "README.md"
 license = {file= "LICENSE"}
 requires-python = ">=3.8,<=3.10"
 authors = [
-    { email = "mdenolle@fas.harvard.edu", name = "Marine Denolle" },
+    { email = "mdenolle@uw.edu", name = "Marine Denolle" },
     { email = "chengxin_jiang@fas.harvard.edu", name = "Chengxin Jiang" },
 ]
 keywords = [

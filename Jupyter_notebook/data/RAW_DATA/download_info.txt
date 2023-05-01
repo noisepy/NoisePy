@@ -1,1 +1,0 @@
-{'rm_resp': 'no', 'respdir': './data/resp', 'freqmin': 0.05, 'freqmax': 2, 'samp_freq': 20, 'start_date': '2019-02-01T00:00:00.000000Z', 'end_date': '2019-02-10T00:00:00.000000Z', 'inc_hours': 24, 'cc_len': 1800, 'step': 450, 'MAX_MEM': 5.0, 'lamin': 32.9, 'lamax': 35.9, 'lomin': -120.7, 'lomax': -118.5, 'ncomp': 3, 'nsta': 9}

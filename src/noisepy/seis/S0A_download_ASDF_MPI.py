@@ -72,10 +72,10 @@ freqmax = 2  # note this cannot exceed Nquist freq
 
 # targeted region/station information: only needed when down_list is False
 lamin, lamax, lomin, lomax = (
-    32.9,
-    35.9,
-    -120.7,
-    -118.5,
+    31,
+    36,
+    -122,
+    -115,
 )  # regional box: min lat, min lon, max lat, max lon (-114.0)
 net_list = ["CI"]  # network list
 
@@ -169,6 +169,7 @@ def download(
         lat = []
         elev = []
         nsta = 0
+        print("net list", net_list)
 
         # loop through specified network, station and channel lists
         for inet in net_list:
@@ -332,7 +333,6 @@ def download(
                     continue
 
                 # preprocess to clean data
-                print(sta[ista])
                 tr = noise_module.preprocess_raw(tr, sta_inv, prepro_para, date_info)
                 t2 = time.time()
                 tp += t2 - t1
@@ -343,11 +343,10 @@ def download(
                     else:
                         tlocation = location[ista]
                     new_tags = "{0:s}_{1:s}".format(chan[ista].lower(), tlocation.lower())
-                    print(new_tags)
+                    # above we should change the dag for: net.sta.loc.chan
                     ds.add_waveforms(tr, tag=new_tags)
 
                 # if flag:
-                print(ds, new_tags)
                 print("downloading data %6.2f s; pre-process %6.2f s" % ((t1 - t0), (t2 - t1)))
 
     tt1 = time.time()

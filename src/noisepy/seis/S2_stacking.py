@@ -134,6 +134,7 @@ def stack(rootpath: str, stack_method: str):
 
         # cross-correlation files
         ccfiles = sorted(glob.glob(os.path.join(CCFDIR, "*.h5")))
+        print(ccfiles)
 
         # load station info
         tlocs = pd.read_csv(locations)
@@ -179,7 +180,7 @@ def stack(rootpath: str, stack_method: str):
         else:
             fauto = 0
 
-        # continue when file is done
+        # continue when file is done: TODO: TO REMOVE THAT and use a Store.contain funxtion.
         toutfn = os.path.join(STACKDIR, idir + "/" + pairs_all[ipair] + ".tmp")
         if os.path.isfile(toutfn):
             continue
@@ -221,7 +222,7 @@ def stack(rootpath: str, stack_method: str):
             except Exception:
                 if flag:
                     print("continue! no pair of %s in %s" % (dtype, ifile))
-                continue          
+                continue
             print(path_list)
             # seperate auto and cross-correlation
             if fauto == 1:
@@ -286,6 +287,7 @@ def stack(rootpath: str, stack_method: str):
         for icomp in range(nccomp):
             comp = enz_system[icomp]
             indx = np.where(cc_comp == comp)[0]
+            print("index to find the comp ", indx)
 
             # jump if there are not enough data
             if len(indx) < 2:
@@ -293,6 +295,7 @@ def stack(rootpath: str, stack_method: str):
                 break
 
             stack_h5 = os.path.join(STACKDIR, idir + "/" + outfn)
+            print(stack_h5)
             # output stacked data
             (
                 cc_final,
@@ -303,6 +306,8 @@ def stack(rootpath: str, stack_method: str):
                 allstacks3,
                 nstacks,
             ) = noise_module.stacking(cc_array[indx], cc_time[indx], cc_ngood[indx], stack_para)
+            print("after stacking")
+            print(nstacks)
             if not len(allstacks1):
                 continue
             if rotation:
@@ -342,7 +347,7 @@ def stack(rootpath: str, stack_method: str):
                         path=comp,
                         parameters=tparameters,
                     )
-
+            print("Hey, i did some stacks and saved them into H5")
             # keep a track of all sub-stacked data from S1
             if keep_substack:
                 for ii in range(cc_final.shape[0]):
