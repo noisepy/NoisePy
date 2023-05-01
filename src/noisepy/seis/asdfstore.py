@@ -75,9 +75,7 @@ class ASDFCCStore(CrossCorrelationDataStore):
     ) -> bool:
         station_pair = self._get_station_pair(src_chan, rec_chan)
         channel_pair = self._get_channel_pair(src_chan, rec_chan)
-        print("in ASDFCCstore checking things")
-        print(f"station pair {station_pair}")
-        print(f"channel pair {channel_pair}")
+        logger.debug(f"station pair {station_pair} channel pair {channel_pair}")
         contains = self._contains(timespan, station_pair, channel_pair)
         if contains:
             logger.info(f"Cross-correlation {station_pair} and {channel_pair} already exists")
@@ -138,14 +136,11 @@ class ASDFCCStore(CrossCorrelationDataStore):
         with pyasdf.ASDFDataSet(filename, mpi=False) as ccf_ds:
             ccf_ds.add_auxiliary_data(data=data, data_type=data_type, path=path, parameters=params)
 
-    def _get_station_pair(self, src_chan, rec_chan):
+    def _get_station_pair(self, src_chan: Channel, rec_chan: Channel) -> str:
         return f"{src_chan.station}_{rec_chan.station}"
 
-    def _get_channel_pair(self, src_chan, rec_chan):
-        comp1 = str(src_chan.type)
-        comp2 = str(rec_chan.type)
-        print(comp1)
-        return f"{comp1[:3]}_{comp2[:3]}"
+    def _get_channel_pair(self, src_chan: Channel, rec_chan: Channel) -> str:
+        return f"{src_chan.type.name}_{rec_chan.type.name}"
 
     def _get_filename(self, timespan: DateTimeRange) -> str:
         return os.path.join(

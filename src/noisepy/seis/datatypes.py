@@ -33,7 +33,6 @@ class ChannelType:
         if "_" in self.name:
             return self.name.split("_")[0][-1]
         else:
-            print(self.name)
             assert len(self.name) == 3
             return self.name[-1]
 

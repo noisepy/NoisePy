@@ -180,7 +180,7 @@ def stack(rootpath: str, stack_method: str):
         else:
             fauto = 0
 
-        # continue when file is done: TODO: TO REMOVE THAT and use a Store.contain funxtion.
+        # continue when file is done: TODO: Remove this and use a Store.contains() function.
         toutfn = os.path.join(STACKDIR, idir + "/" + pairs_all[ipair] + ".tmp")
         if os.path.isfile(toutfn):
             continue
