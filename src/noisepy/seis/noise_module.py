@@ -1134,7 +1134,7 @@ def stacking_rma(cc_array, cc_time, cc_ngood, stack_para):
     )
 
 
-def rotation(bigstack, parameters, locs, flag):
+def rotation(bigstack, parameters, locs):
     """
     this function transfers the Green's tensor from a E-N-Z system into a R-T-Z one
 

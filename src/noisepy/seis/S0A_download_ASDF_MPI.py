@@ -169,8 +169,6 @@ def download(
         lat = []
         elev = []
         nsta = 0
-        print("net list", net_list)
-
         # loop through specified network, station and channel lists
         for inet in net_list:
             for ista in sta_list:

@@ -192,8 +192,6 @@ def cross_correlate(raw_store: RawDataStore, fft_params: ConfigParameters, cc_st
                     sfft1[bb, :], sfft2[bb, :], fft_params, Nfft, fft_time[iiR][bb]
                 )
                 t3 = time.time()
-                print("AFTER XCORR: source channels", src_chan)
-                print("AFTER XCORR: receiver channels", rec_chan)
                 coor = {
                     "lonS": src_chan.station.lon,
                     "latS": src_chan.station.lat,
@@ -201,7 +199,6 @@ def cross_correlate(raw_store: RawDataStore, fft_params: ConfigParameters, cc_st
                     "latR": rec_chan.station.lat,
                 }
                 comp = src_chan.type.get_orientation() + rec_chan.type.get_orientation()
-                print("component that will be saved", comp)
                 parameters = noise_module.cc_parameters(fft_params, coor, tcorr, ncorr, comp)
                 cc_store.append(ts, src_chan, rec_chan, fft_params, parameters, corr)
                 t4 = time.time()
