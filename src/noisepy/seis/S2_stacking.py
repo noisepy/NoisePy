@@ -221,7 +221,7 @@ def stack(rootpath: str, stack_method: str):
             except Exception:
                 logger.debug("continue! no pair of %s in %s" % (dtype, ifile))
                 continue
-            logger.debug(path_list)
+            logger.debug(f"path_list for {dtype}: {path_list}")
             # seperate auto and cross-correlation
             if fauto == 1:
                 if ncomp == 3 and len(path_list) < 6:
@@ -285,7 +285,7 @@ def stack(rootpath: str, stack_method: str):
         for icomp in range(nccomp):
             comp = enz_system[icomp]
             indx = np.where(cc_comp == comp)[0]
-            logger.debug("index to find the comp ", indx)
+            logger.debug(f"index to find the comp: {indx}")
 
             # jump if there are not enough data
             if len(indx) < 2:
@@ -293,7 +293,7 @@ def stack(rootpath: str, stack_method: str):
                 break
 
             stack_h5 = os.path.join(STACKDIR, idir + "/" + outfn)
-            logger.debug(stack_h5)
+            logger.debug(f"h5 stack path: {stack_h5}")
             # output stacked data
             (
                 cc_final,
@@ -304,8 +304,7 @@ def stack(rootpath: str, stack_method: str):
                 allstacks3,
                 nstacks,
             ) = noise_module.stacking(cc_array[indx], cc_time[indx], cc_ngood[indx], stack_para)
-            logger.debug("after stacking")
-            logger.debug(nstacks)
+            logger.debug(f"after stacking nstacks: {nstacks}")
             if not len(allstacks1):
                 continue
             if rotation:
