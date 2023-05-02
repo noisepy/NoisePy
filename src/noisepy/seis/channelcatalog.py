@@ -1,6 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from functools import cache
+from functools import lru_cache
 
 import diskcache as dc
 import obspy
@@ -71,7 +71,7 @@ class FDSNChannelCatalog(ChannelCatalog):
     def _get_cache_key(self, ts_str: str) -> str:
         return f"{self.url_key}_{ts_str}"
 
-    @cache
+    @lru_cache
     # pass the timestamp (DateTimeRange) as string so that the method is cacheable
     # since DateTimeRange is not hasheable
     def _get_inventory(self, ts_str: str) -> obspy.Inventory:
