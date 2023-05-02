@@ -62,8 +62,8 @@ def cross_correlate(
                 raw_store: Store to load data from
                 fft_params: Parameters for the FFT calculations
                 cc_store: Store for saving cross correlations
-                channel_filter: Function to decide whether a station should be used or not,
-                                if None, all stations are used
+                channel_filter: Function to decide whether a channel should be used or not,
+                                if None, all channels are used
 
     """
 

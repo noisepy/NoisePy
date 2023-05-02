@@ -72,7 +72,8 @@ class FDSNChannelCatalog(ChannelCatalog):
         return f"{self.url_key}_{ts_str}"
 
     @cache
-    # pass the timestamp (DateTimeRange) as string to that it's cacheable
+    # pass the timestamp (DateTimeRange) as string so that the method is cacheable
+    # since DateTimeRange is not hasheable
     def _get_inventory(self, ts_str: str) -> obspy.Inventory:
         ts = DateTimeRange.from_range_text(ts_str)
         key = self._get_cache_key(ts_str)
