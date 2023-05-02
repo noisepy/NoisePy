@@ -37,7 +37,7 @@ def valid_date(d: str) -> str:
 
 def initialize_fft_params(raw_dir: str) -> ConfigParameters:
     params = ConfigParameters()
-    dfile = os.path.join(raw_dir, "download_info.txt")
+    dfile = os.path.join(raw_dir, "download_info.json")
     down_info = eval(open(dfile).read())  # TODO: do proper json/yaml serialization
     params.samp_freq = down_info["samp_freq"]
     params.freqmin = down_info["freqmin"]
