@@ -27,7 +27,10 @@ class ChannelType:
             self.name = self.name.replace("U", "Z")
 
     def __repr__(self) -> str:
-        return f"{self.name}_{self.location}"
+        if len(self.location) > 0:
+            return f"{self.name}_{self.location}"
+        else:
+            return self.name
 
     def get_orientation(self) -> str:
         if "_" in self.name:

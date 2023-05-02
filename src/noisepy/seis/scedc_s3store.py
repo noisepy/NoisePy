@@ -12,7 +12,7 @@ from datetimerange import DateTimeRange
 from noisepy.seis.channelcatalog import ChannelCatalog
 from noisepy.seis.stores import RawDataStore
 
-from .datatypes import Channel, ChannelData, Station
+from .datatypes import Channel, ChannelData, ChannelType, Station
 
 logger = logging.getLogger(__name__)
 
@@ -59,12 +59,14 @@ class SCEDCS3DataStore(RawDataStore):
     def read_data(self, timespan: DateTimeRange, chan: Channel) -> ChannelData:
         # reconstruct the file name from the channel parameters
         chan_str = (
-            f"{chan.station.network}{chan.station.name.ljust(5, '_')}{chan.type}{chan.station.location.ljust(3, '_')}"
+            f"{chan.station.network}{chan.station.name.ljust(5, '_')}{chan.type.name}"
+            f"{chan.station.location.ljust(3, '_')}"
         )
         filename = os.path.join(self.directory, f"{chan_str}{timespan.start_datetime.strftime('%Y%j')}.ms")
         if not os.path.exists(filename):
             logger.warning(f"Could not find file {filename}")
-            return np.empty
+            return ChannelData(np.empty, -1, -1.0)
+
         stream = obspy.read(filename)[0]
         return ChannelData(stream.data, stream.stats.sampling_rate, stream.stats.starttime.timestamp)
 
@@ -84,7 +86,7 @@ class SCEDCS3DataStore(RawDataStore):
         channel = filename[7:10]
         location = filename[10:12].strip("_")
         return Channel(
-            channel,
+            ChannelType(channel, location),
             # lat/lon/elev will be populated later
             Station(network, station, -1, -1, -1, location),
         )
