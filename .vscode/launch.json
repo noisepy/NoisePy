@@ -2,15 +2,33 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Python: Unit tests",
+      "type": "python",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "${workspaceFolder}/tests"
+      ]
+    },
+    {
+      "name": "Python: Current File",
+      "type": "python",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
       "name": "Python: cross_correlate",
       "type": "python",
-      "preLaunchTask": "Remove CCF",
       "request": "launch",
-      "program": "${workspaceFolder}/src/noisepy.py",
+      "module": "noisepy.seis.main",
       "args": [
         "cross_correlate",
         "--freq_norm",
-        "rma"
+        "rma",
+        "--path",
+        "${userHome}/s3tmp/tiny"
       ],
       "console": "integratedTerminal",
       "justMyCode": true
