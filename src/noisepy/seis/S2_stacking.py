@@ -205,7 +205,7 @@ def stack(rootpath: str, stack_method: str):
         logger.debug("Good on memory (need %5.2f G and %s G provided)!" % (memory_size, MAX_MEM))
         # allocate array to store fft data/info
         cc_array = np.zeros((num_chunck * num_segmts, npts_segmt), dtype=np.float32)
-        cc_time = np.zeros(num_chunck * num_segmts, dtype=np.float)
+        cc_time = np.zeros(num_chunck * num_segmts, dtype=np.float32)
         cc_ngood = np.zeros(num_chunck * num_segmts, dtype=np.int16)
         cc_comp = np.chararray(num_chunck * num_segmts, itemsize=2, unicode=True)
 
