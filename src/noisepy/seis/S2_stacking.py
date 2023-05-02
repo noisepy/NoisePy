@@ -138,6 +138,11 @@ def stack(rootpath: str, stack_method: str):
         # load station info
         tlocs = pd.read_csv(locations)
         sta = sorted(np.unique(tlocs["network"] + "." + tlocs["station"]))
+
+        # Check if number of stations is less than or equal to 2
+        if len(sta) <= 2:
+            raise ValueError("Error: Number of stations is less than or equal to 2.")
+
         for ii in range(len(sta)):
             tmp = os.path.join(STACKDIR, sta[ii])
             if not os.path.isdir(tmp):
