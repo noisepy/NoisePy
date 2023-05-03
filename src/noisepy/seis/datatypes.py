@@ -71,6 +71,14 @@ class ConfigParameters:
     end_date: str = ""
     samp_freq: float = 20  # TODO: change this samp_freq for the obspy "sampling_rate"
     cc_len: float = 1800.0  # basic unit of data length for fft (sec)
+    # download params.
+    # Targeted region/station information: only needed when down_list is False
+    lamin: float = 31
+    lamax: float = 36
+    lomin: float = -122
+    lomax: float = -115
+    down_list = False  # download stations from a pre-compiled list or not
+    net_list = ["CI"]  # network list
     # pre-processing parameters
     step: float = 450.0  # overlapping between each cc_len (sec)
     freqmin: float = 0.05
@@ -141,9 +149,8 @@ class ChannelData:
     sampling_rate: int
     start_timestamp: float
 
-    @classmethod
     def empty() -> ChannelData:
-        return ChannelData(obspy.Stream([obspy.Trace(np.empty)]))
+        return ChannelData(obspy.Stream([obspy.Trace(np.empty(0))]))
 
     def __init__(self, stream: obspy.Stream):
         self.stream = stream

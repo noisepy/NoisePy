@@ -1,5 +1,6 @@
 import os
 
+import obspy
 import pandas as pd
 import pytest
 from datetimerange import DateTimeRange
@@ -27,6 +28,9 @@ def test_csv(stat: str, ch: str, lat: float, lon: float, elev: float):
 class MockCatalog(ChannelCatalog):
     def get_full_channel(self, timespan: DateTimeRange, channel: Channel) -> Channel:
         pass
+
+    def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
+        return obspy.Inventory()
 
 
 @pytest.mark.parametrize("station,ch,lat,lon,elev", chan_data)

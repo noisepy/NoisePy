@@ -5,6 +5,7 @@
 """
 
 
+import logging
 import sys
 import time
 from typing import List
@@ -13,10 +14,13 @@ import pyasdf
 import os
 import numpy as np
 import pandas as pd
+
+from noisepy.seis.datatypes import ConfigParameters
 from . import noise_module
 from mpi4py import MPI
 from obspy.clients.fdsn import Client
 
+logger = logging.getLogger(__name__)
 if not sys.warnoptions:
     import warnings
 
@@ -62,26 +66,8 @@ tt0 = time.time()
 
 # download parameters
 client = Client("SCEDC")  # client/data center. see https://docs.obspy.org/packages/obspy.clients.fdsn.html for a list
-down_list = False  # download stations from a pre-compiled list or not
-flag = False  # print progress when running the script; recommend to use it at the begining
-samp_freq = 20  # targeted sampling rate at X samples per seconds
-rm_resp = "no"  # select 'no' to not remove response and use 'inv',
-# 'spectrum','RESP', or 'polozeros' to remove response
-freqmin = 0.05  # pre filtering frequency bandwidth
-freqmax = 2  # note this cannot exceed Nquist freq
-
-# targeted region/station information: only needed when down_list is False
-lamin, lamax, lomin, lomax = (
-    31,
-    36,
-    -122,
-    -115,
-)  # regional box: min lat, min lon, max lat, max lon (-114.0)
-net_list = ["CI"]  # network list
 
 # get rough estimate of memory needs to ensure it now below up in S1
-cc_len = 1800  # basic unit of data length for fft (s)
-step = 450  # overlapping between each cc_len (s)
 MAX_MEM = 5.0  # maximum memory allowed per core in GB
 
 ##################################################
@@ -89,27 +75,23 @@ MAX_MEM = 5.0  # maximum memory allowed per core in GB
 
 
 def download(
-    rootpath: str,
+    direc: str,
     chan_list: List[str],
     sta_list: List[str],
-    start_date: List[str],
-    end_date: List[str],
-    inc_hours: int,
+    prepro_para: ConfigParameters,
 ):
-    direc = os.path.join(rootpath, "RAW_DATA")  # where to store the downloaded data
     dlist = os.path.join(direc, "station.txt")  # CSV file for station location info
-    respdir = os.path.join(
-        rootpath, "resp"
+    prepro_para.respdir = os.path.join(
+        direc, "../resp"
     )  # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
     # time tags
-    starttime = obspy.UTCDateTime(start_date[0])
-    endtime = obspy.UTCDateTime(end_date[0])
-    if flag:
-        print(
-            "station.list selected [%s] for data from %s to %s with %sh interval"
-            % (down_list, starttime, endtime, inc_hours)
-        )
-    print(
+    starttime = obspy.UTCDateTime(prepro_para.start_date)
+    endtime = obspy.UTCDateTime(prepro_para.end_date)
+    logger.debug(
+        "station.list selected [%s] for data from %s to %s with %sh interval"
+        % (prepro_para.down_list, starttime, endtime, prepro_para.inc_hours)
+    )
+    logger.info(
         f"""Download
         From: {starttime}
         To: {endtime}
@@ -118,29 +100,10 @@ def download(
         """
     )
     ncomp = len(chan_list)
-    # assemble parameters used for pre-processing
-    prepro_para = {
-        "rm_resp": rm_resp,
-        "respdir": respdir,
-        "freqmin": freqmin,
-        "freqmax": freqmax,
-        "samp_freq": samp_freq,
-        "start_date": str(starttime),
-        "end_date": str(endtime),
-        "inc_hours": inc_hours,
-        "cc_len": cc_len,
-        "step": step,
-        "MAX_MEM": MAX_MEM,
-        "lamin": lamin,
-        "lamax": lamax,
-        "lomin": lomin,
-        "lomax": lomax,
-        "ncomp": ncomp,
-    }
     metadata = os.path.join(direc, "download_info.txt")
 
     # prepare station info (existing station list vs. fetching from client)
-    if down_list:
+    if prepro_para.down_list:
         if not os.path.isfile(dlist):
             raise IOError("file %s not exist! double check!" % dlist)
 
@@ -170,7 +133,7 @@ def download(
         elev = []
         nsta = 0
         # loop through specified network, station and channel lists
-        for inet in net_list:
+        for inet in prepro_para.net_list:
             for ista in sta_list:
                 for ichan in chan_list:
                     # gather station info
@@ -182,10 +145,10 @@ def download(
                             location="*",
                             starttime=starttime,
                             endtime=endtime,
-                            minlatitude=lamin,
-                            maxlatitude=lamax,
-                            minlongitude=lomin,
-                            maxlongitude=lomax,
+                            minlatitude=prepro_para.lamin,
+                            maxlatitude=prepro_para.lamax,
+                            minlongitude=prepro_para.lomin,
+                            maxlongitude=prepro_para.lomax,
                             level="response",
                         )
                     except Exception as e:
@@ -206,12 +169,11 @@ def download(
                             else:
                                 location.append("*")
                             nsta += 1
-        prepro_para["nsta"] = nsta
 
     # rough estimation on memory needs (assume float32 dtype)
-    nsec_chunk = inc_hours / 24 * 86400
-    nseg_chunk = int(np.floor((nsec_chunk - cc_len) / step)) + 1
-    npts_chunk = int(nseg_chunk * cc_len * samp_freq)
+    nsec_chunk = prepro_para.inc_hours / 24 * 86400
+    nseg_chunk = int(np.floor((nsec_chunk - prepro_para.cc_len) / prepro_para.step)) + 1
+    npts_chunk = int(nseg_chunk * prepro_para.cc_len * prepro_para.samp_freq)
     memory_size = nsta * npts_chunk * 4 / 1024**3
     if memory_size > MAX_MEM:
         raise ValueError(
@@ -229,13 +191,10 @@ def download(
     size = comm.Get_size()
 
     if rank == 0:
-        if not os.path.isdir(rootpath):
-            os.mkdir(rootpath)
-        if not os.path.isdir(direc):
-            os.mkdir(direc)
+        os.makedirs(direc, exist_ok=True)
 
         # output station list
-        if not down_list:
+        if not prepro_para.down_list:
             dict = {
                 "network": net,
                 "station": sta,
@@ -253,9 +212,9 @@ def download(
         fout.close()
 
         # get MPI variables ready
-        all_chunk = noise_module.get_event_list(start_date[0], end_date[0], inc_hours)
+        all_chunk = noise_module.get_event_list(prepro_para.start_date, prepro_para.end_date, prepro_para.inc_hours)
         if len(all_chunk) < 1:
-            raise ValueError("Abort! no data chunk between %s and %s" % (start_date[0], end_date[0]))
+            raise ValueError("Abort! no data chunk between %s and %s" % (prepro_para.start_date, prepro_para.end_date))
         splits = len(all_chunk) - 1
     else:
         splits, all_chunk = [None for _ in range(2)]
@@ -304,7 +263,7 @@ def download(
                         level="response",
                     )
                 except Exception as e:
-                    print(e)
+                    logger.error(e)
                     continue
 
                 # add the inventory for all components + all time of this tation
@@ -326,7 +285,7 @@ def download(
                     )
                     t1 = time.time()
                 except Exception as e:
-                    print(e, "for", sta[ista])
+                    logger.error(f"{e} for {sta[ista]}")
                     continue
 
                 # preprocess to clean data
@@ -350,10 +309,10 @@ def download(
                     ds.add_waveforms(tr, tag=new_tags)
 
                 # if flag:
-                print("downloading data %6.2f s; pre-process %6.2f s" % ((t1 - t0), (t2 - t1)))
+                logger.info("downloading data %6.2f s; pre-process %6.2f s" % ((t1 - t0), (t2 - t1)))
 
     tt1 = time.time()
-    print("downloading step takes %6.2f s with %6.2f for preprocess" % (tt1 - tt0, tp))
+    logger.info("downloading step takes %6.2f s with %6.2f for preprocess" % (tt1 - tt0, tp))
 
     comm.barrier()
 

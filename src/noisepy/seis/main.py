@@ -69,39 +69,31 @@ def create_raw_store(raw_dir: str):
 
 def main(args: typing.Any):
     def run_cross_correlation():
-        raw_dir = os.path.join(args.path, "RAW_DATA")
-        ccf_dir = os.path.join(args.path, "CCF")
+        raw_dir = args.raw_data_path
+        ccf_dir = args.ccf_path
         fft_params = initialize_fft_params(raw_dir)
-
         fft_params.freq_norm = args.freq_norm
         cc_store = ASDFCCStore(ccf_dir)
         raw_store = create_raw_store(raw_dir)
         cross_correlate(raw_store, fft_params, cc_store)
 
+    def run_download():
+        params = ConfigParameters()
+        params.start_date = args.start
+        params.end_date = args.end
+        params.inc_hours = args.inc_hours
+        download(args.raw_data_path, args.channels, args.stations, params)
+
     if args.step == Step.DOWNLOAD:
-        download(
-            args.path,
-            args.channels,
-            args.stations,
-            [args.start],
-            [args.end],
-            args.inc_hours,
-        )
+        run_download()
     if args.step == Step.CROSS_CORRELATE:
         run_cross_correlation()
     if args.step == Step.STACK:
-        stack(args.path, args.method)
+        stack(args.raw_data_path, args.ccf_path, args.stack_path, args.method)
     if args.step == Step.ALL:
-        download(
-            args.path,
-            args.channels,
-            args.stations,
-            [args.start],
-            [args.end],
-            args.inc_hours,
-        )
+        run_download()
         run_cross_correlation()
-        stack(args.path, args.method)
+        stack(args.raw_data_path, args.ccf_path, args.stack_path, args.method)
 
 
 def add_download_args(down_parser: argparse.ArgumentParser):
@@ -134,13 +126,18 @@ def add_download_args(down_parser: argparse.ArgumentParser):
     down_parser.add_argument("--inc_hours", type=int, default=24, help="Time increment size (hrs)")
 
 
-def add_path(parser):
+def add_path(parser, prefix: str):
     parser.add_argument(
-        "--path",
+        f"--{prefix}_path",
         type=str,
-        default=os.path.join(os.path.expanduser("~"), default_data_path),
-        help="Working directory",
+        default=os.path.join(os.path.join(os.path.expanduser("~"), default_data_path), prefix.upper()),
+        help=f"Directory for {prefix} data",
     )
+
+
+def add_paths(parser, types: List[str]):
+    for t in types:
+        add_path(parser, t)
 
 
 def add_cc_args(parser):
@@ -177,10 +174,14 @@ def make_step_parser(subparsers: Any, step: Step, parser_config_funcs: List[Call
 def main_cli():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="step", required=True)
-    make_step_parser(subparsers, Step.DOWNLOAD, [add_path, add_download_args])
-    make_step_parser(subparsers, Step.CROSS_CORRELATE, [add_path, add_cc_args])
-    make_step_parser(subparsers, Step.STACK, [add_path, add_stack_args])
-    make_step_parser(subparsers, Step.ALL, [add_path, add_download_args, add_cc_args, add_stack_args])
+    make_step_parser(subparsers, Step.DOWNLOAD, [lambda p: add_paths(p, ["raw_data"]), add_download_args])
+    make_step_parser(subparsers, Step.CROSS_CORRELATE, [lambda p: add_paths(p, ["raw_data", "ccf"]), add_cc_args])
+    make_step_parser(subparsers, Step.STACK, [lambda p: add_paths(p, ["raw_data", "stack", "ccf"]), add_stack_args])
+    make_step_parser(
+        subparsers,
+        Step.ALL,
+        [lambda p: add_paths(p, ["raw_data", "ccf", "stack"]), add_download_args, add_cc_args, add_stack_args],
+    )
 
     args = parser.parse_args()
     args.step = Step[args.step.upper()]
