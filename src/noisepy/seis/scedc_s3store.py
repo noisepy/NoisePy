@@ -5,7 +5,6 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import List
 
-import numpy as np
 import obspy
 from datetimerange import DateTimeRange
 
@@ -65,10 +64,13 @@ class SCEDCS3DataStore(RawDataStore):
         filename = os.path.join(self.directory, f"{chan_str}{timespan.start_datetime.strftime('%Y%j')}.ms")
         if not os.path.exists(filename):
             logger.warning(f"Could not find file {filename}")
-            return ChannelData(np.empty, -1, -1.0)
+            return ChannelData.empty()
 
-        stream = obspy.read(filename)[0]
-        return ChannelData(stream.data, stream.stats.sampling_rate, stream.stats.starttime.timestamp)
+        stream = obspy.read(filename)
+        return ChannelData(stream)
+
+    def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
+        return self.channel_catalog.get_inventory(timespan, station)
 
     def _parse_timespan(filename: str) -> DateTimeRange:
         # The SCEDC S3 bucket stores files in the form: CIGMR__LHN___2022002.ms

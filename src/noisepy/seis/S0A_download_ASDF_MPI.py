@@ -266,9 +266,8 @@ def download(
     tp = 0
     # MPI: loop through each time chunk
     for ick in range(rank, splits, size):
-        s1 = obspy.UTCDateTime(all_chunk[ick])
-        s2 = obspy.UTCDateTime(all_chunk[ick + 1])
-        date_info = {"starttime": s1, "endtime": s2}
+        starttime = obspy.UTCDateTime(all_chunk[ick])
+        endtime = obspy.UTCDateTime(all_chunk[ick + 1])
 
         # keep a track of the channels already exists
         num_records = np.zeros(nsta, dtype=np.int16)
@@ -300,8 +299,8 @@ def download(
                         network=net[ista],
                         station=sta[ista],
                         location=location[ista],
-                        starttime=s1,
-                        endtime=s2,
+                        starttime=starttime,
+                        endtime=endtime,
                         level="response",
                     )
                 except Exception as e:
@@ -322,8 +321,8 @@ def download(
                         station=sta[ista],
                         channel=chan[ista],
                         location=location[ista],
-                        starttime=s1,
-                        endtime=s2,
+                        starttime=starttime,
+                        endtime=endtime,
                     )
                     t1 = time.time()
                 except Exception as e:
@@ -331,7 +330,13 @@ def download(
                     continue
 
                 # preprocess to clean data
-                tr = noise_module.preprocess_raw(tr, sta_inv, prepro_para, date_info)
+                tr = noise_module.preprocess_raw(
+                    tr,
+                    sta_inv,
+                    prepro_para,
+                    starttime,
+                    endtime,
+                )
                 t2 = time.time()
                 tp += t2 - t1
 

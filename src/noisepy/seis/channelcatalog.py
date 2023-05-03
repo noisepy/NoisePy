@@ -46,6 +46,10 @@ class ChannelCatalog(ABC):
     def get_full_channel(self, timespan: DateTimeRange, channel: Channel) -> Channel:
         pass
 
+    @abstractmethod
+    def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
+        pass
+
 
 class FDSNChannelCatalog(ChannelCatalog):
     """
@@ -67,6 +71,9 @@ class FDSNChannelCatalog(ChannelCatalog):
     def get_full_channel(self, timespan: DateTimeRange, channel: Channel) -> Channel:
         inv = self._get_inventory(str(timespan))
         return self.populate_from_inventory(inv, channel)
+
+    def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
+        return self._get_inventory(str(timespan))
 
     def _get_cache_key(self, ts_str: str) -> str:
         return f"{self.url_key}_{ts_str}"
@@ -108,6 +115,9 @@ class CSVChannelCatalog(ChannelCatalog):
                 location=ch.station.location,
             ),
         )
+
+    def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
+        return None
 
 
 # TODO: A channel catalog that uses the files in the SCEDC S3 bucket: s3://scedc-pds/FDSNstationXML/

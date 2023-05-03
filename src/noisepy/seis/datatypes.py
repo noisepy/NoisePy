@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import Enum
 
 import numpy as np
+import obspy
 
 
 @dataclass
@@ -93,6 +96,8 @@ class ConfigParameters:
     # station/instrument info for input_fmt=='sac' or 'mseed'
     stationxml: bool = False  # station.XML file used to remove instrument response for SAC/miniseed data
     rm_resp: str = "no"  # select 'no' to not remove response and use 'inv','spectrum',
+    rm_resp_out: str = "VEL"  # output location from response removal
+    respdir: str = None  # response directory
     # some control parameters
     acorr_only: bool = False  # only perform auto-correlation
     xcorr_only: bool = True  # only perform cross-correlation or not
@@ -121,7 +126,6 @@ class Channel:
         return f"{self.station}.{self.type}"
 
 
-@dataclass
 class ChannelData:
     """
     A 1D time series of channel data
@@ -132,6 +136,17 @@ class ChannelData:
         start_timestamp: Seconds since 01/01/1970
     """
 
+    stream: obspy.Stream
     data: np.ndarray
     sampling_rate: int
     start_timestamp: float
+
+    @classmethod
+    def empty() -> ChannelData:
+        return ChannelData(obspy.Stream([obspy.Trace(np.empty)]))
+
+    def __init__(self, stream: obspy.Stream):
+        self.stream = stream
+        self.data = stream[0].data
+        self.sampling_rate = stream[0].stats.sampling_rate
+        self.start_timestamp = stream[0].stats.starttime.timestamp

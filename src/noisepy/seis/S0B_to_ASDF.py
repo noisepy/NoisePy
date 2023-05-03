@@ -174,11 +174,10 @@ for ick in range(rank, splits, size):
     t0 = time.time()
 
     # time window defining the time-chunk
-    s1 = obspy.UTCDateTime(all_chunk[ick])
-    s2 = obspy.UTCDateTime(all_chunk[ick + 1])
-    date_info = {"starttime": s1, "endtime": s2}
-    time1 = s1 - obspy.UTCDateTime(1970, 1, 1)
-    time2 = s2 - obspy.UTCDateTime(1970, 1, 1)
+    starttime = obspy.UTCDateTime(all_chunk[ick])
+    endtime = obspy.UTCDateTime(all_chunk[ick + 1])
+    time1 = starttime - obspy.UTCDateTime(1970, 1, 1)
+    time2 = endtime - obspy.UTCDateTime(1970, 1, 1)
 
     # find all data pieces having data of the time-chunk
     indx1 = np.where((time1 >= all_stimes[:, 0]) & (time1 < all_stimes[:, 1]))[0]
@@ -187,7 +186,7 @@ for ick in range(rank, splits, size):
     indx4 = np.concatenate((indx1, indx2, indx3))
     indx = np.unique(indx4)
     if not len(indx):
-        print("continue! no data found between %s-%s" % (s1, s2))
+        print("continue! no data found between %s-%s" % (starttime, endtime))
         continue
 
     # trim down the sac/mseed file list with time in time-chunk
@@ -230,7 +229,7 @@ for ick in range(rank, splits, size):
         # make inventory to save into ASDF file
         t1 = time.time()
         inv1 = noise_module.stats2inv(source[0].stats, prepro_para, locs=locs)
-        tr = noise_module.preprocess_raw(source, inv1, prepro_para, date_info)
+        tr = noise_module.preprocess_raw(source, inv1, prepro_para, starttime, endtime)
         # jump if no good data left
         if not len(tr):
             continue

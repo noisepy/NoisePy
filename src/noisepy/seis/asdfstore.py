@@ -2,6 +2,7 @@ import datetime
 import glob
 import logging
 import os
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -32,8 +33,8 @@ class ASDFRawDataStore(RawDataStore):
         logger.info(f"Initialized store with {len(self.files)}")
 
     def get_channels(self, timespan: DateTimeRange) -> List[Channel]:
-        ds = pyasdf.ASDFDataSet(self.files[str(timespan)], mode="r", mpi=False)
-        stations = [self._create_station(ds, sta) for sta in ds.waveforms.list() if sta is not None]
+        ds = self.get_dataset(str(timespan))
+        stations = [self._create_station(timespan, sta) for sta in ds.waveforms.list() if sta is not None]
         channels = [
             Channel(ChannelType(tag), sta) for sta in stations for tag in ds.waveforms[str(sta)].get_waveform_tags()
         ]
@@ -43,24 +44,32 @@ class ASDFRawDataStore(RawDataStore):
         return [DateTimeRange.from_range_text(d) for d in sorted(self.files.keys())]
 
     def read_data(self, timespan: DateTimeRange, chan: Channel) -> np.ndarray:
-        ds = pyasdf.ASDFDataSet(self.files[str(timespan)], mode="r", mpi=False)
-        stream = ds.waveforms[str(chan.station)][str(chan.type)][0]
-        return ChannelData(stream.data, stream.stats.sampling_rate, stream.stats.starttime.timestamp)
+        ds = self.get_dataset(str(timespan))
+        stream = ds.waveforms[str(chan.station)][str(chan.type)]
+        return ChannelData(stream)
+
+    def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
+        ds = self.get_dataset(str(timespan))
+        return ds.waveforms[str(station)]["StationXML"]
 
     def _parse_timespans(self, filename: str) -> DateTimeRange:
         parts = os.path.splitext(os.path.basename(filename))[0].split("T")
         dates = [obspy.UTCDateTime(p).datetime.replace(tzinfo=datetime.timezone.utc) for p in parts]
         return DateTimeRange(dates[0], dates[1])
 
-    def _create_station(self, ds: pyasdf.ASDFDataSet, name: str) -> Optional[Station]:
+    def _create_station(self, timespan: DateTimeRange, name: str) -> Optional[Station]:
         # What should we do if there's not StationXML?
         try:
-            inventory = ds.waveforms[name]["StationXML"]
+            inventory = self.get_dataset(str(timespan)).waveforms[name]["StationXML"]
             sta, net, lon, lat, elv, loc = noise_module.sta_info_from_inv(inventory)
             return Station(net, sta, lat, lon, elv, loc)
         except Exception as e:
             logger.warning(f"Missing StationXML for station {name}. {e}")
             return None
+
+    @lru_cache
+    def get_dataset(self, ts_str: str) -> pyasdf.ASDFDataSet:
+        return pyasdf.ASDFDataSet(self.files[ts_str], mode="r", mpi=False)
 
 
 class ASDFCCStore(CrossCorrelationDataStore):
