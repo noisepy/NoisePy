@@ -2,13 +2,13 @@ import gc
 import logging
 import sys
 import time
-from typing import Tuple
+from typing import Callable, Tuple
 
 import numpy as np
 from mpi4py import MPI
 from scipy.fftpack.helper import next_fast_len
 
-from noisepy.seis.datatypes import ChannelData, ConfigParameters
+from noisepy.seis.datatypes import Channel, ChannelData, ConfigParameters
 
 from . import noise_module
 from .stores import CrossCorrelationDataStore, RawDataStore
@@ -49,7 +49,12 @@ NOTE:
 """
 
 
-def cross_correlate(raw_store: RawDataStore, fft_params: ConfigParameters, cc_store: CrossCorrelationDataStore):
+def cross_correlate(
+    raw_store: RawDataStore,
+    fft_params: ConfigParameters,
+    cc_store: CrossCorrelationDataStore,
+    channel_filter: Callable[[Channel], bool] = None,
+):
     """
     Perform the cross-correlation analysis
 
@@ -57,8 +62,13 @@ def cross_correlate(raw_store: RawDataStore, fft_params: ConfigParameters, cc_st
                 raw_store: Store to load data from
                 fft_params: Parameters for the FFT calculations
                 cc_store: Store for saving cross correlations
+                channel_filter: Function to decide whether a channel should be used or not,
+                                if None, all channels are used
+
     """
 
+    if channel_filter is None:
+        channel_filter = lambda s: True  # noqa: E731
     #######################################
     # #########PROCESSING SECTION##########
     #######################################
@@ -94,6 +104,7 @@ def cross_correlate(raw_store: RawDataStore, fft_params: ConfigParameters, cc_st
 
         # ###########LOADING NOISE DATA AND DO FFT##################
         channels = raw_store.get_channels(ts)
+        channels = list(filter(channel_filter, channels))
         nchannels = len(channels)
         nseg_chunk = check_memory(fft_params, nchannels)
         nnfft = int(next_fast_len(int(fft_params.cc_len * fft_params.samp_freq)))  # samp_freq should be sampling_rate

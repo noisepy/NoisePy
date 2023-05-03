@@ -1,11 +1,13 @@
 import logging
 from abc import ABC, abstractmethod
+from functools import lru_cache
 
 import diskcache as dc
 import obspy
 import pandas as pd
 from datetimerange import DateTimeRange
 from obspy import UTCDateTime
+from obspy.clients.fdsn import Client
 
 from .datatypes import Channel, Station
 
@@ -63,19 +65,23 @@ class FDSNChannelCatalog(ChannelCatalog):
         self.cache = dc.Cache(cache_dir)
 
     def get_full_channel(self, timespan: DateTimeRange, channel: Channel) -> Channel:
-        inv = self._get_inventory(timespan)
+        inv = self._get_inventory(str(timespan))
         return self.populate_from_inventory(inv, channel)
 
-    def _get_cache_key(self, timespan: DateTimeRange) -> str:
-        return f"{self.url_key}_{timespan}"
+    def _get_cache_key(self, ts_str: str) -> str:
+        return f"{self.url_key}_{ts_str}"
 
-    def _get_inventory(self, ts: DateTimeRange) -> obspy.Inventory:
-        key = FDSNChannelCatalog._get_cache_key(ts)
+    @lru_cache
+    # pass the timestamp (DateTimeRange) as string so that the method is cacheable
+    # since DateTimeRange is not hasheable
+    def _get_inventory(self, ts_str: str) -> obspy.Inventory:
+        ts = DateTimeRange.from_range_text(ts_str)
+        key = self._get_cache_key(ts_str)
         inventory = self.cache.get(key, None)
         if inventory is None:
             logging.info(f"Inventory not found in cache for key: '{key}'. Fetching from {self.url_key}.")
             bulk_station_request = [("*", "*", "*", "*", UTCDateTime(ts.start_datetime), UTCDateTime(ts.end_datetime))]
-            client = obspy.Client(self.url_key)
+            client = Client(self.url_key)
             inventory = client.get_stations_bulk(bulk_station_request, level="channel")
             self.cache[key] = inventory
         return inventory

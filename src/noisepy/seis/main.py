@@ -38,14 +38,15 @@ def valid_date(d: str) -> str:
 def initialize_fft_params(raw_dir: str) -> ConfigParameters:
     params = ConfigParameters()
     dfile = os.path.join(raw_dir, "download_info.txt")
-    down_info = eval(open(dfile).read())  # TODO: do proper json/yaml serialization
-    params.samp_freq = down_info["samp_freq"]
-    params.freqmin = down_info["freqmin"]
-    params.freqmax = down_info["freqmax"]
-    params.start_date = down_info["start_date"]
-    params.end_date = down_info["end_date"]
-    params.inc_hours = down_info["inc_hours"]
-    params.ncomp = down_info["ncomp"]
+    if os.path.isfile(dfile):
+        down_info = eval(open(dfile).read())  # TODO: do proper json/yaml serialization
+        params.samp_freq = down_info["samp_freq"]
+        params.freqmin = down_info["freqmin"]
+        params.freqmax = down_info["freqmax"]
+        params.start_date = down_info["start_date"]
+        params.end_date = down_info["end_date"]
+        params.inc_hours = down_info["inc_hours"]
+        params.ncomp = down_info["ncomp"]
     return params
 
 
