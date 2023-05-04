@@ -713,8 +713,8 @@ def correlate(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
             nstack = int(np.round(Ttotal / substack_len))
             ampmax = np.zeros(nstack, dtype=np.float32)
             s_corr = np.zeros(shape=(nstack, Nfft), dtype=np.float32)
-            n_corr = np.zeros(nstack, dtype=np.int)
-            t_corr = np.zeros(nstack, dtype=np.float)
+            n_corr = np.zeros(nstack, dtype=np.int16)
+            t_corr = np.zeros(nstack, dtype=np.float32)
             crap = np.zeros(Nfft, dtype=np.complex64)
 
             for istack in range(nstack):

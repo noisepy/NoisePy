@@ -71,8 +71,57 @@ Seats, K. J., Jesse F. L., and German A. P. "Improved ambient noise correlation 
 *Jiang, C. and Denolle, M. "NoisePy: a new high-performance python tool for seismic ambient noise seismology." _Seismological Research Letter_ 91, no. 3 (2020): 1853–1866..
 ** Yuan, C., Bryan, J. T., and Denolle, M. "Numerical comparison of time-, frequency- and wavelet-domain methods for coda wave interferometry." _Geophysical Journal International_ 226, no. 2 (2021): 828-846.
 
+## Parameters to configure
+
+The parameters of the workflow are saved into an object called ``ConfigParameter``. The parameters
+
+ *   dt: float = 0.05  # TODO: dt should be 1/sampling rate
+ *   start_date: str = ""  # TODO: can we make this datetime?
+ *   end_date: str = ""
+ *   samp_freq: float = 20  # TODO: change this samp_freq for the obspy "sampling_rate"
+*  cc_len: float = 1800.0  # basic unit of data length for fft (sec)
+ *   # download params.
+ *   # Targeted region/station information: only needed when down_list is False
+ *  lamin: float = 31
+ *   lamax: float = 36
+ *   lomin: float = -122
+ *   lomax: float = -115
+ *   down_list = False  # download stations from a pre-compiled list or no 
+ *   net_list = ["CI"]  # network list
+    # pre-processing parameters
+ *   step: float = 450.0  # overlapping between each cc_len (sec)
+ *  freqmin: float = 0.05
+ *   freqmax: float = 2.0
+ *   freq_norm: str = "rma"  # choose between "rma" for a soft whitenning or "no" for no whitening
+ *   #  TODO: change "no" for "None", and add "one_bit" as an option
+ *   time_norm: str = "no"  # 'no' for no normalization, or 'rma', 'one_bit' for normalization in time domain,
+ *   # TODO: change time_norm option from "no" to "None"
+ *   cc_method: str = "xcorr"  # 'xcorr' for pure cross correlation, 'deconv' for deconvolution;
+ *   # FOR "COHERENCY" PLEASE set freq_norm to "rma", time_norm to "no" and cc_method to "xcorr"
+ *   smooth_N: int = 10  # moving window length for time/freq domain normalization if selected (points)
+ *   smoothspect_N: int = 10  # moving window length to smooth spectrum amplitude (points)
+ *   # if substack=True, substack_len=2*cc_len, then you pre-stack every 2 correlation windows.
+ *   # for instance: substack=True, substack_len=cc_len means that you keep ALL of the correlations
+ *   substack: bool = True  # True = smaller stacks within the time chunk. False: it will stack over inc_hours
+ *   substack_len: int = 1800  # how long to stack over (for monitoring purpose): need to be multiples of cc_len
+ *   maxlag: int = 200  # lags of cross-correlation to save (sec)
+ *   substack: bool = True
+ *   inc_hours: int = 24
+ *  # criteria for data selection
+ *  max_over_std: int = 10  # threahold to remove window of bad signals: set it to 10*9 if prefer not to remove them
+ *   ncomp: int = 3  # 1 or 3 component data (needed to decide whether do rotation)
+ *   # station/instrument info for input_fmt=='sac' or 'mseed'
+ *   stationxml: bool = False  # station.XML file used to remove instrument response for SAC/miniseed data
+ *   rm_resp: str = "no"  # select 'no' to not remove response and use 'inv','spectrum',
+ *   rm_resp_out: str = "VEL"  # output location from response removal
+ *   respdir: str = None  # response directory
+ *   # some control parameters
+ *   acorr_only: bool = False  # only perform auto-correlation
+ *   xcorr_only: bool = True  # only perform cross-correlation or not
+
 
 ### Some taxonomy of the NoisePy variables.
+
 
 * ``station`` refers to the site that has the seismic instruments that records ground shaking.
 * `` channel`` refers to the direction of ground motion investigated for 3 component seismometers. For DAS project, it may refers to the single channel sensors.

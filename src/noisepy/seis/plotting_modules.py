@@ -207,7 +207,11 @@ def plot_substack_cc(sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir=
                 tick_inc = int(nwin / 5)
             else:
                 tick_inc = 2
-            fig = plt.figure(figsize=(10, 6))
+            # fig = plt.figure(figsize=(10, 6))
+            fig, (
+                ax1,
+                ax2,
+            ) = plt.subplots(2, 1, gridspec_kw={"height_ratios": [1, 3]}, figsize=(10, 6))
             ax = fig.add_subplot(211)
             ax.matshow(
                 data,
@@ -221,23 +225,23 @@ def plot_substack_cc(sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir=
             ax.set_yticks(np.arange(0, nwin, step=tick_inc))
             ax.set_yticklabels(timestamp[0::tick_inc])
             ax.xaxis.set_ticks_position("bottom")
-            ax1 = fig.add_subplot(413)
-            ax1.set_title("stacked and filtered at %4.2f-%4.2f Hz" % (freqmin, freqmax))
-            ax1.plot(
-                np.arange(-disp_lag, disp_lag + dt, dt),
-                np.mean(data, axis=0),
-                "k-",
-                linewidth=1,
-            )
-            ax1.set_xticks(t)
+            # ax1 = fig.add_subplot(413)
+            # ax1.set_title("stacked and filtered at %4.2f-%4.2f Hz" % (freqmin, freqmax))
+            # ax1.plot(
+            # np.arange(-disp_lag, disp_lag + dt, dt),
+            # np.mean(data, axis=0),
+            # "k-",
+            # linewidth=1,
+            # )
+            # ax1.set_xticks(t)
             ax2 = fig.add_subplot(414)
             ax2.plot(amax / min(amax), "r-")
             ax2.plot(ngood, "b-")
             ax2.set_xlabel("waveform number")
             ax2.set_xticks(np.arange(0, nwin, step=tick_inc))
             ax2.set_xticklabels(tmarks[0:nwin:tick_inc])
-            # for tick in ax[2].get_xticklabels():
-            #    tick.set_rotation(30)
+            for tick in ax[2].get_xticklabels():
+                tick.set_rotation(30)
             ax2.legend(["relative amp", "ngood"], loc="upper right")
             fig.tight_layout()
 
