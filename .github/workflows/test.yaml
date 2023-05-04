@@ -40,6 +40,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
+        python_version: [3.8, 3.11]
         method: [linear, robust, nroot, selective, auto_covariance, pws]
         freq_norm: [rma, no, phase_only]
     runs-on: ubuntu-22.04
@@ -50,7 +51,7 @@ jobs:
     - name: Setup NoisePy
       uses: ./.github/actions/setup
       with:
-        python-version: ${{env.python_version}}
+        python-version: ${{matrix.python_version}}
     - name: Cache data
       uses: actions/cache@v3
       with:
