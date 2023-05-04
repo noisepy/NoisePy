@@ -8,9 +8,6 @@ dependencies:
   - mpi4py
   - numba
   - pandas
-  - pyasdf
-  - pycwt
-  - diskcache
   - pip
   - pip:
     - "DateTimeRange==2.0.0"
