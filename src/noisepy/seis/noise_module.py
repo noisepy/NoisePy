@@ -288,7 +288,7 @@ def preprocess_raw(
                 "date": starttime,
                 "units": "DIS",
             }
-            st.simulate(paz_remove=None, pre_filt=pre_filt, seedresp=seedresp[0])
+            st.simulate(paz_remove=None, pre_filt=pre_filt, seedresp=seedresp)
 
         elif rm_resp == "polozeros":
             print("remove response using polos and zeros")

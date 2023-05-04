@@ -1,4 +1,5 @@
 import logging
+import os
 from abc import ABC, abstractmethod
 from functools import lru_cache
 
@@ -6,7 +7,7 @@ import diskcache as dc
 import obspy
 import pandas as pd
 from datetimerange import DateTimeRange
-from obspy import UTCDateTime
+from obspy import UTCDateTime, read_inventory
 from obspy.clients.fdsn import Client
 
 from .datatypes import Channel, Station
@@ -42,13 +43,36 @@ class ChannelCatalog(ABC):
             ),
         )
 
-    @abstractmethod
     def get_full_channel(self, timespan: DateTimeRange, channel: Channel) -> Channel:
-        pass
+        inv = self.get_inventory(timespan, channel.station)
+        return self.populate_from_inventory(inv, channel)
 
     @abstractmethod
     def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
         pass
+
+
+class XMLStationChannelCatalog(ChannelCatalog):
+    """
+    A channel catalog that reads <station>.XML files from a directory
+    """
+
+    def __init__(self, xmldir: str) -> None:
+        super().__init__()
+        self.xmldir = xmldir
+        if not os.path.exists(self.xmldir):
+            raise Exception(f"The XML Station file directory '{xmldir}' doesn't exist")
+
+    def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
+        xmlfile = os.path.join(self.xmldir, f"{station.network}_{station.name}.xml")
+        return self._get_inventory_from_file(xmlfile)
+
+    @lru_cache
+    def _get_inventory_from_file(self, xmlfile):
+        if not os.path.exists(xmlfile):
+            logger.warning(f"Could not find StationXML file {xmlfile}. Returning empty Inventory()")
+            return obspy.Inventory()
+        return read_inventory(xmlfile)
 
 
 class FDSNChannelCatalog(ChannelCatalog):

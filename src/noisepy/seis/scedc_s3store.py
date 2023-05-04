@@ -3,7 +3,7 @@ import logging
 import os
 import re
 from datetime import datetime, timedelta, timezone
-from typing import List
+from typing import Callable, List
 
 import obspy
 from datetimerange import DateTimeRange
@@ -27,10 +27,19 @@ class SCEDCS3DataStore(RawDataStore):
     # for checking the filename has the form: CIGMR__LHN___2022002.ms
     file_re = re.compile(r".*[0-9]{7}\.ms$", re.IGNORECASE)
 
-    def __init__(self, directory: str, chan_catalog: ChannelCatalog):
+    def __init__(self, directory: str, chan_catalog: ChannelCatalog, channel_filter: Callable[[Channel], bool] = None):
+        """
+        Parameters:
+            directory: directory to look for ms files
+            chan_catalog: ChannelCatalog to retrieve inventory information for the channels
+            channel_filter: Function to decide whether a channel should be used or not,
+                            if None, all channels are used
+        """
         super().__init__()
         self.directory = directory
         self.channel_catalog = chan_catalog
+        if channel_filter is None:
+            channel_filter = lambda s: True  # noqa: E731
         msfiles = [f for f in glob.glob(os.path.join(directory, "*.ms")) if self.file_re.match(f) is not None]
         # store a dict of {timerange: list of channels}
         self.channels = {}
@@ -38,6 +47,8 @@ class SCEDCS3DataStore(RawDataStore):
         for f in msfiles:
             timespan = SCEDCS3DataStore._parse_timespan(f)
             channel = SCEDCS3DataStore._parse_channel(os.path.basename(f))
+            if not channel_filter(channel):
+                continue
             key = str(timespan)  # DataTimeFrame is not hashable
             if key not in self.channels:
                 timespans.append(timespan)

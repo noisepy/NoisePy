@@ -7,7 +7,7 @@
       "request": "launch",
       "module": "pytest",
       "args": [
-        "${workspaceFolder}/tests"
+        "${workspaceFolder}/tests/"
       ]
     },
     {
@@ -27,8 +27,35 @@
         "cross_correlate",
         "--freq_norm",
         "rma",
+        "--raw_data_path",
+        "${userHome}/s3tmp/scedc/2022/002",
+        "--ccf_path",
+        "${userHome}/ccfs3tmp/",
+        "--stations",
+        "SBC,RIO,DEV,HEC,RLR,SVD,RPV,BAK",
+        "--xml_path",
+        "/Users/carlosg/s3tmp/FDSNstationXML"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Python: download",
+      "type": "python",
+      "request": "launch",
+      "module": "noisepy.seis.main",
+      "args": [
+        "download",
+        "--start",
+        "2019_02_01_00_00_00",
+        "--end",
+        "2019_02_01_01_00_00",
+        "--stations",
+        "ARV,BAK",
+        "--inc_hours",
+        "1",
         "--path",
-        "${userHome}/s3tmp/tiny"
+        "${userHome}/tmp/"
       ],
       "console": "integratedTerminal",
       "justMyCode": true

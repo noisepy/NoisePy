@@ -8,9 +8,9 @@ from typing import Any, Callable, List
 import obspy
 
 from .asdfstore import ASDFCCStore, ASDFRawDataStore
-from .channelcatalog import CSVChannelCatalog, FDSNChannelCatalog
+from .channelcatalog import CSVChannelCatalog, XMLStationChannelCatalog
 from .constants import DATE_FORMAT_HELP, STATION_FILE
-from .datatypes import ConfigParameters
+from .datatypes import Channel, ConfigParameters
 from .S0A_download_ASDF_MPI import download
 from .S1_fft_cc_MPI import cross_correlate
 from .S2_stacking import stack
@@ -50,7 +50,15 @@ def initialize_fft_params(raw_dir: str) -> ConfigParameters:
     return params
 
 
-def create_raw_store(raw_dir: str):
+def get_channel_filter(sta_list: List[str]) -> Callable[[Channel], bool]:
+    if len(sta_list) == 1 and sta_list[0] == "*":
+        return lambda ch: True
+    else:
+        stations = set(sta_list)
+        return lambda ch: ch.station.name in stations
+
+
+def create_raw_store(raw_dir: str, sta_list: List[str], xml_path: str):
     def count(pat):
         return len(glob(os.path.join(raw_dir, pat)))
 
@@ -59,12 +67,14 @@ def create_raw_store(raw_dir: str):
         return ASDFRawDataStore(raw_dir)
     else:
         assert count("*.ms") > 0 or count("*.sac") > 0, f"Can not find any .h5, .ms or .sac files in {raw_dir}"
-        catalog = (
-            CSVChannelCatalog(raw_dir)
-            if os.path.isfile(os.path.join(raw_dir, STATION_FILE))
-            else FDSNChannelCatalog("SCEDC", os.path.join(os.getcwd(), "noisepy_cache"))
-        )
-        return SCEDCS3DataStore(raw_dir, catalog)
+        if xml_path is not None:
+            catalog = XMLStationChannelCatalog(xml_path)
+        elif os.path.isfile(os.path.join(raw_dir, STATION_FILE)):
+            catalog = CSVChannelCatalog(raw_dir)
+        else:
+            raise ValueError(f"Either an --xml_path argument or a {STATION_FILE} must be provided")
+
+        return SCEDCS3DataStore(raw_dir, catalog, get_channel_filter(sta_list))
 
 
 def main(args: typing.Any):
@@ -74,7 +84,7 @@ def main(args: typing.Any):
         fft_params = initialize_fft_params(raw_dir)
         fft_params.freq_norm = args.freq_norm
         cc_store = ASDFCCStore(ccf_dir)
-        raw_store = create_raw_store(raw_dir)
+        raw_store = create_raw_store(raw_dir, args.stations, args.xml_path)
         cross_correlate(raw_store, fft_params, cc_store)
 
     def run_download():
@@ -112,18 +122,21 @@ def add_download_args(down_parser: argparse.ArgumentParser):
         default=default_end_date,
     )
     down_parser.add_argument(
-        "--stations",
-        type=lambda s: s.split(","),
-        help="Comma separated list of stations or '*' for all",
-        default="*",
-    )
-    down_parser.add_argument(
         "--channels",
         type=lambda s: s.split(","),
         help="Comma separated list of channels",
         default="BHE,BHN,BHZ",
     )
     down_parser.add_argument("--inc_hours", type=int, default=24, help="Time increment size (hrs)")
+
+
+def add_stations_arg(parser: argparse.ArgumentParser):
+    parser.add_argument(
+        "--stations",
+        type=lambda s: s.split(","),
+        help="Comma separated list of stations or '*' for all",
+        default="*",
+    )
 
 
 def add_path(parser, prefix: str):
@@ -142,6 +155,7 @@ def add_paths(parser, types: List[str]):
 
 def add_cc_args(parser):
     parser.add_argument("--freq_norm", choices=["rma", "no", "phase_only"], default="rma")
+    parser.add_argument("--xml_path", required=False, default=None)
 
 
 def add_stack_args(parser):
@@ -174,13 +188,23 @@ def make_step_parser(subparsers: Any, step: Step, parser_config_funcs: List[Call
 def main_cli():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="step", required=True)
-    make_step_parser(subparsers, Step.DOWNLOAD, [lambda p: add_paths(p, ["raw_data"]), add_download_args])
-    make_step_parser(subparsers, Step.CROSS_CORRELATE, [lambda p: add_paths(p, ["raw_data", "ccf"]), add_cc_args])
+    make_step_parser(
+        subparsers, Step.DOWNLOAD, [lambda p: add_paths(p, ["raw_data"]), add_download_args, add_stations_arg]
+    )
+    make_step_parser(
+        subparsers, Step.CROSS_CORRELATE, [lambda p: add_paths(p, ["raw_data", "ccf"]), add_cc_args, add_stations_arg]
+    )
     make_step_parser(subparsers, Step.STACK, [lambda p: add_paths(p, ["raw_data", "stack", "ccf"]), add_stack_args])
     make_step_parser(
         subparsers,
         Step.ALL,
-        [lambda p: add_paths(p, ["raw_data", "ccf", "stack"]), add_download_args, add_cc_args, add_stack_args],
+        [
+            lambda p: add_paths(p, ["raw_data", "ccf", "stack"]),
+            add_download_args,
+            add_cc_args,
+            add_stack_args,
+            add_stations_arg,
+        ],
     )
 
     args = parser.parse_args()
