@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [project]
@@ -49,7 +49,10 @@ dependencies = [
 Homepage = "https://github.com/mdenolle/NoisePy"
 
 [tool.hatch.version]
-path = "src/noisepy/seis/__init__.py"
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "_version.py"
 
 [tool.hatch.build.targets.sdist]
 include = [
