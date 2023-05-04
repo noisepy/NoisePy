@@ -161,3 +161,6 @@ cython_debug/
 
 # Cache location for inventory (used by FDSNChannelCatalog)
 noisepy_cache/
+
+# Version file generated at build time
+src/noisepy/seis/_version.py
