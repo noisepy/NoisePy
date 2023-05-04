@@ -2,7 +2,7 @@ import gc
 import logging
 import sys
 import time
-from typing import Callable, List, Tuple
+from typing import List, Tuple
 
 import numpy as np
 import obspy
@@ -55,7 +55,6 @@ def cross_correlate(
     raw_store: RawDataStore,
     fft_params: ConfigParameters,
     cc_store: CrossCorrelationDataStore,
-    channel_filter: Callable[[Channel], bool] = None,
 ):
     """
     Perform the cross-correlation analysis
@@ -64,13 +63,9 @@ def cross_correlate(
                 raw_store: Store to load data from
                 fft_params: Parameters for the FFT calculations
                 cc_store: Store for saving cross correlations
-                channel_filter: Function to decide whether a channel should be used or not,
-                                if None, all channels are used
 
     """
 
-    if channel_filter is None:
-        channel_filter = lambda s: True  # noqa: E731
     #######################################
     # #########PROCESSING SECTION##########
     #######################################
@@ -106,7 +101,6 @@ def cross_correlate(
 
         # ###########LOADING NOISE DATA AND DO FFT##################
         channels = raw_store.get_channels(ts)
-        channels = list(filter(channel_filter, channels))
         ch_data_tuples = _read_channels(ts, raw_store, channels, fft_params.samp_freq)
         ch_data_tuples = preprocess(ch_data_tuples, raw_store, fft_params, ts)
 
