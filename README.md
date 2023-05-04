@@ -58,6 +58,8 @@ Here is a list of features of the package:
 * includes a series of monitoring functions to measure dv/v on the resulted cross-correlation functions using some recently developed new methods (see our papers for more details<sup>**</sup>)
 
 # Short tutorial
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/mdenolle/NoisePy/HEAD?labpath=Jupyter_notebook%2Ftutorial.ipynb)
+
 A short tutorial on how to use NoisePy-seis can be found in the following Jupyter Notebook: https://github.com/mdenolle/NoisePy/blob/master/Jupyter_notebook/tutorial.ipynb
 
 

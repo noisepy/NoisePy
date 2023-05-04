@@ -1,0 +1,25 @@
+name: noisepy-seis
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+"DateTimeRange==2.0.0",
+    "h5py>=3.8.0",
+    "mpi4py>=3.1.4",
+    "numba>=0.56.4",
+    "numpy>=1.22.0",
+    "pandas>=1.5.3",
+  - python=3.8
+  - h5py
+  - mpi4py
+  - numba
+  - pandas
+  - pyasdf
+  - pycwt
+  - diskcache
+  - pip
+  - pip:
+    - "DateTimeRange==2.0.0"
+    - "pyasdf>=0.7.5"
+    - "pycwt>=0.3.0a22"
+    - "diskcache>=5.5"
