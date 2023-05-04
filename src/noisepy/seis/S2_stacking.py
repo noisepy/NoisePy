@@ -54,18 +54,16 @@ MAX_MEM = 4.0
 
 
 # TODO: make stack_method an enum
-def stack(rootpath: str, stack_method: str):
+def stack(raw_dir: str, ccf_dir: str, stack_dir: str, stack_method: str):
     if rotation and correction:
-        corrfile = os.path.join(rootpath, "meso_angles.txt")  # csv file containing angle info to be corrected
+        corrfile = os.path.join(ccf_dir, "../meso_angles.txt")  # csv file containing angle info to be corrected
         locs = pd.read_csv(corrfile)
     else:
         locs = []
 
     # absolute path parameters
-    CCFDIR = os.path.join(rootpath, "CCF")  # dir where CC data is stored
-    STACKDIR = os.path.join(rootpath, "STACK")  # dir where stacked data is going to
     locations = os.path.join(
-        rootpath, "RAW_DATA/station.txt"
+        raw_dir, "station.txt"
     )  # station info including network,station,channel,latitude,longitude,elevation
     if not os.path.isfile(locations):
         raise ValueError("Abort! station info is needed for this script")
@@ -74,7 +72,7 @@ def stack(rootpath: str, stack_method: str):
     # we expect no parameters need to be changed below
 
     # load fc_para parameters from Step1
-    fc_metadata = os.path.join(CCFDIR, "fft_cc_data.txt")
+    fc_metadata = os.path.join(ccf_dir, "fft_cc_data.txt")
     fc_para = eval(open(fc_metadata).read())
     ncomp = fc_para["ncomp"]
     samp_freq = fc_para["samp_freq"]
@@ -100,10 +98,9 @@ def stack(rootpath: str, stack_method: str):
         "samp_freq": samp_freq,
         "cc_len": cc_len,
         "step": step,
-        "rootpath": rootpath,
-        "STACKDIR": STACKDIR,
-        "start_date": start_date[0],
-        "end_date": end_date[0],
+        "stack_dir": stack_dir,
+        "start_date": start_date,
+        "end_date": end_date,
         "inc_hours": inc_hours,
         "substack": substack,
         "substack_len": substack_len,
@@ -114,7 +111,7 @@ def stack(rootpath: str, stack_method: str):
         "correction": correction,
     }
     # save fft metadata for future reference
-    stack_metadata = os.path.join(STACKDIR, "stack_data.txt")
+    stack_metadata = os.path.join(stack_dir, "stack_data.txt")
 
     #######################################
     # #########PROCESSING SECTION##########
@@ -126,22 +123,22 @@ def stack(rootpath: str, stack_method: str):
     size = comm.Get_size()
 
     if rank == 0:
-        if not os.path.isdir(STACKDIR):
-            os.mkdir(STACKDIR)
+        if not os.path.isdir(stack_dir):
+            os.mkdir(stack_dir)
         # save metadata
         fout = open(stack_metadata, "w")
         fout.write(str(stack_para))
         fout.close()
 
         # cross-correlation files
-        ccfiles = sorted(glob.glob(os.path.join(CCFDIR, "*.h5")))
+        ccfiles = sorted(glob.glob(os.path.join(ccf_dir, "*.h5")))
         logger.debug(ccfiles)
 
         # load station info
         tlocs = pd.read_csv(locations)
         sta = sorted(np.unique(tlocs["network"] + "." + tlocs["station"]))
         for ii in range(len(sta)):
-            tmp = os.path.join(STACKDIR, sta[ii])
+            tmp = os.path.join(stack_dir, sta[ii])
             if not os.path.isdir(tmp):
                 os.mkdir(tmp)
 
@@ -181,7 +178,7 @@ def stack(rootpath: str, stack_method: str):
             fauto = 0
 
         # continue when file is done: TODO: Remove this and use a Store.contains() function.
-        toutfn = os.path.join(STACKDIR, idir + "/" + pairs_all[ipair] + ".tmp")
+        toutfn = os.path.join(stack_dir, idir + "/" + pairs_all[ipair] + ".tmp")
         if os.path.isfile(toutfn):
             continue
 
@@ -292,7 +289,7 @@ def stack(rootpath: str, stack_method: str):
                 iflag = 0
                 break
 
-            stack_h5 = os.path.join(STACKDIR, idir + "/" + outfn)
+            stack_h5 = os.path.join(stack_dir, idir + "/" + outfn)
             logger.debug(f"h5 stack path: {stack_h5}")
             # output stacked data
             (
