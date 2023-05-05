@@ -17,12 +17,12 @@ def test_fs_join(path1: str, path2: str, expected: str):
 
 
 fs_types = [
-    ("s3://bucket/path", type(S3FileSystem())),
-    ("/some/file", type(LocalFileSystem())),
-    ("s3/local/file", type(LocalFileSystem())),
+    ("s3://bucket/path", S3FileSystem),
+    ("/some/file", LocalFileSystem),
+    ("s3/local/file", LocalFileSystem),
 ]
 
 
 @pytest.mark.parametrize("path, fs_type", fs_types)
 def test_get_filesystem(path, fs_type):
-    assert type(get_filesystem(path)) == fs_type
+    assert isinstance(get_filesystem(path), fs_type)
