@@ -61,9 +61,12 @@ def test_frominventory(station: str, ch: str, lat: float, lon: float, elev: floa
     assert full_ch.station.elevation == elev
 
 
-def test_XMLStationChannelCatalog():
-    dir = os.path.join(os.path.dirname(__file__), "./data/")
-    cat = XMLStationChannelCatalog(dir)
+xmlpaths = [os.path.join(os.path.dirname(__file__), "./data/"), "s3://scedc-pds/FDSNstationXML/CI/"]
+
+
+@pytest.mark.parametrize("path", xmlpaths)
+def test_XMLStationChannelCatalog(path):
+    cat = XMLStationChannelCatalog(path)
     empty_inv = cat.get_inventory(DateTimeRange(), Station("non-existent", "non-existent", 0, 0, 0, ""))
     assert len(empty_inv) == 0
     yaq_inv = cat.get_inventory(DateTimeRange(), Station("CI", "YAQ", 0, 0, 0, ""))

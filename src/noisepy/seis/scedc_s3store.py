@@ -1,4 +1,3 @@
-import glob
 import logging
 import os
 import re
@@ -12,6 +11,7 @@ from noisepy.seis.channelcatalog import ChannelCatalog
 from noisepy.seis.stores import RawDataStore
 
 from .datatypes import Channel, ChannelData, ChannelType, Station
+from .utils import fs_join, get_filesystem
 
 logger = logging.getLogger(__name__)
 
@@ -27,20 +27,22 @@ class SCEDCS3DataStore(RawDataStore):
     # for checking the filename has the form: CIGMR__LHN___2022002.ms
     file_re = re.compile(r".*[0-9]{7}\.ms$", re.IGNORECASE)
 
-    def __init__(self, directory: str, chan_catalog: ChannelCatalog, channel_filter: Callable[[Channel], bool] = None):
+    def __init__(self, path: str, chan_catalog: ChannelCatalog, channel_filter: Callable[[Channel], bool] = None):
         """
         Parameters:
-            directory: directory to look for ms files
+            path: path to look for ms files. Can be a local file directory or an s3://... url path
             chan_catalog: ChannelCatalog to retrieve inventory information for the channels
             channel_filter: Function to decide whether a channel should be used or not,
                             if None, all channels are used
         """
         super().__init__()
-        self.directory = directory
+        self.fs = get_filesystem(path)
+        self.path = path
         self.channel_catalog = chan_catalog
         if channel_filter is None:
             channel_filter = lambda s: True  # noqa: E731
-        msfiles = [f for f in glob.glob(os.path.join(directory, "*.ms")) if self.file_re.match(f) is not None]
+
+        msfiles = [f for f in self.fs.glob(fs_join(path, "*.ms")) if self.file_re.match(f) is not None]
         # store a dict of {timerange: list of channels}
         self.channels = {}
         timespans = []
@@ -72,12 +74,13 @@ class SCEDCS3DataStore(RawDataStore):
             f"{chan.station.network}{chan.station.name.ljust(5, '_')}{chan.type.name}"
             f"{chan.station.location.ljust(3, '_')}"
         )
-        filename = os.path.join(self.directory, f"{chan_str}{timespan.start_datetime.strftime('%Y%j')}.ms")
-        if not os.path.exists(filename):
+        filename = fs_join(self.path, f"{chan_str}{timespan.start_datetime.strftime('%Y%j')}.ms")
+        if not self.fs.exists(filename):
             logger.warning(f"Could not find file {filename}")
             return ChannelData.empty()
 
-        stream = obspy.read(filename)
+        with self.fs.open(filename) as f:
+            stream = obspy.read(f)
         return ChannelData(stream)
 
     def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
