@@ -5,12 +5,14 @@ from urllib.parse import urlparse
 import fsspec
 
 S3_SCHEME = "s3"
+ANON_ARG = "anon"
 
 
 def get_filesystem(path: str, storage_options: dict = {}) -> fsspec.AbstractFileSystem:
     url = urlparse(path)
-    if url.scheme == S3_SCHEME:
-        storage_options = {'anon': True}
+    # default to anonymous access for S3 if the this is not already specified
+    if url.scheme == S3_SCHEME and ANON_ARG not in storage_options:
+        storage_options = {ANON_ARG: True}
     return fsspec.filesystem(url.scheme, **storage_options)
 
 
