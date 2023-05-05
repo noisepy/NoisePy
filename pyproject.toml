@@ -42,6 +42,7 @@ dependencies = [
     "pyasdf>=0.7.5",
     "pycwt>=0.3.0a22",
     "diskcache>=5.5",
+    "s3fs==2023.4.0",
 ]
 
 

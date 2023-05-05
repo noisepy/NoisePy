@@ -40,6 +40,27 @@
       "justMyCode": true
     },
     {
+      "name": "Python: S3 cross_correlate",
+      "type": "python",
+      "request": "launch",
+      "module": "noisepy.seis.main",
+      "args": [
+        "cross_correlate",
+        "--freq_norm",
+        "rma",
+        "--raw_data_path",
+        "s3://scedc-pds/continuous_waveforms/2002/2002_002/",
+        "--ccf_path",
+        "${userHome}/ccfs3tmp/",
+        "--stations",
+        "SBC,RIO,DEV,HEC,RLR,SVD,RPV,BAK",
+        "--xml_path",
+        "s3://scedc-pds/FDSNstationXML/CI/"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
       "name": "Python: download",
       "type": "python",
       "request": "launch",

@@ -11,6 +11,7 @@ from obspy import UTCDateTime, read_inventory
 from obspy.clients.fdsn import Client
 
 from .datatypes import Channel, Station
+from .utils import get_filesystem
 
 logger = logging.getLogger(__name__)
 
@@ -57,22 +58,24 @@ class XMLStationChannelCatalog(ChannelCatalog):
     A channel catalog that reads <station>.XML files from a directory
     """
 
-    def __init__(self, xmldir: str) -> None:
+    def __init__(self, xmlpath: str) -> None:
         super().__init__()
-        self.xmldir = xmldir
-        if not os.path.exists(self.xmldir):
-            raise Exception(f"The XML Station file directory '{xmldir}' doesn't exist")
+        self.xmlpath = xmlpath
+        self.fs = get_filesystem(xmlpath)
+        if not self.fs.exists(self.xmlpath):
+            raise Exception(f"The XML Station file directory '{xmlpath}' doesn't exist")
 
     def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
-        xmlfile = os.path.join(self.xmldir, f"{station.network}_{station.name}.xml")
+        xmlfile = os.path.join(self.xmlpath, f"{station.network}_{station.name}.xml")
         return self._get_inventory_from_file(xmlfile)
 
     @lru_cache
     def _get_inventory_from_file(self, xmlfile):
-        if not os.path.exists(xmlfile):
+        if not self.fs.exists(xmlfile):
             logger.warning(f"Could not find StationXML file {xmlfile}. Returning empty Inventory()")
             return obspy.Inventory()
-        return read_inventory(xmlfile)
+        with self.fs.open(xmlfile) as f:
+            return read_inventory(f)
 
 
 class FDSNChannelCatalog(ChannelCatalog):
