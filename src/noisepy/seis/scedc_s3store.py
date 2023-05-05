@@ -30,7 +30,7 @@ class SCEDCS3DataStore(RawDataStore):
     def __init__(self, path: str, chan_catalog: ChannelCatalog, channel_filter: Callable[[Channel], bool] = None):
         """
         Parameters:
-            path: path to look for ms files. Can be a local file directory or an s3://... path
+            path: path to look for ms files. Can be a local file directory or an s3://... url path
             chan_catalog: ChannelCatalog to retrieve inventory information for the channels
             channel_filter: Function to decide whether a channel should be used or not,
                             if None, all channels are used
