@@ -225,15 +225,6 @@ def plot_substack_cc(sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir=
             ax.set_yticks(np.arange(0, nwin, step=tick_inc))
             ax.set_yticklabels(timestamp[0::tick_inc])
             ax.xaxis.set_ticks_position("bottom")
-            # ax1 = fig.add_subplot(413)
-            # ax1.set_title("stacked and filtered at %4.2f-%4.2f Hz" % (freqmin, freqmax))
-            # ax1.plot(
-            # np.arange(-disp_lag, disp_lag + dt, dt),
-            # np.mean(data, axis=0),
-            # "k-",
-            # linewidth=1,
-            # )
-            # ax1.set_xticks(t)
             ax2 = fig.add_subplot(414)
             ax2.plot(amax / min(amax), "r-")
             ax2.plot(ngood, "b-")
