@@ -58,7 +58,8 @@ Here is a list of features of the package:
 * includes a series of monitoring functions to measure dv/v on the resulted cross-correlation functions using some recently developed new methods (see our papers for more details<sup>**</sup>)
 
 # Short tutorial
-A short tutorial on how to use NoisePy-seis can be found in the following Jupyter Notebook: https://github.com/mdenolle/NoisePy/blob/master/Jupyter_notebook/tutorial.ipynb
+A short tutorial on how to use NoisePy-seis can be is available as a [Jupyter notebook](https://github.com/mdenolle/NoisePy/blob/master/Jupyter_notebook/tutorial.ipynb) and can be
+[run directly in Colab](https://colab.research.google.com/github/mdenolle/NoisePy/blob/master/Jupyter_notebook/tutorial.ipynb).
 
 
 This tutorial presents one simple example of how NoisePy might work! We strongly encourage you to download the NoisePy package and play it on your own! If you have any  comments and/or suggestions during running the codes, please do not hesitate to contact us through email or open an issue in this github page!
