@@ -11,7 +11,7 @@ from noisepy.seis.channelcatalog import ChannelCatalog
 from noisepy.seis.stores import RawDataStore
 
 from .datatypes import Channel, ChannelData, ChannelType, Station
-from .utils import get_filesystem
+from .utils import fs_join, get_filesystem
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ class SCEDCS3DataStore(RawDataStore):
         if channel_filter is None:
             channel_filter = lambda s: True  # noqa: E731
 
-        msfiles = [f for f in self.fs.glob(os.path.join(path, "*.ms")) if self.file_re.match(f) is not None]
+        msfiles = [f for f in self.fs.glob(fs_join(path, "*.ms")) if self.file_re.match(f) is not None]
         # store a dict of {timerange: list of channels}
         self.channels = {}
         timespans = []
@@ -74,7 +74,7 @@ class SCEDCS3DataStore(RawDataStore):
             f"{chan.station.network}{chan.station.name.ljust(5, '_')}{chan.type.name}"
             f"{chan.station.location.ljust(3, '_')}"
         )
-        filename = os.path.join(self.path, f"{chan_str}{timespan.start_datetime.strftime('%Y%j')}.ms")
+        filename = fs_join(self.path, f"{chan_str}{timespan.start_datetime.strftime('%Y%j')}.ms")
         if not self.fs.exists(filename):
             logger.warning(f"Could not find file {filename}")
             return ChannelData.empty()

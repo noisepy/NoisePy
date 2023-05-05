@@ -1,5 +1,4 @@
 import logging
-import os
 from abc import ABC, abstractmethod
 from functools import lru_cache
 
@@ -11,7 +10,7 @@ from obspy import UTCDateTime, read_inventory
 from obspy.clients.fdsn import Client
 
 from .datatypes import Channel, Station
-from .utils import get_filesystem
+from .utils import fs_join, get_filesystem
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +65,7 @@ class XMLStationChannelCatalog(ChannelCatalog):
             raise Exception(f"The XML Station file directory '{xmlpath}' doesn't exist")
 
     def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
-        xmlfile = os.path.join(self.xmlpath, f"{station.network}_{station.name}.xml")
+        xmlfile = fs_join(self.xmlpath, f"{station.network}_{station.name}.xml")
         return self._get_inventory_from_file(xmlfile)
 
     @lru_cache
