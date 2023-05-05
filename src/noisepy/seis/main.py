@@ -14,7 +14,7 @@ from .S0A_download_ASDF_MPI import download
 from .S1_fft_cc_MPI import cross_correlate
 from .S2_stacking import stack
 from .scedc_s3store import SCEDCS3DataStore
-from .utils import get_filesystem
+from .utils import fs_join, get_filesystem
 
 # Utility running the different steps from the command line. Defines the arguments for each step
 
@@ -37,7 +37,7 @@ def valid_date(d: str) -> str:
 
 def initialize_fft_params(raw_dir: str) -> ConfigParameters:
     params = ConfigParameters()
-    dfile = os.path.join(raw_dir, "download_info.txt")
+    dfile = fs_join(raw_dir, "download_info.txt")
     if os.path.isfile(dfile):
         down_info = eval(open(dfile).read())  # TODO: do proper json/yaml serialization
         params.samp_freq = down_info["samp_freq"]
@@ -62,7 +62,7 @@ def create_raw_store(raw_dir: str, sta_list: List[str], xml_path: str):
     fs = get_filesystem(raw_dir)
 
     def count(pat):
-        return len(fs.glob(os.path.join(raw_dir, pat)))
+        return len(fs.glob(fs_join(raw_dir, pat)))
 
     # Use heuristics around which store to use by the files present
     if count("*.h5") > 0:
