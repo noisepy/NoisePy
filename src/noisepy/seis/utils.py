@@ -7,9 +7,11 @@ import fsspec
 S3_SCHEME = "s3"
 
 
-def get_filesystem(path: str) -> fsspec.AbstractFileSystem:
+def get_filesystem(path: str, storage_options: dict = {}) -> fsspec.AbstractFileSystem:
     url = urlparse(path)
-    return fsspec.filesystem(S3_SCHEME, anon=True) if url.scheme == S3_SCHEME else fsspec.filesystem("file")
+    if url.scheme == S3_SCHEME:
+        storage_options = {'anon': True}
+    return fsspec.filesystem(url.scheme, **storage_options)
 
 
 def fs_join(path1: str, path2: str) -> str:
