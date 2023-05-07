@@ -16,8 +16,8 @@ Based on our tests, it generates very similar results to those from Frequency-Ti
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
 
 NOTE:
-    According to Bensen et al., (2007), the centrel frequncy of
-    each narrowband filters (equvalent to wavelet tranformed signal
+    According to Bensen et al., (2007), the central frequency of
+    each narrowband filters (equivalent to wavelet tranformed signal
     at each scale) would be different from the instaneous frequency calculated
     using instaneous phase due to spectral linkage. We do not
     correct this effect in this script. Phase velocity is not calculated here,

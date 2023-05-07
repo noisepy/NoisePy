@@ -287,11 +287,11 @@ def preprocess_raw(st, inv, prepro_para, date_info):
             }
             st.simulate(paz_remove=None, pre_filt=pre_filt, seedresp=seedresp[0])
 
-        elif rm_resp == "polozeros":
-            print("remove response using polos and zeros")
+        elif rm_resp == "poleszeros":
+            print("remove response using poles and zeros")
             paz_sts = glob.glob(os.path.join(respdir, "*" + station + "*"))
             if len(paz_sts) == 0:
-                raise ValueError("no polozeros found for %s" % station)
+                raise ValueError("no poleszeros found for %s" % station)
             st.simulate(paz_remove=paz_sts[0], pre_filt=pre_filt)
 
         else:

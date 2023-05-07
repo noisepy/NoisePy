@@ -108,10 +108,14 @@ def cross_correlate(raw_store: RawDataStore, fft_params: ConfigParameters, cc_st
         N: int
         Nfft2: int
         for ix_ch, ch in enumerate(channels):
+            t0 = time.time()
             ch_data = raw_store.read_data(ts, ch)
+            t01 = time.time()
             # TODO: Below the last values for N and Nfft are used?
             fft_array[ix_ch], fft_std[ix_ch], fft_time[ix_ch], N, Nfft2 = compute_fft(fft_params, ch_data)
             fft_flag[ix_ch] = fft_array[ix_ch].size > 0
+            t02 = time.time()
+            print(f"It took '{t01-t01} s to read 1 data, and '{t02-t01} to process it.")
             if not fft_flag[ix_ch]:
                 logger.warning(f"No data available for channel '{ch}', skipped")
         Nfft = Nfft2 * 2
@@ -122,20 +126,26 @@ def cross_correlate(raw_store: RawDataStore, fft_params: ConfigParameters, cc_st
 
         # ###########PERFORM CROSS-CORRELATION##################
         for iiS in range(nchannels):  # looping over the channel source
-            src_chan = channels[iiS]
+            src_chan = channels[iiS]  # this is the name of the source channel
             fft1 = fft_array[iiS]
-            source_std = fft_std[iiS]
+            source_std = fft_std[iiS]  # this is the array of data metrics
+
+            # this finds the windows of "good" noise
             sou_ind = np.where((source_std < fft_params.max_over_std) & (source_std > 0) & (np.isnan(source_std) == 0))[
                 0
             ]
             if not fft_flag[iiS] or not len(sou_ind):
                 continue
-            t0 = time.time()
-            # -----------get the smoothed source spectrum for decon later----------
-            sfft1 = noise_module.smooth_source_spect(fft_params, fft1)
-            sfft1 = sfft1.reshape(N, Nfft2)
-            t1 = time.time()
-            logger.debug("smoothing source takes %6.4fs" % (t1 - t0))
+            # in the case of pure deconvolution, we recommend smoothing anyway.
+            if fft_params.cc_method == "deconv":
+                t0 = time.time()
+                # -----------get the smoothed source spectrum for decon later----------
+                sfft1 = noise_module.smooth_source_spect(fft_params, fft1)
+                sfft1 = sfft1.reshape(N, Nfft2)
+                t1 = time.time()
+                logger.debug("smoothing source takes %6.4fs" % (t1 - t0))
+            else:
+                sfft1 = fft1
 
             # get index right for auto/cross correlation
             istart = iiS  # start at the channel source / only fills the upper right triangle matrix of channel pairs
@@ -175,11 +185,12 @@ def cross_correlate(raw_store: RawDataStore, fft_params: ConfigParameters, cc_st
                 if cc_store.contains(ts, src_chan, rec_chan, fft_params):
                     continue
 
+                # read the receiver data
                 fft2 = fft_array[iiR]
                 sfft2 = fft2.reshape(N, Nfft2)
                 receiver_std = fft_std[iiR]
 
-                # ---------- check the existence of earthquakes ----------
+                # ---------- check the existence of earthquakes or spikes ----------
                 rec_ind = np.where(
                     (receiver_std < fft_params.max_over_std) & (receiver_std > 0) & (np.isnan(receiver_std) == 0)
                 )[0]
@@ -187,11 +198,14 @@ def cross_correlate(raw_store: RawDataStore, fft_params: ConfigParameters, cc_st
                 if len(bb) == 0:
                     continue
 
+                # ----------- GAME TIME: cross correlation step ---------------
                 t2 = time.time()
                 corr, tcorr, ncorr = noise_module.correlate(
                     sfft1[bb, :], sfft2[bb, :], fft_params, Nfft, fft_time[iiR][bb]
                 )
                 t3 = time.time()
+
+                # ---------- OUTPUT: store metadata and data into file ------------
                 coor = {
                     "lonS": src_chan.station.lon,
                     "latS": src_chan.station.lat,

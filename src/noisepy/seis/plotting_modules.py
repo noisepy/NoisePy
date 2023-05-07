@@ -207,31 +207,29 @@ def plot_substack_cc(sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir=
                 tick_inc = int(nwin / 5)
             else:
                 tick_inc = 2
-            # fig = plt.figure(figsize=(10, 6))
             fig, (
                 ax1,
                 ax2,
             ) = plt.subplots(2, 1, gridspec_kw={"height_ratios": [1, 3]}, figsize=(10, 6))
-            ax = fig.add_subplot(211)
-            ax.matshow(
+            ax1.matshow(
                 data,
                 cmap="seismic",
                 extent=[-disp_lag, disp_lag, nwin, 0],
                 aspect="auto",
             )
-            ax.set_title("%s.%s.%s  %s.%s.%s  dist:%5.2fkm" % (net1, sta1, chan1, net2, sta2, chan2, dist))
-            ax.set_xlabel("time [s]")
-            ax.set_xticks(t)
-            ax.set_yticks(np.arange(0, nwin, step=tick_inc))
-            ax.set_yticklabels(timestamp[0::tick_inc])
-            ax.xaxis.set_ticks_position("bottom")
-            ax2 = fig.add_subplot(414)
+            ax1.set_title("%s.%s.%s  %s.%s.%s  dist:%5.2fkm" % (net1, sta1, chan1, net2, sta2, chan2, dist))
+            ax1.set_xlabel("time [s]")
+            ax1.set_xticks(t)
+            ax1.set_yticks(np.arange(0, nwin, step=tick_inc))
+            ax1.set_yticklabels(timestamp[0::tick_inc])
+            ax1.xaxis.set_ticks_position("bottom")
+
             ax2.plot(amax / min(amax), "r-")
             ax2.plot(ngood, "b-")
             ax2.set_xlabel("waveform number")
             ax2.set_xticks(np.arange(0, nwin, step=tick_inc))
             ax2.set_xticklabels(tmarks[0:nwin:tick_inc])
-            for tick in ax[2].get_xticklabels():
+            for tick in ax2.get_xticklabels():
                 tick.set_rotation(30)
             ax2.legend(["relative amp", "ngood"], loc="upper right")
             fig.tight_layout()

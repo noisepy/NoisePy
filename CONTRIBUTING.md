@@ -22,7 +22,7 @@ it will install all of the dependencies of the package, including IPython to sta
 
 Install the `pre-commit` hook:
 ```sh
-$ pre-commit install
+pre-commit install
 ```
 
 This will run the linting and formatting checks configured in the project before every commit.
