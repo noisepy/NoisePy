@@ -150,7 +150,7 @@ def cross_correlate(
                 t1 = time.time()
                 logger.debug("smoothing source takes %6.4fs" % (t1 - t0))
             else:
-                sfft1 = fft1
+                sfft1 = fft1.reshape(N, Nfft2)
 
             # get index right for auto/cross correlation
             istart = iiS  # start at the channel source / only fills the upper right triangle matrix of channel pairs
