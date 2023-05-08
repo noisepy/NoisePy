@@ -62,10 +62,8 @@ Enjoy the NoisePy journey!
 #########################################################
 ################ PARAMETER SECTION ######################
 #########################################################
-tt0 = time.time()
 
 # download parameters
-client = Client("SCEDC")  # client/data center. see https://docs.obspy.org/packages/obspy.clients.fdsn.html for a list
 
 # get rough estimate of memory needs to ensure it now below up in S1
 MAX_MEM = 5.0  # maximum memory allowed per core in GB
@@ -79,7 +77,12 @@ def download(
     chan_list: List[str],
     sta_list: List[str],
     prepro_para: ConfigParameters,
+    client_url_key: str = "SCEDC",
 ):
+    # client/data center. see https://docs.obspy.org/packages/obspy.clients.fdsn.html for a list
+    client = Client(client_url_key)
+
+    tt0 = time.time()
     dlist = os.path.join(direc, "station.txt")  # CSV file for station location info
     prepro_para.respdir = os.path.join(
         direc, "../resp"
