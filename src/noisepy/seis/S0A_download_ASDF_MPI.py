@@ -38,7 +38,7 @@ This script:
     5) avoids downloading data for stations that already have 1 or 3 channels
 
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
-         Marine Denolle (mdenolle@fas.harvard.edu)
+         Marine Denolle (mdenolle@uw.edu)
 
 NOTE:
     0. MOST occasions you just need to change parameters followed
