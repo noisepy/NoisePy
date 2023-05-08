@@ -16,6 +16,19 @@ from .utils import fs_join, get_filesystem
 logger = logging.getLogger(__name__)
 
 
+def channel_filter(stations: List[str], ch_prefix: str) -> Callable[[Channel], bool]:
+    """
+    Helper function for creating a channel filter to be used in the constructor of the store.
+    This filter uses a list of allowed station name along with a channel filter prefix.
+    """
+    sta_set = set(stations)
+
+    def filter(ch: Channel) -> bool:
+        return ch.station.name in sta_set and ch.type.name.lower().startswith(ch_prefix.lower())
+
+    return filter
+
+
 class SCEDCS3DataStore(RawDataStore):
     """
     A data store implementation to read from a directory of miniSEED (.ms) files from the SCEDC S3 bucket.

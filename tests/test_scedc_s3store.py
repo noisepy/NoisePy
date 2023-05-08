@@ -5,7 +5,8 @@ import pytest
 from datetimerange import DateTimeRange
 from test_channelcatalog import MockCatalog
 
-from noisepy.seis.scedc_s3store import SCEDCS3DataStore
+from noisepy.seis.datatypes import Channel, ChannelType, Station
+from noisepy.seis.scedc_s3store import SCEDCS3DataStore, channel_filter
 
 timespan1 = DateTimeRange(datetime(2022, 1, 2, tzinfo=timezone.utc), datetime(2022, 1, 3, tzinfo=timezone.utc))
 timespan2 = DateTimeRange(datetime(2021, 2, 3, tzinfo=timezone.utc), datetime(2021, 2, 4, tzinfo=timezone.utc))
@@ -55,3 +56,20 @@ def test_timespan_channels(store: SCEDCS3DataStore):
     assert len(channels) == 3
     channels = store.get_channels(timespan2)
     assert len(channels) == 0
+
+
+def test_filter():
+    # filter for station 'staX' or 'staY' and channel type starts with 'B'
+    f = channel_filter(["staX", "staY"], "B")
+    staX = Station("CI", "staX", 0, 0, 0, "")
+    staZ = Station("CI", "staZ", 0, 0, 0, "")
+
+    def check(sta, ch_name):
+        ch = Channel(ChannelType((ch_name)), sta)
+        return f(ch)
+
+    assert check(staX, "BHE") is True
+    assert check(staX, "BBB") is True
+    assert check(staX, "CHE") is False  # invalid channel name
+    assert check(staZ, "BHE") is False  # invalid station
+    assert check(staZ, "CHE") is False  # invalid station and channel name
