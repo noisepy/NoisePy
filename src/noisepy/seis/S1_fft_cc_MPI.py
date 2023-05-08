@@ -100,9 +100,12 @@ def cross_correlate(
             continue
 
         # ###########LOADING NOISE DATA AND DO FFT##################
+        t0 = time.time()
         channels = raw_store.get_channels(ts)
         ch_data_tuples = _read_channels(ts, raw_store, channels, fft_params.samp_freq)
+        t01 = time.time()
         ch_data_tuples = preprocess(ch_data_tuples, raw_store, fft_params, ts)
+        t02 = time.time()
 
         nchannels = len(ch_data_tuples)
         nseg_chunk = check_memory(fft_params, nchannels)
@@ -143,12 +146,12 @@ def cross_correlate(
                 continue
             # in the case of pure deconvolution, we recommend smoothing anyway.
             if fft_params.cc_method == "deconv":
-                t0 = time.time()
+                t00 = time.time()
                 # -----------get the smoothed source spectrum for decon later----------
                 sfft1 = noise_module.smooth_source_spect(fft_params, fft1)
                 sfft1 = sfft1.reshape(N, Nfft2)
-                t1 = time.time()
-                logger.debug("smoothing source takes %6.4fs" % (t1 - t0))
+                t10 = time.time()
+                logger.debug("smoothing source takes %6.4fs" % (t10 - t00))
             else:
                 sfft1 = fft1.reshape(N, Nfft2)
 
@@ -221,7 +224,10 @@ def cross_correlate(
                 parameters = noise_module.cc_parameters(fft_params, coor, tcorr, ncorr, comp)
                 cc_store.append(ts, src_chan, rec_chan, fft_params, parameters, corr)
                 t4 = time.time()
-                logger.debug("read S %6.4fs, cc %6.4fs, write cc %6.4fs" % ((t1 - t0), (t3 - t2), (t4 - t3)))
+                logger.debug(
+                    "read S %6.4fs, process %6.4fs, cc %6.4fs, write cc %6.4fs"
+                    % ((t01 - t0), (t02 - t01), (t3 - t2), (t4 - t3))
+                )
 
                 del fft2, sfft2, receiver_std
             del fft1, sfft1, source_std
