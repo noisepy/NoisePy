@@ -1,13 +1,16 @@
 import logging
 from abc import ABC, abstractmethod
+from functools import lru_cache
 
 import diskcache as dc
 import obspy
 import pandas as pd
 from datetimerange import DateTimeRange
-from obspy import UTCDateTime
+from obspy import UTCDateTime, read_inventory
+from obspy.clients.fdsn import Client
 
 from .datatypes import Channel, Station
+from .utils import fs_join, get_filesystem
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +43,38 @@ class ChannelCatalog(ABC):
             ),
         )
 
-    @abstractmethod
     def get_full_channel(self, timespan: DateTimeRange, channel: Channel) -> Channel:
+        inv = self.get_inventory(timespan, channel.station)
+        return self.populate_from_inventory(inv, channel)
+
+    @abstractmethod
+    def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
         pass
+
+
+class XMLStationChannelCatalog(ChannelCatalog):
+    """
+    A channel catalog that reads <station>.XML files from a directory or an s3://... bucket url path.
+    """
+
+    def __init__(self, xmlpath: str) -> None:
+        super().__init__()
+        self.xmlpath = xmlpath
+        self.fs = get_filesystem(xmlpath)
+        if not self.fs.exists(self.xmlpath):
+            raise Exception(f"The XML Station file directory '{xmlpath}' doesn't exist")
+
+    def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
+        xmlfile = fs_join(self.xmlpath, f"{station.network}_{station.name}.xml")
+        return self._get_inventory_from_file(xmlfile)
+
+    @lru_cache
+    def _get_inventory_from_file(self, xmlfile):
+        if not self.fs.exists(xmlfile):
+            logger.warning(f"Could not find StationXML file {xmlfile}. Returning empty Inventory()")
+            return obspy.Inventory()
+        with self.fs.open(xmlfile) as f:
+            return read_inventory(f)
 
 
 class FDSNChannelCatalog(ChannelCatalog):
@@ -63,19 +95,26 @@ class FDSNChannelCatalog(ChannelCatalog):
         self.cache = dc.Cache(cache_dir)
 
     def get_full_channel(self, timespan: DateTimeRange, channel: Channel) -> Channel:
-        inv = self._get_inventory(timespan)
+        inv = self._get_inventory(str(timespan))
         return self.populate_from_inventory(inv, channel)
 
-    def _get_cache_key(self, timespan: DateTimeRange) -> str:
-        return f"{self.url_key}_{timespan}"
+    def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
+        return self._get_inventory(str(timespan))
 
-    def _get_inventory(self, ts: DateTimeRange) -> obspy.Inventory:
-        key = FDSNChannelCatalog._get_cache_key(ts)
+    def _get_cache_key(self, ts_str: str) -> str:
+        return f"{self.url_key}_{ts_str}"
+
+    @lru_cache
+    # pass the timestamp (DateTimeRange) as string so that the method is cacheable
+    # since DateTimeRange is not hasheable
+    def _get_inventory(self, ts_str: str) -> obspy.Inventory:
+        ts = DateTimeRange.from_range_text(ts_str)
+        key = self._get_cache_key(ts_str)
         inventory = self.cache.get(key, None)
         if inventory is None:
             logging.info(f"Inventory not found in cache for key: '{key}'. Fetching from {self.url_key}.")
             bulk_station_request = [("*", "*", "*", "*", UTCDateTime(ts.start_datetime), UTCDateTime(ts.end_datetime))]
-            client = obspy.Client(self.url_key)
+            client = Client(self.url_key)
             inventory = client.get_stations_bulk(bulk_station_request, level="channel")
             self.cache[key] = inventory
         return inventory
@@ -102,6 +141,9 @@ class CSVChannelCatalog(ChannelCatalog):
                 location=ch.station.location,
             ),
         )
+
+    def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
+        return None
 
 
 # TODO: A channel catalog that uses the files in the SCEDC S3 bucket: s3://scedc-pds/FDSNstationXML/

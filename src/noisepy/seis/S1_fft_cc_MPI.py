@@ -2,13 +2,15 @@ import gc
 import logging
 import sys
 import time
-from typing import Tuple
+from typing import List, Tuple
 
 import numpy as np
+import obspy
+from datetimerange import DateTimeRange
 from mpi4py import MPI
 from scipy.fftpack.helper import next_fast_len
 
-from noisepy.seis.datatypes import ChannelData, ConfigParameters
+from noisepy.seis.datatypes import Channel, ChannelData, ConfigParameters
 
 from . import noise_module
 from .stores import CrossCorrelationDataStore, RawDataStore
@@ -49,7 +51,11 @@ NOTE:
 """
 
 
-def cross_correlate(raw_store: RawDataStore, fft_params: ConfigParameters, cc_store: CrossCorrelationDataStore):
+def cross_correlate(
+    raw_store: RawDataStore,
+    fft_params: ConfigParameters,
+    cc_store: CrossCorrelationDataStore,
+):
     """
     Perform the cross-correlation analysis
 
@@ -57,6 +63,7 @@ def cross_correlate(raw_store: RawDataStore, fft_params: ConfigParameters, cc_st
                 raw_store: Store to load data from
                 fft_params: Parameters for the FFT calculations
                 cc_store: Store for saving cross correlations
+
     """
 
     #######################################
@@ -94,7 +101,10 @@ def cross_correlate(raw_store: RawDataStore, fft_params: ConfigParameters, cc_st
 
         # ###########LOADING NOISE DATA AND DO FFT##################
         channels = raw_store.get_channels(ts)
-        nchannels = len(channels)
+        ch_data_tuples = _read_channels(ts, raw_store, channels, fft_params.samp_freq)
+        ch_data_tuples = preprocess(ch_data_tuples, raw_store, fft_params, ts)
+
+        nchannels = len(ch_data_tuples)
         nseg_chunk = check_memory(fft_params, nchannels)
         nnfft = int(next_fast_len(int(fft_params.cc_len * fft_params.samp_freq)))  # samp_freq should be sampling_rate
         # open array to store fft data/info in memory
@@ -107,15 +117,10 @@ def cross_correlate(raw_store: RawDataStore, fft_params: ConfigParameters, cc_st
         # loop through all channels
         N: int
         Nfft2: int
-        for ix_ch, ch in enumerate(channels):
-            t0 = time.time()
-            ch_data = raw_store.read_data(ts, ch)
-            t01 = time.time()
+        for ix_ch, (ch, ch_data) in enumerate(ch_data_tuples):
             # TODO: Below the last values for N and Nfft are used?
             fft_array[ix_ch], fft_std[ix_ch], fft_time[ix_ch], N, Nfft2 = compute_fft(fft_params, ch_data)
             fft_flag[ix_ch] = fft_array[ix_ch].size > 0
-            t02 = time.time()
-            print(f"It took '{t01-t01} s to read 1 data, and '{t02-t01} to process it.")
             if not fft_flag[ix_ch]:
                 logger.warning(f"No data available for channel '{ch}', skipped")
         Nfft = Nfft2 * 2
@@ -237,6 +242,23 @@ def cross_correlate(raw_store: RawDataStore, fft_params: ConfigParameters, cc_st
     comm.barrier()
 
 
+def preprocess(
+    ch_data: List[Tuple[Channel, ChannelData]], raw_store: RawDataStore, fft_params: ConfigParameters, ts: DateTimeRange
+) -> List[Tuple[Channel, ChannelData]]:
+    new_streams = [
+        noise_module.preprocess_raw(
+            tup[1].stream,
+            raw_store.get_inventory(ts, tup[0].station),
+            fft_params,
+            obspy.UTCDateTime(ts.start_datetime),
+            obspy.UTCDateTime(ts.end_datetime),
+        )
+        for tup in ch_data
+    ]
+    channels = list(zip(*ch_data))[0]
+    return list(zip(channels, [ChannelData(st) for st in new_streams]))
+
+
 def compute_fft(
     fft_params: ConfigParameters, ch_data: ChannelData
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, int, int]:
@@ -265,6 +287,30 @@ def compute_fft(
     fft_time = dataS_t
     del trace_stdS, dataS_t, dataS, source_white, data
     return fft, std, fft_time, N, Nfft2
+
+
+def _read_channels(
+    ts: DateTimeRange, store: RawDataStore, channels: List[Channel], samp_freq: int
+) -> List[Tuple[Channel, ChannelData]]:
+    ch_data = [store.read_data(ts, ch) for ch in channels]
+    tuples = list(zip(channels, ch_data))
+    return _filter_channel_data(tuples, samp_freq)
+
+
+def _filter_channel_data(
+    tuples: List[Tuple[Channel, ChannelData]], samp_freq: int
+) -> List[Tuple[Channel, ChannelData]]:
+    frequencies = set(t[1].sampling_rate for t in tuples)
+    closest_freq = min(
+        filter(lambda f: f >= samp_freq, frequencies),
+        key=lambda f: max(f - samp_freq, 0),
+    )
+    filtered_tuples = list(filter(lambda tup: tup[1].sampling_rate == closest_freq, tuples))
+    logger.info(
+        f"Picked {closest_freq} as the closest sampling frequence to {samp_freq}. "
+        f"Filtered to {len(filtered_tuples)}/{len(tuples)} channels"
+    )
+    return filtered_tuples
 
 
 def check_memory(params: ConfigParameters, nsta: int) -> int:

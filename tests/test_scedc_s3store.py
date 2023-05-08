@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timezone
 
 import pytest
@@ -19,11 +20,10 @@ def test_parsefilename(file: str, expected: DateTimeRange):
     assert expected == SCEDCS3DataStore._parse_timespan(file)
 
 
-@pytest.fixture
-def store():
-    import os
-
-    return SCEDCS3DataStore(os.path.join(os.path.dirname(__file__), "./data/s3scedc"), MockCatalog())
+data_paths = [
+    os.path.join(os.path.dirname(__file__), "./data/s3scedc"),
+    "s3://scedc-pds/continuous_waveforms/2022/2022_002/",
+]
 
 
 read_channels = [
@@ -31,6 +31,11 @@ read_channels = [
     (SCEDCS3DataStore._parse_channel("CIFOX2_LHZ___2022002.ms")),
     (SCEDCS3DataStore._parse_channel("CINCH__LHZ___2022002.ms")),
 ]
+
+
+@pytest.fixture(params=data_paths)
+def store(request):
+    return SCEDCS3DataStore(request.param, MockCatalog(), lambda ch: ch in read_channels)
 
 
 @pytest.mark.parametrize("channel", read_channels)

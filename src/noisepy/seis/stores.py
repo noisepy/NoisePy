@@ -3,9 +3,10 @@ from datetime import datetime
 from typing import Any, Dict, List
 
 import numpy as np
+import obspy
 from datetimerange import DateTimeRange
 
-from .datatypes import Channel, ChannelData, ConfigParameters
+from .datatypes import Channel, ChannelData, ConfigParameters, Station
 
 
 class DataStore(ABC):
@@ -39,6 +40,10 @@ class RawDataStore(DataStore):
 
     @abstractmethod
     def read_data(self, timespan: DateTimeRange, chan: Channel) -> ChannelData:
+        pass
+
+    @abstractmethod
+    def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
         pass
 
 

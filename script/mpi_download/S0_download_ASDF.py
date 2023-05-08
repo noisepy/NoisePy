@@ -148,9 +148,8 @@ else:
 
 # loop through each time chunck
 for ick in range(len(all_chunck) - 1):
-    s1 = obspy.UTCDateTime(all_chunck[ick])
-    s2 = obspy.UTCDateTime(all_chunck[ick + 1])
-    date_info = {"starttime": s1, "endtime": s2}
+    starttime = obspy.UTCDateTime(all_chunck[ick])
+    endtime = obspy.UTCDateTime(all_chunck[ick + 1])
 
     # filename of the ASDF file
     ff = os.path.join(direc, all_chunck[ick] + "T" + all_chunck[ick + 1] + ".h5")
@@ -162,8 +161,8 @@ for ick in range(len(all_chunck) - 1):
             network=net[ista],
             station=sta[ista],
             channel=chan[ista],
-            starttime=s1,
-            endtime=s2,
+            starttime=starttime,
+            endtime=endtime,
             location=location[ista],
             level="response",
         )
@@ -181,8 +180,8 @@ for ick in range(len(all_chunck) - 1):
                     station=sta[ista],
                     channel=chan[ista],
                     location=location[ista],
-                    starttime=s1,
-                    endtime=s2,
+                    starttime=starttime,
+                    endtime=endtime,
                 )
                 t1 = time.time()
             except Exception as e:
@@ -190,7 +189,7 @@ for ick in range(len(all_chunck) - 1):
                 continue
 
             # preprocess to clean data
-            tr = noise_module.preprocess_raw(tr, sta_inv, prepro_para, date_info)
+            tr = noise_module.preprocess_raw(tr, sta_inv, prepro_para, starttime, endtime)
             t2 = time.time()
 
             if len(tr):

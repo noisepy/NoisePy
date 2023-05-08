@@ -156,7 +156,13 @@ def make_timestamps(prepro_para):
     return all_stimes
 
 
-def preprocess_raw(st, inv, prepro_para, date_info):
+def preprocess_raw(
+    st: obspy.Stream,
+    inv: obspy.Inventory,
+    prepro_para: ConfigParameters,
+    starttime: obspy.UTCDateTime,
+    endtime: obspy.UTCDateTime,
+):
     """
     this function pre-processes the raw data stream by:
         1) check samping rate and gaps in the data;
@@ -183,10 +189,7 @@ def preprocess_raw(st, inv, prepro_para, date_info):
     """
     # load paramters from fft dict
     rm_resp = prepro_para["rm_resp"]
-    if "rm_resp_out" in prepro_para.keys():
-        rm_resp_out = prepro_para["rm_resp_out"]
-    else:
-        rm_resp_out = "VEL"
+    rm_resp_out = prepro_para["rm_resp_out"]
     respdir = prepro_para["respdir"]
     freqmin = prepro_para["freqmin"]
     freqmax = prepro_para["freqmax"]
@@ -204,7 +207,7 @@ def preprocess_raw(st, inv, prepro_para, date_info):
     pre_filt = [f1, f2, f3, f4]
 
     # check sampling rate and trace length
-    st = check_sample_gaps(st, date_info)
+    st = check_sample_gaps(st, starttime, endtime)
     if len(st) == 0:
         print("No traces in Stream: Continue!")
         return st
@@ -263,8 +266,8 @@ def preprocess_raw(st, inv, prepro_para, date_info):
                     print("removing response for %s using inv" % st[0])
                     st[0].attach_response(inv)
                     st[0].remove_response(output=rm_resp_out, pre_filt=pre_filt, water_level=60)
-                except Exception:
-                    print("WARNING: Failed to remove response from %s. Returning empty stream." % st[0])
+                except Exception as e:
+                    print("WARNING: Failed to remove response from %s. Returning empty stream. %s" % (st[0], e))
                     st = []
                     return st
 
@@ -282,10 +285,10 @@ def preprocess_raw(st, inv, prepro_para, date_info):
                 raise ValueError("no RESP files found for %s" % station)
             seedresp = {
                 "filename": resp[0],
-                "date": date_info["starttime"],
+                "date": starttime,
                 "units": "DIS",
             }
-            st.simulate(paz_remove=None, pre_filt=pre_filt, seedresp=seedresp[0])
+            st.simulate(paz_remove=None, pre_filt=pre_filt, seedresp=seedresp)
 
         elif rm_resp == "poleszeros":
             print("remove response using poles and zeros")
@@ -300,8 +303,8 @@ def preprocess_raw(st, inv, prepro_para, date_info):
     ntr = obspy.Stream()
     # trim a continous segment into user-defined sequences
     st[0].trim(
-        starttime=date_info["starttime"],
-        endtime=date_info["endtime"],
+        starttime=starttime,
+        endtime=endtime,
         pad=True,
         fill_value=0,
     )
@@ -523,7 +526,7 @@ def cut_trace_make_stat(fc_para: ConfigParameters, ch_data: ChannelData):
     # trace_madS = np.zeros(nseg,dtype=np.float32)
     trace_stdS = np.zeros(nseg, dtype=np.float32)
     dataS = np.zeros(shape=(int(nseg), int(npts)), dtype=np.float32)
-    dataS_t = np.zeros(nseg, dtype=np.float)
+    dataS_t = np.zeros(nseg, dtype=np.float32)
 
     indx1 = 0
     for iseg in range(nseg):
@@ -1208,7 +1211,7 @@ def rotation(bigstack, parameters, locs):
 ####################################################
 
 
-def check_sample_gaps(stream, date_info):
+def check_sample_gaps(stream: obspy.Stream, starttime: obspy.UTCDateTime, endtime: obspy.UTCDateTime):
     """
     this function checks sampling rate and find gaps of all traces in stream.
     PARAMETERS:
@@ -1226,7 +1229,7 @@ def check_sample_gaps(stream, date_info):
         return stream
 
     # remove traces with big gaps
-    if portion_gaps(stream, date_info) > 0.3:
+    if portion_gaps(stream, starttime, endtime) > 0.3:
         stream = []
         return stream
 
@@ -1243,7 +1246,7 @@ def check_sample_gaps(stream, date_info):
     return stream
 
 
-def portion_gaps(stream, date_info):
+def portion_gaps(stream, starttime: obspy.UTCDateTime, endtime: obspy.UTCDateTime):
     """
     this function tracks the gaps (npts) from the accumulated difference between starttime and endtime
     of each stream trace. it removes trace with gap length > 30% of trace size.
@@ -1257,8 +1260,6 @@ def portion_gaps(stream, date_info):
     pgaps: proportion of gaps/all_pts in stream
     """
     # ideal duration of data
-    starttime = date_info["starttime"]
-    endtime = date_info["endtime"]
     npts = (endtime - starttime) * stream[0].stats.sampling_rate
 
     pgaps = 0

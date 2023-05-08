@@ -51,13 +51,13 @@ Here is a list of features of the package:
 * performs fast and easy cross-correlation with functionality to run in parallel through [MPI](https://en.wikipedia.org/wiki/Message_Passing_Interface)
 * **Applications module**:
    + *Ambient noise monitoring*: measure dv/v using a wide variety of techniques in time, fourier, and wavelet domain (Yuan et al., 2021)
-   + *Surface wave dispersion*: construct dispersion images using conventional techniques. 
-   
+   + *Surface wave dispersion*: construct dispersion images using conventional techniques.
+
 
 
 # Usage
 
-To run the code on a single core, open the terminal and activate the noisepy environment before run following commands. To run on institutional clusters, see installation notes for individual packages on the module list of the cluster. 
+To run the code on a single core, open the terminal and activate the noisepy environment before run following commands. To run on institutional clusters, see installation notes for individual packages on the module list of the cluster.
 
 ## Deploy using Docker
 We use I/O on disk, so users need root access to the file system. To install rootless docker, see instructions [here](https://docs.docker.com/engine/security/rootless/#install).
@@ -105,7 +105,7 @@ The parameters of the workflow are saved into an object called ``ConfigParameter
  *   lamax: float = 36
  *   lomin: float = -122
  *   lomax: float = -115
- *   down_list = False  # download stations from a pre-compiled list or no 
+ *   down_list = False  # download stations from a pre-compiled list or no
  *   net_list = ["CI"]  # network list
     # pre-processing parameters
  *   step: float = 450.0  # overlapping between each cc_len (sec)

@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import Enum
 
 import numpy as np
+import obspy
 
 
 @dataclass
@@ -27,7 +30,10 @@ class ChannelType:
             self.name = self.name.replace("U", "Z")
 
     def __repr__(self) -> str:
-        return f"{self.name}_{self.location}"
+        if len(self.location) > 0:
+            return f"{self.name}_{self.location}"
+        else:
+            return self.name
 
     def get_orientation(self) -> str:
         if "_" in self.name:
@@ -65,6 +71,14 @@ class ConfigParameters:
     end_date: str = ""
     samp_freq: float = 20  # TODO: change this samp_freq for the obspy "sampling_rate"
     cc_len: float = 1800.0  # basic unit of data length for fft (sec)
+    # download params.
+    # Targeted region/station information: only needed when down_list is False
+    lamin: float = 31
+    lamax: float = 36
+    lomin: float = -122
+    lomax: float = -115
+    down_list = False  # download stations from a pre-compiled list or not
+    net_list = ["CI"]  # network list
     # pre-processing parameters
     step: float = 450.0  # overlapping between each cc_len (sec)
     freqmin: float = 0.05
@@ -90,6 +104,8 @@ class ConfigParameters:
     # station/instrument info for input_fmt=='sac' or 'mseed'
     stationxml: bool = False  # station.XML file used to remove instrument response for SAC/miniseed data
     rm_resp: str = "no"  # select 'no' to not remove response and use 'inv','spectrum',
+    rm_resp_out: str = "VEL"  # output location from response removal
+    respdir: str = None  # response directory
     # some control parameters
     acorr_only: bool = False  # only perform auto-correlation
     xcorr_only: bool = True  # only perform cross-correlation or not
@@ -118,7 +134,6 @@ class Channel:
         return f"{self.station}.{self.type}"
 
 
-@dataclass
 class ChannelData:
     """
     A 1D time series of channel data
@@ -129,6 +144,16 @@ class ChannelData:
         start_timestamp: Seconds since 01/01/1970
     """
 
+    stream: obspy.Stream
     data: np.ndarray
     sampling_rate: int
     start_timestamp: float
+
+    def empty() -> ChannelData:
+        return ChannelData(obspy.Stream([obspy.Trace(np.empty(0))]))
+
+    def __init__(self, stream: obspy.Stream):
+        self.stream = stream
+        self.data = stream[0].data
+        self.sampling_rate = stream[0].stats.sampling_rate
+        self.start_timestamp = stream[0].stats.starttime.timestamp
