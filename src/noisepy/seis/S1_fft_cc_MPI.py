@@ -100,9 +100,12 @@ def cross_correlate(
             continue
 
         # ###########LOADING NOISE DATA AND DO FFT##################
+        t0 = time.time()
         channels = raw_store.get_channels(ts)
         ch_data_tuples = _read_channels(ts, raw_store, channels, fft_params.samp_freq)
+        t01 = time.time()
         ch_data_tuples = preprocess(ch_data_tuples, raw_store, fft_params, ts)
+        t02 = time.time()
 
         nchannels = len(ch_data_tuples)
         nseg_chunk = check_memory(fft_params, nchannels)
@@ -131,20 +134,26 @@ def cross_correlate(
 
         # ###########PERFORM CROSS-CORRELATION##################
         for iiS in range(nchannels):  # looping over the channel source
-            src_chan = channels[iiS]
+            src_chan = channels[iiS]  # this is the name of the source channel
             fft1 = fft_array[iiS]
-            source_std = fft_std[iiS]
+            source_std = fft_std[iiS]  # this is the array of data metrics
+
+            # this finds the windows of "good" noise
             sou_ind = np.where((source_std < fft_params.max_over_std) & (source_std > 0) & (np.isnan(source_std) == 0))[
                 0
             ]
             if not fft_flag[iiS] or not len(sou_ind):
                 continue
-            t0 = time.time()
-            # -----------get the smoothed source spectrum for decon later----------
-            sfft1 = noise_module.smooth_source_spect(fft_params, fft1)
-            sfft1 = sfft1.reshape(N, Nfft2)
-            t1 = time.time()
-            logger.debug("smoothing source takes %6.4fs" % (t1 - t0))
+            # in the case of pure deconvolution, we recommend smoothing anyway.
+            if fft_params.cc_method == "deconv":
+                t00 = time.time()
+                # -----------get the smoothed source spectrum for decon later----------
+                sfft1 = noise_module.smooth_source_spect(fft_params, fft1)
+                sfft1 = sfft1.reshape(N, Nfft2)
+                t10 = time.time()
+                logger.debug("smoothing source takes %6.4fs" % (t10 - t00))
+            else:
+                sfft1 = fft1.reshape(N, Nfft2)
 
             # get index right for auto/cross correlation
             istart = iiS  # start at the channel source / only fills the upper right triangle matrix of channel pairs
@@ -184,11 +193,12 @@ def cross_correlate(
                 if cc_store.contains(ts, src_chan, rec_chan, fft_params):
                     continue
 
+                # read the receiver data
                 fft2 = fft_array[iiR]
                 sfft2 = fft2.reshape(N, Nfft2)
                 receiver_std = fft_std[iiR]
 
-                # ---------- check the existence of earthquakes ----------
+                # ---------- check the existence of earthquakes or spikes ----------
                 rec_ind = np.where(
                     (receiver_std < fft_params.max_over_std) & (receiver_std > 0) & (np.isnan(receiver_std) == 0)
                 )[0]
@@ -196,11 +206,14 @@ def cross_correlate(
                 if len(bb) == 0:
                     continue
 
+                # ----------- GAME TIME: cross correlation step ---------------
                 t2 = time.time()
                 corr, tcorr, ncorr = noise_module.correlate(
                     sfft1[bb, :], sfft2[bb, :], fft_params, Nfft, fft_time[iiR][bb]
                 )
                 t3 = time.time()
+
+                # ---------- OUTPUT: store metadata and data into file ------------
                 coor = {
                     "lonS": src_chan.station.lon,
                     "latS": src_chan.station.lat,
@@ -211,7 +224,10 @@ def cross_correlate(
                 parameters = noise_module.cc_parameters(fft_params, coor, tcorr, ncorr, comp)
                 cc_store.append(ts, src_chan, rec_chan, fft_params, parameters, corr)
                 t4 = time.time()
-                logger.debug("read S %6.4fs, cc %6.4fs, write cc %6.4fs" % ((t1 - t0), (t3 - t2), (t4 - t3)))
+                logger.debug(
+                    "read S %6.4fs, process %6.4fs, cc %6.4fs, write cc %6.4fs"
+                    % ((t01 - t0), (t02 - t01), (t3 - t2), (t4 - t3))
+                )
 
                 del fft2, sfft2, receiver_std
             del fft1, sfft1, source_std

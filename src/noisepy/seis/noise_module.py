@@ -290,11 +290,11 @@ def preprocess_raw(
             }
             st.simulate(paz_remove=None, pre_filt=pre_filt, seedresp=seedresp)
 
-        elif rm_resp == "polozeros":
-            print("remove response using polos and zeros")
+        elif rm_resp == "poleszeros":
+            print("remove response using poles and zeros")
             paz_sts = glob.glob(os.path.join(respdir, "*" + station + "*"))
             if len(paz_sts) == 0:
-                raise ValueError("no polozeros found for %s" % station)
+                raise ValueError("no poleszeros found for %s" % station)
             st.simulate(paz_remove=paz_sts[0], pre_filt=pre_filt)
 
         else:
@@ -716,8 +716,8 @@ def correlate(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
             nstack = int(np.round(Ttotal / substack_len))
             ampmax = np.zeros(nstack, dtype=np.float32)
             s_corr = np.zeros(shape=(nstack, Nfft), dtype=np.float32)
-            n_corr = np.zeros(nstack, dtype=np.int)
-            t_corr = np.zeros(nstack, dtype=np.float)
+            n_corr = np.zeros(nstack, dtype=np.int16)
+            t_corr = np.zeros(nstack, dtype=np.float32)
             crap = np.zeros(Nfft, dtype=np.complex64)
 
             for istack in range(nstack):

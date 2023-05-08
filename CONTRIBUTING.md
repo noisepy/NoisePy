@@ -15,12 +15,14 @@ Fork the repository, and create your local version, then follow the installation
 conda create -n noisepy python=3.8 pip
 conda activate noisepy
 conda install -c conda-forge openmpi
+python -m ipykernel install --user --name noisepy
 pip install -e ".[dev]"
 ```
+it will install all of the dependencies of the package, including IPython to start a jupyter notebook (excluded otherwise to minimmize dependencies for command line deployment).
 
 Install the `pre-commit` hook:
 ```sh
-$ pre-commit install
+pre-commit install
 ```
 
 This will run the linting and formatting checks configured in the project before every commit.
