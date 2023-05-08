@@ -265,7 +265,7 @@ def stack(raw_dir: str, ccf_dir: str, stack_dir: str, stack_method: str):
         logger.debug("loading CCF data takes %6.2fs" % (t1 - t0))
 
         # continue when there is no data or for auto-correlation
-        if iseg <= 1 or fauto == 1:
+        if iseg <= 1 and fauto == 1:
             continue
         outfn = pairs_all[ipair] + ".h5"
         logger.debug("ready to output to %s" % (outfn))
@@ -281,7 +281,7 @@ def stack(raw_dir: str, ccf_dir: str, stack_dir: str, stack_method: str):
         iflag = 1
         for icomp in range(nccomp):
             comp = enz_system[icomp]
-            indx = np.where(cc_comp == comp)[0]
+            indx = np.where(cc_comp.lower() == comp.lower())[0]
             logger.debug(f"index to find the comp: {indx}")
 
             # jump if there are not enough data

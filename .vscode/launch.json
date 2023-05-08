@@ -19,6 +19,25 @@
       "justMyCode": true
     },
     {
+      "name": "Python: stack",
+      "type": "python",
+      "request": "launch",
+      "module": "noisepy.seis.main",
+      "args": [
+        "stack",
+        "--raw_data_path",
+        "${userHome}/repos/data/RAW_DATA",
+        "--ccf_path",
+        "${userHome}/repos/data/CCF",
+        "--stack_path",
+        "/Users/carlosg/repos/data/STACK",
+        "--method",
+        "linear"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
       "name": "Python: cross_correlate",
       "type": "python",
       "request": "launch",
