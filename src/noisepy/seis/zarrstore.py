@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 import obspy
-import pyasdf
+import zarr
 from datetimerange import DateTimeRange
 
 from . import noise_module
@@ -18,44 +18,45 @@ from .stores import CrossCorrelationDataStore, RawDataStore
 logger = logging.getLogger(__name__)
 
 
-class ASDFRawDataStore(RawDataStore):
+class ZarrRawDataStore(RawDataStore):
     """
-    A data store implementation to read from a directory of ASDF files. Each file is considered
-    a timespan with the naming convention: 2019_02_01_00_00_00T2019_02_02_00_00_00.h5
+    A data store implementation to read from a directory of Zarr files. Each file is considered
+    a timespan with the naming convention: 2019_02_01_00_00_00T2019_02_02_00_00_00.zarr
     """
 
     def __init__(self, directory: str):
         super().__init__()
         self.directory = directory
-        h5files = sorted(glob.glob(os.path.join(directory, "*.h5")))
-        self.files = {str(self._parse_timespans(f)): f for f in h5files}
+        zarr_files = sorted(glob.glob(os.path.join(directory, "*.zarr")))
+        self.files = {str(self._parse_timespans(f)): f for f in zarr_files}
         logger.info(f"Initialized store with {len(self.files)}")
 
     def get_channels(self, timespan: DateTimeRange) -> List[Channel]:
-        ds = pyasdf.ASDFDataSet(self.files[str(timespan)], mode="r", mpi=False)
-        stations = [self._create_station(ds, sta) for sta in ds.waveforms.list() if sta is not None]
-        channels = [
-            Channel(ChannelType(tag), sta) for sta in stations for tag in ds.waveforms[str(sta)].get_waveform_tags()
-        ]
+        store = zarr.DirectoryStore(self.files[str(timespan)])
+        arr = zarr.open(store)
+        # Assuming your Zarr structure follows a similar pattern, you may need to adjust the following lines accordingly
+        stations = [self._create_station(arr, sta) for sta in arr["waveforms"].keys() if sta is not None]
+        channels = [Channel(ChannelType(tag), sta) for sta in stations for tag in arr["waveforms"][str(sta)].keys()]
         return channels
 
     def get_timespans(self) -> List[DateTimeRange]:
         return [DateTimeRange.from_range_text(d) for d in sorted(self.files.keys())]
 
     def read_data(self, timespan: DateTimeRange, chan: Channel) -> np.ndarray:
-        ds = pyasdf.ASDFDataSet(self.files[str(timespan)], mode="r", mpi=False)
-        stream = ds.waveforms[str(chan.station)][str(chan.type)][0]
-        return ChannelData(stream.data, stream.stats.sampling_rate, stream.stats.starttime.timestamp)
+        store = zarr.DirectoryStore(self.files[str(timespan)])
+        arr = zarr.open(store)
+        stream = arr["waveforms"][str(chan.station)][str(chan.type)][0]
+        return ChannelData(stream, arr.attrs["sampling_rate"], arr.attrs["starttime"])
 
     def _parse_timespans(self, filename: str) -> DateTimeRange:
         parts = os.path.splitext(os.path.basename(filename))[0].split("T")
         dates = [obspy.UTCDateTime(p).datetime.replace(tzinfo=datetime.timezone.utc) for p in parts]
         return DateTimeRange(dates[0], dates[1])
 
-    def _create_station(self, ds: pyasdf.ASDFDataSet, name: str) -> Optional[Station]:
+    def _create_station(self, arr, name: str) -> Optional[Station]:
         # What should we do if there's not StationXML?
         try:
-            inventory = ds.waveforms[name]["StationXML"]
+            inventory = ds[name]["StationXML"]
             sta, net, lon, lat, elv, loc = noise_module.sta_info_from_inv(inventory)
             return Station(net, sta, lat, lon, elv, loc)
         except Exception as e:
@@ -63,7 +64,7 @@ class ASDFRawDataStore(RawDataStore):
             return None
 
 
-class ASDFCCStore(CrossCorrelationDataStore):
+class ZarrCCStore(CrossCorrelationDataStore):
     def __init__(self, directory: str) -> None:
         super().__init__()
         self.directory = directory
@@ -124,17 +125,21 @@ class ASDFCCStore(CrossCorrelationDataStore):
         if not os.path.isfile(filename):
             return False
 
-        with pyasdf.ASDFDataSet(filename, mpi=False, mode="r") as ccf_ds:
+        store = zarr.DirectoryStore(filename)
+        with zarr.open(store, mode="r") as ccf_ds:
             # source-receiver pair
-            exists = data_type in ccf_ds.auxiliary_data
+            exists = data_type in ccf_ds.attrs["auxiliary_data"]
             if path is not None and exists:
-                return path in ccf_ds.auxiliary_data[data_type]
+                return path in ccf_ds.attrs["auxiliary_data"][data_type]
             return exists
 
     def _add_aux_data(self, timespan: DateTimeRange, params: Dict, data_type: str, path: str, data: np.ndarray):
         filename = self._get_filename(timespan)
-        with pyasdf.ASDFDataSet(filename, mpi=False) as ccf_ds:
-            ccf_ds.add_auxiliary_data(data=data, data_type=data_type, path=path, parameters=params)
+        store = zarr.DirectoryStore(filename)
+        with zarr.open(store, mode="a") as ccf_ds:
+            ccf_ds.attrs.setdefault("auxiliary_data", {}).setdefault(data_type, {})
+            ccf_ds.attrs["auxiliary_data"][data_type][path] = {"parameters": params}
+            ccf_ds.create_dataset(f"auxiliary_data/{data_type}/{path}", data=data)
 
     def _get_station_pair(self, src_chan: Channel, rec_chan: Channel) -> str:
         return f"{src_chan.station}_{rec_chan.station}"
@@ -145,5 +150,5 @@ class ASDFCCStore(CrossCorrelationDataStore):
     def _get_filename(self, timespan: DateTimeRange) -> str:
         return os.path.join(
             self.directory,
-            f"{timespan.start_datetime.strftime(DATE_FORMAT)}T{timespan.end_datetime.strftime(DATE_FORMAT)}.h5",
+            f"{timespan.start_datetime.strftime(DATE_FORMAT)}T{timespan.end_datetime.strftime(DATE_FORMAT)}.zarr",
         )

@@ -11,7 +11,7 @@ from noisepy.seis.noise_module import stats2inv_mseed
 
 chan_data = [("ARV", "BHE", 35.1269, -118.83009, 258.0), ("BAK", "BHZ", 35.34444, -119.10445, 116.0)]
 
-file = os.path.join(os.path.dirname(__file__), "./data/station.txt")
+file = os.path.join(os.path.dirname(__file__), "./data/station.csv")
 
 
 @pytest.mark.parametrize("stat,ch,lat,lon,elev", chan_data)
@@ -31,7 +31,7 @@ class MockCatalog(ChannelCatalog):
 
 @pytest.mark.parametrize("station,ch,lat,lon,elev", chan_data)
 def test_frominventory(station: str, ch: str, lat: float, lon: float, elev: float):
-    file = os.path.join(os.path.dirname(__file__), "./data/station.txt")
+    file = os.path.join(os.path.dirname(__file__), "./data/station.csv")
     df = pd.read_csv(file)
 
     class MockStat:
