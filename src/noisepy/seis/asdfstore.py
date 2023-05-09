@@ -58,7 +58,7 @@ class ASDFRawDataStore(RawDataStore):
         return DateTimeRange(dates[0], dates[1])
 
     def _create_station(self, timespan: DateTimeRange, name: str) -> Optional[Station]:
-        # What should we do if there's not StationXML?
+        # What should we do if there's no StationXML?
         try:
             inventory = self.get_dataset(str(timespan)).waveforms[name]["StationXML"]
             sta, net, lon, lat, elv, loc = noise_module.sta_info_from_inv(inventory)

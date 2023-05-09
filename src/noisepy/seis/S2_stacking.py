@@ -3,6 +3,7 @@ import logging
 import os
 import sys
 import time
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -54,19 +55,12 @@ MAX_MEM = 4.0
 
 
 # TODO: make stack_method an enum
-def stack(raw_dir: str, ccf_dir: str, stack_dir: str, stack_method: str):
+def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
     if rotation and correction:
         corrfile = os.path.join(ccf_dir, "../meso_angles.txt")  # csv file containing angle info to be corrected
         locs = pd.read_csv(corrfile)
     else:
         locs = []
-
-    # absolute path parameters
-    locations = os.path.join(
-        raw_dir, "station.txt"
-    )  # station info including network,station,channel,latitude,longitude,elevation
-    if not os.path.isfile(locations):
-        raise ValueError("Abort! station info is needed for this script")
 
     ##################################################
     # we expect no parameters need to be changed below
@@ -134,9 +128,6 @@ def stack(raw_dir: str, ccf_dir: str, stack_dir: str, stack_method: str):
         ccfiles = sorted(glob.glob(os.path.join(ccf_dir, "*.h5")))
         logger.debug(ccfiles)
 
-        # load station info
-        tlocs = pd.read_csv(locations)
-        sta = sorted(np.unique(tlocs["network"] + "." + tlocs["station"]))
         for ii in range(len(sta)):
             tmp = os.path.join(stack_dir, sta[ii])
             if not os.path.isdir(tmp):
@@ -265,7 +256,7 @@ def stack(raw_dir: str, ccf_dir: str, stack_dir: str, stack_method: str):
         logger.debug("loading CCF data takes %6.2fs" % (t1 - t0))
 
         # continue when there is no data or for auto-correlation
-        if iseg <= 1 or fauto == 1:
+        if iseg <= 1 and fauto == 1:
             continue
         outfn = pairs_all[ipair] + ".h5"
         logger.debug("ready to output to %s" % (outfn))
@@ -281,7 +272,7 @@ def stack(raw_dir: str, ccf_dir: str, stack_dir: str, stack_method: str):
         iflag = 1
         for icomp in range(nccomp):
             comp = enz_system[icomp]
-            indx = np.where(cc_comp == comp)[0]
+            indx = np.where(cc_comp.lower() == comp.lower())[0]
             logger.debug(f"index to find the comp: {indx}")
 
             # jump if there are not enough data

@@ -31,7 +31,7 @@ def test_csv(stat: str, ch: str, lat: float, lon: float, elev: float):
 
 class MockCatalog(ChannelCatalog):
     def get_full_channel(self, timespan: DateTimeRange, channel: Channel) -> Channel:
-        pass
+        return channel
 
     def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
         return obspy.Inventory()
