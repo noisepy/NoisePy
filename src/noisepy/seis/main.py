@@ -81,15 +81,18 @@ def create_raw_store(raw_dir: str, sta_list: List[str], xml_path: str):
 
 def main(args: typing.Any):
     raw_dir = args.raw_data_path
-    stations = args.stations if "stations" in args else []
-    xml_path = args.xml_path if "xml_path" in args else None
-    raw_store = create_raw_store(raw_dir, stations, xml_path)
+
+    def get_raw_store():
+        stations = args.stations if "stations" in args else []
+        xml_path = args.xml_path if "xml_path" in args else None
+        return create_raw_store(raw_dir, stations, xml_path)
 
     def run_cross_correlation():
         ccf_dir = args.ccf_path
         fft_params = initialize_fft_params(raw_dir)
         fft_params.freq_norm = args.freq_norm
         cc_store = ASDFCCStore(ccf_dir)
+        raw_store = get_raw_store()
         cross_correlate(raw_store, fft_params, cc_store)
 
     def run_download():
@@ -97,17 +100,19 @@ def main(args: typing.Any):
         params.start_date = args.start
         params.end_date = args.end
         params.inc_hours = args.inc_hours
-        download(args.raw_data_path, args.channels, stations, params)
+        download(args.raw_data_path, args.channels, args.stations, params)
 
     if args.step == Step.DOWNLOAD:
         run_download()
     if args.step == Step.CROSS_CORRELATE:
         run_cross_correlation()
     if args.step == Step.STACK:
+        raw_store = get_raw_store()
         stack(raw_store.get_station_list(), args.ccf_path, args.stack_path, args.method)
     if args.step == Step.ALL:
         run_download()
         run_cross_correlation()
+        raw_store = get_raw_store()
         stack(raw_store.get_station_list(), args.ccf_path, args.stack_path, args.method)
 
 
