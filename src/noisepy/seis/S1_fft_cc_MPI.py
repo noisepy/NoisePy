@@ -122,6 +122,7 @@ def cross_correlate(
         # loop through all channels
         N: int
         Nfft2: int
+        tlog.reset()
         for ix_ch, (ch, ch_data) in enumerate(ch_data_tuples):
             # TODO: Below the last values for N and Nfft are used?
             fft_array[ix_ch], fft_std[ix_ch], fft_time[ix_ch], N, Nfft2 = compute_fft(fft_params, ch_data)
@@ -129,6 +130,7 @@ def cross_correlate(
             if not fft_flag[ix_ch]:
                 logger.warning(f"No data available for channel '{ch}', skipped")
         Nfft = Nfft2 * 2
+        tlog.log("Compute FFTs")
 
         # check whether array size is enough
         if np.sum(fft_flag) != nchannels:

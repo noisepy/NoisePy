@@ -30,9 +30,34 @@ def fs_join(path1: str, path2: str) -> str:
 
 
 class TimeLogger:
+    """
+    A utility class to measure and log the time spent in code fragments. The basic usage is to call::
+
+        tlog.log(message)
+
+    This will measure the time between the last time checkpoint and the call to ``log()``. The
+    checkpoint is updated when:
+    - ``TimeLogger`` instance is created
+    - ``log()`` is called
+    - ``reset()`` is called
+
+    Alternatively, an explicit reference start time may be passed when logging: ``log(message, start_time)``. E.g.::
+
+        start_time = tlog.reset()
+        ...
+        tlog.log("step 1")
+        ...
+        tlog.log("step 2")
+        ...
+        tlog.log("overall", start_time)
+    """
+
     enabled: bool = True
 
     def __init__(self, logger: logging.Logger = utils_logger, level: int = logging.DEBUG):
+        """
+        Create an instance that will use the given logger and logging level to log the times
+        """
         self.logger = logger
         self.level = level
         self.reset()
