@@ -1,7 +1,6 @@
 import gc
 import logging
 import sys
-import time
 from typing import List, Tuple
 
 import numpy as np
@@ -14,6 +13,7 @@ from noisepy.seis.datatypes import Channel, ChannelData, ConfigParameters
 
 from . import noise_module
 from .stores import CrossCorrelationDataStore, RawDataStore
+from .utils import TimeLogger
 
 logger = logging.getLogger(__name__)
 # ignore warnings
@@ -70,7 +70,9 @@ def cross_correlate(
     # #########PROCESSING SECTION##########
     #######################################
 
-    tt0 = time.time()
+    tlog = TimeLogger(logger, logging.INFO)
+    # tlog.enabled = False
+    t_all = tlog.reset()
     # --------MPI---------
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
@@ -94,18 +96,18 @@ def cross_correlate(
 
     # MPI loop: loop through each user-defined time chunk
     for ick in range(rank, splits, size):
-        t10 = time.time()
         ts = timespans[ick]
         if cc_store.is_done(ts):
             continue
 
         # ###########LOADING NOISE DATA AND DO FFT##################
-        t0 = time.time()
+        t_chunk = tlog.reset()
         channels = raw_store.get_channels(ts)
+        tlog.log("get channels")
         ch_data_tuples = _read_channels(ts, raw_store, channels, fft_params.samp_freq)
-        t01 = time.time()
+        tlog.log("read channel data")
         ch_data_tuples = preprocess(ch_data_tuples, raw_store, fft_params, ts)
-        t02 = time.time()
+        tlog.log("preprocess")
 
         nchannels = len(ch_data_tuples)
         nseg_chunk = check_memory(fft_params, nchannels)
@@ -146,12 +148,11 @@ def cross_correlate(
                 continue
             # in the case of pure deconvolution, we recommend smoothing anyway.
             if fft_params.cc_method == "deconv":
-                t00 = time.time()
+                tlog.reset()
                 # -----------get the smoothed source spectrum for decon later----------
                 sfft1 = noise_module.smooth_source_spect(fft_params, fft1)
                 sfft1 = sfft1.reshape(N, Nfft2)
-                t10 = time.time()
-                logger.debug("smoothing source takes %6.4fs" % (t10 - t00))
+                tlog.log("smoothing source")
             else:
                 sfft1 = fft1.reshape(N, Nfft2)
 
@@ -207,11 +208,11 @@ def cross_correlate(
                     continue
 
                 # ----------- GAME TIME: cross correlation step ---------------
-                t2 = time.time()
+                tlog.reset()
                 corr, tcorr, ncorr = noise_module.correlate(
                     sfft1[bb, :], sfft2[bb, :], fft_params, Nfft, fft_time[iiR][bb]
                 )
-                t3 = time.time()
+                tlog.log("cross-correlate")
 
                 # ---------- OUTPUT: store metadata and data into file ------------
                 coor = {
@@ -223,11 +224,7 @@ def cross_correlate(
                 comp = src_chan.type.get_orientation() + rec_chan.type.get_orientation()
                 parameters = noise_module.cc_parameters(fft_params, coor, tcorr, ncorr, comp)
                 cc_store.append(ts, src_chan, rec_chan, fft_params, parameters, corr)
-                t4 = time.time()
-                logger.debug(
-                    "read S %6.4fs, process %6.4fs, cc %6.4fs, write cc %6.4fs"
-                    % ((t01 - t0), (t02 - t01), (t3 - t2), (t4 - t3))
-                )
+                tlog.log("write cc")
 
                 del fft2, sfft2, receiver_std
             del fft1, sfft1, source_std
@@ -236,15 +233,12 @@ def cross_correlate(
         fft_std = []
         fft_flag = []
         fft_time = []
-        n = gc.collect()
-        print("unreadable garbarge", n)
+        gc.collect()
 
-        t11 = time.time()
-        print("it takes %6.2fs to process the chunk of %s" % (t11 - t10, ts))
+        tlog.log(f"Process the chunk of {ts}", t_chunk)
         cc_store.mark_done(ts)
 
-    tt1 = time.time()
-    print("it takes %6.2fs to process step 1 in total" % (tt1 - tt0))
+    tlog.log("Step 1 in total", t_all)
     comm.barrier()
 
 

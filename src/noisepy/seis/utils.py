@@ -1,11 +1,14 @@
+import logging
 import os
 import posixpath
+import time
 from urllib.parse import urlparse
 
 import fsspec
 
 S3_SCHEME = "s3"
 ANON_ARG = "anon"
+utils_logger = logging.getLogger(__name__)
 
 
 def get_filesystem(path: str, storage_options: dict = {}) -> fsspec.AbstractFileSystem:
@@ -24,3 +27,24 @@ def fs_join(path1: str, path2: str) -> str:
         return posixpath.join(path1, path2)
     else:
         return os.path.join(path1, path2)
+
+
+class TimeLogger:
+    enabled: bool = True
+
+    def __init__(self, logger: logging.Logger = utils_logger, level: int = logging.DEBUG):
+        self.logger = logger
+        self.level = level
+        self.reset()
+
+    def reset(self) -> float:
+        self.time = time.time()
+        return self.time
+
+    def log(self, message: str = None, start: float = -1.0) -> float:
+        stop = time.time()
+        dt = stop - self.time if start <= 0 else stop - start
+        self.reset()
+        if self.enabled:
+            self.logger.log(self.level, f"TIMING: {dt:6.4f} for {message}")
+        return self.time
