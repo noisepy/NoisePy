@@ -58,6 +58,11 @@ def test_timespan_channels(store: SCEDCS3DataStore):
     assert len(channels) == 0
 
 
+def test_get_station_list(store: SCEDCS3DataStore):
+    stations = store.get_station_list()
+    assert stations == ["BK.THIS", "CI.FOX2", "CI.NCH"]
+
+
 def test_filter():
     # filter for station 'staX' or 'staY' and channel type starts with 'B'
     f = channel_filter(["staX", "staY"], "B")
