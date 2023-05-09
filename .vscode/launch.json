@@ -75,7 +75,7 @@
         "ARV,BAK",
         "--inc_hours",
         "1",
-        "--path",
+        "--raw_data_path",
         "${userHome}/tmp/"
       ],
       "console": "integratedTerminal",
