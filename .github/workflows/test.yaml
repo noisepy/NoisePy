@@ -65,3 +65,19 @@ jobs:
       working-directory: ./src
       run: |
         noisepy stack --raw_data_path $RUNNER_TEMP/RAW_DATA --ccf_path $RUNNER_TEMP/CCF --stack_path $RUNNER_TEMP/STACK --method ${{matrix.method}}
+  s3_dates:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Test S3 data for a date range
+      run: |
+        noisepy cross_correlate --raw_data_path s3://scedc-pds/continuous_waveforms/ \
+        --ccf_path $RUNNER_TEMP/CCF_S3 --freq_norm rma \
+        --stations "SBC,RIO" --start 2022_02_02 --end 2022_02_04
+  s3_singlepath:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Test S3 data with a single path
+      run: |
+        noisepy cross_correlate --raw_data_path s3://scedc-pds/continuous_waveforms/2022/2022_002/ \
+        --ccf_path $RUNNER_TEMP/CCF_S3 --freq_norm rma \
+        --stations "SBC,RIO"

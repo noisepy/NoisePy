@@ -22,8 +22,9 @@ def test_parsefilename(file: str, expected: DateTimeRange):
 
 
 data_paths = [
-    os.path.join(os.path.dirname(__file__), "./data/s3scedc"),
-    "s3://scedc-pds/continuous_waveforms/2022/2022_002/",
+    (os.path.join(os.path.dirname(__file__), "./data/s3scedc"), None),
+    ("s3://scedc-pds/continuous_waveforms/2022/2022_002/", None),
+    ("s3://scedc-pds/continuous_waveforms/", timespan1),
 ]
 
 
@@ -36,7 +37,8 @@ read_channels = [
 
 @pytest.fixture(params=data_paths)
 def store(request):
-    return SCEDCS3DataStore(request.param, MockCatalog(), lambda ch: ch in read_channels)
+    (path, timespan) = request.param
+    return SCEDCS3DataStore(path, MockCatalog(), lambda ch: ch in read_channels, timespan)
 
 
 @pytest.mark.parametrize("channel", read_channels)

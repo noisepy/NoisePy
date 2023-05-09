@@ -7,7 +7,7 @@
       "request": "launch",
       "module": "pytest",
       "args": [
-        "${workspaceFolder}/tests/"
+        "${workspaceFolder}/tests/test_scedc_s3store.py"
       ]
     },
     {
@@ -68,13 +68,17 @@
         "--freq_norm",
         "rma",
         "--raw_data_path",
-        "s3://scedc-pds/continuous_waveforms/2002/2002_002/",
+        "s3://scedc-pds/continuous_waveforms/",
         "--ccf_path",
         "${userHome}/ccfs3tmp/",
         "--stations",
-        "SBC,RIO,DEV,HEC,RLR,SVD,RPV,BAK",
+        "SBC,RIO,DEV",
         "--xml_path",
-        "s3://scedc-pds/FDSNstationXML/CI/"
+        "s3://scedc-pds/FDSNstationXML/CI/",
+        "--start",
+        "2022_02_02",
+        "--end",
+        "2022_02_05"
       ],
       "console": "integratedTerminal",
       "justMyCode": true

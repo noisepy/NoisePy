@@ -40,7 +40,13 @@ class SCEDCS3DataStore(RawDataStore):
     # for checking the filename has the form: CIGMR__LHN___2022002.ms
     file_re = re.compile(r".*[0-9]{7}\.ms$", re.IGNORECASE)
 
-    def __init__(self, path: str, chan_catalog: ChannelCatalog, channel_filter: Callable[[Channel], bool] = None):
+    def __init__(
+        self,
+        path: str,
+        chan_catalog: ChannelCatalog,
+        ch_filter: Callable[[Channel], bool] = None,
+        date_range: DateTimeRange = None,
+    ):
         """
         Parameters:
             path: path to look for ms files. Can be a local file directory or an s3://... url path
@@ -50,19 +56,33 @@ class SCEDCS3DataStore(RawDataStore):
         """
         super().__init__()
         self.fs = get_filesystem(path)
-        self.path = path
         self.channel_catalog = chan_catalog
-        if channel_filter is None:
-            channel_filter = lambda s: True  # noqa: E731
-
-        msfiles = [f for f in self.fs.glob(fs_join(path, "*.ms")) if self.file_re.match(f) is not None]
-        # store a dict of {timerange: list of channels}
+        self.path = path
+        self.paths = {}
+        # to store a dict of {timerange: list of channels}
         self.channels = {}
+        if ch_filter is None:
+            ch_filter = lambda s: True  # noqa: E731
+
+        if date_range is None:
+            self._load_channels(self.path, ch_filter)
+        else:
+            dt = date_range.end_datetime - date_range.start_datetime
+            for d in range(0, dt.days):
+                date = date_range.start_datetime + timedelta(days=d)
+                date_path = str(date.year) + "/" + str(date.year) + "_" + str(date.timetuple().tm_yday).zfill(3) + "/"
+                full_path = fs_join(self.path, date_path)
+                self._load_channels(full_path, ch_filter)
+
+    def _load_channels(self, full_path: str, ch_filter: Callable[[Channel], bool]):
+        msfiles = [f for f in self.fs.glob(fs_join(full_path, "*.ms")) if self.file_re.match(f) is not None]
+        logger.info(f"Loading {len(msfiles)} files from {full_path}")
         timespans = []
         for f in msfiles:
             timespan = SCEDCS3DataStore._parse_timespan(f)
+            self.paths[timespan.start_datetime] = full_path
             channel = SCEDCS3DataStore._parse_channel(os.path.basename(f))
-            if not channel_filter(channel):
+            if not ch_filter(channel):
                 continue
             key = str(timespan)  # DataTimeFrame is not hashable
             if key not in self.channels:
@@ -87,7 +107,9 @@ class SCEDCS3DataStore(RawDataStore):
             f"{chan.station.network}{chan.station.name.ljust(5, '_')}{chan.type.name}"
             f"{chan.station.location.ljust(3, '_')}"
         )
-        filename = fs_join(self.path, f"{chan_str}{timespan.start_datetime.strftime('%Y%j')}.ms")
+        filename = fs_join(
+            self.paths[timespan.start_datetime], f"{chan_str}{timespan.start_datetime.strftime('%Y%j')}.ms"
+        )
         if not self.fs.exists(filename):
             logger.warning(f"Could not find file {filename}")
             return ChannelData.empty()

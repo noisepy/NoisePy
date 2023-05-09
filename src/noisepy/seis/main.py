@@ -5,6 +5,7 @@ from enum import Enum
 from typing import Any, Callable, List
 
 import obspy
+from datetimerange import DateTimeRange
 
 from .asdfstore import ASDFCCStore, ASDFRawDataStore
 from .channelcatalog import CSVChannelCatalog, XMLStationChannelCatalog
@@ -18,8 +19,6 @@ from .utils import fs_join, get_filesystem
 
 # Utility running the different steps from the command line. Defines the arguments for each step
 
-default_start_date = "2016_07_01_0_0_0"  # start date of download
-default_end_date = "2016_07_02_0_0_0"  # end date of download
 default_data_path = "Documents/SCAL"
 
 
@@ -58,7 +57,17 @@ def get_channel_filter(sta_list: List[str]) -> Callable[[Channel], bool]:
         return lambda ch: ch.station.name in stations
 
 
-def create_raw_store(raw_dir: str, sta_list: List[str], xml_path: str):
+def get_date_range(args) -> DateTimeRange:
+    if args.start is None or args.end is None:
+        return None
+    return DateTimeRange(obspy.UTCDateTime(args.start).datetime, obspy.UTCDateTime(args.end).datetime)
+
+
+def create_raw_store(args):
+    stations = args.stations if "stations" in args else []
+    xml_path = args.xml_path if "xml_path" in args else None
+    raw_dir = args.raw_data_path
+
     fs = get_filesystem(raw_dir)
 
     def count(pat):
@@ -68,7 +77,7 @@ def create_raw_store(raw_dir: str, sta_list: List[str], xml_path: str):
     if count("*.h5") > 0:
         return ASDFRawDataStore(raw_dir)
     else:
-        assert count("*.ms") > 0 or count("*.sac") > 0, f"Can not find any .h5, .ms or .sac files in {raw_dir}"
+        # assert count("*.ms") > 0 or count("*.sac") > 0, f"Can not find any .h5, .ms or .sac files in {raw_dir}"
         if xml_path is not None:
             catalog = XMLStationChannelCatalog(xml_path)
         elif os.path.isfile(os.path.join(raw_dir, STATION_FILE)):
@@ -76,23 +85,19 @@ def create_raw_store(raw_dir: str, sta_list: List[str], xml_path: str):
         else:
             raise ValueError(f"Either an --xml_path argument or a {STATION_FILE} must be provided")
 
-        return SCEDCS3DataStore(raw_dir, catalog, get_channel_filter(sta_list))
+        date_range = get_date_range(args)
+        return SCEDCS3DataStore(raw_dir, catalog, get_channel_filter(stations), date_range)
 
 
 def main(args: typing.Any):
     raw_dir = args.raw_data_path
-
-    def get_raw_store():
-        stations = args.stations if "stations" in args else []
-        xml_path = args.xml_path if "xml_path" in args else None
-        return create_raw_store(raw_dir, stations, xml_path)
 
     def run_cross_correlation():
         ccf_dir = args.ccf_path
         fft_params = initialize_fft_params(raw_dir)
         fft_params.freq_norm = args.freq_norm
         cc_store = ASDFCCStore(ccf_dir)
-        raw_store = get_raw_store()
+        raw_store = create_raw_store(args)
         cross_correlate(raw_store, fft_params, cc_store)
 
     def run_download():
@@ -107,30 +112,31 @@ def main(args: typing.Any):
     if args.step == Step.CROSS_CORRELATE:
         run_cross_correlation()
     if args.step == Step.STACK:
-        raw_store = get_raw_store()
+        raw_store = create_raw_store(args)
         stack(raw_store.get_station_list(), args.ccf_path, args.stack_path, args.method)
     if args.step == Step.ALL:
         run_download()
         run_cross_correlation()
-        raw_store = get_raw_store()
+        raw_store = create_raw_store(args)
         stack(raw_store.get_station_list(), args.ccf_path, args.stack_path, args.method)
 
 
-def add_download_args(down_parser: argparse.ArgumentParser):
-    down_parser.add_argument(
+def add_date_args(parser, required):
+    parser.add_argument(
         "--start",
         type=valid_date,
-        required=True,
+        required=required,
         help="Start date in the format: " + DATE_FORMAT_HELP,
-        default=default_start_date,
     )
-    down_parser.add_argument(
+    parser.add_argument(
         "--end",
         type=valid_date,
-        required=True,
+        required=required,
         help="End date in the format: " + DATE_FORMAT_HELP,
-        default=default_end_date,
     )
+
+
+def add_download_args(down_parser: argparse.ArgumentParser):
     down_parser.add_argument(
         "--channels",
         type=lambda s: s.split(","),
@@ -199,10 +205,14 @@ def main_cli():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="step", required=True)
     make_step_parser(
-        subparsers, Step.DOWNLOAD, [lambda p: add_paths(p, ["raw_data"]), add_download_args, add_stations_arg]
+        subparsers,
+        Step.DOWNLOAD,
+        [lambda p: add_paths(p, ["raw_data"]), add_download_args, add_stations_arg, lambda p: add_date_args(p, True)],
     )
     make_step_parser(
-        subparsers, Step.CROSS_CORRELATE, [lambda p: add_paths(p, ["raw_data", "ccf"]), add_cc_args, add_stations_arg]
+        subparsers,
+        Step.CROSS_CORRELATE,
+        [lambda p: add_paths(p, ["raw_data", "ccf"]), add_cc_args, add_stations_arg, lambda p: add_date_args(p, False)],
     )
     make_step_parser(subparsers, Step.STACK, [lambda p: add_paths(p, ["raw_data", "stack", "ccf"]), add_stack_args])
     make_step_parser(
