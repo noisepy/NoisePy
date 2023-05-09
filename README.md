@@ -76,6 +76,22 @@ This tutorial presents one simple example of how NoisePy might work! We strongly
 Chengxin Jiang (chengxinjiang@gmail.com)
 Marine Denolle (mdenolle@uw.edu).
 
+## Taxonomy
+Taxonomy of the NoisePy variables.
+
+* ``station`` refers to the site that has the seismic instruments that records ground shaking.
+* `` channel`` refers to the direction of ground motion investigated for 3 component seismometers. For DAS project, it may refers to the single channel sensors.
+* ``ista`` is the index name for looping over stations
+
+* ``cc_len`` correlation length, basic window length in seconds
+* ``step`` is the window that get skipped when sliding windows in seconds
+* ``smooth_N`` number of points for smoothing the  time or frequency domain discrete arrays.
+* ``maxlag`` maximum length in seconds saved in files in each side of the correlation (save on storage)
+* ``substack,substack_len`` boolean, window length over which to substack the correlation (to save storage or do monitoring), it has to be a multiple of ``cc_len``.
+* ``time_chunk, nchunk`` refers to the time unit that defined a single job. for instace, ``cc_len`` is the correlation length (e.g., 1 hour, 30 min), the overall duration of the experiment is the total length (1 month, 1 year, ...). The time chunk could be 1 day: the code would loop through each cc_len window in a for loop. But each day will be sent as a thread.
+
+
+# Acknowledgements
 ## Use this reference when publishing on your work with noisepy
 
 Main code:
@@ -88,16 +104,5 @@ Algorithms used:
 
 * (optimal stacking) Yang X, Bryan J, Okubo K, Jiang C, Clements T, Denolle MA. [Optimal stacking of noise cross-correlation functions/](https://doi.org/10.1093/gji/ggac410) _Geophysical Journal International_. 2023 Mar;232(3):1600-18. https://doi.org/10.1093/gji/ggac410
 
-### Some taxonomy of the NoisePy variables.
 
-
-* ``station`` refers to the site that has the seismic instruments that records ground shaking.
-* `` channel`` refers to the direction of ground motion investigated for 3 component seismometers. For DAS project, it may refers to the single channel sensors.
-* ``ista`` is the index name for looping over stations
-
-* ``cc_len`` correlation length, basic window length in seconds
-* ``step`` is the window that get skipped when sliding windows in seconds
-* ``smooth_N`` number of points for smoothing the  time or frequency domain discrete arrays.
-* ``maxlag`` maximum length in seconds saved in files in each side of the correlation (save on storage)
-* ``substack,substack_len`` boolean, window length over which to substack the correlation (to save storage or do monitoring), it has to be a multiple of ``cc_len``.
-* ``time_chunk, nchunk`` refers to the time unit that defined a single job. for instace, ``cc_len`` is the correlation length (e.g., 1 hour, 30 min), the overall duration of the experiment is the total length (1 month, 1 year, ...). The time chunk could be 1 day: the code would loop through each cc_len window in a for loop. But each day will be sent as a thread.
+This research received software engineering support from the University of Washington’s Scientific Software Engineering Center ([SSEC](https://escience.washington.edu/software-engineering/ssec/)) supported by Schmidt Futures, as part of the Virtual Institute for Scientific Software (VISS). We would like to acknowledge [Carlos Garcia Jurado Suarez](https://github.com/carlosgjs) and [Nicholas Rich](https://github.com/nrich20) for their collaboration and contributions to the software
