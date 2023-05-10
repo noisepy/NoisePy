@@ -56,7 +56,7 @@ class ZarrRawDataStore(RawDataStore):
     def _create_station(self, arr, name: str) -> Optional[Station]:
         # What should we do if there's not StationXML?
         try:
-            inventory = ds[name]["StationXML"]
+            inventory = arr[name]["StationXML"]
             sta, net, lon, lat, elv, loc = noise_module.sta_info_from_inv(inventory)
             return Station(net, sta, lat, lon, elv, loc)
         except Exception as e:
