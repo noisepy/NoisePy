@@ -26,11 +26,11 @@
       "args": [
         "stack",
         "--raw_data_path",
-        "${userHome}/repos/data/RAW_DATA",
+        "${userHome}/runner_temp/RAW_DATA",
         "--ccf_path",
-        "${userHome}/repos/data/CCF",
+        "${userHome}/runner_temp/CCF",
         "--stack_path",
-        "/Users/carlosg/repos/data/STACK",
+        "/Users/carlosg/runner_temp/STACK",
         "--method",
         "linear"
       ],
@@ -98,7 +98,7 @@
         "ARV,BAK",
         "--inc_hours",
         "1",
-        "--path",
+        "--raw_data_path",
         "${userHome}/tmp/"
       ],
       "console": "integratedTerminal",

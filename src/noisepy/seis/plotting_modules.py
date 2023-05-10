@@ -696,8 +696,8 @@ def plot_all_moveout(
             dist[ii] = ds.auxiliary_data[dtype][path].parameters["dist"]
             ngood[ii] = ds.auxiliary_data[dtype][path].parameters["ngood"]
             tdata = ds.auxiliary_data[dtype][path].data[indx1:indx2]
-        except Exception:
-            print("continue! cannot read %s " % sfile)
+        except Exception as e:
+            print(f"continue! cannot read {sfile}: {e}")
             continue
 
         data[ii] = bandpass(tdata, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
