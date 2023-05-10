@@ -66,13 +66,8 @@ def cross_correlate(
 
     """
 
-    #######################################
-    # #########PROCESSING SECTION##########
-    #######################################
-
     tlog = TimeLogger(logger, logging.INFO)
-    # tlog.enabled = False
-    t_all = tlog.reset()
+    t_s1_total = tlog.reset()
     # --------MPI---------
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
@@ -240,7 +235,7 @@ def cross_correlate(
         tlog.log(f"Process the chunk of {ts}", t_chunk)
         cc_store.mark_done(ts)
 
-    tlog.log("Step 1 in total", t_all)
+    tlog.log("Step 1 in total", t_s1_total)
     comm.barrier()
 
 
