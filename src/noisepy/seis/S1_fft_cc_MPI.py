@@ -95,8 +95,10 @@ def cross_correlate(
         if cc_store.is_done(ts):
             continue
 
-        # ###########LOADING NOISE DATA AND DO FFT##################
-        t_chunk = tlog.reset()
+        """
+        LOADING NOISE DATA AND DO FFT
+        """
+        t_chunk = tlog.reset()  # for tracking overall chunk processing time
         channels = raw_store.get_channels(ts)
         tlog.log("get channels")
         ch_data_tuples = _read_channels(ts, raw_store, channels, fft_params.samp_freq)
