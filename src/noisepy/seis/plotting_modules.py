@@ -1,3 +1,4 @@
+import logging
 import os
 
 import matplotlib.pyplot as plt
@@ -7,6 +8,10 @@ import pyasdf
 import scipy
 from obspy.signal.filter import bandpass
 from scipy.fftpack import next_fast_len
+
+from noisepy.seis.constants import PROGRESS_DATATYPE
+
+logging.getLogger("matplotlib.font_manager").disabled = True
 
 """
 Ensembles of plotting functions to display intermediate/final waveforms from the NoisePy package.
@@ -164,6 +169,8 @@ def plot_substack_cc(sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir=
     indx2 = indx1 + 2 * int(disp_lag / dt) + 1
 
     for spair in spairs:
+        if spair == PROGRESS_DATATYPE:
+            continue
         ttr = spair.split("_")
         net1, sta1 = ttr[0].split(".")
         net2, sta2 = ttr[1].split(".")
@@ -200,38 +207,30 @@ def plot_substack_cc(sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir=
                 tick_inc = int(nwin / 5)
             else:
                 tick_inc = 2
-            fig = plt.figure(figsize=(10, 6))
-            ax = fig.add_subplot(211)
-            ax.matshow(
+            fig, (
+                ax1,
+                ax2,
+            ) = plt.subplots(2, 1, gridspec_kw={"height_ratios": [1, 3]}, figsize=(10, 6))
+            ax1.matshow(
                 data,
                 cmap="seismic",
                 extent=[-disp_lag, disp_lag, nwin, 0],
                 aspect="auto",
             )
-            ax.set_title("%s.%s.%s  %s.%s.%s  dist:%5.2fkm" % (net1, sta1, chan1, net2, sta2, chan2, dist))
-            ax.set_xlabel("time [s]")
-            ax.set_xticks(t)
-            ax.set_yticks(np.arange(0, nwin, step=tick_inc))
-            ax.set_yticklabels(timestamp[0::tick_inc])
-            ax.xaxis.set_ticks_position("bottom")
-            ax1 = fig.add_subplot(413)
-            ax1.set_title("stacked and filtered at %4.2f-%4.2f Hz" % (freqmin, freqmax))
-            ax1.plot(
+            ax1.set_title("%s.%s.%s  %s.%s.%s  dist:%5.2fkm" % (net1, sta1, chan1, net2, sta2, chan2, dist))
+            ax1.set_xlabel("time [s]")
+            ax1.set_xticks(t)
+            ax1.set_yticks(np.arange(0, nwin, step=tick_inc))
+            ax1.set_yticklabels(timestamp[0::tick_inc])
+            ax1.xaxis.set_ticks_position("bottom")
+            ax2.set_title("stacked and filtered at %4.2f-%4.2f Hz" % (freqmin, freqmax))
+            ax2.plot(
                 np.arange(-disp_lag, disp_lag + dt, dt),
                 np.mean(data, axis=0),
                 "k-",
                 linewidth=1,
             )
-            ax1.set_xticks(t)
-            ax2 = fig.add_subplot(414)
-            ax2.plot(amax / min(amax), "r-")
-            ax2.plot(ngood, "b-")
-            ax2.set_xlabel("waveform number")
-            ax2.set_xticks(np.arange(0, nwin, step=tick_inc))
-            ax2.set_xticklabels(tmarks[0:nwin:tick_inc])
-            # for tick in ax[2].get_xticklabels():
-            #    tick.set_rotation(30)
-            ax2.legend(["relative amp", "ngood"], loc="upper right")
+            ax2.set_xticks(t)
             fig.tight_layout()
 
             # save figure or just show
@@ -697,8 +696,8 @@ def plot_all_moveout(
             dist[ii] = ds.auxiliary_data[dtype][path].parameters["dist"]
             ngood[ii] = ds.auxiliary_data[dtype][path].parameters["ngood"]
             tdata = ds.auxiliary_data[dtype][path].data[indx1:indx2]
-        except Exception:
-            print("continue! cannot read %s " % sfile)
+        except Exception as e:
+            print(f"continue! cannot read {sfile}: {e}")
             continue
 
         data[ii] = bandpass(tdata, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)

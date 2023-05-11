@@ -2,15 +2,104 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Python: Unit tests",
+      "type": "python",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "${workspaceFolder}/tests/test_scedc_s3store.py"
+      ]
+    },
+    {
+      "name": "Python: Current File",
+      "type": "python",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Python: stack",
+      "type": "python",
+      "request": "launch",
+      "module": "noisepy.seis.main",
+      "args": [
+        "stack",
+        "--raw_data_path",
+        "${userHome}/runner_temp/RAW_DATA",
+        "--ccf_path",
+        "${userHome}/runner_temp/CCF",
+        "--stack_path",
+        "/Users/carlosg/runner_temp/STACK",
+        "--method",
+        "linear"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
       "name": "Python: cross_correlate",
       "type": "python",
-      "preLaunchTask": "Remove CCF",
       "request": "launch",
-      "program": "${workspaceFolder}/src/noisepy.py",
+      "module": "noisepy.seis.main",
       "args": [
         "cross_correlate",
         "--freq_norm",
-        "rma"
+        "rma",
+        "--raw_data_path",
+        "${userHome}/s3tmp/scedc/2022/002",
+        "--ccf_path",
+        "${userHome}/ccfs3tmp/",
+        "--stations",
+        "SBC,RIO,DEV,HEC,RLR,SVD,RPV,BAK",
+        "--xml_path",
+        "/Users/carlosg/s3tmp/FDSNstationXML"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Python: S3 cross_correlate",
+      "type": "python",
+      "request": "launch",
+      "module": "noisepy.seis.main",
+      "args": [
+        "cross_correlate",
+        "--freq_norm",
+        "rma",
+        "--raw_data_path",
+        "s3://scedc-pds/continuous_waveforms/",
+        "--ccf_path",
+        "${userHome}/ccfs3tmp/",
+        "--stations",
+        "SBC,RIO,DEV",
+        "--xml_path",
+        "s3://scedc-pds/FDSNstationXML/CI/",
+        "--start",
+        "2022_02_02",
+        "--end",
+        "2022_02_05"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Python: download",
+      "type": "python",
+      "request": "launch",
+      "module": "noisepy.seis.main",
+      "args": [
+        "download",
+        "--start",
+        "2019_02_01_00_00_00",
+        "--end",
+        "2019_02_01_01_00_00",
+        "--stations",
+        "ARV,BAK",
+        "--inc_hours",
+        "1",
+        "--raw_data_path",
+        "${userHome}/tmp/"
       ],
       "console": "integratedTerminal",
       "justMyCode": true

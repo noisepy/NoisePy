@@ -1,10 +1,4 @@
 {
   "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "Remove CCF",
-      "type": "shell",
-      "command": "rm -rf ${userHome}/Documents/SCAL/CCF"
-    }
-  ]
+  "tasks": []
 }

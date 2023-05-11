@@ -22,6 +22,9 @@ from obspy.signal.util import _npts2nfft
 from scipy.fftpack import next_fast_len
 from scipy.signal import hilbert
 
+from noisepy.seis.datatypes import ChannelData
+from noisepy.seis.S1_fft_cc_MPI import ConfigParameters
+
 """
 This VERY LONG noise module file is necessary to keep the NoisePy working properly. In general,
 the modules are organized based on their functionality in the following way. it includes:
@@ -153,7 +156,13 @@ def make_timestamps(prepro_para):
     return all_stimes
 
 
-def preprocess_raw(st, inv, prepro_para, date_info):
+def preprocess_raw(
+    st: obspy.Stream,
+    inv: obspy.Inventory,
+    prepro_para: ConfigParameters,
+    starttime: obspy.UTCDateTime,
+    endtime: obspy.UTCDateTime,
+):
     """
     this function pre-processes the raw data stream by:
         1) check samping rate and gaps in the data;
@@ -180,10 +189,7 @@ def preprocess_raw(st, inv, prepro_para, date_info):
     """
     # load paramters from fft dict
     rm_resp = prepro_para["rm_resp"]
-    if "rm_resp_out" in prepro_para.keys():
-        rm_resp_out = prepro_para["rm_resp_out"]
-    else:
-        rm_resp_out = "VEL"
+    rm_resp_out = prepro_para["rm_resp_out"]
     respdir = prepro_para["respdir"]
     freqmin = prepro_para["freqmin"]
     freqmax = prepro_para["freqmax"]
@@ -201,7 +207,7 @@ def preprocess_raw(st, inv, prepro_para, date_info):
     pre_filt = [f1, f2, f3, f4]
 
     # check sampling rate and trace length
-    st = check_sample_gaps(st, date_info)
+    st = check_sample_gaps(st, starttime, endtime)
     if len(st) == 0:
         print("No traces in Stream: Continue!")
         return st
@@ -260,8 +266,8 @@ def preprocess_raw(st, inv, prepro_para, date_info):
                     print("removing response for %s using inv" % st[0])
                     st[0].attach_response(inv)
                     st[0].remove_response(output=rm_resp_out, pre_filt=pre_filt, water_level=60)
-                except Exception:
-                    print("WARNING: Failed to remove response from %s. Returning empty stream." % st[0])
+                except Exception as e:
+                    print("WARNING: Failed to remove response from %s. Returning empty stream. %s" % (st[0], e))
                     st = []
                     return st
 
@@ -279,16 +285,16 @@ def preprocess_raw(st, inv, prepro_para, date_info):
                 raise ValueError("no RESP files found for %s" % station)
             seedresp = {
                 "filename": resp[0],
-                "date": date_info["starttime"],
+                "date": starttime,
                 "units": "DIS",
             }
-            st.simulate(paz_remove=None, pre_filt=pre_filt, seedresp=seedresp[0])
+            st.simulate(paz_remove=None, pre_filt=pre_filt, seedresp=seedresp)
 
-        elif rm_resp == "polozeros":
-            print("remove response using polos and zeros")
+        elif rm_resp == "poleszeros":
+            print("remove response using poles and zeros")
             paz_sts = glob.glob(os.path.join(respdir, "*" + station + "*"))
             if len(paz_sts) == 0:
-                raise ValueError("no polozeros found for %s" % station)
+                raise ValueError("no poleszeros found for %s" % station)
             st.simulate(paz_remove=paz_sts[0], pre_filt=pre_filt)
 
         else:
@@ -297,8 +303,8 @@ def preprocess_raw(st, inv, prepro_para, date_info):
     ntr = obspy.Stream()
     # trim a continous segment into user-defined sequences
     st[0].trim(
-        starttime=date_info["starttime"],
-        endtime=date_info["endtime"],
+        starttime=starttime,
+        endtime=endtime,
         pad=True,
         fill_value=0,
     )
@@ -324,96 +330,114 @@ def stats2inv(stats, prepro_para, locs=None):
     staxml = prepro_para["stationxml"]
     respdir = prepro_para["respdir"]
     input_fmt = prepro_para["input_fmt"]
-
     if staxml:
-        if not respdir:
-            raise ValueError("Abort! staxml is selected but no directory is given to access the files")
-        else:
-            invfilelist = glob.glob(os.path.join(respdir, "*" + stats.station + "*"))
-            if len(invfilelist) > 0:
-                invfile = invfilelist[0]
-                if len(invfilelist) > 1:
-                    print(
-                        (
-                            "Warning! More than one StationXML file was found for station %s."
-                            + "Keeping the first file in list."
-                        )
-                        % stats.station
-                    )
-                if os.path.isfile(str(invfile)):
-                    inv = obspy.read_inventory(invfile)
-                    return inv
-            else:
-                raise ValueError("Could not find a StationXML file for station: %s." % stats.station)
-
-    inv = Inventory(networks=[], source="homegrown")
-
+        return stats2Inv_staxml(stats, respdir)
     if input_fmt == "sac":
-        net = Network(
-            # This is the network code according to the SEED standard.
-            code=stats.network,
-            stations=[],
-            description="created from SAC and resp files",
-            start_date=stats.starttime,
-        )
-
-        sta = Station(
-            # This is the station code according to the SEED standard.
-            code=stats.station,
-            latitude=stats.sac["stla"],
-            longitude=stats.sac["stlo"],
-            elevation=stats.sac["stel"],
-            creation_date=stats.starttime,
-            site=Site(name="First station"),
-        )
-
-        cha = Channel(
-            # This is the channel code according to the SEED standard.
-            code=stats.channel,
-            # This is the location code according to the SEED standard.
-            location_code=stats.location,
-            # Note that these coordinates can differ from the station coordinates.
-            latitude=stats.sac["stla"],
-            longitude=stats.sac["stlo"],
-            elevation=stats.sac["stel"],
-            depth=-stats.sac["stel"],
-            azimuth=stats.sac["cmpaz"],
-            dip=stats.sac["cmpinc"],
-            sample_rate=stats.sampling_rate,
-        )
-
+        return stats2inv_sac(stats)
     elif input_fmt == "mseed":
-        ista = locs[locs["station"] == stats.station].index.values.astype("int64")[0]
+        return stats2inv_mseed(stats, locs)
 
-        net = Network(
-            # This is the network code according to the SEED standard.
-            code=locs.iloc[ista]["network"],
-            stations=[],
-            description="created from SAC and resp files",
-            start_date=stats.starttime,
-        )
 
-        sta = Station(
-            # This is the station code according to the SEED standard.
-            code=locs.iloc[ista]["station"],
-            latitude=locs.iloc[ista]["latitude"],
-            longitude=locs.iloc[ista]["longitude"],
-            elevation=locs.iloc[ista]["elevation"],
-            creation_date=stats.starttime,
-            site=Site(name="First station"),
-        )
+def stats2Inv_staxml(stats, respdir) -> Inventory:
+    if not respdir:
+        raise ValueError("Abort! staxml is selected but no directory is given to access the files")
+    else:
+        invfilelist = glob.glob(os.path.join(respdir, "*" + stats.station + "*"))
+        if len(invfilelist) > 0:
+            invfile = invfilelist[0]
+            if len(invfilelist) > 1:
+                print(
+                    (
+                        "Warning! More than one StationXML file was found for station %s."
+                        + "Keeping the first file in list."
+                    )
+                    % stats.station
+                )
+            if os.path.isfile(str(invfile)):
+                inv = obspy.read_inventory(invfile)
+                return inv
+        else:
+            raise ValueError("Could not find a StationXML file for station: %s." % stats.station)
 
-        cha = Channel(
-            code=stats.channel,
-            location_code=stats.location,
-            latitude=locs.iloc[ista]["latitude"],
-            longitude=locs.iloc[ista]["longitude"],
-            elevation=locs.iloc[ista]["elevation"],
-            depth=-locs.iloc[ista]["elevation"],
-            azimuth=0,
-            dip=0,
-            sample_rate=stats.sampling_rate,
-        )
+
+def stats2inv_sac(stats):
+    inv = Inventory(networks=[], source="homegrown")
+    net = Network(
+        # This is the network code according to the SEED standard.
+        code=stats.network,
+        stations=[],
+        description="created from SAC and resp files",
+        start_date=stats.starttime,
+    )
+
+    sta = Station(
+        # This is the station code according to the SEED standard.
+        code=stats.station,
+        latitude=stats.sac["stla"],
+        longitude=stats.sac["stlo"],
+        elevation=stats.sac["stel"],
+        creation_date=stats.starttime,
+        site=Site(name="First station"),
+    )
+
+    cha = Channel(
+        # This is the channel code according to the SEED standard.
+        code=stats.channel,
+        # This is the location code according to the SEED standard.
+        location_code=stats.location,
+        # Note that these coordinates can differ from the station coordinates.
+        latitude=stats.sac["stla"],
+        longitude=stats.sac["stlo"],
+        elevation=stats.sac["stel"],
+        depth=-stats.sac["stel"],
+        azimuth=stats.sac["cmpaz"],
+        dip=stats.sac["cmpinc"],
+        sample_rate=stats.sampling_rate,
+    )
+    response = obspy.core.inventory.response.Response()
+
+    # Now tie it all together.
+    cha.response = response
+    sta.channels.append(cha)
+    net.stations.append(sta)
+    inv.networks.append(net)
+
+    return inv
+
+
+def stats2inv_mseed(stats, locs: pd.DataFrame) -> Inventory:
+    inv = Inventory(networks=[], source="homegrown")
+    ista = locs[locs["station"] == stats.station].index.values.astype("int64")[0]
+
+    net = Network(
+        # This is the network code according to the SEED standard.
+        code=locs.iloc[ista]["network"],
+        stations=[],
+        description="created from SAC and resp files",
+        start_date=stats.starttime,
+    )
+
+    sta = Station(
+        # This is the station code according to the SEED standard.
+        code=locs.iloc[ista]["station"],
+        latitude=locs.iloc[ista]["latitude"],
+        longitude=locs.iloc[ista]["longitude"],
+        elevation=locs.iloc[ista]["elevation"],
+        creation_date=stats.starttime,
+        site=Site(name="First station"),
+    )
+
+    cha = Channel(
+        code=stats.channel,
+        location_code=stats.location,
+        latitude=locs.iloc[ista]["latitude"],
+        longitude=locs.iloc[ista]["longitude"],
+        elevation=locs.iloc[ista]["elevation"],
+        depth=-locs.iloc[ista]["elevation"],
+        azimuth=0,
+        dip=0,
+        sample_rate=stats.sampling_rate,
+    )
 
     response = obspy.core.inventory.response.Response()
 
@@ -426,7 +450,7 @@ def stats2inv(stats, prepro_para, locs=None):
     return inv
 
 
-def sta_info_from_inv(inv):
+def sta_info_from_inv(inv: obspy.core.inventory.inventory.Inventory):
     """
     this function outputs station info from the obspy inventory object
     (used in S0B)
@@ -460,7 +484,7 @@ def sta_info_from_inv(inv):
     return sta, net, lon, lat, elv, location
 
 
-def cut_trace_make_stat(fc_para, source):
+def cut_trace_make_stat(fc_para: ConfigParameters, ch_data: ChannelData):
     """
     this function cuts continous noise data into user-defined segments, estimate the statistics of
     each segment and keep timestamp of each segment for later use. (used in S1)
@@ -479,35 +503,30 @@ def cut_trace_make_stat(fc_para, source):
     dataS_t = []
     dataS = []
 
-    # load parameter from dic
-    inc_hours = fc_para["inc_hours"]
-    cc_len = fc_para["cc_len"]
-    step = fc_para["step"]
-
     # useful parameters for trace sliding
-    nseg = int(np.floor((inc_hours / 24 * 86400 - cc_len) / step))
-    sps = int(source[0].stats.sampling_rate)
-    starttime = source[0].stats.starttime - obspy.UTCDateTime(1970, 1, 1)
+    nseg = int(np.floor((fc_para.inc_hours / 24 * 86400 - fc_para.cc_len) / fc_para.step))
+    sps = int(ch_data.sampling_rate)
+    starttime = ch_data.start_timestamp
     # copy data into array
-    data = source[0].data
+    data = ch_data.data
 
     # if the data is shorter than the tim chunck, return zero values
-    if data.size < sps * inc_hours * 3600:
+    if data.size < sps * fc_para.inc_hours * 3600:
         return source_params, dataS_t, dataS
 
     # statistic to detect segments that may be associated with earthquakes
     all_madS = mad(data)  # median absolute deviation over all noise window
     all_stdS = np.std(data)  # standard deviation over all noise window
     if all_madS == 0 or all_stdS == 0 or np.isnan(all_madS) or np.isnan(all_stdS):
-        print("continue! madS or stdS equals to 0 for %s" % source)
+        print("continue! madS or stdS equals to 0 for %s")
         return source_params, dataS_t, dataS
 
     # initialize variables
-    npts = cc_len * sps
+    npts = int(fc_para.cc_len * sps)
     # trace_madS = np.zeros(nseg,dtype=np.float32)
     trace_stdS = np.zeros(nseg, dtype=np.float32)
-    dataS = np.zeros(shape=(nseg, npts), dtype=np.float32)
-    dataS_t = np.zeros(nseg, dtype=np.float)
+    dataS = np.zeros(shape=(int(nseg), int(npts)), dtype=np.float32)
+    dataS_t = np.zeros(nseg, dtype=np.float32)
 
     indx1 = 0
     for iseg in range(nseg):
@@ -515,8 +534,8 @@ def cut_trace_make_stat(fc_para, source):
         dataS[iseg] = data[indx1:indx2]
         # trace_madS[iseg] = (np.max(np.abs(dataS[iseg]))/all_madS)
         trace_stdS[iseg] = np.max(np.abs(dataS[iseg])) / all_stdS
-        dataS_t[iseg] = starttime + step * iseg
-        indx1 = indx1 + step * sps
+        dataS_t[iseg] = starttime + fc_para.step * iseg
+        indx1 = indx1 + int(fc_para.step) * sps
 
     # 2D array processing
     dataS = demean(dataS)
@@ -697,8 +716,8 @@ def correlate(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
             nstack = int(np.round(Ttotal / substack_len))
             ampmax = np.zeros(nstack, dtype=np.float32)
             s_corr = np.zeros(shape=(nstack, Nfft), dtype=np.float32)
-            n_corr = np.zeros(nstack, dtype=np.int)
-            t_corr = np.zeros(nstack, dtype=np.float)
+            n_corr = np.zeros(nstack, dtype=np.int16)
+            t_corr = np.zeros(nstack, dtype=np.float32)
             crap = np.zeros(Nfft, dtype=np.complex64)
 
             for istack in range(nstack):
@@ -1118,7 +1137,7 @@ def stacking_rma(cc_array, cc_time, cc_ngood, stack_para):
     )
 
 
-def rotation(bigstack, parameters, locs, flag):
+def rotation(bigstack, parameters, locs):
     """
     this function transfers the Green's tensor from a E-N-Z system into a R-T-Z one
 
@@ -1192,7 +1211,7 @@ def rotation(bigstack, parameters, locs, flag):
 ####################################################
 
 
-def check_sample_gaps(stream, date_info):
+def check_sample_gaps(stream: obspy.Stream, starttime: obspy.UTCDateTime, endtime: obspy.UTCDateTime):
     """
     this function checks sampling rate and find gaps of all traces in stream.
     PARAMETERS:
@@ -1210,7 +1229,7 @@ def check_sample_gaps(stream, date_info):
         return stream
 
     # remove traces with big gaps
-    if portion_gaps(stream, date_info) > 0.3:
+    if portion_gaps(stream, starttime, endtime) > 0.3:
         stream = []
         return stream
 
@@ -1227,7 +1246,7 @@ def check_sample_gaps(stream, date_info):
     return stream
 
 
-def portion_gaps(stream, date_info):
+def portion_gaps(stream, starttime: obspy.UTCDateTime, endtime: obspy.UTCDateTime):
     """
     this function tracks the gaps (npts) from the accumulated difference between starttime and endtime
     of each stream trace. it removes trace with gap length > 30% of trace size.
@@ -1241,8 +1260,6 @@ def portion_gaps(stream, date_info):
     pgaps: proportion of gaps/all_pts in stream
     """
     # ideal duration of data
-    starttime = date_info["starttime"]
-    endtime = date_info["endtime"]
     npts = (endtime - starttime) * stream[0].stats.sampling_rate
 
     pgaps = 0

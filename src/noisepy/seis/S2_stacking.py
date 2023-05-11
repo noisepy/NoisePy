@@ -1,7 +1,9 @@
 import glob
+import logging
 import os
 import sys
 import time
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -10,6 +12,7 @@ from mpi4py import MPI
 
 from . import noise_module
 
+logger = logging.getLogger(__name__)
 if not sys.warnoptions:
     import warnings
 
@@ -42,7 +45,6 @@ tt0 = time.time()
 
 # define new stacking para
 keep_substack = False  # keep all sub-stacks in final ASDF file
-flag = True  # output intermediate args for debugging
 
 # new rotation para
 rotation = True  # rotation from E-N-Z to R-T-Z
@@ -53,27 +55,18 @@ MAX_MEM = 4.0
 
 
 # TODO: make stack_method an enum
-def stack(rootpath: str, stack_method: str):
+def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
     if rotation and correction:
-        corrfile = os.path.join(rootpath, "meso_angles.csv")  # csv file containing angle info to be corrected
+        corrfile = os.path.join(ccf_dir, "../meso_angles.txt")  # csv file containing angle info to be corrected
         locs = pd.read_csv(corrfile)
     else:
         locs = []
-
-    # absolute path parameters
-    CCFDIR = os.path.join(rootpath, "CCF")  # dir where CC data is stored
-    STACKDIR = os.path.join(rootpath, "STACK")  # dir where stacked data is going to
-    locations = os.path.join(
-        rootpath, "RAW_DATA/stations.csv"
-    )  # station info including network,station,channel,latitude,longitude,elevation
-    if not os.path.isfile(locations):
-        raise ValueError("Abort! station info is needed for this script")
 
     ##################################################
     # we expect no parameters need to be changed below
 
     # load fc_para parameters from Step1
-    fc_metadata = os.path.join(CCFDIR, "fft_cc_json.json")
+    fc_metadata = os.path.join(ccf_dir, "fft_cc_data.txt")
     fc_para = eval(open(fc_metadata).read())
     ncomp = fc_para["ncomp"]
     samp_freq = fc_para["samp_freq"]
@@ -99,10 +92,9 @@ def stack(rootpath: str, stack_method: str):
         "samp_freq": samp_freq,
         "cc_len": cc_len,
         "step": step,
-        "rootpath": rootpath,
-        "STACKDIR": STACKDIR,
-        "start_date": start_date[0],
-        "end_date": end_date[0],
+        "stack_dir": stack_dir,
+        "start_date": start_date,
+        "end_date": end_date,
         "inc_hours": inc_hours,
         "substack": substack,
         "substack_len": substack_len,
@@ -113,7 +105,7 @@ def stack(rootpath: str, stack_method: str):
         "correction": correction,
     }
     # save fft metadata for future reference
-    stack_metadata = os.path.join(STACKDIR, "stack_data.csv")
+    stack_metadata = os.path.join(stack_dir, "stack_data.txt")
 
     #######################################
     # #########PROCESSING SECTION##########
@@ -125,26 +117,19 @@ def stack(rootpath: str, stack_method: str):
     size = comm.Get_size()
 
     if rank == 0:
-        if not os.path.isdir(STACKDIR):
-            os.mkdir(STACKDIR)
+        if not os.path.isdir(stack_dir):
+            os.mkdir(stack_dir)
         # save metadata
         fout = open(stack_metadata, "w")
         fout.write(str(stack_para))
         fout.close()
 
         # cross-correlation files
-        ccfiles = sorted(glob.glob(os.path.join(CCFDIR, "*.h5")))
-
-        # load station info
-        tlocs = pd.read_csv(locations)
-        sta = sorted(np.unique(tlocs["network"] + "." + tlocs["station"]))
-
-        # Check if number of stations is less than or equal to 2
-        if len(sta) <= 2:
-            raise ValueError("Error: Number of stations is less than or equal to 2.")
+        ccfiles = sorted(glob.glob(os.path.join(ccf_dir, "*.h5")))
+        logger.debug(ccfiles)
 
         for ii in range(len(sta)):
-            tmp = os.path.join(STACKDIR, sta[ii])
+            tmp = os.path.join(stack_dir, sta[ii])
             if not os.path.isdir(tmp):
                 os.mkdir(tmp)
 
@@ -170,8 +155,7 @@ def stack(rootpath: str, stack_method: str):
     for ipair in range(rank, splits, size):
         t0 = time.time()
 
-        if flag:
-            print("%dth path for station-pair %s" % (ipair, pairs_all[ipair]))
+        logger.debug("%dth path for station-pair %s" % (ipair, pairs_all[ipair]))
         # source folder
         ttr = pairs_all[ipair].split("_")
         snet, ssta = ttr[0].split(".")
@@ -184,8 +168,8 @@ def stack(rootpath: str, stack_method: str):
         else:
             fauto = 0
 
-        # continue when file is done
-        toutfn = os.path.join(STACKDIR, idir + "/" + pairs_all[ipair] + ".tmp")
+        # continue when file is done: TODO: Remove this and use a Store.contains() function.
+        toutfn = os.path.join(stack_dir, idir + "/" + pairs_all[ipair] + ".tmp")
         if os.path.isfile(toutfn):
             continue
 
@@ -206,11 +190,10 @@ def stack(rootpath: str, stack_method: str):
                 "Require %5.3fG memory but only %5.3fG provided)! Cannot load cc data all once!"
                 % (memory_size, MAX_MEM)
             )
-        if flag:
-            print("Good on memory (need %5.2f G and %s G provided)!" % (memory_size, MAX_MEM))
+        logger.debug("Good on memory (need %5.2f G and %s G provided)!" % (memory_size, MAX_MEM))
         # allocate array to store fft data/info
         cc_array = np.zeros((num_chunck * num_segmts, npts_segmt), dtype=np.float32)
-        cc_time = np.zeros(num_chunck * num_segmts, dtype=np.float)
+        cc_time = np.zeros(num_chunck * num_segmts, dtype=np.float32)
         cc_ngood = np.zeros(num_chunck * num_segmts, dtype=np.int16)
         cc_comp = np.chararray(num_chunck * num_segmts, itemsize=2, unicode=True)
 
@@ -224,20 +207,21 @@ def stack(rootpath: str, stack_method: str):
                 path_list = ds.auxiliary_data[dtype].list()
                 tparameters = ds.auxiliary_data[dtype][path_list[0]].parameters
             except Exception:
-                if flag:
-                    print("continue! no pair of %s in %s" % (dtype, ifile))
+                logger.debug("continue! no pair of %s in %s" % (dtype, ifile))
                 continue
-
+            logger.debug(f"path_list for {dtype}: {path_list}")
             # seperate auto and cross-correlation
             if fauto == 1:
                 if ncomp == 3 and len(path_list) < 6:
-                    if flag:
-                        print("continue! not enough cross components for auto-correlation %s in %s" % (dtype, ifile))
+                    logger.warning(
+                        "continue! not enough cross components for auto-correlation %s in %s" % (dtype, ifile)
+                    )
                     continue
             else:
                 if ncomp == 3 and len(path_list) < 9:
-                    if flag:
-                        print("continue! not enough cross components for cross-correlation %s in %s" % (dtype, ifile))
+                    logger.warning(
+                        "continue! not enough cross components for cross-correlation %s in %s" % (dtype, ifile)
+                    )
                     continue
 
             if len(path_list) > 9:
@@ -269,15 +253,13 @@ def stack(rootpath: str, stack_method: str):
                     iseg += 1
 
         t1 = time.time()
-        if flag:
-            print("loading CCF data takes %6.2fs" % (t1 - t0))
+        logger.debug("loading CCF data takes %6.2fs" % (t1 - t0))
 
         # continue when there is no data or for auto-correlation
-        if iseg <= 1 or fauto == 1:
+        if iseg <= 1 and fauto == 1:
             continue
         outfn = pairs_all[ipair] + ".h5"
-        if flag:
-            print("ready to output to %s" % (outfn))
+        logger.debug("ready to output to %s" % (outfn))
 
         # matrix used for rotation
         if rotation:
@@ -290,14 +272,16 @@ def stack(rootpath: str, stack_method: str):
         iflag = 1
         for icomp in range(nccomp):
             comp = enz_system[icomp]
-            indx = np.where(cc_comp == comp)[0]
+            indx = np.where(cc_comp.lower() == comp.lower())[0]
+            logger.debug(f"index to find the comp: {indx}")
 
             # jump if there are not enough data
             if len(indx) < 2:
                 iflag = 0
                 break
 
-            stack_h5 = os.path.join(STACKDIR, idir + "/" + outfn)
+            stack_h5 = os.path.join(stack_dir, idir + "/" + outfn)
+            logger.debug(f"h5 stack path: {stack_h5}")
             # output stacked data
             (
                 cc_final,
@@ -308,6 +292,7 @@ def stack(rootpath: str, stack_method: str):
                 allstacks3,
                 nstacks,
             ) = noise_module.stacking(cc_array[indx], cc_time[indx], cc_ngood[indx], stack_para)
+            logger.debug(f"after stacking nstacks: {nstacks}")
             if not len(allstacks1):
                 continue
             if rotation:
@@ -347,7 +332,6 @@ def stack(rootpath: str, stack_method: str):
                         path=comp,
                         parameters=tparameters,
                     )
-
             # keep a track of all sub-stacked data from S1
             if keep_substack:
                 for ii in range(cc_final.shape[0]):
@@ -363,8 +347,7 @@ def stack(rootpath: str, stack_method: str):
                         )
 
             t3 = time.time()
-            if flag:
-                print("takes %6.2fs to stack one component with %s stacking method" % (t3 - t1, stack_method))
+            logger.debug("takes %6.2fs to stack one component with %s stacking method" % (t3 - t1, stack_method))
 
         # do rotation if needed
         if rotation and iflag:
@@ -373,7 +356,7 @@ def stack(rootpath: str, stack_method: str):
             tparameters["station_source"] = ssta
             tparameters["station_receiver"] = rsta
             if stack_method != "all":
-                bigstack_rotated = noise_module.rotation(bigstack, tparameters, locs, flag)
+                bigstack_rotated = noise_module.rotation(bigstack, tparameters, locs)
 
                 # write to file
                 for icomp in range(nccomp):
@@ -389,9 +372,9 @@ def stack(rootpath: str, stack_method: str):
                             parameters=tparameters,
                         )
             else:
-                bigstack_rotated = noise_module.rotation(bigstack, tparameters, locs, flag)
-                bigstack_rotated1 = noise_module.rotation(bigstack1, tparameters, locs, flag)
-                bigstack_rotated2 = noise_module.rotation(bigstack2, tparameters, locs, flag)
+                bigstack_rotated = noise_module.rotation(bigstack, tparameters, locs)
+                bigstack_rotated1 = noise_module.rotation(bigstack1, tparameters, locs)
+                bigstack_rotated2 = noise_module.rotation(bigstack2, tparameters, locs)
 
                 # write to file
                 for icomp in range(nccomp):
@@ -419,8 +402,7 @@ def stack(rootpath: str, stack_method: str):
                         )
 
         t4 = time.time()
-        if flag:
-            print("takes %6.2fs to stack/rotate all station pairs %s" % (t4 - t1, pairs_all[ipair]))
+        logger.debug("takes %6.2fs to stack/rotate all station pairs %s" % (t4 - t1, pairs_all[ipair]))
 
         # write file stamps
         ftmp = open(toutfn, "w")
@@ -428,7 +410,7 @@ def stack(rootpath: str, stack_method: str):
         ftmp.close()
 
     tt1 = time.time()
-    print("it takes %6.2fs to process step 2 in total" % (tt1 - tt0))
+    logger.info("it takes %6.2fs to process step 2 in total" % (tt1 - tt0))
     comm.barrier()
 
 

@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-message: "Please cite the following reference if you use the code for your publication:"
+message: "Please cite the following reference if you use the code for your work:"
 authors:
 - family-names: "Jiang"
   given-names: "Chengxin"
@@ -7,4 +7,5 @@ authors:
   given-names: "Marine"
 title: "NoisePy: a new high-performance python tool for seismic ambient noise seismology."
 date-released: 2020
+doi: https://doi.org/10.1785/0220190364
 url: "https://github.com/mdenolle/NoisePy.git"
