@@ -25,9 +25,6 @@ from scipy.signal import hilbert
 from noisepy.seis.datatypes import ChannelData
 from noisepy.seis.S1_fft_cc_MPI import ConfigParameters
 
-from noisepy.seis.datatypes import ChannelData
-from noisepy.seis.S1_fft_cc_MPI import ConfigParameters
-
 """
 This VERY LONG noise module file is necessary to keep the NoisePy working properly. In general,
 the modules are organized based on their functionality in the following way. it includes:
@@ -361,44 +358,8 @@ def stats2Inv_staxml(stats, respdir) -> Inventory:
                 return inv
         else:
             raise ValueError("Could not find a StationXML file for station: %s." % stats.station)
-        return stats2Inv_staxml(stats, respdir)
-    if input_fmt == "sac":
-        return stats2inv_sac(stats)
-    elif input_fmt == "mseed":
-        return stats2inv_mseed(stats, locs)
 
 
-def stats2Inv_staxml(stats, respdir) -> Inventory:
-    if not respdir:
-        raise ValueError("Abort! staxml is selected but no directory is given to access the files")
-    else:
-        invfilelist = glob.glob(os.path.join(respdir, "*" + stats.station + "*"))
-        if len(invfilelist) > 0:
-            invfile = invfilelist[0]
-            if len(invfilelist) > 1:
-                print(
-                    (
-                        "Warning! More than one StationXML file was found for station %s."
-                        + "Keeping the first file in list."
-                    )
-                    % stats.station
-                )
-            if os.path.isfile(str(invfile)):
-                inv = obspy.read_inventory(invfile)
-                return inv
-        else:
-            raise ValueError("Could not find a StationXML file for station: %s." % stats.station)
-
-
-def stats2inv_sac(stats):
-    inv = Inventory(networks=[], source="homegrown")
-    net = Network(
-        # This is the network code according to the SEED standard.
-        code=stats.network,
-        stations=[],
-        description="created from SAC and resp files",
-        start_date=stats.starttime,
-    )
 def stats2inv_sac(stats):
     inv = Inventory(networks=[], source="homegrown")
     net = Network(
@@ -418,31 +379,7 @@ def stats2inv_sac(stats):
         creation_date=stats.starttime,
         site=Site(name="First station"),
     )
-    sta = Station(
-        # This is the station code according to the SEED standard.
-        code=stats.station,
-        latitude=stats.sac["stla"],
-        longitude=stats.sac["stlo"],
-        elevation=stats.sac["stel"],
-        creation_date=stats.starttime,
-        site=Site(name="First station"),
-    )
 
-    cha = Channel(
-        # This is the channel code according to the SEED standard.
-        code=stats.channel,
-        # This is the location code according to the SEED standard.
-        location_code=stats.location,
-        # Note that these coordinates can differ from the station coordinates.
-        latitude=stats.sac["stla"],
-        longitude=stats.sac["stlo"],
-        elevation=stats.sac["stel"],
-        depth=-stats.sac["stel"],
-        azimuth=stats.sac["cmpaz"],
-        dip=stats.sac["cmpinc"],
-        sample_rate=stats.sampling_rate,
-    )
-    response = obspy.core.inventory.response.Response()
     cha = Channel(
         # This is the channel code according to the SEED standard.
         code=stats.channel,
@@ -471,26 +408,7 @@ def stats2inv_sac(stats):
 def stats2inv_mseed(stats, locs: pd.DataFrame) -> Inventory:
     inv = Inventory(networks=[], source="homegrown")
     ista = locs[locs["station"] == stats.station].index.values.astype("int64")[0]
-    # Now tie it all together.
-    cha.response = response
-    sta.channels.append(cha)
-    net.stations.append(sta)
-    inv.networks.append(net)
 
-    return inv
-
-
-def stats2inv_mseed(stats, locs: pd.DataFrame) -> Inventory:
-    inv = Inventory(networks=[], source="homegrown")
-    ista = locs[locs["station"] == stats.station].index.values.astype("int64")[0]
-
-    net = Network(
-        # This is the network code according to the SEED standard.
-        code=locs.iloc[ista]["network"],
-        stations=[],
-        description="created from SAC and resp files",
-        start_date=stats.starttime,
-    )
     net = Network(
         # This is the network code according to the SEED standard.
         code=locs.iloc[ista]["network"],
@@ -508,27 +426,7 @@ def stats2inv_mseed(stats, locs: pd.DataFrame) -> Inventory:
         creation_date=stats.starttime,
         site=Site(name="First station"),
     )
-    sta = Station(
-        # This is the station code according to the SEED standard.
-        code=locs.iloc[ista]["station"],
-        latitude=locs.iloc[ista]["latitude"],
-        longitude=locs.iloc[ista]["longitude"],
-        elevation=locs.iloc[ista]["elevation"],
-        creation_date=stats.starttime,
-        site=Site(name="First station"),
-    )
 
-    cha = Channel(
-        code=stats.channel,
-        location_code=stats.location,
-        latitude=locs.iloc[ista]["latitude"],
-        longitude=locs.iloc[ista]["longitude"],
-        elevation=locs.iloc[ista]["elevation"],
-        depth=-locs.iloc[ista]["elevation"],
-        azimuth=0,
-        dip=0,
-        sample_rate=stats.sampling_rate,
-    )
     cha = Channel(
         code=stats.channel,
         location_code=stats.location,
@@ -552,7 +450,6 @@ def stats2inv_mseed(stats, locs: pd.DataFrame) -> Inventory:
     return inv
 
 
-def sta_info_from_inv(inv: obspy.core.inventory.inventory.Inventory):
 def sta_info_from_inv(inv: obspy.core.inventory.inventory.Inventory):
     """
     this function outputs station info from the obspy inventory object
@@ -588,7 +485,6 @@ def sta_info_from_inv(inv: obspy.core.inventory.inventory.Inventory):
 
 
 def cut_trace_make_stat(fc_para: ConfigParameters, ch_data: ChannelData):
-def cut_trace_make_stat(fc_para: ConfigParameters, ch_data: ChannelData):
     """
     this function cuts continous noise data into user-defined segments, estimate the statistics of
     each segment and keep timestamp of each segment for later use. (used in S1)
@@ -611,15 +507,10 @@ def cut_trace_make_stat(fc_para: ConfigParameters, ch_data: ChannelData):
     nseg = int(np.floor((fc_para.inc_hours / 24 * 86400 - fc_para.cc_len) / fc_para.step))
     sps = int(ch_data.sampling_rate)
     starttime = ch_data.start_timestamp
-    nseg = int(np.floor((fc_para.inc_hours / 24 * 86400 - fc_para.cc_len) / fc_para.step))
-    sps = int(ch_data.sampling_rate)
-    starttime = ch_data.start_timestamp
     # copy data into array
-    data = ch_data.data
     data = ch_data.data
 
     # if the data is shorter than the tim chunck, return zero values
-    if data.size < sps * fc_para.inc_hours * 3600:
     if data.size < sps * fc_para.inc_hours * 3600:
         return source_params, dataS_t, dataS
 
@@ -628,11 +519,9 @@ def cut_trace_make_stat(fc_para: ConfigParameters, ch_data: ChannelData):
     all_stdS = np.std(data)  # standard deviation over all noise window
     if all_madS == 0 or all_stdS == 0 or np.isnan(all_madS) or np.isnan(all_stdS):
         print("continue! madS or stdS equals to 0 for %s")
-        print("continue! madS or stdS equals to 0 for %s")
         return source_params, dataS_t, dataS
 
     # initialize variables
-    npts = int(fc_para.cc_len * sps)
     npts = int(fc_para.cc_len * sps)
     # trace_madS = np.zeros(nseg,dtype=np.float32)
     trace_stdS = np.zeros(nseg, dtype=np.float32)
@@ -645,8 +534,6 @@ def cut_trace_make_stat(fc_para: ConfigParameters, ch_data: ChannelData):
         dataS[iseg] = data[indx1:indx2]
         # trace_madS[iseg] = (np.max(np.abs(dataS[iseg]))/all_madS)
         trace_stdS[iseg] = np.max(np.abs(dataS[iseg])) / all_stdS
-        dataS_t[iseg] = starttime + fc_para.step * iseg
-        indx1 = indx1 + int(fc_para.step) * sps
         dataS_t[iseg] = starttime + fc_para.step * iseg
         indx1 = indx1 + int(fc_para.step) * sps
 
@@ -1250,7 +1137,6 @@ def stacking_rma(cc_array, cc_time, cc_ngood, stack_para):
     )
 
 
-def rotation(bigstack, parameters, locs):
 def rotation(bigstack, parameters, locs):
     """
     this function transfers the Green's tensor from a E-N-Z system into a R-T-Z one

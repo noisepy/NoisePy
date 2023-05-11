@@ -63,7 +63,6 @@
       "type": "python",
       "request": "launch",
       "module": "noisepy.seis.main",
-      "module": "noisepy.seis.main",
       "args": [
         "cross_correlate",
         "--freq_norm",
