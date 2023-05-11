@@ -13,7 +13,6 @@ from mpi4py import MPI
 from . import noise_module
 
 logger = logging.getLogger(__name__)
-logger = logging.getLogger(__name__)
 if not sys.warnoptions:
     import warnings
 
@@ -157,7 +156,6 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
         t0 = time.time()
 
         logger.debug("%dth path for station-pair %s" % (ipair, pairs_all[ipair]))
-        logger.debug("%dth path for station-pair %s" % (ipair, pairs_all[ipair]))
         # source folder
         ttr = pairs_all[ipair].split("_")
         snet, ssta = ttr[0].split(".")
@@ -193,7 +191,6 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
                 % (memory_size, MAX_MEM)
             )
         logger.debug("Good on memory (need %5.2f G and %s G provided)!" % (memory_size, MAX_MEM))
-        logger.debug("Good on memory (need %5.2f G and %s G provided)!" % (memory_size, MAX_MEM))
         # allocate array to store fft data/info
         cc_array = np.zeros((num_chunck * num_segmts, npts_segmt), dtype=np.float32)
         cc_time = np.zeros(num_chunck * num_segmts, dtype=np.float32)
@@ -211,9 +208,7 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
                 tparameters = ds.auxiliary_data[dtype][path_list[0]].parameters
             except Exception:
                 logger.debug("continue! no pair of %s in %s" % (dtype, ifile))
-                logger.debug("continue! no pair of %s in %s" % (dtype, ifile))
                 continue
-            logger.debug(f"path_list for {dtype}: {path_list}")
             logger.debug(f"path_list for {dtype}: {path_list}")
             # seperate auto and cross-correlation
             if fauto == 1:
@@ -221,15 +216,9 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
                     logger.warning(
                         "continue! not enough cross components for auto-correlation %s in %s" % (dtype, ifile)
                     )
-                    logger.warning(
-                        "continue! not enough cross components for auto-correlation %s in %s" % (dtype, ifile)
-                    )
                     continue
             else:
                 if ncomp == 3 and len(path_list) < 9:
-                    logger.warning(
-                        "continue! not enough cross components for cross-correlation %s in %s" % (dtype, ifile)
-                    )
                     logger.warning(
                         "continue! not enough cross components for cross-correlation %s in %s" % (dtype, ifile)
                     )
@@ -265,13 +254,11 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
 
         t1 = time.time()
         logger.debug("loading CCF data takes %6.2fs" % (t1 - t0))
-        logger.debug("loading CCF data takes %6.2fs" % (t1 - t0))
 
         # continue when there is no data or for auto-correlation
         if iseg <= 1 and fauto == 1:
             continue
         outfn = pairs_all[ipair] + ".h5"
-        logger.debug("ready to output to %s" % (outfn))
         logger.debug("ready to output to %s" % (outfn))
 
         # matrix used for rotation
@@ -305,7 +292,6 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
                 allstacks3,
                 nstacks,
             ) = noise_module.stacking(cc_array[indx], cc_time[indx], cc_ngood[indx], stack_para)
-            logger.debug(f"after stacking nstacks: {nstacks}")
             logger.debug(f"after stacking nstacks: {nstacks}")
             if not len(allstacks1):
                 continue
@@ -362,7 +348,6 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
 
             t3 = time.time()
             logger.debug("takes %6.2fs to stack one component with %s stacking method" % (t3 - t1, stack_method))
-            logger.debug("takes %6.2fs to stack one component with %s stacking method" % (t3 - t1, stack_method))
 
         # do rotation if needed
         if rotation and iflag:
@@ -371,7 +356,6 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
             tparameters["station_source"] = ssta
             tparameters["station_receiver"] = rsta
             if stack_method != "all":
-                bigstack_rotated = noise_module.rotation(bigstack, tparameters, locs)
                 bigstack_rotated = noise_module.rotation(bigstack, tparameters, locs)
 
                 # write to file
@@ -388,9 +372,6 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
                             parameters=tparameters,
                         )
             else:
-                bigstack_rotated = noise_module.rotation(bigstack, tparameters, locs)
-                bigstack_rotated1 = noise_module.rotation(bigstack1, tparameters, locs)
-                bigstack_rotated2 = noise_module.rotation(bigstack2, tparameters, locs)
                 bigstack_rotated = noise_module.rotation(bigstack, tparameters, locs)
                 bigstack_rotated1 = noise_module.rotation(bigstack1, tparameters, locs)
                 bigstack_rotated2 = noise_module.rotation(bigstack2, tparameters, locs)
@@ -422,7 +403,6 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
 
         t4 = time.time()
         logger.debug("takes %6.2fs to stack/rotate all station pairs %s" % (t4 - t1, pairs_all[ipair]))
-        logger.debug("takes %6.2fs to stack/rotate all station pairs %s" % (t4 - t1, pairs_all[ipair]))
 
         # write file stamps
         ftmp = open(toutfn, "w")
@@ -430,7 +410,6 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
         ftmp.close()
 
     tt1 = time.time()
-    logger.info("it takes %6.2fs to process step 2 in total" % (tt1 - tt0))
     logger.info("it takes %6.2fs to process step 2 in total" % (tt1 - tt0))
     comm.barrier()
 
