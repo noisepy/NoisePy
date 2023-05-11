@@ -61,7 +61,7 @@ tt0 = time.time()
 # paths and filenames
 rootpath = "./"  # roothpath for the project
 direc = os.path.join(rootpath, "RAW_DATA")  # where to store the downloaded data
-dlist = os.path.join(direc, "station.txt")  # CSV file for station location info
+dlist = os.path.join(direc, "station.csv")  # CSV file for station location info
 
 # download parameters
 client = Client("IRIS")  # client/data center. see https://docs.obspy.org/packages/obspy.clients.fdsn.html for a list
@@ -130,7 +130,7 @@ prepro_para = {
     "lomax": lomax,
     "ncomp": ncomp,
 }
-metadata = os.path.join(direc, "download_info.txt")
+metadata = os.path.join(direc, "download_info.json")
 
 # prepare station info (existing station list vs. fetching from client)
 if down_list:
@@ -239,7 +239,7 @@ if rank == 0:
             "elevation": elev,
         }
         locs = pd.DataFrame(dict)
-        locs.to_csv(os.path.join(direc, "station.txt"), index=False)
+        locs.to_csv(os.path.join(direc, "station.csv"), index=False)
 
     # save parameters for future reference
     fout = open(metadata, "w")
@@ -389,7 +389,7 @@ MAX_MEM = 4.0
 
 # load useful download info if start from ASDF
 if input_fmt == "asdf":
-    dfile = os.path.join(DATADIR, "download_info.txt")
+    dfile = os.path.join(DATADIR, "download_info.json")
     down_info = eval(open(dfile).read())
     samp_freq = down_info["samp_freq"]
     freqmin = down_info["freqmin"]
@@ -441,7 +441,7 @@ fc_para = {
     "input_fmt": input_fmt,
 }
 # save fft metadata for future reference
-fc_metadata = os.path.join(CCFDIR, "fft_cc_data.txt")
+fc_metadata = os.path.join(CCFDIR, "fft_cc_data.json")
 
 #######################################
 # #########PROCESSING SECTION##########
@@ -749,7 +749,7 @@ rootpath = "./"  # root path for this data processing
 CCFDIR = os.path.join(rootpath, "CCF")  # dir where CC data is stored
 STACKDIR = os.path.join(rootpath, "STACK")  # dir where stacked data is going to
 locations = os.path.join(
-    rootpath, "RAW_DATA/station.txt"
+    rootpath, "RAW_DATA/station.csv"
 )  # station info including network,station,channel,latitude,longitude,elevation
 if not os.path.isfile(locations):
     raise ValueError("Abort! station info is needed for this script")
@@ -763,7 +763,7 @@ stack_method = "linear"  # linear, pws, robust, nroot, selective, auto_covarianc
 rotation = True  # rotation from E-N-Z to R-T-Z
 correction = False  # angle correction due to mis-orientation
 if rotation and correction:
-    corrfile = os.path.join(rootpath, "meso_angles.txt")  # csv file containing angle info to be corrected
+    corrfile = os.path.join(rootpath, "meso_angles.csv")  # csv file containing angle info to be corrected
     locs = pd.read_csv(corrfile)
 else:
     locs = []
@@ -775,7 +775,7 @@ MAX_MEM = 4.0
 # we expect no parameters need to be changed below
 
 # load fc_para parameters from Step1
-fc_metadata = os.path.join(CCFDIR, "fft_cc_data.txt")
+fc_metadata = os.path.join(CCFDIR, "fft_cc_data.json")
 fc_para = eval(open(fc_metadata).read())
 ncomp = fc_para["ncomp"]
 samp_freq = fc_para["samp_freq"]
@@ -815,7 +815,7 @@ stack_para = {
     "correction": correction,
 }
 # save fft metadata for future reference
-stack_metadata = os.path.join(STACKDIR, "stack_data.txt")
+stack_metadata = os.path.join(STACKDIR, "stack_data.csv")
 
 #######################################
 # #########PROCESSING SECTION##########

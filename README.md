@@ -25,6 +25,10 @@ conda create -n noisepy python=3.8 pip
 conda activate noisepy
 conda install -c conda-forge openmpi
 pip install noisepy-seis
+conda create -n noisepy python=3.8 pip
+conda activate noisepy
+conda install -c conda-forge openmpi
+pip install noisepy-seis
 ```
 
 ## With virtual environment:

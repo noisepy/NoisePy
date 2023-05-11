@@ -1,5 +1,6 @@
 import gc
 import logging
+import logging
 import sys
 from typing import List, Tuple
 
@@ -15,6 +16,7 @@ from . import noise_module
 from .stores import CrossCorrelationDataStore, RawDataStore
 from .utils import TimeLogger
 
+logger = logging.getLogger(__name__)
 logger = logging.getLogger(__name__)
 # ignore warnings
 if not sys.warnoptions:
@@ -76,17 +78,23 @@ def cross_correlate(
     if rank == 0:
         # save metadata
         cc_store.save_parameters(fft_params)
+        cc_store.save_parameters(fft_params)
 
         # set variables to broadcast
+        timespans = raw_store.get_timespans()
+        splits = len(timespans)
+        if splits == 0:
         timespans = raw_store.get_timespans()
         splits = len(timespans)
         if splits == 0:
             raise IOError("Abort! no available seismic files for FFT")
     else:
         splits, timespans = (None, None)
+        splits, timespans = (None, None)
 
     # broadcast the variables
     splits = comm.bcast(splits, root=0)
+    timespans = comm.bcast(timespans, root=0)
     timespans = comm.bcast(timespans, root=0)
 
     # MPI loop: loop through each user-defined time chunk
@@ -114,6 +122,10 @@ def cross_correlate(
         fft_std = np.zeros((nchannels, nseg_chunk), dtype=np.float32)
         fft_flag = np.zeros(nchannels, dtype=np.int16)
         fft_time = np.zeros((nchannels, nseg_chunk), dtype=np.float64)
+        fft_array = np.zeros((nchannels, nseg_chunk * (nnfft // 2)), dtype=np.complex64)
+        fft_std = np.zeros((nchannels, nseg_chunk), dtype=np.float32)
+        fft_flag = np.zeros(nchannels, dtype=np.int16)
+        fft_time = np.zeros((nchannels, nseg_chunk), dtype=np.float64)
 
         logger.debug(f"nseg_chunk: {nseg_chunk}, nnfft: {nnfft}")
         # loop through all channels
@@ -130,6 +142,8 @@ def cross_correlate(
         tlog.log("Compute FFTs")
 
         # check whether array size is enough
+        if np.sum(fft_flag) != nchannels:
+            logger.warning("it seems some stations miss data in download step, but it is OKAY!")
         if np.sum(fft_flag) != nchannels:
             logger.warning("it seems some stations miss data in download step, but it is OKAY!")
 
@@ -158,6 +172,8 @@ def cross_correlate(
             # get index right for auto/cross correlation
             istart = iiS  # start at the channel source / only fills the upper right triangle matrix of channel pairs
             iend = nchannels
+            istart = iiS  # start at the channel source / only fills the upper right triangle matrix of channel pairs
+            iend = nchannels
             #             if ncomp==1:
             #                 iend=np.minimum(iiS+ncomp,iii)
             #             else:
@@ -170,6 +186,7 @@ def cross_correlate(
             #                 else:
             #                     iend=np.minimum(iiS+ncomp,iii)
 
+            #         if fft_params.xcorr_only:
             #         if fft_params.xcorr_only:
             #             if ncomp==1:
             #                 istart=np.minimum(iiS+ncomp,iii)
@@ -186,9 +203,15 @@ def cross_correlate(
                 rec_chan = channels[iiR]
                 if fft_params.acorr_only:
                     if src_chan.station != rec_chan.station:
+                rec_chan = channels[iiR]
+                if fft_params.acorr_only:
+                    if src_chan.station != rec_chan.station:
                         continue
                 logger.debug(f"receiver: {rec_chan}")
+                logger.debug(f"receiver: {rec_chan}")
                 if not fft_flag[iiR]:
+                    continue
+                if cc_store.contains(ts, src_chan, rec_chan, fft_params):
                     continue
                 if cc_store.contains(ts, src_chan, rec_chan, fft_params):
                     continue
@@ -201,6 +224,7 @@ def cross_correlate(
                 # ---------- check the existence of earthquakes or spikes ----------
                 rec_ind = np.where(
                     (receiver_std < fft_params.max_over_std) & (receiver_std > 0) & (np.isnan(receiver_std) == 0)
+                    (receiver_std < fft_params.max_over_std) & (receiver_std > 0) & (np.isnan(receiver_std) == 0)
                 )[0]
                 bb = np.intersect1d(sou_ind, rec_ind)
                 if len(bb) == 0:
@@ -209,6 +233,7 @@ def cross_correlate(
                 # ----------- GAME TIME: cross correlation step ---------------
                 tlog.reset()
                 corr, tcorr, ncorr = noise_module.correlate(
+                    sfft1[bb, :], sfft2[bb, :], fft_params, Nfft, fft_time[iiR][bb]
                     sfft1[bb, :], sfft2[bb, :], fft_params, Nfft, fft_time[iiR][bb]
                 )
                 tlog.log("cross-correlate")

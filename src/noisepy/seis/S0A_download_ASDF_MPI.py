@@ -309,6 +309,7 @@ def download(
                         tlocation = location[ista]
                     new_tags = "{0:s}_{1:s}".format(chan[ista].lower(), tlocation.lower())
                     # above we should change the dag for: net.sta.loc.chan
+                    # above we should change the dag for: net.sta.loc.chan
                     ds.add_waveforms(tr, tag=new_tags)
 
                 # if flag:

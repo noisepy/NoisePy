@@ -9,6 +9,15 @@ There are multiple ways in which you can contribute:
 ## Developing NoisePy
 
 NoisePy is going under major re-development. Part of the core development involves adding data objects and stores, modularizing it to facilitate community development, and giving alternative workflows for HPC, Cloud, and DAS.
+There are multiple ways in which you can contribute:
+
+**Report a bug**: To report a suspected bug, please raise an issue on Github. Please try to give a short but complete description of the issue. Use ```bug``` as a label on the Github issue.
+
+**Suggest a feature**: To suggest a new feature, please raise an issue on Github. Please describe the feature and the intended use case. Use ```enhancement``` as a label on the Github issue.
+
+## Developing NoisePy
+
+NoisePy is going under major re-development. Part of the core development involves adding data objects and stores, modularizing it to facilitate community development, and giving alternative workflows for HPC, Cloud, and DAS.
 
 Fork the repository, and create your local version, then follow the installation steps:
 ```bash

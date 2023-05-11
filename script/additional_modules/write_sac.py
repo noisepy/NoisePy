@@ -8,7 +8,7 @@ from obspy.io.sac.sactrace import SACTrace
 """
 this script outputs the stacked cross-correlation functions into SAC traces
 
-add an option to output the CCFs into txt files for image transform analysis
+add an option to output the CCFs into csv files for image transform analysis
 """
 
 # ------absolute path to output data-------
@@ -21,10 +21,10 @@ dtype = "Allstack_linear"
 
 # ---output file format-----
 out_SAC = True
-out_TXT = False
+out_CSV = False
 
-if (not out_SAC) and (not out_TXT):
-    raise ValueError("out_SAC and out_TXT cannot be False at the same time")
+if (not out_SAC) and (not out_CSV):
+    raise ValueError("out_SAC and out_CSV cannot be False at the same time")
 
 nfiles = len(ALLFILES)
 if not os.path.isdir(os.path.join(STACKDIR, "STACK_SAC")):
@@ -84,7 +84,7 @@ for ii in range(nfiles):
                         )
                         sac.write(filename, byteorder="big")
 
-                    if out_TXT:
+                    if out_CSV:
                         # -----------output name and read data-------------
                         temp = netS + "." + staS + "_" + netR + "." + staR + "_" + comp + ".dat"
                         if not os.path.isdir(os.path.join(STACKDIR, "STACK_DAT")):
@@ -109,4 +109,4 @@ for ii in range(nfiles):
                             data[2, 2 + jj] = corr[indx - jj]
                             tt = tt + dt
 
-                        np.savetxt(filename, np.transpose(data))
+                        np.savetxt(filename + ".csv", np.transpose(data), delimiter=",")

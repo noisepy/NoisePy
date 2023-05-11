@@ -27,6 +27,7 @@ class Step(Enum):
     CROSS_CORRELATE = 2
     STACK = 3
     ALL = 4
+    ALL = 4
 
 
 def valid_date(d: str) -> str:
@@ -110,6 +111,7 @@ def main(args: typing.Any):
     if args.step == Step.DOWNLOAD:
         run_download()
     if args.step == Step.CROSS_CORRELATE:
+        run_cross_correlation()
         run_cross_correlation()
     if args.step == Step.STACK:
         raw_store = create_raw_store(args)

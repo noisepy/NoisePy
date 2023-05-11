@@ -76,7 +76,7 @@ prepro_para = {
     "end_date": end_date,
     "inc_days": inc_hours,
 }
-metadata = os.path.join(direc, "download_info.txt")
+metadata = os.path.join(direc, "download_info.json")
 fout = open(metadata, "w")
 fout.write(str(prepro_para))
 fout.close()
