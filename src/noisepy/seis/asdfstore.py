@@ -91,7 +91,7 @@ class ASDFCCStore(CrossCorrelationDataStore):
         return contains
 
     def save_parameters(self, parameters: ConfigParameters):
-        fc_metadata = os.path.join(self.directory, "fft_cc_data.txt")
+        fc_metadata = os.path.join(self.directory, "fft_cc_data.csv")
 
         fout = open(fc_metadata, "w")
         # WIP actually serialize this

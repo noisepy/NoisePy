@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 import typing
 from enum import Enum
@@ -36,7 +37,9 @@ def valid_date(d: str) -> str:
 
 def initialize_fft_params(raw_dir: str) -> ConfigParameters:
     params = ConfigParameters()
-    dfile = fs_join(raw_dir, "download_info.txt")
+    dfile_closed = os.path.join(raw_dir, "download_info.json")
+    with open(dfile_closed, "r") as file:
+        dfile = json.load(file)
     if os.path.isfile(dfile):
         down_info = eval(open(dfile).read())  # TODO: do proper json/yaml serialization
         params.samp_freq = down_info["samp_freq"]

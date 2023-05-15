@@ -57,7 +57,7 @@ MAX_MEM = 4.0
 # TODO: make stack_method an enum
 def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
     if rotation and correction:
-        corrfile = os.path.join(ccf_dir, "../meso_angles.txt")  # csv file containing angle info to be corrected
+        corrfile = os.path.join(ccf_dir, "../meso_angles.csv")  # csv file containing angle info to be corrected
         locs = pd.read_csv(corrfile)
     else:
         locs = []
@@ -66,7 +66,7 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
     # we expect no parameters need to be changed below
 
     # load fc_para parameters from Step1
-    fc_metadata = os.path.join(ccf_dir, "fft_cc_data.txt")
+    fc_metadata = os.path.join(ccf_dir, "fft_cc_data.csv")
     fc_para = eval(open(fc_metadata).read())
     ncomp = fc_para["ncomp"]
     samp_freq = fc_para["samp_freq"]
@@ -105,7 +105,7 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
         "correction": correction,
     }
     # save fft metadata for future reference
-    stack_metadata = os.path.join(stack_dir, "stack_data.txt")
+    stack_metadata = os.path.join(stack_dir, "stack_data.csv")
 
     #######################################
     # #########PROCESSING SECTION##########

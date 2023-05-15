@@ -4,7 +4,7 @@
    isort:skip_file
 """
 
-
+import json
 import logging
 import sys
 import time
@@ -83,7 +83,7 @@ def download(
     client = Client(client_url_key)
 
     tt0 = time.time()
-    dlist = os.path.join(direc, "station.txt")  # CSV file for station location info
+    dlist = os.path.join(direc, "station.csv")  # CSV file for station location info
     prepro_para.respdir = os.path.join(
         direc, "../resp"
     )  # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
@@ -104,6 +104,8 @@ def download(
     )
     ncomp = len(chan_list)
     metadata = os.path.join(direc, "download_info.txt")
+    with open(metadata, "w") as file:
+        json.dump(metadata, file)
 
     # prepare station info (existing station list vs. fetching from client)
     if prepro_para.down_list:
