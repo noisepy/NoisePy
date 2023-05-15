@@ -1,6 +1,7 @@
 import gc
 import logging
 import sys
+from collections import OrderedDict
 from typing import List, Tuple
 
 import numpy as np
@@ -9,7 +10,7 @@ from datetimerange import DateTimeRange
 from mpi4py import MPI
 from scipy.fftpack.helper import next_fast_len
 
-from noisepy.seis.datatypes import Channel, ChannelData, ConfigParameters
+from noisepy.seis.datatypes import Channel, ChannelData, ConfigParameters, NoiseFFT
 
 from . import noise_module
 from .stores import CrossCorrelationDataStore, RawDataStore
@@ -109,77 +110,46 @@ def cross_correlate(
         nchannels = len(ch_data_tuples)
         nseg_chunk = check_memory(fft_params, nchannels)
         nnfft = int(next_fast_len(int(fft_params.cc_len * fft_params.samp_freq)))  # samp_freq should be sampling_rate
-        # open array to store fft data/info in memory
-        fft_array = np.zeros((nchannels, nseg_chunk * (nnfft // 2)), dtype=np.complex64)
-        fft_std = np.zeros((nchannels, nseg_chunk), dtype=np.float32)
-        fft_flag = np.zeros(nchannels, dtype=np.int16)
-        fft_time = np.zeros((nchannels, nseg_chunk), dtype=np.float64)
+        # Dictionary to store all the FFTs, keyed by channel index
+        ffts: OrderedDict[int, NoiseFFT] = OrderedDict()
 
         logger.debug(f"nseg_chunk: {nseg_chunk}, nnfft: {nnfft}")
         # loop through all channels
-        N: int
-        Nfft2: int
         tlog.reset()
         for ix_ch, (ch, ch_data) in enumerate(ch_data_tuples):
             # TODO: Below the last values for N and Nfft are used?
-            fft_array[ix_ch], fft_std[ix_ch], fft_time[ix_ch], N, Nfft2 = compute_fft(fft_params, ch_data)
-            fft_flag[ix_ch] = fft_array[ix_ch].size > 0
-            if not fft_flag[ix_ch]:
+            fft = compute_fft(fft_params, ch_data)
+            ffts[ix_ch] = fft
+            if fft.fft.size == 0:
                 logger.warning(f"No data available for channel '{ch}', skipped")
-        Nfft = Nfft2 * 2
+        Nfft = fft.Nfft2 * 2
         tlog.log("Compute FFTs")
 
-        # check whether array size is enough
-        if np.sum(fft_flag) != nchannels:
+        if len(ffts) != nchannels:
             logger.warning("it seems some stations miss data in download step, but it is OKAY!")
 
         # ###########PERFORM CROSS-CORRELATION##################
-        for iiS in range(nchannels):  # looping over the channel source
+        for iiS, src_fft in ffts.items():  # looping over the channel source
             src_chan = channels[iiS]  # this is the name of the source channel
-            fft1 = fft_array[iiS]
-            source_std = fft_std[iiS]  # this is the array of data metrics
+            src_std = src_fft.std
 
             # this finds the windows of "good" noise
-            sou_ind = np.where((source_std < fft_params.max_over_std) & (source_std > 0) & (np.isnan(source_std) == 0))[
-                0
-            ]
-            if not fft_flag[iiS] or not len(sou_ind):
+            sou_ind = np.where((src_std < fft_params.max_over_std) & (src_std > 0) & (np.isnan(src_std) == 0))[0]
+            if not len(sou_ind):
                 continue
             # in the case of pure deconvolution, we recommend smoothing anyway.
             if fft_params.cc_method == "deconv":
                 tlog.reset()
                 # -----------get the smoothed source spectrum for decon later----------
-                sfft1 = noise_module.smooth_source_spect(fft_params, fft1)
-                sfft1 = sfft1.reshape(N, Nfft2)
+                sfft1 = noise_module.smooth_source_spect(fft_params, src_fft.fft)
+                sfft1 = sfft1.reshape(src_fft.N, src_fft.Nfft2)
                 tlog.log("smoothing source")
             else:
-                sfft1 = np.conj(fft1).reshape(N, Nfft2)
+                sfft1 = np.conj(src_fft.fft).reshape(src_fft.N, src_fft.Nfft2)
 
             # get index right for auto/cross correlation
             istart = iiS  # start at the channel source / only fills the upper right triangle matrix of channel pairs
             iend = nchannels
-            #             if ncomp==1:
-            #                 iend=np.minimum(iiS+ncomp,iii)
-            #             else:
-            #                 if (channel[iiS][-1]=='Z'): # THIS IS NOT GENERALIZABLE. WE need to
-            #                                               change this to the order there are
-            #                                               bugs that shifts the components
-            #                     iend=np.minimum(iiS+1,iii)
-            #                 elif (channel[iiS][-1]=='N'):
-            #                     iend=np.minimum(iiS+2,iii)
-            #                 else:
-            #                     iend=np.minimum(iiS+ncomp,iii)
-
-            #         if fft_params.xcorr_only:
-            #             if ncomp==1:
-            #                 istart=np.minimum(iiS+ncomp,iii)
-            #             else:
-            #                 if (channel[iiS][-1]=='Z'):
-            #                     istart=np.minimum(iiS+1,iii)
-            #                 elif (channel[iiS][-1]=='N'):
-            #                     istart=np.minimum(iiS+2,iii)
-            #                 else:
-            #                     istart=np.minimum(iiS+ncomp,iii)
 
             # -----------now loop III for each receiver B----------
             for iiR in range(istart, iend):
@@ -188,20 +158,18 @@ def cross_correlate(
                     if src_chan.station != rec_chan.station:
                         continue
                 logger.debug(f"receiver: {rec_chan}")
-                if not fft_flag[iiR]:
+                if iiR not in ffts:
                     continue
                 if cc_store.contains(ts, src_chan, rec_chan, fft_params):
                     continue
 
                 # read the receiver data
-                fft2 = fft_array[iiR]
-                sfft2 = fft2.reshape(N, Nfft2)
-                receiver_std = fft_std[iiR]
+                rec_fft = ffts[iiR]
+                sfft2 = rec_fft.fft.reshape(rec_fft.N, rec_fft.Nfft2)
+                rec_std = rec_fft.std
 
                 # ---------- check the existence of earthquakes or spikes ----------
-                rec_ind = np.where(
-                    (receiver_std < fft_params.max_over_std) & (receiver_std > 0) & (np.isnan(receiver_std) == 0)
-                )[0]
+                rec_ind = np.where((rec_std < fft_params.max_over_std) & (rec_std > 0) & (np.isnan(rec_std) == 0))[0]
                 bb = np.intersect1d(sou_ind, rec_ind)
                 if len(bb) == 0:
                     continue
@@ -209,7 +177,7 @@ def cross_correlate(
                 # ----------- GAME TIME: cross correlation step ---------------
                 tlog.reset()
                 corr, tcorr, ncorr = noise_module.correlate(
-                    sfft1[bb, :], sfft2[bb, :], fft_params, Nfft, fft_time[iiR][bb]
+                    sfft1[bb, :], sfft2[bb, :], fft_params, Nfft, rec_fft.fft_time[bb]
                 )
                 tlog.log("cross-correlate")
 
@@ -225,13 +193,10 @@ def cross_correlate(
                 cc_store.append(ts, src_chan, rec_chan, fft_params, parameters, corr)
                 tlog.log("write cc")
 
-                del fft2, sfft2, receiver_std
-            del fft1, sfft1, source_std
+                del sfft2
+            del sfft1
 
-        fft_array = []
-        fft_std = []
-        fft_flag = []
-        fft_time = []
+        ffts.clear()
         gc.collect()
 
         tlog.log(f"Process the chunk of {ts}", t_chunk)
@@ -258,18 +223,16 @@ def preprocess(
     return list(zip(channels, [ChannelData(st) for st in new_streams]))
 
 
-def compute_fft(
-    fft_params: ConfigParameters, ch_data: ChannelData
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, int, int]:
+def compute_fft(fft_params: ConfigParameters, ch_data: ChannelData) -> NoiseFFT:
     if ch_data.data.size == 0:
-        return (np.empty, np.empty, np.empty, 0, 0)
+        return NoiseFFT(np.empty, np.empty, np.empty, 0, 0)
 
     # cut daily-long data into smaller segments (dataS always in 2D)
     trace_stdS, dataS_t, dataS = noise_module.cut_trace_make_stat(
         fft_params, ch_data
     )  # optimized version:3-4 times faster
     if not len(dataS):
-        return (np.empty, np.empty, np.empty, 0, 0)
+        return NoiseFFT(np.empty, np.empty, np.empty, 0, 0)
 
     N = dataS.shape[0]
 
@@ -285,7 +248,7 @@ def compute_fft(
     std = trace_stdS
     fft_time = dataS_t
     del trace_stdS, dataS_t, dataS, source_white, data
-    return fft, std, fft_time, N, Nfft2
+    return NoiseFFT(fft, std, fft_time, N, Nfft2)
 
 
 def _read_channels(
