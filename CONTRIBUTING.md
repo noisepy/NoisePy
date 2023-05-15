@@ -17,8 +17,6 @@ There are multiple ways in which you can contribute:
 
 ## Developing NoisePy
 
-NoisePy is going under major re-development. Part of the core development involves adding data objects and stores, modularizing it to facilitate community development, and giving alternative workflows for HPC, Cloud, and DAS.
-
 Fork the repository, and create your local version, then follow the installation steps:
 ```bash
 conda create -n noisepy python=3.8 pip

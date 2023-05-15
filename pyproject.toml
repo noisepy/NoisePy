@@ -11,7 +11,6 @@ license = {file= "LICENSE"}
 requires-python = ">=3.8"
 authors = [
     { email = "mdenolle@uw.edu", name = "Marine Denolle" },
-    { email = "mdenolle@uw.edu", name = "Marine Denolle" },
     { email = "chengxin_jiang@fas.harvard.edu", name = "Chengxin Jiang" },
 ]
 keywords = [
@@ -34,7 +33,6 @@ classifiers = [
     "Programming Language :: Python :: 3.8",
 ]
 dependencies = [
-    "DateTimeRange==2.0.0",
     "DateTimeRange==2.0.0",
     "h5py>=3.8.0",
     "mpi4py>=3.1.4",
