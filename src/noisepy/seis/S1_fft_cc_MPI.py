@@ -118,11 +118,12 @@ def cross_correlate(
         tlog.reset()
         for ix_ch, (ch, ch_data) in enumerate(ch_data_tuples):
             # TODO: Below the last values for N and Nfft are used?
-            fft = compute_fft(fft_params, ch_data)
-            ffts[ix_ch] = fft
-            if fft.fft.size == 0:
+            fft_data = compute_fft(fft_params, ch_data)
+            if fft_data.fft.size > 0:
+                ffts[ix_ch] = fft_data
+            else:
                 logger.warning(f"No data available for channel '{ch}', skipped")
-        Nfft = fft.Nfft2 * 2
+        Nfft = fft_data.Nfft2 * 2
         tlog.log("Compute FFTs")
 
         if len(ffts) != nchannels:
