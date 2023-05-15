@@ -1,4 +1,5 @@
 import glob
+import json
 import os
 import sys
 import time
@@ -110,6 +111,8 @@ prepro_para = {
     "MAX_MEM": MAX_MEM,
 }
 metadata = os.path.join(RAWDATA, "download_info.json")
+with open(metadata, "w") as file:
+    json.dump(metadata, file)
 
 ##########################################################
 # ###############PROCESSING SECTION#######################

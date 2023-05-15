@@ -103,7 +103,7 @@ def download(
         """
     )
     ncomp = len(chan_list)
-    metadata = os.path.join(direc, "download_info.txt")
+    metadata = os.path.join(direc, "download_info.json")
     with open(metadata, "w") as file:
         json.dump(metadata, file)
 
