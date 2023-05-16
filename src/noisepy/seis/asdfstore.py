@@ -133,17 +133,17 @@ class ASDFCCStore(CrossCorrelationDataStore):
         if not os.path.isfile(filename):
             return False
 
-        with pyasdf.ASDFDataSet(filename, mpi=False, mode="r") as ccf_ds:
-            # source-receiver pair
-            exists = data_type in ccf_ds.auxiliary_data
-            if path is not None and exists:
-                return path in ccf_ds.auxiliary_data[data_type]
-            return exists
+        ccf_ds = self.get_dataset(filename)
+        # source-receiver pair
+        exists = data_type in ccf_ds.auxiliary_data
+        if path is not None and exists:
+            return path in ccf_ds.auxiliary_data[data_type]
+        return exists
 
     def _add_aux_data(self, timespan: DateTimeRange, params: Dict, data_type: str, path: str, data: np.ndarray):
         filename = self._get_filename(timespan)
-        with pyasdf.ASDFDataSet(filename, mpi=False) as ccf_ds:
-            ccf_ds.add_auxiliary_data(data=data, data_type=data_type, path=path, parameters=params)
+        ccf_ds = self.get_dataset(filename)
+        ccf_ds.add_auxiliary_data(data=data, data_type=data_type, path=path, parameters=params)
 
     def _get_station_pair(self, src_chan: Channel, rec_chan: Channel) -> str:
         return f"{src_chan.station}_{rec_chan.station}"
@@ -156,3 +156,8 @@ class ASDFCCStore(CrossCorrelationDataStore):
             self.directory,
             f"{timespan.start_datetime.strftime(DATE_FORMAT)}T{timespan.end_datetime.strftime(DATE_FORMAT)}.h5",
         )
+
+    @lru_cache
+    def get_dataset(self, filename: str) -> pyasdf.ASDFDataSet:
+        logger.info(f"ASDFCCStore - Opening {filename}")
+        return pyasdf.ASDFDataSet(filename, mpi=False, compression=None)
