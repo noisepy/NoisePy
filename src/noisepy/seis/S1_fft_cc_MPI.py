@@ -3,7 +3,7 @@ import logging
 import os
 import sys
 from collections import OrderedDict
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import obspy
@@ -107,7 +107,7 @@ def cross_correlate(
         nchannels = len(ch_data_tuples)
         nseg_chunk = check_memory(fft_params, nchannels)
         # Dictionary to store all the FFTs, keyed by channel index
-        ffts: OrderedDict[int, NoiseFFT] = OrderedDict()
+        ffts: Dict[int, NoiseFFT] = OrderedDict()
 
         logger.debug(f"nseg_chunk: {nseg_chunk}, nnfft: {nnfft}")
         # loop through all channels
@@ -163,7 +163,7 @@ def cross_correlate(
 def source_cross_correlation(
     fft_params: ConfigParameters,
     channels: List[Channel],
-    ffts: OrderedDict[int, NoiseFFT],
+    ffts: Dict[int, NoiseFFT],
     Nfft: int,
     iiS: int,
 ) -> List[Tuple[Channel, Channel, dict, np.ndarray]]:
@@ -262,14 +262,14 @@ def preprocess_ray(
 @ray.remote
 def compute_fft_ray(fft_params: ConfigParameters, ch_data: ChannelData) -> NoiseFFT:
     if ch_data.data.size == 0:
-        return NoiseFFT(np.empty, np.empty, np.empty, 0, 0)
+        return NoiseFFT(np.empty(0), np.empty(0), np.empty(0), 0, 0)
 
     # cut daily-long data into smaller segments (dataS always in 2D)
     trace_stdS, dataS_t, dataS = noise_module.cut_trace_make_stat(
         fft_params, ch_data
     )  # optimized version:3-4 times faster
     if not len(dataS):
-        return NoiseFFT(np.empty, np.empty, np.empty, 0, 0)
+        return NoiseFFT(np.empty(0), np.empty(0), np.empty(0), 0, 0)
 
     N = dataS.shape[0]
 
