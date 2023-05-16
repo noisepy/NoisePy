@@ -1,6 +1,5 @@
 import gc
 import logging
-import os
 import sys
 from collections import OrderedDict
 from typing import Dict, List, Tuple
@@ -71,7 +70,7 @@ def cross_correlate(
     tlog = TimeLogger(logger, logging.INFO)
     t_s1_total = tlog.reset()
 
-    context = ray.init(num_cpus=os.cpu_count())
+    context = ray.init()
     tlog.log("Ray init")
     print(context.dashboard_url)
 
