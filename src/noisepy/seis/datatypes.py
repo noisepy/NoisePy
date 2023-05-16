@@ -157,3 +157,16 @@ class ChannelData:
         self.data = stream[0].data
         self.sampling_rate = stream[0].stats.sampling_rate
         self.start_timestamp = stream[0].stats.starttime.timestamp
+
+
+@dataclass
+class NoiseFFT:
+    """
+    Data class to hold FFT and associated data
+    """
+
+    fft: np.ndarray
+    std: np.ndarray
+    fft_time: np.ndarray
+    SegmentCount: int
+    Length: int

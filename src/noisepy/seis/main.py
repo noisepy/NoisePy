@@ -221,6 +221,7 @@ def main_cli():
         [
             lambda p: add_paths(p, ["raw_data", "ccf", "stack"]),
             add_download_args,
+            lambda p: add_date_args(p, True),
             add_cc_args,
             add_stack_args,
             add_stations_arg,
