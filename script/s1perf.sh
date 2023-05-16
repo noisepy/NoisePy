@@ -1,5 +1,6 @@
 rm -rf ~/ccfs3tmp
-LOGFILE="log$(date -j +'%Y%m%d_%H%M%S').txt"
+mkdir -p $HOME/logs
+LOGFILE="$HOME/logs/log$(date -j +'%Y%m%d_%H%M%S').txt"
 echo Logging to $LOGFILE
 # STATIONS="SBC,RIO,DEV,HEC,RLR,SVD,RPV,BAK,CBC,CCA,CCC,CDD,HLL,HOL,AGM,AGO"
 STATIONS="SBC,RIO,DEV,HEC,RLR,SVD,RPV,BAK"
