@@ -7,6 +7,7 @@ on:
 
 env:
   python_version: '3.8'
+  RDMAV_FORK_SAFE: 1
 jobs:
   unit_tests:
     runs-on: ubuntu-22.04
