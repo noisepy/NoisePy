@@ -119,7 +119,7 @@ def cross_correlate(
                 ffts[ix_ch] = fft_data
             else:
                 logger.warning(f"No data available for channel '{channels[ix_ch]}', skipped")
-        Nfft = fft_data.Nfft2 * 2
+        Nfft = fft_data.Length
         t_tasks = tlog.log("Compute FFTs")
 
         if len(ffts) != nchannels:
@@ -178,9 +178,9 @@ def source_cross_correlation(
     if fft_params.cc_method == "deconv":
         # -----------get the smoothed source spectrum for decon later----------
         sfft1 = noise_module.smooth_source_spect(fft_params, src_fft.fft)
-        sfft1 = sfft1.reshape(src_fft.N, src_fft.Nfft2)
+        sfft1 = sfft1.reshape(src_fft.N, src_fft.Length // 2)
     else:
-        sfft1 = np.conj(src_fft.fft).reshape(src_fft.N, src_fft.Nfft2)
+        sfft1 = np.conj(src_fft.fft).reshape(src_fft.N, src_fft.Length // 2)
 
         # get index right for auto/cross correlation
     istart = iiS  # start at the channel source / only fills the upper right triangle matrix of channel pairs
@@ -220,7 +220,7 @@ def cross_corr(
 ) -> Tuple[Channel, Channel, dict, np.ndarray]:
     logger.debug(f"receiver: {rec_chan}")
     # read the receiver data
-    sfft2 = rec_fft.fft.reshape(rec_fft.N, rec_fft.Nfft2)
+    sfft2 = rec_fft.fft.reshape(rec_fft.N, rec_fft.Length // 2)
     rec_std = rec_fft.std
 
     # ---------- check the existence of earthquakes or spikes ----------
@@ -284,7 +284,7 @@ def compute_fft_ray(fft_params: ConfigParameters, ch_data: ChannelData) -> Noise
     std = trace_stdS
     fft_time = dataS_t
     del trace_stdS, dataS_t, dataS, source_white, data
-    return NoiseFFT(fft, std, fft_time, N, Nfft2)
+    return NoiseFFT(fft, std, fft_time, N, Nfft)
 
 
 def _read_channels(
