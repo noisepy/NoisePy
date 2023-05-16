@@ -111,8 +111,6 @@ prepro_para = {
     "MAX_MEM": MAX_MEM,
 }
 metadata = os.path.join(RAWDATA, "download_info.json")
-with open(metadata, "w") as file:
-    json.dump(metadata, file)
 
 ##########################################################
 # ###############PROCESSING SECTION#######################
@@ -139,7 +137,8 @@ if rank == 0:
     nsta = len(locs)
 
     # output parameter info
-    fout = open(metadata, "w")
+    with open(metadata, "w") as fout:
+        json.dump(metadata, fout)
     fout.write(str(prepro_para))
     fout.close()
 

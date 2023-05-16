@@ -104,8 +104,6 @@ def download(
     )
     ncomp = len(chan_list)
     metadata = os.path.join(direc, "download_info.json")
-    with open(metadata, "w") as file:
-        json.dump(metadata, file)
 
     # prepare station info (existing station list vs. fetching from client)
     if prepro_para.down_list:
@@ -212,7 +210,8 @@ def download(
             locs.to_csv(os.path.join(direc, "station.csv"), index=False)
 
         # save parameters for future reference
-        fout = open(metadata, "w")
+        with open(metadata, "w") as fout:
+            json.dump(metadata, fout)
         fout.write(str(prepro_para))
         fout.close()
 
