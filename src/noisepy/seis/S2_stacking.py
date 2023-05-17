@@ -10,6 +10,8 @@ import pandas as pd
 import pyasdf
 from mpi4py import MPI
 
+from noisepy.seis.datatypes import ConfigParameters
+
 from . import noise_module
 
 logger = logging.getLogger(__name__)
@@ -36,75 +38,28 @@ NOTE:
     this tends to mess up the orders of matrix that stores the CCFs data
 """
 
-tt0 = time.time()
-
-########################################
-# #######PARAMETER SECTION##############
-########################################
-
-
-# define new stacking para
-keep_substack = False  # keep all sub-stacks in final ASDF file
-
-# new rotation para
-rotation = True  # rotation from E-N-Z to R-T-Z
-correction = False  # angle correction due to mis-orientation
 
 # maximum memory allowed per core in GB
 MAX_MEM = 4.0
 
 
 # TODO: make stack_method an enum
-def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
-    if rotation and correction:
+def stack(sta: List[str], ccf_dir: str, stack_dir: str, fft_params: ConfigParameters):
+    tt0 = time.time()
+    if fft_params.rotation and fft_params.correction:
         corrfile = os.path.join(ccf_dir, "../meso_angles.txt")  # csv file containing angle info to be corrected
         locs = pd.read_csv(corrfile)
     else:
         locs = []
 
-    ##################################################
-    # we expect no parameters need to be changed below
-
-    # load fc_para parameters from Step1
-    fc_metadata = os.path.join(ccf_dir, "fft_cc_data.txt")
-    fc_para = eval(open(fc_metadata).read())
-    ncomp = fc_para["ncomp"]
-    samp_freq = fc_para["samp_freq"]
-    start_date = fc_para["start_date"]
-    end_date = fc_para["end_date"]
-    inc_hours = fc_para["inc_hours"]
-    cc_len = fc_para["cc_len"]
-    step = fc_para["step"]
-    maxlag = fc_para["maxlag"]
-    substack = fc_para["substack"]
-    substack_len = fc_para["substack_len"]
-
     # cross component info
-    if ncomp == 1:
+    if fft_params.ncomp == 1:
         enz_system = ["ZZ"]
     else:
         enz_system = ["EE", "EN", "EZ", "NE", "NN", "NZ", "ZE", "ZN", "ZZ"]
 
     rtz_components = ["ZR", "ZT", "ZZ", "RR", "RT", "RZ", "TR", "TT", "TZ"]
 
-    # make a dictionary to store all variables: also for later cc
-    stack_para = {
-        "samp_freq": samp_freq,
-        "cc_len": cc_len,
-        "step": step,
-        "stack_dir": stack_dir,
-        "start_date": start_date,
-        "end_date": end_date,
-        "inc_hours": inc_hours,
-        "substack": substack,
-        "substack_len": substack_len,
-        "maxlag": maxlag,
-        "keep_substack": keep_substack,
-        "stack_method": stack_method,
-        "rotation": rotation,
-        "correction": correction,
-    }
-    # save fft metadata for future reference
     stack_metadata = os.path.join(stack_dir, "stack_data.txt")
 
     #######################################
@@ -121,7 +76,7 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
             os.mkdir(stack_dir)
         # save metadata
         fout = open(stack_metadata, "w")
-        fout.write(str(stack_para))
+        fout.write(str(fft_params))
         fout.close()
 
         # cross-correlation files
@@ -174,15 +129,15 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
             continue
 
         # crude estimation on memory needs (assume float32)
-        nccomp = ncomp * ncomp
+        nccomp = fft_params.ncomp * fft_params.ncomp
         num_chunck = len(ccfiles) * nccomp
         num_segmts = 1
-        if substack:  # things are difference when do substack
-            if substack_len == cc_len:
-                num_segmts = int(np.floor((inc_hours * 3600 - cc_len) / step))
+        if fft_params.substack:  # things are difference when do substack
+            if fft_params.substack_len == fft_params.cc_len:
+                num_segmts = int(np.floor((fft_params.inc_hours * 3600 - fft_params.cc_len) / fft_params.step))
             else:
-                num_segmts = int(inc_hours / (substack_len / 3600))
-        npts_segmt = int(2 * maxlag * samp_freq) + 1
+                num_segmts = int(fft_params.inc_hours / (fft_params.substack_len / 3600))
+        npts_segmt = int(2 * fft_params.maxlag * fft_params.samp_freq) + 1
         memory_size = num_chunck * num_segmts * npts_segmt * 4 / 1024**3
 
         if memory_size > MAX_MEM:
@@ -212,13 +167,13 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
             logger.debug(f"path_list for {dtype}: {path_list}")
             # seperate auto and cross-correlation
             if fauto == 1:
-                if ncomp == 3 and len(path_list) < 6:
+                if fft_params.ncomp == 3 and len(path_list) < 6:
                     logger.warning(
                         "continue! not enough cross components for auto-correlation %s in %s" % (dtype, ifile)
                     )
                     continue
             else:
-                if ncomp == 3 and len(path_list) < 9:
+                if fft_params.ncomp == 3 and len(path_list) < 9:
                     logger.warning(
                         "continue! not enough cross components for cross-correlation %s in %s" % (dtype, ifile)
                     )
@@ -238,7 +193,7 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
                 tdata = ds.auxiliary_data[dtype][tpath].data[:]
                 ttime = ds.auxiliary_data[dtype][tpath].parameters["time"]
                 tgood = ds.auxiliary_data[dtype][tpath].parameters["ngood"]
-                if substack:
+                if fft_params.substack:
                     for ii in range(tdata.shape[0]):
                         cc_array[iseg] = tdata[ii]
                         cc_time[iseg] = ttime[ii]
@@ -262,9 +217,9 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
         logger.debug("ready to output to %s" % (outfn))
 
         # matrix used for rotation
-        if rotation:
+        if fft_params.rotation:
             bigstack = np.zeros(shape=(9, npts_segmt), dtype=np.float32)
-        if stack_method == "all":
+        if fft_params.stack_method == "all":
             bigstack1 = np.zeros(shape=(9, npts_segmt), dtype=np.float32)
             bigstack2 = np.zeros(shape=(9, npts_segmt), dtype=np.float32)
 
@@ -291,13 +246,13 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
                 allstacks2,
                 allstacks3,
                 nstacks,
-            ) = noise_module.stacking(cc_array[indx], cc_time[indx], cc_ngood[indx], stack_para)
+            ) = noise_module.stacking(cc_array[indx], cc_time[indx], cc_ngood[indx], fft_params)
             logger.debug(f"after stacking nstacks: {nstacks}")
             if not len(allstacks1):
                 continue
-            if rotation:
+            if fft_params.rotation:
                 bigstack[icomp] = allstacks1
-                if stack_method == "all":
+                if fft_params.stack_method == "all":
                     bigstack1[icomp] = allstacks2
                     bigstack2[icomp] = allstacks3
 
@@ -305,8 +260,8 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
             with pyasdf.ASDFDataSet(stack_h5, mpi=False) as ds:
                 tparameters["time"] = stamps_final[0]
                 tparameters["ngood"] = nstacks
-                if stack_method != "all":
-                    data_type = "Allstack_" + stack_method
+                if fft_params.stack_method != "all":
+                    data_type = "Allstack_" + fft_params.stack_method
                     ds.add_auxiliary_data(
                         data=allstacks1,
                         data_type=data_type,
@@ -333,7 +288,7 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
                         parameters=tparameters,
                     )
             # keep a track of all sub-stacked data from S1
-            if keep_substack:
+            if fft_params.keep_substack:
                 for ii in range(cc_final.shape[0]):
                     with pyasdf.ASDFDataSet(stack_h5, mpi=False) as ds:
                         tparameters["time"] = stamps_final[ii]
@@ -347,15 +302,17 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
                         )
 
             t3 = time.time()
-            logger.debug("takes %6.2fs to stack one component with %s stacking method" % (t3 - t1, stack_method))
+            logger.debug(
+                "takes %6.2fs to stack one component with %s stacking method" % (t3 - t1, fft_params.stack_method)
+            )
 
         # do rotation if needed
-        if rotation and iflag:
+        if fft_params.rotation and iflag:
             if np.all(bigstack == 0):
                 continue
             tparameters["station_source"] = ssta
             tparameters["station_receiver"] = rsta
-            if stack_method != "all":
+            if fft_params.stack_method != "all":
                 bigstack_rotated = noise_module.rotation(bigstack, tparameters, locs)
 
                 # write to file
@@ -363,7 +320,7 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, stack_method: str):
                     comp = rtz_components[icomp]
                     tparameters["time"] = stamps_final[0]
                     tparameters["ngood"] = nstacks
-                    data_type = "Allstack_" + stack_method
+                    data_type = "Allstack_" + fft_params.stack_method
                     with pyasdf.ASDFDataSet(stack_h5, mpi=False) as ds2:
                         ds2.add_auxiliary_data(
                             data=bigstack_rotated[icomp],

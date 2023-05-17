@@ -164,3 +164,6 @@ noisepy_cache/
 
 # Version file generated at build time
 src/noisepy/seis/_version.py
+
+# MacOS
+.DS_Store

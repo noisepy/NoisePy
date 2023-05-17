@@ -95,7 +95,7 @@ class ASDFCCStore(CrossCorrelationDataStore):
 
         fout = open(fc_metadata, "w")
         # WIP actually serialize this
-        fout.write(str(parameters.__dict__))
+        fout.write(str(parameters))
         fout.close()
 
     def append(
