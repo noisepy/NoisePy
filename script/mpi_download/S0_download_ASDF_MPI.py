@@ -1,3 +1,4 @@
+import json
 import os
 import time
 
@@ -78,8 +79,10 @@ prepro_para = {
     "inc_days": inc_hours,
 }
 metadata = os.path.join(direc, "download_info.json")
-fout = open(metadata, "w")
-fout.write(str(prepro_para))
+# fout = open(metadata, "w")
+with open(metadata, "w") as fout:
+    json.dump(str(prepro_para), fout)
+# fout.write(str(prepro_para))
 fout.close()
 
 # prepare station info

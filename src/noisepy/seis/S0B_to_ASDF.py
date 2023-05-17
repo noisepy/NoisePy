@@ -138,8 +138,9 @@ if rank == 0:
 
     # output parameter info
     with open(metadata, "w") as fout:
-        json.dump(metadata, fout)
-    fout.write(str(prepro_para))
+        json.dump(str(prepro_para), fout)
+    # fout = open(metadata, "w")
+    # fout.write()
     fout.close()
 
     # assemble timestamp info

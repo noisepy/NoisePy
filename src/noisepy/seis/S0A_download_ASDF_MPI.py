@@ -210,9 +210,10 @@ def download(
             locs.to_csv(os.path.join(direc, "station.csv"), index=False)
 
         # save parameters for future reference
+        # fout = open(metadata, "w")
         with open(metadata, "w") as fout:
-            json.dump(metadata, fout)
-        fout.write(str(prepro_para))
+            json.dump(str(prepro_para), fout)
+        # fout.write(str(prepro_para))
         fout.close()
 
         # get MPI variables ready
