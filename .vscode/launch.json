@@ -26,11 +26,11 @@
       "args": [
         "stack",
         "--raw_data_path",
-        "${userHome}/runner_temp/RAW_DATA",
+        "${userHome}/test_temp/RAW_DATA",
         "--ccf_path",
-        "${userHome}/runner_temp/CCF",
+        "${userHome}/test_temp/CCF",
         "--stack_path",
-        "/Users/carlosg/runner_temp/STACK",
+        "/Users/carlosg/test_temp/STACK",
         "--method",
         "linear"
       ],

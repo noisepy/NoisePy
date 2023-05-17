@@ -49,6 +49,17 @@ def initialize_fft_params(raw_dir: str) -> ConfigParameters:
     return params
 
 
+# TODO: Remove this and generalize to loading a single config file. Doing the simple thing
+# since there's a refactoring of txt files in progress
+def initialize_stack_params(ccf_dir: str) -> ConfigParameters:
+    file = fs_join(ccf_dir, "fft_cc_data.txt")
+    if os.path.isfile(file):
+        params = eval(open(file).read())  # TODO: do proper json/yaml serialization
+        return params
+
+    return ConfigParameters()
+
+
 def get_channel_filter(sta_list: List[str]) -> Callable[[Channel], bool]:
     if len(sta_list) == 1 and sta_list[0] == "*":
         return lambda ch: True
@@ -107,18 +118,22 @@ def main(args: typing.Any):
         params.inc_hours = args.inc_hours
         download(args.raw_data_path, args.channels, args.stations, params)
 
+    def run_stack():
+        params = initialize_stack_params(args.ccf_path)
+        params.stack_method = args.method
+        raw_store = create_raw_store(args)
+        stack(raw_store.get_station_list(), args.ccf_path, args.stack_path, params)
+
     if args.step == Step.DOWNLOAD:
         run_download()
     if args.step == Step.CROSS_CORRELATE:
         run_cross_correlation()
     if args.step == Step.STACK:
-        raw_store = create_raw_store(args)
-        stack(raw_store.get_station_list(), args.ccf_path, args.stack_path, args.method)
+        run_stack()
     if args.step == Step.ALL:
         run_download()
         run_cross_correlation()
-        raw_store = create_raw_store(args)
-        stack(raw_store.get_station_list(), args.ccf_path, args.stack_path, args.method)
+        run_stack()
 
 
 def add_date_args(parser, required):

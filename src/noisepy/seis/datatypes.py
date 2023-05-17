@@ -109,6 +109,12 @@ class ConfigParameters:
     # some control parameters
     acorr_only: bool = False  # only perform auto-correlation
     xcorr_only: bool = True  # only perform cross-correlation or not
+    # Stacking parameters:
+    stack_method: str = "linear"
+    keep_substack: bool = False  # keep all sub-stacks in final ASDF file
+    # new rotation para
+    rotation: bool = True  # rotation from E-N-Z to R-T-Z
+    correction: bool = False  # angle correction due to mis-orientation
 
     # 'RESP', or 'polozeros' to remove response
 
