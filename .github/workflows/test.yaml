@@ -6,7 +6,8 @@ on:
   workflow_dispatch:
 
 env:
-  python_version: 3.8
+  python_version: '3.8'
+  RDMAV_FORK_SAFE: 1
 jobs:
   unit_tests:
     runs-on: ubuntu-22.04
@@ -40,7 +41,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        python_version: [3.8, 3.11]
+        python_version: ['3.8', '3.10']
         method: [linear, robust, nroot, selective, auto_covariance, pws]
         freq_norm: [rma, no, phase_only]
     runs-on: ubuntu-22.04
@@ -69,7 +70,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        python_version: [3.8, 3.11]
+        python_version: ['3.8', '3.10']
     runs-on: ubuntu-22.04
     steps:
     - name: Checkout Repo
@@ -88,7 +89,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        python_version: [3.8, 3.11]
+        python_version: ['3.8', '3.10']
     runs-on: ubuntu-22.04
     steps:
     - name: Checkout Repo
