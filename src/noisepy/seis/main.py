@@ -37,7 +37,7 @@ def valid_date(d: str) -> str:
 
 def initialize_fft_params(raw_dir: str) -> ConfigParameters:
     params = ConfigParameters()
-    dfile_closed = os.path.join(raw_dir, "download_info.json")
+    dfile_closed = os.path.join(raw_dir, "download_info.txt")
     with open(dfile_closed, "r") as file:
         dfile = json.load(file)
     if os.path.isfile(dfile):

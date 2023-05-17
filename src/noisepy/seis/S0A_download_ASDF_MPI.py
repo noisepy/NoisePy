@@ -103,7 +103,7 @@ def download(
         """
     )
     ncomp = len(chan_list)
-    metadata = os.path.join(direc, "download_info.json")
+    metadata = os.path.join(direc, "download_info.txt")
 
     # prepare station info (existing station list vs. fetching from client)
     if prepro_para.down_list:

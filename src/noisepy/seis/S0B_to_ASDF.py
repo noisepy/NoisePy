@@ -110,7 +110,7 @@ prepro_para = {
     "ncomp": ncomp,
     "MAX_MEM": MAX_MEM,
 }
-metadata = os.path.join(RAWDATA, "download_info.json")
+metadata = os.path.join(RAWDATA, "download_info.txt")
 
 ##########################################################
 # ###############PROCESSING SECTION#######################

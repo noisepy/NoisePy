@@ -77,7 +77,7 @@ prepro_para = {
     "end_date": end_date,
     "inc_days": inc_hours,
 }
-metadata = os.path.join(direc, "download_info.json")
+metadata = os.path.join(direc, "download_info.txt")
 with open(metadata, "w") as fout:
     json.dump(str(prepro_para), fout)
 # fout = open(metadata, "w")
