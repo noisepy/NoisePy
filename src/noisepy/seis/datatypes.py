@@ -168,5 +168,5 @@ class NoiseFFT:
     fft: np.ndarray
     std: np.ndarray
     fft_time: np.ndarray
-    segment_count: int
+    window_count: int
     length: int
