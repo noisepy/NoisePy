@@ -80,7 +80,8 @@ def stack(cc_store: CrossCorrelationDataStore, stack_dir: str, fft_params: Confi
         fout.close()
 
         timespans = cc_store.get_timespans()
-        pairs_all = cc_store.get_station_pairs(timespans[0])
+        pairs_all = list(set(pair for ts in timespans for pair in cc_store.get_station_pairs(ts)))
+        logger.info(f"Station pairs: {pairs_all}")
         stations = set(pair[0] for pair in pairs_all)
 
         for station in stations:
