@@ -139,5 +139,5 @@ class SCEDCS3DataStore(RawDataStore):
         return Channel(
             ChannelType(channel, location),
             # lat/lon/elev will be populated later
-            Station(network, station, -1, -1, -1, location),
+            Station(network, station, location=location),
         )

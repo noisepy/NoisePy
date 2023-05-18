@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 from enum import Enum
 
@@ -51,6 +52,22 @@ class Station:
     lon: float
     elevation: float
     location: str
+
+    def __init__(
+        self,
+        network: str,
+        name: str,
+        lat: float = sys.float_info.min,
+        lon: float = sys.float_info.min,
+        elevation: float = sys.float_info.min,
+        location: str = "",
+    ):
+        self.network = network
+        self.name = name
+        self.lat = lat
+        self.lon = lon
+        self.elevation = elevation
+        self.location = location
 
     def __repr__(self) -> str:
         return f"{self.network}.{self.name}"

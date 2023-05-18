@@ -121,8 +121,8 @@ def main(args: typing.Any):
     def run_stack():
         params = initialize_stack_params(args.ccf_path)
         params.stack_method = args.method
-        raw_store = create_raw_store(args)
-        stack(raw_store.get_station_list(), args.ccf_path, args.stack_path, params)
+        cc_store = ASDFCCStore(args.ccf_path, "r")
+        stack(cc_store, args.stack_path, params)
 
     if args.step == Step.DOWNLOAD:
         run_download()

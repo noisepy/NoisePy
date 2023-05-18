@@ -68,8 +68,8 @@ def test_get_station_list(store: SCEDCS3DataStore):
 def test_filter():
     # filter for station 'staX' or 'staY' and channel type starts with 'B'
     f = channel_filter(["staX", "staY"], "B")
-    staX = Station("CI", "staX", 0, 0, 0, "")
-    staZ = Station("CI", "staZ", 0, 0, 0, "")
+    staX = Station("CI", "staX")
+    staZ = Station("CI", "staZ")
 
     def check(sta, ch_name):
         ch = Channel(ChannelType((ch_name)), sta)

@@ -1,9 +1,8 @@
-import glob
 import logging
 import os
 import sys
 import time
-from typing import List
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
@@ -11,6 +10,7 @@ import pyasdf
 from mpi4py import MPI
 
 from noisepy.seis.datatypes import ConfigParameters
+from noisepy.seis.stores import CrossCorrelationDataStore
 
 from . import noise_module
 
@@ -44,10 +44,10 @@ MAX_MEM = 4.0
 
 
 # TODO: make stack_method an enum
-def stack(sta: List[str], ccf_dir: str, stack_dir: str, fft_params: ConfigParameters):
+def stack(cc_store: CrossCorrelationDataStore, stack_dir: str, fft_params: ConfigParameters):
     tt0 = time.time()
     if fft_params.rotation and fft_params.correction:
-        corrfile = os.path.join(ccf_dir, "../meso_angles.txt")  # csv file containing angle info to be corrected
+        corrfile = os.path.join(stack_dir, "../meso_angles.txt")  # csv file containing angle info to be corrected
         locs = pd.read_csv(corrfile)
     else:
         locs = []
@@ -79,120 +79,90 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, fft_params: ConfigParame
         fout.write(str(fft_params))
         fout.close()
 
-        # cross-correlation files
-        ccfiles = sorted(glob.glob(os.path.join(ccf_dir, "*.h5")))
-        logger.debug(ccfiles)
+        timespans = cc_store.get_timespans()
+        pairs_all = cc_store.get_station_pairs(timespans[0])
+        stations = set(pair[0] for pair in pairs_all)
 
-        for ii in range(len(sta)):
-            tmp = os.path.join(stack_dir, sta[ii])
-            if not os.path.isdir(tmp):
-                os.mkdir(tmp)
-
-        # station-pairs
-        pairs_all = []
-        for ii in range(len(sta) - 1):
-            for jj in range(ii, len(sta)):
-                pairs_all.append(sta[ii] + "_" + sta[jj])
+        for station in stations:
+            os.makedirs(os.path.join(stack_dir, str(station)), exist_ok=True)
 
         splits = len(pairs_all)
-        if len(ccfiles) == 0 or splits == 0:
+        if len(timespans) == 0 or splits == 0:
             raise IOError("Abort! no available CCF data for stacking")
-
     else:
-        splits, ccfiles, pairs_all = [None for _ in range(3)]
+        splits, timespans, pairs_all = [None for _ in range(3)]
 
     # broadcast the variables
     splits = comm.bcast(splits, root=0)
-    ccfiles = comm.bcast(ccfiles, root=0)
+    timespans = comm.bcast(timespans, root=0)
     pairs_all = comm.bcast(pairs_all, root=0)
+    nccomp = fft_params.ncomp * fft_params.ncomp
+    num_chunk = len(timespans) * nccomp
+    num_segmts = 1
 
     # MPI loop: loop through each user-defined time chunck
     for ipair in range(rank, splits, size):
         t0 = time.time()
 
         logger.debug("%dth path for station-pair %s" % (ipair, pairs_all[ipair]))
-        # source folder
-        ttr = pairs_all[ipair].split("_")
-        snet, ssta = ttr[0].split(".")
-        rnet, rsta = ttr[1].split(".")
-        idir = ttr[0]
+        sta_pair = pairs_all[ipair]
+        src_sta = sta_pair[0]
+        rec_sta = sta_pair[1]
+        idir = str(src_sta)
 
         # check if it is auto-correlation
-        if ssta == rsta and snet == rnet:
+        if src_sta == rec_sta:
             fauto = 1
         else:
             fauto = 0
 
         # continue when file is done: TODO: Remove this and use a Store.contains() function.
-        toutfn = os.path.join(stack_dir, idir + "/" + pairs_all[ipair] + ".tmp")
+        toutfn = os.path.join(stack_dir, idir, f"{src_sta}_{rec_sta}.tmp")
         if os.path.isfile(toutfn):
             continue
 
         # crude estimation on memory needs (assume float32)
-        nccomp = fft_params.ncomp * fft_params.ncomp
-        num_chunck = len(ccfiles) * nccomp
-        num_segmts = 1
-        if fft_params.substack:  # things are difference when do substack
-            if fft_params.substack_len == fft_params.cc_len:
-                num_segmts = int(np.floor((fft_params.inc_hours * 3600 - fft_params.cc_len) / fft_params.step))
-            else:
-                num_segmts = int(fft_params.inc_hours / (fft_params.substack_len / 3600))
-        npts_segmt = int(2 * fft_params.maxlag * fft_params.samp_freq) + 1
-        memory_size = num_chunck * num_segmts * npts_segmt * 4 / 1024**3
-
-        if memory_size > MAX_MEM:
-            raise ValueError(
-                "Require %5.3fG memory but only %5.3fG provided)! Cannot load cc data all once!"
-                % (memory_size, MAX_MEM)
-            )
-        logger.debug("Good on memory (need %5.2f G and %s G provided)!" % (memory_size, MAX_MEM))
+        num_segmts, npts_segmt = calc_segments(fft_params, num_chunk)
         # allocate array to store fft data/info
-        cc_array = np.zeros((num_chunck * num_segmts, npts_segmt), dtype=np.float32)
-        cc_time = np.zeros(num_chunck * num_segmts, dtype=np.float32)
-        cc_ngood = np.zeros(num_chunck * num_segmts, dtype=np.int16)
-        cc_comp = np.chararray(num_chunck * num_segmts, itemsize=2, unicode=True)
+        cc_array = np.zeros((num_chunk * num_segmts, npts_segmt), dtype=np.float32)
+        cc_time = np.zeros(num_chunk * num_segmts, dtype=np.float32)
+        cc_ngood = np.zeros(num_chunk * num_segmts, dtype=np.int16)
+        cc_comp = np.chararray(num_chunk * num_segmts, itemsize=2, unicode=True)
 
         # loop through all time-chuncks
         iseg = 0
-        dtype = pairs_all[ipair]
-        for ifile in ccfiles:
+        for ts in timespans:
             # load the data from daily compilation
-            ds = pyasdf.ASDFDataSet(ifile, mpi=False, mode="r")
-            try:
-                path_list = ds.auxiliary_data[dtype].list()
-                tparameters = ds.auxiliary_data[dtype][path_list[0]].parameters
-            except Exception:
-                logger.debug("continue! no pair of %s in %s" % (dtype, ifile))
-                continue
-            logger.debug(f"path_list for {dtype}: {path_list}")
+            ch_pairs = cc_store.get_channeltype_pairs(ts, src_sta, rec_sta)
+
+            logger.debug(f"path_list for {src_sta}-{rec_sta}: {ch_pairs}")
             # seperate auto and cross-correlation
             if fauto == 1:
-                if fft_params.ncomp == 3 and len(path_list) < 6:
+                if fft_params.ncomp == 3 and len(ch_pairs) < 6:
                     logger.warning(
-                        "continue! not enough cross components for auto-correlation %s in %s" % (dtype, ifile)
+                        "continue! not enough cross components for auto-correlation %s in %s" % (sta_pair, ts)
                     )
                     continue
             else:
-                if fft_params.ncomp == 3 and len(path_list) < 9:
+                if fft_params.ncomp == 3 and len(ch_pairs) < 9:
                     logger.warning(
-                        "continue! not enough cross components for cross-correlation %s in %s" % (dtype, ifile)
+                        "continue! not enough cross components for cross-correlation %s in %s" % (sta_pair, ts)
                     )
                     continue
 
-            if len(path_list) > 9:
-                raise ValueError("more than 9 cross-component exists for %s %s! please double check" % (ifile, dtype))
+            if len(ch_pairs) > 9:
+                raise ValueError("more than 9 cross-component exists for %s %s! please double check" % (ts, sta_pair))
 
             # load the 9-component data, which is in order in the ASDF
-            for tpath in path_list:
-                cmp1 = tpath.split("_")[0]
-                cmp2 = tpath.split("_")[1]
-                tcmp1 = cmp1[-1]
-                tcmp2 = cmp2[-1]
+            for ch_pair in ch_pairs:
+                src_chan, rec_chan = ch_pair
+                tcmp1 = src_chan.get_orientation()
+                tcmp2 = rec_chan.get_orientation()
 
                 # read data and parameter matrix
-                tdata = ds.auxiliary_data[dtype][tpath].data[:]
-                ttime = ds.auxiliary_data[dtype][tpath].parameters["time"]
-                tgood = ds.auxiliary_data[dtype][tpath].parameters["ngood"]
+                tparameters, tdata = cc_store.read(ts, src_sta, rec_sta, src_chan, rec_chan)
+                ttime = tparameters["time"]
+                tgood = tparameters["ngood"]
                 if fft_params.substack:
                     for ii in range(tdata.shape[0]):
                         cc_array[iseg] = tdata[ii]
@@ -213,7 +183,7 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, fft_params: ConfigParame
         # continue when there is no data or for auto-correlation
         if iseg <= 1 and fauto == 1:
             continue
-        outfn = pairs_all[ipair] + ".h5"
+        outfn = f"{src_sta}_{rec_sta}.h5"
         logger.debug("ready to output to %s" % (outfn))
 
         # matrix used for rotation
@@ -310,8 +280,8 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, fft_params: ConfigParame
         if fft_params.rotation and iflag:
             if np.all(bigstack == 0):
                 continue
-            tparameters["station_source"] = ssta
-            tparameters["station_receiver"] = rsta
+            tparameters["station_source"] = src_sta.name
+            tparameters["station_receiver"] = rec_sta.name
             if fft_params.stack_method != "all":
                 bigstack_rotated = noise_module.rotation(bigstack, tparameters, locs)
 
@@ -369,6 +339,23 @@ def stack(sta: List[str], ccf_dir: str, stack_dir: str, fft_params: ConfigParame
     tt1 = time.time()
     logger.info("it takes %6.2fs to process step 2 in total" % (tt1 - tt0))
     comm.barrier()
+
+
+def calc_segments(fft_params: ConfigParameters, num_chunk: int) -> Tuple[int, int]:
+    if fft_params.substack:  # things are difference when do substack
+        if fft_params.substack_len == fft_params.cc_len:
+            num_segmts = int(np.floor((fft_params.inc_hours * 3600 - fft_params.cc_len) / fft_params.step))
+        else:
+            num_segmts = int(fft_params.inc_hours / (fft_params.substack_len / 3600))
+    npts_segmt = int(2 * fft_params.maxlag * fft_params.samp_freq) + 1
+    memory_size = num_chunk * num_segmts * npts_segmt * 4 / 1024**3
+
+    if memory_size > MAX_MEM:
+        raise ValueError(
+            "Require %5.3fG memory but only %5.3fG provided)! Cannot load cc data all once!" % (memory_size, MAX_MEM)
+        )
+    logger.debug("Good on memory (need %5.2f G and %s G provided)!" % (memory_size, MAX_MEM))
+    return num_segmts, npts_segmt
 
 
 # Point people to new entry point:

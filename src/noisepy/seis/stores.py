@@ -1,27 +1,17 @@
 from abc import ABC, abstractmethod
-from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import obspy
 from datetimerange import DateTimeRange
 
-from .datatypes import Channel, ChannelData, ConfigParameters, Station
+from .datatypes import Channel, ChannelData, ChannelType, ConfigParameters, Station
 
 
 class DataStore(ABC):
     """
     A base abstraction over a data source for seismic data
     """
-
-    # TODO: Are these needed or is get_channels() enough?
-    # @abstractmethod
-    # def get_stations(self) -> List[Station]:
-    #     pass
-
-    # @abstractmethod
-    # def get_channel_types(self) -> List[ChannelType]:
-    #     pass
 
     @abstractmethod
     def get_channels(self, timespan: DateTimeRange) -> List[Channel]:
@@ -88,5 +78,21 @@ class CrossCorrelationDataStore:
         pass
 
     @abstractmethod
-    def read(self, chan1: Channel, chan2: Channel, start: datetime, end: datetime) -> np.ndarray:
+    def get_timespans(self) -> List[DateTimeRange]:
+        pass
+
+    @abstractmethod
+    def get_station_pairs(self, timespan: DateTimeRange) -> List[Tuple[Station, Station]]:
+        pass
+
+    @abstractmethod
+    def get_channeltype_pairs(
+        self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station
+    ) -> List[Tuple[ChannelType, ChannelType]]:
+        pass
+
+    @abstractmethod
+    def read(
+        self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station, src_ch: ChannelType, rec_ch: ChannelType
+    ) -> Tuple[Dict, np.ndarray]:
         pass

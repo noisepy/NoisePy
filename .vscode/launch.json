@@ -7,7 +7,7 @@
       "request": "launch",
       "module": "pytest",
       "args": [
-        "${workspaceFolder}/tests/test_scedc_s3store.py"
+        "${workspaceFolder}/tests/"
       ]
     },
     {

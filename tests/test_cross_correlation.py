@@ -13,7 +13,7 @@ def test_read_channels():
         cd.sampling_rate = f
         ch_data.append(cd)
     N = 5
-    tuples = [(Channel("foo", Station("CI", "bar", 0, 0, 0, "")), cd) for cd in ch_data] * N
+    tuples = [(Channel("foo", Station("CI", "bar")), cd) for cd in ch_data] * N
     filtered = _filter_channel_data(tuples, samp_freq)
     assert N == len(filtered)
     assert [t[1].sampling_rate for t in filtered] == [CLOSEST_FREQ] * N
