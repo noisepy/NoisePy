@@ -46,7 +46,6 @@ MAX_MEM = 4.0
 
 # TODO: make stack_method an enum
 def stack(cc_store: CrossCorrelationDataStore, stack_dir: str, fft_params: ConfigParameters):
-    # tt0 = time.time()
     tlog = TimeLogger(logger=logger)
     t_tot = tlog.reset()
     if fft_params.rotation and fft_params.correction:
