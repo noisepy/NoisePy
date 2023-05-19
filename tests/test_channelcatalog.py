@@ -22,7 +22,7 @@ file = os.path.join(os.path.dirname(__file__), "./data/station.txt")
 @pytest.mark.parametrize("stat,ch,lat,lon,elev", chan_data)
 def test_csv(stat: str, ch: str, lat: float, lon: float, elev: float):
     cat = CSVChannelCatalog(file)
-    chan = Channel(ChannelType(ch), Station("CI", stat, -1, -1, -1, -1))
+    chan = Channel(ChannelType(ch), Station("CI", stat))
     full_ch = cat.get_full_channel(DateTimeRange(), chan)
     assert full_ch.station.lat == lat
     assert full_ch.station.lon == lon
@@ -54,7 +54,7 @@ def test_frominventory(station: str, ch: str, lat: float, lon: float, elev: floa
 
     inv = stats2inv_mseed(stat, df)
     cat = MockCatalog()
-    chan = Channel(ChannelType(ch), Station("CI", station, -1, -1, -1, -1))
+    chan = Channel(ChannelType(ch), Station("CI", station))
     full_ch = cat.populate_from_inventory(inv, chan)
     assert full_ch.station.lat == lat
     assert full_ch.station.lon == lon
@@ -67,8 +67,8 @@ xmlpaths = [os.path.join(os.path.dirname(__file__), "./data/"), "s3://scedc-pds/
 @pytest.mark.parametrize("path", xmlpaths)
 def test_XMLStationChannelCatalog(path):
     cat = XMLStationChannelCatalog(path)
-    empty_inv = cat.get_inventory(DateTimeRange(), Station("non-existent", "non-existent", 0, 0, 0, ""))
+    empty_inv = cat.get_inventory(DateTimeRange(), Station("non-existent", "non-existent", ""))
     assert len(empty_inv) == 0
-    yaq_inv = cat.get_inventory(DateTimeRange(), Station("CI", "YAQ", 0, 0, 0, ""))
+    yaq_inv = cat.get_inventory(DateTimeRange(), Station("CI", "YAQ"))
     assert len(yaq_inv) == 1
     assert len(yaq_inv.networks[0].stations) == 1

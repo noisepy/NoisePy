@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import numpy as np
@@ -49,14 +49,15 @@ def test_get_data(store: ASDFRawDataStore):
 
 def test_ccstore(ccstore: ASDFCCStore):
     def make_1dts(dt: datetime):
+        dt = dt.replace(tzinfo=timezone.utc, microsecond=0)
         return DateTimeRange(dt, dt + timedelta(days=1))
 
     config = ConfigParameters()
     data = np.zeros(0)
     ts1 = make_1dts(datetime.now())
     ts2 = make_1dts(ts1.end_datetime)
-    src = Channel(ChannelType("foo"), Station("nw", "sta1", -1, -1, -1, ""))
-    rec = Channel(ChannelType("bar"), Station("nw", "sta2", -1, -1, -1, ""))
+    src = Channel(ChannelType("foo"), Station("nw", "sta1"))
+    rec = Channel(ChannelType("bar"), Station("nw", "sta2"))
 
     # assert empty state
     assert not ccstore.is_done(ts1)
@@ -83,3 +84,10 @@ def test_ccstore(ccstore: ASDFCCStore):
     assert not ccstore.is_done(ts2)
     ccstore.mark_done(ts2)
     assert ccstore.is_done(ts2)
+
+    timespans = ccstore.get_timespans()
+    assert timespans == [ts1, ts2]
+    sta_pairs = ccstore.get_station_pairs(ts1)
+    assert sta_pairs == [(src.station, rec.station)]
+    cha_pairs = ccstore.get_channeltype_pairs(ts1, sta_pairs[0][0], sta_pairs[0][1])
+    assert cha_pairs == [(src.type, rec.type)]

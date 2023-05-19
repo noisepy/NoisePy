@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 import typing
 from enum import Enum
@@ -102,6 +103,8 @@ def create_raw_store(args):
 
 def main(args: typing.Any):
     raw_dir = args.raw_data_path
+    logger = logging.getLogger(__package__)
+    logger.setLevel(args.loglevel.upper())
 
     def run_cross_correlation():
         ccf_dir = args.ccf_path
@@ -121,8 +124,8 @@ def main(args: typing.Any):
     def run_stack():
         params = initialize_stack_params(args.ccf_path)
         params.stack_method = args.method
-        raw_store = create_raw_store(args)
-        stack(raw_store.get_station_list(), args.ccf_path, args.stack_path, params)
+        cc_store = ASDFCCStore(args.ccf_path, "r")
+        stack(cc_store, args.stack_path, params)
 
     if args.step == Step.DOWNLOAD:
         run_download()
@@ -214,6 +217,13 @@ def make_step_parser(subparsers: Any, step: Step, parser_config_funcs: List[Call
     )
     for config_fn in parser_config_funcs:
         config_fn(parser)
+    parser.add_argument(
+        "-log",
+        "--loglevel",
+        type=str.lower,
+        default="info",
+        choices=["notset", "debug", "info", "warning", "error", "critical"],
+    )
 
 
 def main_cli():

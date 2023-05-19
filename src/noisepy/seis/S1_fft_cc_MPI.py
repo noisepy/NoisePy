@@ -70,9 +70,10 @@ def cross_correlate(
     tlog = TimeLogger(logger, logging.INFO)
     t_s1_total = tlog.reset()
 
-    context = ray.init()
-    tlog.log("Ray init")
-    print(context.dashboard_url)
+    if not ray.is_initialized():
+        context = ray.init(ignore_reinit_error=True)
+        tlog.log("Ray init")
+        logger.info(context.dashboard_url)
 
     # save metadata
     cc_store.save_parameters(fft_params)
