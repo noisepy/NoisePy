@@ -148,7 +148,7 @@ def cross_correlate(
             results = ray.get(ready)
             results = [r for subresult in results for r in subresult]
             for src_chan, rec_chan, parameters, corr in results:
-                cc_store.append(ts, src_chan, rec_chan, fft_params, parameters, corr)
+                cc_store.append(ts, src_chan, rec_chan, parameters, corr)
 
         ffts.clear()
         gc.collect()
