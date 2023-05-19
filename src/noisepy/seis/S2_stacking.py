@@ -1,16 +1,17 @@
 import logging
 import os
 import sys
-import time
 from typing import Tuple
 
 import numpy as np
 import pandas as pd
 import pyasdf
+from datetimerange import DateTimeRange
 from mpi4py import MPI
 
 from noisepy.seis.datatypes import ConfigParameters
 from noisepy.seis.stores import CrossCorrelationDataStore
+from noisepy.seis.utils import TimeLogger
 
 from . import noise_module
 
@@ -45,7 +46,8 @@ MAX_MEM = 4.0
 
 # TODO: make stack_method an enum
 def stack(cc_store: CrossCorrelationDataStore, stack_dir: str, fft_params: ConfigParameters):
-    tt0 = time.time()
+    tlog = TimeLogger(logger=logger)
+    t_tot = tlog.reset()
     if fft_params.rotation and fft_params.correction:
         corrfile = os.path.join(stack_dir, "../meso_angles.txt")  # csv file containing angle info to be corrected
         locs = pd.read_csv(corrfile)
@@ -103,7 +105,7 @@ def stack(cc_store: CrossCorrelationDataStore, stack_dir: str, fft_params: Confi
 
     # MPI loop: loop through each user-defined time chunck
     for ipair in range(rank, splits, size):
-        t0 = time.time()
+        tlog.reset()
 
         logger.debug("%dth path for station-pair %s" % (ipair, pairs_all[ipair]))
         sta_pair = pairs_all[ipair]
@@ -138,21 +140,8 @@ def stack(cc_store: CrossCorrelationDataStore, stack_dir: str, fft_params: Confi
 
             logger.debug(f"path_list for {src_sta}-{rec_sta}: {ch_pairs}")
             # seperate auto and cross-correlation
-            if fauto == 1:
-                if fft_params.ncomp == 3 and len(ch_pairs) < 6:
-                    logger.warning(
-                        "continue! not enough cross components for auto-correlation %s in %s" % (sta_pair, ts)
-                    )
-                    continue
-            else:
-                if fft_params.ncomp == 3 and len(ch_pairs) < 9:
-                    logger.warning(
-                        "continue! not enough cross components for cross-correlation %s in %s" % (sta_pair, ts)
-                    )
-                    continue
-
-            if len(ch_pairs) > 9:
-                raise ValueError("more than 9 cross-component exists for %s %s! please double check" % (ts, sta_pair))
+            if not validate_pairs(fft_params.ncomp, str(sta_pair), fauto, ts, len(ch_pairs)):
+                continue
 
             # load the 9-component data, which is in order in the ASDF
             for ch_pair in ch_pairs:
@@ -178,8 +167,7 @@ def stack(cc_store: CrossCorrelationDataStore, stack_dir: str, fft_params: Confi
                     cc_comp[iseg] = tcmp1 + tcmp2
                     iseg += 1
 
-        t1 = time.time()
-        logger.debug("loading CCF data takes %6.2fs" % (t1 - t0))
+        t_load = tlog.log("loading CCF data")
 
         # continue when there is no data or for auto-correlation
         if iseg <= 1 and fauto == 1:
@@ -197,6 +185,7 @@ def stack(cc_store: CrossCorrelationDataStore, stack_dir: str, fft_params: Confi
         # loop through cross-component for stacking
         iflag = 1
         for icomp in range(nccomp):
+            tlog.reset()
             comp = enz_system[icomp]
             indx = np.where(cc_comp.lower() == comp.lower())[0]
             logger.debug(f"index to find the comp: {indx}")
@@ -272,10 +261,7 @@ def stack(cc_store: CrossCorrelationDataStore, stack_dir: str, fft_params: Confi
                             parameters=tparameters,
                         )
 
-            t3 = time.time()
-            logger.debug(
-                "takes %6.2fs to stack one component with %s stacking method" % (t3 - t1, fft_params.stack_method)
-            )
+            tlog.log(f"stack one component with {fft_params.stack_method} stacking method")
 
         # do rotation if needed
         if fft_params.rotation and iflag:
@@ -329,17 +315,30 @@ def stack(cc_store: CrossCorrelationDataStore, stack_dir: str, fft_params: Confi
                             parameters=tparameters,
                         )
 
-        t4 = time.time()
-        logger.debug("takes %6.2fs to stack/rotate all station pairs %s" % (t4 - t1, pairs_all[ipair]))
+        tlog.log(f"stack/rotate all station pairs {pairs_all[ipair]}", t_load)
 
         # write file stamps
         ftmp = open(toutfn, "w")
         ftmp.write("done")
         ftmp.close()
 
-    tt1 = time.time()
-    logger.info("it takes %6.2fs to process step 2 in total" % (tt1 - tt0))
+    tlog.log("step 2 in total", t_tot)
     comm.barrier()
+
+
+def validate_pairs(ncomp: int, sta_pair: str, fauto: int, ts: DateTimeRange, n_pairs: int) -> bool:
+    if fauto == 1:
+        if ncomp == 3 and n_pairs < 6:
+            logger.warning("continue! not enough cross components for auto-correlation %s in %s" % (sta_pair, ts))
+            return False
+    else:
+        if ncomp == 3 and n_pairs < 9:
+            logger.warning("continue! not enough cross components for cross-correlation %s in %s" % (sta_pair, ts))
+            return False
+
+    if n_pairs > 9:
+        raise ValueError("more than 9 cross-component exists for %s %s! please double check" % (ts, sta_pair))
+    return True
 
 
 def calc_segments(fft_params: ConfigParameters, num_chunk: int) -> Tuple[int, int]:
