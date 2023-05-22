@@ -32,11 +32,11 @@ This will run the linting and formatting checks configured in the project before
 <img src="./docs/figures/data_flow.png">
 The data processing in NoisePy consists of three steps:
 
-1. (Optional) Step 0 - Download: The `download()` function or the `noisepy download` CLI command can be
-used to download data from an FDSN web service. Alternatively, data from S3 buckets can be copied
-locally using the `aws` CLI.
-2. Step 1 - Cross Correlation: Computes cross correlaton for pairs of stations/channels. This can done with either the `cross_correlate()` function or the `noisepy cross_correlate` CLI command.
-3. Step 2 - Stacking: This steps takes cross correlation computation across multiple timespans and stacks them for a given station/channel pair. This can done with either the `stack()` function or the `noisepy stack` CLI command.
+1. **(Optional) Step 0 - Download**: The `download()` function or the `noisepy download` CLI command can be
+used to download data from an FDSN web service. Alternatively, data from an [S3 bucket](https://s3.console.aws.amazon.com/s3/buckets/scedc-pds) can be copied
+locally using the `aws` CLI, or streamed directly from S3.
+2. **Step 1 - Cross Correlation**: Computes cross correlaton for pairs of stations/channels. This can done with either the `cross_correlate()` function or the `noisepy cross_correlate` CLI command.
+3. **Step 2 - Stacking**: This steps takes the cross correlation computations across multiple timespans and stacks them for a given station/channel pair. This can done with either the `stack()` function or the `noisepy stack` CLI command.
 
 ### Data Formats
 
