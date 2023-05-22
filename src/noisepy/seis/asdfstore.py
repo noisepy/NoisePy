@@ -4,7 +4,7 @@ import logging
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, Generic, List, Optional, Tuple, TypeVar
 
 import numpy as np
 import obspy
@@ -18,26 +18,57 @@ from .stores import CrossCorrelationDataStore, RawDataStore
 
 logger = logging.getLogger(__name__)
 
+T = TypeVar("T")
 
-class ASDFDirectory:
+
+class ASDFDirectory(Generic[T]):
     """
     Utility class used byt ASDFRawDataStore and ASDFCCStore to provide easy access
-    to a set of ASDF files in a directory that follow a specific naming convention
+    to a set of ASDF files in a directory that follow a specific naming convention.
+    The files are named after a generic type T (e.g. a timestamp or a pair of stations)
+    so the constructor takes two functions to map between the type T and the corresponding
+    file name.
     """
 
-    def __init__(self, directory: str, mode: str) -> None:
+    def __init__(
+        self, directory: str, mode: str, get_filename: Callable[[T], str], parse_filename: Callable[[str], T]
+    ) -> None:
         self.directory = directory
         self.mode = mode
+        self.get_filename = get_filename
+        self.parse_filename = parse_filename
 
-    def __getitem__(self, timespan: DateTimeRange) -> pyasdf.ASDFDataSet:
-        file = _get_filename(self.directory, timespan)
-        if os.path.isfile(file) or self.mode == "w":
-            return _get_dataset_cached(file, self.mode)
-        return None
+    def __getitem__(self, key: T) -> pyasdf.ASDFDataSet:
+        file_name = self.get_filename(key)
+        file_path = os.path.join(self.directory, file_name)
+        return _get_dataset_cached(file_path, self.mode)
 
-    def get_timespans(self) -> List[DateTimeRange]:
+    def get_keys(self) -> List[T]:
         h5files = sorted(glob.glob(os.path.join(self.directory, "*.h5")))
-        return list(map(_parse_timespans, h5files))
+        return list(map(self.parse_filename, h5files))
+
+    def mark_done(self, key: T):
+        self.add_aux_data(key, {}, PROGRESS_DATATYPE, DONE_PATH, np.zeros(0))
+
+    def is_done(self, key: T):
+        done = self.contains(key, PROGRESS_DATATYPE, DONE_PATH)
+        if done:
+            logger.info(f"{key} already computed")
+        return done
+
+    def contains(self, key: T, data_type: str, path: str = None):
+        ccf_ds = self[key]
+        if not ccf_ds:
+            return False
+        # source-receiver pair
+        exists = data_type in ccf_ds.auxiliary_data
+        if path is not None and exists:
+            return path in ccf_ds.auxiliary_data[data_type]
+        return exists
+
+    def add_aux_data(self, key: T, params: Dict, data_type: str, path: str, data: np.ndarray):
+        ccf_ds = self[key]
+        ccf_ds.add_auxiliary_data(data=data, data_type=data_type, path=path, parameters=params)
 
 
 class ASDFRawDataStore(RawDataStore):
@@ -48,7 +79,7 @@ class ASDFRawDataStore(RawDataStore):
 
     def __init__(self, directory: str, mode: str = "r"):
         super().__init__()
-        self.datasets = ASDFDirectory(directory, mode)
+        self.datasets = ASDFDirectory(directory, mode, _filename_from_timespan, _parse_timespan)
 
     def get_channels(self, timespan: DateTimeRange) -> List[Channel]:
         ds = self.datasets[timespan]
@@ -59,7 +90,7 @@ class ASDFRawDataStore(RawDataStore):
         return channels
 
     def get_timespans(self) -> List[DateTimeRange]:
-        return self.datasets.get_timespans()
+        return self.datasets.get_keys()
 
     def read_data(self, timespan: DateTimeRange, chan: Channel) -> np.ndarray:
         ds = self.datasets[timespan]
@@ -82,19 +113,17 @@ class ASDFRawDataStore(RawDataStore):
 
 
 class ASDFCCStore(CrossCorrelationDataStore):
-    def __init__(self, directory: str, mode: str = "w") -> None:
+    def __init__(self, directory: str, mode: str = "a") -> None:
         super().__init__()
         Path(directory).mkdir(exist_ok=True)
-        self.datasets = ASDFDirectory(directory, mode)
+        self.datasets = ASDFDirectory(directory, mode, _filename_from_timespan, _parse_timespan)
 
     # CrossCorrelationDataStore implementation
-    def contains(
-        self, timespan: DateTimeRange, src_chan: Channel, rec_chan: Channel, parameters: ConfigParameters
-    ) -> bool:
+    def contains(self, timespan: DateTimeRange, src_chan: Channel, rec_chan: Channel) -> bool:
         station_pair = self._get_station_pair(src_chan.station, rec_chan.station)
         channel_pair = self._get_channel_pair(src_chan.type, rec_chan.type)
         logger.debug(f"station pair {station_pair} channel pair {channel_pair}")
-        contains = self._contains(timespan, station_pair, channel_pair)
+        contains = self.datasets.contains(timespan, station_pair, channel_pair)
         if contains:
             logger.info(f"Cross-correlation {station_pair} and {channel_pair} already exists")
         return contains
@@ -112,7 +141,6 @@ class ASDFCCStore(CrossCorrelationDataStore):
         timespan: DateTimeRange,
         src_chan: Channel,
         rec_chan: Channel,
-        params: ConfigParameters,
         cc_params: Dict[str, Any],
         corr: np.ndarray,
     ):
@@ -120,21 +148,16 @@ class ASDFCCStore(CrossCorrelationDataStore):
         station_pair = self._get_station_pair(src_chan.station, rec_chan.station)
         # channels, e.g. bhn_bhn
         channels = self._get_channel_pair(src_chan.type, rec_chan.type)
-        data = np.zeros(corr.shape, dtype=corr.dtype)
-        data[:] = corr[:]
-        self._add_aux_data(timespan, cc_params, station_pair, channels, data)
+        self.datasets.add_aux_data(timespan, cc_params, station_pair, channels, corr)
 
     def mark_done(self, timespan: DateTimeRange):
-        self._add_aux_data(timespan, {}, PROGRESS_DATATYPE, DONE_PATH, np.zeros(0))
+        self.datasets.mark_done(timespan)
 
     def is_done(self, timespan: DateTimeRange):
-        done = self._contains(timespan, PROGRESS_DATATYPE, DONE_PATH)
-        if done:
-            logger.info(f"Timespan {timespan} already computed")
-        return done
+        return self.datasets.is_done(timespan)
 
     def get_timespans(self) -> List[DateTimeRange]:
-        return self.datasets.get_timespans()
+        return self.datasets.get_keys()
 
     def get_station_pairs(self, timespan: DateTimeRange) -> List[Tuple[Station, Station]]:
         ccf_ds = self.datasets[timespan]
@@ -158,19 +181,6 @@ class ASDFCCStore(CrossCorrelationDataStore):
         return (stream.parameters, stream.data)
 
     # private helper methods
-    def _contains(self, timespan: DateTimeRange, data_type: str, path: str = None):
-        ccf_ds = self.datasets[timespan]
-        if not ccf_ds:
-            return False
-        # source-receiver pair
-        exists = data_type in ccf_ds.auxiliary_data
-        if path is not None and exists:
-            return path in ccf_ds.auxiliary_data[data_type]
-        return exists
-
-    def _add_aux_data(self, timespan: DateTimeRange, params: Dict, data_type: str, path: str, data: np.ndarray):
-        ccf_ds = self.datasets[timespan]
-        ccf_ds.add_auxiliary_data(data=data, data_type=data_type, path=path, parameters=params)
 
     def _get_station_pair(self, src_sta: Station, rec_sta: Station) -> str:
         return f"{src_sta}_{rec_sta}"
@@ -182,20 +192,26 @@ class ASDFCCStore(CrossCorrelationDataStore):
 @lru_cache
 def _get_dataset_cached(filename: str, mode: str) -> pyasdf.ASDFDataSet:
     logger.info(f"ASDFCCStore - Opening {filename}")
-    return pyasdf.ASDFDataSet(filename, mode=mode, mpi=False, compression=None)
+    if os.path.exists(filename):
+        return pyasdf.ASDFDataSet(filename, mode=mode, mpi=False, compression=None)
+    elif mode == "r":
+        return None
+    else:  # create new file
+        return pyasdf.ASDFDataSet(filename, mode=mode, mpi=False, compression=None)
 
 
-def _parse_timespans(filename: str) -> DateTimeRange:
+def _parse_timespan(filename: str) -> DateTimeRange:
     parts = os.path.splitext(os.path.basename(filename))[0].split("T")
     dates = [obspy.UTCDateTime(p).datetime.replace(tzinfo=datetime.timezone.utc) for p in parts]
     return DateTimeRange(dates[0], dates[1])
 
 
-def _get_filename(directory: str, timespan: DateTimeRange) -> str:
-    return os.path.join(
-        directory,
-        f"{timespan.start_datetime.strftime(DATE_FORMAT)}T{timespan.end_datetime.strftime(DATE_FORMAT)}.h5",
-    )
+def _filename_from_timespan(timespan: DateTimeRange) -> str:
+    return f"{timespan.start_datetime.strftime(DATE_FORMAT)}T{timespan.end_datetime.strftime(DATE_FORMAT)}.h5"
+
+
+def _filename_from_stations(pair: Tuple[Station, Station]) -> str:
+    return f"{pair[0]}_{pair[1]}.h5"
 
 
 def _parse_station_pair(pair: str) -> Tuple[Station, Station]:
