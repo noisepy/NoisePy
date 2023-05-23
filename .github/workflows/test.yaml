@@ -33,9 +33,9 @@ jobs:
       working-directory: ./src
       run: noisepy download --start_date 2019-02-01T00:00:00 --end_date 2019-02-01T01:00:00 --stations ARV,BAK --inc_hours 1 --raw_data_path $RUNNER_TEMP/RAW_DATA
     - name: Cache data
-      uses: actions/cache@v3
+      uses: actions/cache/save@v3
       with:
-        key: download_data_2
+        key: download_data-${{ github.sha }}
         path: ${{runner.temp}}
   s1_s2:
     strategy:
@@ -54,10 +54,14 @@ jobs:
       with:
         python-version: ${{matrix.python_version}}
     - name: Cache data
-      uses: actions/cache@v3
+      id: cache
+      uses: actions/cache/restore@v3
       with:
-        key: download_data_2
+        key: download_data-${{ github.sha }}
         path: ${{runner.temp}}
+    - name: Check cache hit
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: exit 1
     - name: Test Cross-Correlation (S1)
       working-directory: ./src
       run: |
