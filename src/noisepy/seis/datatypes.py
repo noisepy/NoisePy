@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 
 import numpy as np
 import obspy
+from pydantic import root_validator
 from pydantic_yaml import YamlModel
 
 
@@ -83,8 +85,8 @@ class CorrelationMethod(Enum):
 
 
 class ConfigParameters(YamlModel):
-    start_date: str = ""  # TODO: can we make this datetime?
-    end_date: str = ""
+    start_date: datetime = datetime(2019, 1, 1)
+    end_date: datetime = datetime(2019, 1, 2)
     samp_freq: float = 20  # TODO: change this samp_freq for the obspy "sampling_rate"
     cc_len: float = 1800.0  # basic unit of data length for fft (sec)
     # download params.
@@ -96,7 +98,7 @@ class ConfigParameters(YamlModel):
     down_list = False  # download stations from a pre-compiled list or not
     net_list = ["CI"]  # network list
     stations = ["*"]
-    channels = ["BHE,BHN,BHZ"]
+    channels = ["BHE", "BHN", "BHZ"]
     # pre-processing parameters
     step: float = 450.0  # overlapping between each cc_len (sec)
     freqmin: float = 0.05
@@ -136,11 +138,20 @@ class ConfigParameters(YamlModel):
 
     # 'RESP', or 'polozeros' to remove response
 
-    def __post_init__(self):
-        assert self.substack_len % self.cc_len == 0
+    @property
+    def dt(self) -> float:
+        return 1.0 / self.samp_freq
+
+    @root_validator
+    def validate(cld, values) -> dict:
+        assert values.get("substack_len") % values.get("cc_len") == 0
+        return values
 
     # TODO: Remove once all uses of ConfigParameters have been converted to use strongly typed access
     def __getitem__(self, key):
+        # Hack since pydantic model properties are nor part of the object's __dict__
+        if key == "dt":
+            return self.dt
         return self.__dict__[key]
 
     def save_yaml(self, filename: str):

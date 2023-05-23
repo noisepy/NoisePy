@@ -1,18 +1,21 @@
 import argparse
 import logging
 import os
+import sys
 import typing
+from datetime import datetime
 
 # from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, List
+from typing import Any, Callable, Iterable, List
 
+import dateutil.parser
 import obspy
 from datetimerange import DateTimeRange
 
 from .asdfstore import ASDFCCStore, ASDFRawDataStore
 from .channelcatalog import CSVChannelCatalog, XMLStationChannelCatalog
-from .constants import STATION_FILE
+from .constants import CONFIG_FILE, STATION_FILE
 from .datatypes import Channel, ConfigParameters
 from .S0A_download_ASDF_MPI import download
 from .S1_fft_cc_MPI import cross_correlate
@@ -20,6 +23,7 @@ from .S2_stacking import stack
 from .scedc_s3store import SCEDCS3DataStore
 from .utils import fs_join, get_filesystem
 
+logger = logging.getLogger(__name__)
 # Utility running the different steps from the command line. Defines the arguments for each step
 
 default_data_path = "Documents/SCAL"
@@ -47,16 +51,24 @@ def _valid_config_file(parser, f: str) -> str:
     parser.error(f"'{f}' is not a valid config file")
 
 
-# TODO: DATETIMES
-# TODO: Save config file each step?
 # TODO: Comments to Fields in ConfigParameters
-# TODO: Unit tests for Config arg parsing
+
+
+def parse_bool(bstr: str) -> bool:
+    if bstr.upper() == "TRUE":
+        return True
+    elif bstr.upper() == "FALSE":
+        return False
+    raise ValueError(f"Invalid boolean value: '{bstr}'")
 
 
 def get_arg_type(arg_type):
     if arg_type == list:
         return list_str
-    # if arg_type == datetime
+    if arg_type == datetime:
+        return dateutil.parser.isoparse
+    if arg_type == bool:
+        return parse_bool
     return arg_type
 
 
@@ -68,17 +80,30 @@ def add_model(parser: argparse.ArgumentParser, model: ConfigParameters):
             f"--{name}",
             dest=name,
             type=get_arg_type(field.type_),
-            default=field.default,
+            default=argparse.SUPPRESS,
             help=field.field_info.description,
         )
 
 
-def initialize_params(args) -> ConfigParameters:
-    if args.config is None:
-        params = ConfigParameters()
+def initialize_params(args, data_dir: str) -> ConfigParameters:
+    """
+    Loads initial parameters from 3 options:
+    - --config_path option
+    - <data_dir>/config.yaml
+    - Default parameters
+
+    Then overrides with values passed in the command line
+    """
+    config_path = args.config
+    if config_path is None and data_dir is not None:
+        config_path = fs_join(data_dir, CONFIG_FILE)
+    if config_path is not None and os.path.isfile(config_path):
+        logger.info(f"Loading parameters from {config_path}")
+        params = ConfigParameters.parse_file(config_path)
     else:
-        params = ConfigParameters.load_yaml(args.config)
-    cpy = params.copy(update=vars(args))
+        logger.warning(f"Config file {config_path if config_path else ''} not found. Using default parameters.")
+        params = ConfigParameters()
+    cpy = params.copy(update={k: v for (k, v) in vars(args).items() if k in params.__fields__})
     return cpy
 
 
@@ -97,7 +122,6 @@ def get_date_range(args) -> DateTimeRange:
 
 
 def create_raw_store(args, params: ConfigParameters):
-    xml_path = args.xml_path if "xml_path" in args else None
     raw_dir = args.raw_data_path
 
     fs = get_filesystem(raw_dir)
@@ -110,8 +134,8 @@ def create_raw_store(args, params: ConfigParameters):
         return ASDFRawDataStore(raw_dir)
     else:
         # assert count("*.ms") > 0 or count("*.sac") > 0, f"Can not find any .h5, .ms or .sac files in {raw_dir}"
-        if xml_path is not None:
-            catalog = XMLStationChannelCatalog(xml_path)
+        if args.xml_path is not None:
+            catalog = XMLStationChannelCatalog(args.xml_path)
         elif os.path.isfile(os.path.join(raw_dir, STATION_FILE)):
             catalog = CSVChannelCatalog(raw_dir)
         else:
@@ -124,20 +148,25 @@ def create_raw_store(args, params: ConfigParameters):
 def main(args: typing.Any):
     logger = logging.getLogger(__package__)
     logger.setLevel(args.loglevel.upper())
-    params = initialize_params(args)
+
+    def run_download():
+        params = initialize_params(args, None)
+        download(args.raw_data_path, params)
+        params.save_yaml(fs_join(args.raw_data_path, CONFIG_FILE))
 
     def run_cross_correlation():
         ccf_dir = args.ccf_path
         cc_store = ASDFCCStore(ccf_dir)
+        params = initialize_params(args, args.raw_data_path)
         raw_store = create_raw_store(args, params)
         cross_correlate(raw_store, params, cc_store)
-
-    def run_download():
-        download(args.raw_data_path, params)
+        params.save_yaml(fs_join(ccf_dir, CONFIG_FILE))
 
     def run_stack():
         cc_store = ASDFCCStore(args.ccf_path, "r")
+        params = initialize_params(args, args.ccf_path)
         stack(cc_store, args.stack_path, params)
+        params.save_yaml(fs_join(args.stack_path, CONFIG_FILE))
 
     if args.cmd == Command.DOWNLOAD:
         run_download()
@@ -185,6 +214,11 @@ def make_step_parser(subparsers: Any, cmd: Command, paths: List[str]):
 
 
 def main_cli():
+    args = parse_args(sys.argv[1:])
+    main(args)
+
+
+def parse_args(arguments: Iterable[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="cmd", required=True)
     make_step_parser(subparsers, Command.DOWNLOAD, ["raw_data"])
@@ -192,12 +226,10 @@ def main_cli():
     make_step_parser(subparsers, Command.STACK, ["raw_data", "stack", "ccf"])
     make_step_parser(subparsers, Command.ALL, ["raw_data", "ccf", "stack", "xml"])
 
-    args, config_args = parser.parse_known_args()
-    print(config_args)
-    # return
+    args = parser.parse_args(arguments)
 
     args.cmd = Command[args.cmd.upper()]
-    main(args)
+    return args
 
 
 if __name__ == "__main__":

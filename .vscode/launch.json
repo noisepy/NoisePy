@@ -31,7 +31,7 @@
         "${userHome}/test_temp/CCF",
         "--stack_path",
         "/Users/carlosg/test_temp/STACK",
-        "--method",
+        "--stack_method",
         "linear"
       ],
       "console": "integratedTerminal",
@@ -95,9 +95,9 @@
         "--xml_path",
         "s3://scedc-pds/FDSNstationXML/CI/",
         "--start",
-        "2022_02_02",
+        "2022-02-02",
         "--end",
-        "2022_02_05"
+        "2022-02-05"
       ],
       "console": "integratedTerminal",
       "justMyCode": true
@@ -109,16 +109,16 @@
       "module": "noisepy.seis.main",
       "args": [
         "download",
-        "--start",
-        "2019_02_01_00_00_00",
-        "--end",
-        "2019_02_01_01_00_00",
+        "--start_date",
+        "2019-02-01T00:00:00",
+        "--end_date",
+        "2019-02-01T01:00:00",
         "--stations",
         "ARV,BAK",
         "--inc_hours",
         "1",
         "--raw_data_path",
-        "${userHome}/tmp/"
+        "${userHome}/test_temp/RAW_DATA"
       ],
       "console": "integratedTerminal",
       "justMyCode": true
