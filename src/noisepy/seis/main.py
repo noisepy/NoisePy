@@ -116,7 +116,7 @@ def get_channel_filter(sta_list: List[str]) -> Callable[[Channel], bool]:
 
 
 def get_date_range(args) -> DateTimeRange:
-    if args.start_date is None or args.end_date is None:
+    if "start_date" not in args or args.start_date is None or "end_date" not in args or args.end_date is None:
         return None
     return DateTimeRange(obspy.UTCDateTime(args.start_date).datetime, obspy.UTCDateTime(args.end_date).datetime)
 
