@@ -8,7 +8,6 @@
 import logging
 import sys
 import time
-from typing import List
 import obspy
 import pyasdf
 import os
@@ -74,13 +73,13 @@ MAX_MEM = 5.0  # maximum memory allowed per core in GB
 
 def download(
     direc: str,
-    chan_list: List[str],
-    sta_list: List[str],
     prepro_para: ConfigParameters,
     client_url_key: str = "SCEDC",
 ):
     # client/data center. see https://docs.obspy.org/packages/obspy.clients.fdsn.html for a list
     client = Client(client_url_key)
+    chan_list = prepro_para.channels
+    sta_list = prepro_para.stations
 
     tt0 = time.time()
     dlist = os.path.join(direc, "station.txt")  # CSV file for station location info
@@ -103,7 +102,6 @@ def download(
         """
     )
     ncomp = len(chan_list)
-    metadata = os.path.join(direc, "download_info.txt")
 
     # prepare station info (existing station list vs. fetching from client)
     if prepro_para.down_list:
@@ -208,11 +206,6 @@ def download(
             }
             locs = pd.DataFrame(dict)
             locs.to_csv(os.path.join(direc, "station.txt"), index=False)
-
-        # save parameters for future reference
-        fout = open(metadata, "w")
-        fout.write(str(prepro_para))
-        fout.close()
 
         # get MPI variables ready
         all_chunk = noise_module.get_event_list(prepro_para.start_date, prepro_para.end_date, prepro_para.inc_hours)

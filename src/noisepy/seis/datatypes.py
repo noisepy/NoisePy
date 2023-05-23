@@ -6,6 +6,7 @@ from enum import Enum
 
 import numpy as np
 import obspy
+from pydantic_yaml import YamlModel
 
 
 @dataclass
@@ -81,9 +82,7 @@ class CorrelationMethod(Enum):
     DECONV = 2
 
 
-@dataclass
-class ConfigParameters:
-    dt: float = 0.05  # TODO: dt should be 1/sampling rate
+class ConfigParameters(YamlModel):
     start_date: str = ""  # TODO: can we make this datetime?
     end_date: str = ""
     samp_freq: float = 20  # TODO: change this samp_freq for the obspy "sampling_rate"
@@ -96,6 +95,8 @@ class ConfigParameters:
     lomax: float = -115
     down_list = False  # download stations from a pre-compiled list or not
     net_list = ["CI"]  # network list
+    stations = ["*"]
+    channels = ["BHE,BHN,BHZ"]
     # pre-processing parameters
     step: float = 450.0  # overlapping between each cc_len (sec)
     freqmin: float = 0.05
@@ -136,12 +137,17 @@ class ConfigParameters:
     # 'RESP', or 'polozeros' to remove response
 
     def __post_init__(self):
-        self.dt = 1.0 / self.samp_freq
         assert self.substack_len % self.cc_len == 0
 
     # TODO: Remove once all uses of ConfigParameters have been converted to use strongly typed access
     def __getitem__(self, key):
         return self.__dict__[key]
+
+    def save_yaml(self, filename: str):
+        # yaml_str = yaml.dump(self.__dict__)
+        yaml_str = self.yaml()
+        with open(filename, "w") as f:
+            f.write(yaml_str)
 
 
 @dataclass

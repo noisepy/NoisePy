@@ -62,8 +62,6 @@ def stack(cc_store: CrossCorrelationDataStore, stack_dir: str, fft_params: Confi
 
     rtz_components = ["ZR", "ZT", "ZZ", "RR", "RT", "RZ", "TR", "TT", "TZ"]
 
-    stack_metadata = os.path.join(stack_dir, "stack_data.txt")
-
     #######################################
     # #########PROCESSING SECTION##########
     #######################################
@@ -76,10 +74,6 @@ def stack(cc_store: CrossCorrelationDataStore, stack_dir: str, fft_params: Confi
     if rank == 0:
         if not os.path.isdir(stack_dir):
             os.mkdir(stack_dir)
-        # save metadata
-        fout = open(stack_metadata, "w")
-        fout.write(str(fft_params))
-        fout.close()
 
         timespans = cc_store.get_timespans()
         pairs_all = list(set(pair for ts in timespans for pair in cc_store.get_station_pairs(ts)))

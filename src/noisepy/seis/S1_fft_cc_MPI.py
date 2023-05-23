@@ -75,9 +75,6 @@ def cross_correlate(
         tlog.log("Ray init")
         logger.info(context.dashboard_url)
 
-    # save metadata
-    cc_store.save_parameters(fft_params)
-
     # set variables to broadcast
     timespans = raw_store.get_timespans()
     splits = len(timespans)
