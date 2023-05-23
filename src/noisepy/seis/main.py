@@ -51,9 +51,6 @@ def _valid_config_file(parser, f: str) -> str:
     parser.error(f"'{f}' is not a valid config file")
 
 
-# TODO: Comments to Fields in ConfigParameters
-
-
 def parse_bool(bstr: str) -> bool:
     if bstr.upper() == "TRUE":
         return True

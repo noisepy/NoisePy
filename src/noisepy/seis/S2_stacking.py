@@ -187,7 +187,7 @@ def stack(cc_store: CrossCorrelationDataStore, stack_dir: str, fft_params: Confi
             # jump if there are not enough data
             if len(indx) < 2:
                 iflag = 0
-                break
+                continue
 
             stack_h5 = os.path.join(stack_dir, idir + "/" + outfn)
             logger.debug(f"h5 stack path: {stack_h5}")
