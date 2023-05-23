@@ -31,11 +31,11 @@ jobs:
         python-version: ${{env.python_version}}
     - name: Test Download (S0)
       working-directory: ./src
-      run: noisepy download --start 2019_02_01_00_00_00 --end 2019_02_01_01_00_00 --stations ARV,BAK --inc_hours 1 --raw_data_path $RUNNER_TEMP/RAW_DATA
+      run: noisepy download --start_date 2019-02-01T00:00:00 --end_date 2019-02-01T01:00:00 --stations ARV,BAK --inc_hours 1 --raw_data_path $RUNNER_TEMP/RAW_DATA
     - name: Cache data
-      uses: actions/cache@v3
+      uses: actions/cache/save@v3
       with:
-        key: download_data_2
+        key: download_data-${{ github.sha }}
         path: ${{runner.temp}}
   s1_s2:
     strategy:
@@ -54,10 +54,14 @@ jobs:
       with:
         python-version: ${{matrix.python_version}}
     - name: Cache data
-      uses: actions/cache@v3
+      id: cache
+      uses: actions/cache/restore@v3
       with:
-        key: download_data_2
+        key: download_data-${{ github.sha }}
         path: ${{runner.temp}}
+    - name: Check cache hit
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: exit 1
     - name: Test Cross-Correlation (S1)
       working-directory: ./src
       run: |
@@ -65,7 +69,7 @@ jobs:
     - name: Test Stacking (S2)
       working-directory: ./src
       run: |
-        noisepy stack --raw_data_path $RUNNER_TEMP/RAW_DATA --ccf_path $RUNNER_TEMP/CCF --stack_path $RUNNER_TEMP/STACK --method ${{matrix.method}}
+        noisepy stack --raw_data_path $RUNNER_TEMP/RAW_DATA --ccf_path $RUNNER_TEMP/CCF --stack_path $RUNNER_TEMP/STACK --stack_method ${{matrix.method}}
   s3_dates:
     strategy:
       fail-fast: true
@@ -84,7 +88,7 @@ jobs:
         noisepy cross_correlate --raw_data_path s3://scedc-pds/continuous_waveforms/ \
         --ccf_path $RUNNER_TEMP/CCF_S3 --freq_norm rma \
         --xml_path s3://scedc-pds/FDSNstationXML/CI/ \
-        --stations "SBC,RIO" --start 2022_02_02 --end 2022_02_04
+        --stations "SBC,RIO" --start_date 2022-02-02 --end_date 2022-02-04
   s3_singlepath:
     strategy:
       fail-fast: true

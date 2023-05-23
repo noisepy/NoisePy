@@ -5,6 +5,7 @@
 # import pyasdf
 import datetime
 import glob
+import logging
 import os
 
 import numpy as np
@@ -25,6 +26,7 @@ from scipy.signal import hilbert
 from noisepy.seis.datatypes import ChannelData
 from noisepy.seis.S1_fft_cc_MPI import ConfigParameters
 
+logger = logging.getLogger(__name__)
 """
 This VERY LONG noise module file is necessary to keep the NoisePy working properly. In general,
 the modules are organized based on their functionality in the following way. it includes:
@@ -45,10 +47,9 @@ several utility functions are modified based on https://github.com/tclements/noi
 ####################################################
 
 
-def get_event_list(str1, str2, inc_hours):
+def get_event_list(d1: datetime.datetime, d2: datetime.datetime, inc_hours: int):
     """
-    this function calculates the event list between time1 and time2 by increment of inc_hours
-    in the formate of %Y_%m_%d_%H_%M_%S' (used in S0A & S0B)
+    this function calculates the event list between times d1 and d2 by increment of inc_hours
     PARAMETERS:
     ----------------
     str1: string of the starting time -> 2010_01_01_0_0
@@ -58,23 +59,6 @@ def get_event_list(str1, str2, inc_hours):
     ----------------
     event: a numpy character list
     """
-    date1 = str1.split("_")
-    date2 = str2.split("_")
-    y1 = int(date1[0])
-    m1 = int(date1[1])
-    d1 = int(date1[2])
-    h1 = int(date1[3])
-    mm1 = int(date1[4])
-    mn1 = int(date1[5])
-    y2 = int(date2[0])
-    m2 = int(date2[1])
-    d2 = int(date2[2])
-    h2 = int(date2[3])
-    mm2 = int(date2[4])
-    mn2 = int(date2[5])
-
-    d1 = datetime.datetime(y1, m1, d1, h1, mm1, mn1)
-    d2 = datetime.datetime(y2, m2, d2, h2, mm2, mn2)
     dt = datetime.timedelta(hours=inc_hours)
 
     event = []
@@ -512,6 +496,10 @@ def cut_trace_make_stat(fc_para: ConfigParameters, ch_data: ChannelData):
 
     # if the data is shorter than the tim chunck, return zero values
     if data.size < sps * fc_para.inc_hours * 3600:
+        logger.warning(
+            f"The data ({data.size}) is shorter than the time chunk ({sps*fc_para.inc_hours*3600})"
+            ", returning zero values."
+        )
         return source_params, dataS_t, dataS
 
     # statistic to detect segments that may be associated with earthquakes

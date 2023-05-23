@@ -13,7 +13,7 @@ from datetimerange import DateTimeRange
 
 from . import noise_module
 from .constants import DATE_FORMAT, DONE_PATH, PROGRESS_DATATYPE
-from .datatypes import Channel, ChannelData, ChannelType, ConfigParameters, Station
+from .datatypes import Channel, ChannelData, ChannelType, Station
 from .stores import CrossCorrelationDataStore, RawDataStore
 
 logger = logging.getLogger(__name__)
@@ -127,14 +127,6 @@ class ASDFCCStore(CrossCorrelationDataStore):
         if contains:
             logger.info(f"Cross-correlation {station_pair} and {channel_pair} already exists")
         return contains
-
-    def save_parameters(self, parameters: ConfigParameters):
-        fc_metadata = os.path.join(self.datasets.directory, "fft_cc_data.txt")
-
-        fout = open(fc_metadata, "w")
-        # WIP actually serialize this
-        fout.write(str(parameters))
-        fout.close()
 
     def append(
         self,
