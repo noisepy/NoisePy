@@ -5,7 +5,9 @@
 # import pyasdf
 import datetime
 import glob
+import logging
 import os
+import sys
 
 import numpy as np
 import obspy
