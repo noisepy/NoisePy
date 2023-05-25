@@ -5,8 +5,8 @@
 # import pyasdf
 import datetime
 import glob
+import logging
 import os
-import sys
 
 import numpy as np
 import obspy
@@ -27,13 +27,6 @@ from noisepy.seis.datatypes import ChannelData
 from noisepy.seis.S1_fft_cc_MPI import ConfigParameters
 
 logger = logging.getLogger(__name__)
-# ignore warnings
-if not sys.warnoptions:
-    import warnings
-
-    warnings.simplefilter("ignore")
-
-
 """
 This VERY LONG noise module file is necessary to keep the NoisePy working properly. In general,
 the modules are organized based on their functionality in the following way. it includes:
