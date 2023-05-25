@@ -82,13 +82,6 @@ class ZarrCCStore(CrossCorrelationDataStore):
             logger.info(f"Cross-correlation {station_pair} and {channel_pair} already exists")
         return contains
 
-    def save_parameters(self, parameters: ConfigParameters):
-        fc_metadata = os.path.join(self.directory, "fft_cc_data.json")
-
-        fout = open(fc_metadata, "w")
-        # WIP actually serialize this
-        fout.write(str(parameters.__dict__))
-        fout.close()
 
     def append(
         self,
