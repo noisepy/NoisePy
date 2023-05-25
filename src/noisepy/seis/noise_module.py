@@ -5,7 +5,6 @@
 # import pyasdf
 import datetime
 import glob
-import logging
 import os
 
 import numpy as np
