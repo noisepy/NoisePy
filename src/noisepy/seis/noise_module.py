@@ -6,6 +6,7 @@
 import datetime
 import glob
 import os
+import sys
 
 import numpy as np
 import obspy
@@ -26,6 +27,13 @@ from noisepy.seis.datatypes import ChannelData
 from noisepy.seis.S1_fft_cc_MPI import ConfigParameters
 
 logger = logging.getLogger(__name__)
+# ignore warnings
+if not sys.warnoptions:
+    import warnings
+
+    warnings.simplefilter("ignore")
+
+
 """
 This VERY LONG noise module file is necessary to keep the NoisePy working properly. In general,
 the modules are organized based on their functionality in the following way. it includes:
@@ -129,7 +137,7 @@ def make_timestamps(prepro_para):
                     all_stimes[ii, 0] = tr[0].stats.starttime - obspy.UTCDateTime(1970, 1, 1)
                     all_stimes[ii, 1] = tr[0].stats.endtime - obspy.UTCDateTime(1970, 1, 1)
                 except Exception as e:
-                    print(e)
+                    logger.error(e)
                     continue
         else:
             # get rough estimates of the time based on the folder: need modified to accommodate your data
@@ -210,7 +218,7 @@ def preprocess_raw(
     # check sampling rate and trace length
     st = check_sample_gaps(st, starttime, endtime)
     if len(st) == 0:
-        print("No traces in Stream: Continue!")
+        logger.warning("No traces in Stream: Continue!")
         return st
     sps = int(st[0].stats.sampling_rate)
     station = st[0].stats.station
@@ -264,23 +272,23 @@ def preprocess_raw(
                 raise ValueError("The response found in the inventory is empty (no stages)! abort!")
             else:
                 try:
-                    print("removing response for %s using inv" % st[0])
+                    logger.info("removing response for %s using inv" % st[0])
                     st[0].attach_response(inv)
                     st[0].remove_response(output=rm_resp_out, pre_filt=pre_filt, water_level=60)
                 except Exception as e:
-                    print("WARNING: Failed to remove response from %s. Returning empty stream. %s" % (st[0], e))
+                    logger.error("WARNING: Failed to remove response from %s. Returning empty stream. %s" % (st[0], e))
                     st = []
                     return st
 
         elif rm_resp == "spectrum":
-            print("remove response using spectrum")
+            logger.info("remove response using spectrum")
             specfile = glob.glob(os.path.join(respdir, "*" + station + "*"))
             if len(specfile) == 0:
                 raise ValueError("no response sepctrum found for %s" % station)
             st = resp_spectrum(st, specfile[0], samp_freq, pre_filt)
 
         elif rm_resp == "RESP":
-            print("remove response using RESP files")
+            logger.info("remove response using RESP files")
             resp = glob.glob(os.path.join(respdir, "RESP." + station + "*"))
             if len(resp) == 0:
                 raise ValueError("no RESP files found for %s" % station)
@@ -292,7 +300,7 @@ def preprocess_raw(
             st.simulate(paz_remove=None, pre_filt=pre_filt, seedresp=seedresp)
 
         elif rm_resp == "poleszeros":
-            print("remove response using poles and zeros")
+            logger.info("remove response using poles and zeros")
             paz_sts = glob.glob(os.path.join(respdir, "*" + station + "*"))
             if len(paz_sts) == 0:
                 raise ValueError("no poleszeros found for %s" % station)
@@ -347,7 +355,7 @@ def stats2Inv_staxml(stats, respdir) -> Inventory:
         if len(invfilelist) > 0:
             invfile = invfilelist[0]
             if len(invfilelist) > 1:
-                print(
+                logger.warning(
                     (
                         "Warning! More than one StationXML file was found for station %s."
                         + "Keeping the first file in list."
@@ -519,7 +527,7 @@ def cut_trace_make_stat(fc_para: ConfigParameters, ch_data: ChannelData):
     all_madS = mad(data)  # median absolute deviation over all noise window
     all_stdS = np.std(data)  # standard deviation over all noise window
     if all_madS == 0 or all_stdS == 0 or np.isnan(all_madS) or np.isnan(all_stdS):
-        print("continue! madS or stdS equals to 0 for %s")
+        logger.debug("continue! madS or stdS equals to 0 for %s")
         return source_params, dataS_t, dataS
 
     # initialize variables
@@ -898,7 +906,7 @@ def correlate_nonlinear_stack(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
             t_corr = dataS_t[0]
             n_corr = len(tindx)
         elif stack_method == "robust":
-            print("do robust substacking")
+            logger.info("do robust substacking")
             s_corr = robust_stack(s_corr, 0.001)
             t_corr = dataS_t[0]
             n_corr = nwin
@@ -1157,7 +1165,7 @@ def rotation(bigstack, parameters, locs):
     baz = parameters["baz"]
     ncomp, npts = bigstack.shape
     if ncomp < 9:
-        print("crap did not get enough components")
+        logger.debug("crap did not get enough components")
         tcorr = []
         return tcorr
     staS = parameters["station_source"]
@@ -1861,7 +1869,7 @@ def nroot_stack(cc_array, power):
     Written by Chengxin Jiang @ANU (May2020)
     """
     if cc_array.ndim == 1:
-        print("2D matrix is needed for nroot_stack")
+        logger.debug("2D matrix is needed for nroot_stack")
         return cc_array
     N, M = cc_array.shape
     dout = np.zeros(M, dtype=np.float32)
@@ -1897,7 +1905,7 @@ def selective_stack(cc_array, epsilon, cc_th):  # noqa: F811
     Modified by Chengxin Jiang @Harvard (Oct2020)
     """
     if cc_array.ndim == 1:
-        print("2D matrix is needed for nroot_stack")
+        logger.debug("2D matrix is needed for nroot_stack")
         return cc_array
     N, M = cc_array.shape
 
@@ -2198,7 +2206,7 @@ def dtw_dvv(ref, cur, para, maxLag, b, direction):
         )
 
     else:
-        print("not enough points to estimate dv/v for dtw")
+        logger.debug("not enough points to estimate dv/v for dtw")
         m0 = 0
         em0 = 0
 
@@ -2333,7 +2341,7 @@ def mwcs_dvv(ref, cur, moving_window_length, slide_step, para, smoothing_half_wi
         del w, v, e, s2x2, sx2, m, em
 
     if maxind > len(cur) + int(slide_step / dt):
-        print("The last window was too small, but was computed")
+        logger.debug("The last window was too small, but was computed")
 
     # ensure all matrix are np array
     delta_t = np.array(delta_t)
@@ -2363,7 +2371,7 @@ def mwcs_dvv(ref, cur, moving_window_length, slide_step, para, smoothing_half_wi
         m0, em0 = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=True)
 
     else:
-        print("not enough points to estimate dv/v for mwcs")
+        logger.debug("not enough points to estimate dv/v for mwcs")
         m0 = 0
         em0 = 0
 
@@ -2445,7 +2453,7 @@ def WCC_dvv(ref, cur, moving_window_length, slide_step, para):
     del m
 
     if maxind > len(cur) + int(slide_step / dt):
-        print("The last window was too small, but was computed")
+        logger.debug("The last window was too small, but was computed")
 
     delta_t = np.array(delta_t)
     delta_t_coef = np.array(delta_t_coef)
@@ -2459,7 +2467,7 @@ def WCC_dvv(ref, cur, moving_window_length, slide_step, para):
         m0, em0 = linear_regression(time_axis.flatten(), delta_t.flatten(), w.flatten(), intercept_origin=True)
 
     else:
-        print("not enough points to estimate dv/v for wcc")
+        logger.debug("not enough points to estimate dv/v for wcc")
         m0 = 0
         em0 = 0
 
@@ -2546,7 +2554,7 @@ def wxs_dvv(
             m, em = linear_regression(tvec, delta_t_m, w2, intercept_origin=True)
             dvv, err = -m, em
         else:
-            print("not enough points to estimate dv/v for wts")
+            logger.debug("not enough points to estimate dv/v for wts")
             dvv, err = np.nan, np.nan
 
         return dvv * 100, err * 100
@@ -2571,7 +2579,7 @@ def wxs_dvv(
                 m, em = linear_regression(tvec, delta_t[ifreq], w, intercept_origin=True)
                 dvv[ii], err[ii] = -m, em
             else:
-                print("not enough points to estimate dv/v for wts")
+                logger.debug("not enough points to estimate dv/v for wts")
                 dvv[ii], err[ii] = np.nan, np.nan
 
         return freq[freq_indin], dvv * 100, err * 100
