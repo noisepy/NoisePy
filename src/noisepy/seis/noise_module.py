@@ -269,7 +269,7 @@ def preprocess_raw(
                     st[0].attach_response(inv)
                     st[0].remove_response(output=rm_resp_out, pre_filt=pre_filt, water_level=60)
                 except Exception as e:
-                    logger.error("WARNING: Failed to remove response from %s. Returning empty stream. %s" % (st[0], e))
+                    logger.warning("Failed to remove response from %s. Returning empty stream. %s" % (st[0], e))
                     st = []
                     return st
 
