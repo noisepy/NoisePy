@@ -108,3 +108,32 @@ jobs:
         --ccf_path $RUNNER_TEMP/CCF_S3 --freq_norm rma \
         --xml_path s3://scedc-pds/FDSNstationXML/CI/ \
         --stations "SBC,RIO"
+  test_notebooks:
+    strategy:
+      fail-fast: true
+      matrix:
+        python_version: ['3.8', '3.10']
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v3.3.0
+    - name: Setup NoisePy
+      uses: ./.github/actions/setup
+      with:
+        python-version: ${{matrix.python_version}}
+    - uses: yaananth/run-notebook@v2
+      env:
+        RUNNER: ${{ toJson(runner) }}
+        SECRETS: ${{ toJson(secrets) }}
+        GITHUB: ${{ toJson(github) }}
+      with:
+        notebook: "tutorials/get_started.ipynb"
+        isReport: False
+        poll: False
+    - uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: output
+        path: ${{ RUNNER.temp }}/nb-runner
+      env:
+        RUNNER: ${{ toJson(runner) }}
