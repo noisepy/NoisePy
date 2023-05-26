@@ -26,13 +26,16 @@ runs:
     - name: Get HTML file name
       shell: bash
       run: |
-        HTML_FILE=$(ls ${{ RUNNER.temp }}/nb-runner/*.html);export HTML_FILE
+        HTML_PATH=$(ls ${{ RUNNER.temp }}/nb-runner/*.html);export HTML_PATH
+        HTML_FILE=$(basename $HTML_PATH);export HTML_FILE
         echo "HTML_FILE is $HTML_FILE"
         echo "html_file=$HTML_FILE" >> "$GITHUB_ENV"
+        echo "HTML_PATH is $HTML_PATH"
+        echo "html_path=$HTML_PATH" >> "$GITHUB_ENV"
     - uses: actions/upload-artifact@v3
       if: always()
       with:
-        name: ${{inputs.notebook-path}}.html
-        path: ${{ env.html_file }}
+        name: ${{ env.html_file }}
+        path: ${{ env.html_path }}
       env:
         RUNNER: ${{ toJson(runner) }}
