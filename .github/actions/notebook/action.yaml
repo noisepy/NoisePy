@@ -18,16 +18,15 @@ runs:
       env:
         RUNNER: ${{ toJson(runner) }}
         SECRETS: "{}"
-        # SECRETS: ${{ toJson(secrets) }}
         GITHUB: ${{ toJson(github) }}
       with:
-        notebook: ${{inputs.notebook-path}}
+        notebook: ${{inputs.notebook-path}}.ipynb
         isReport: False
         poll: False
     - uses: actions/upload-artifact@v3
       if: always()
       with:
-        name: output
-        path: ${{ RUNNER.temp }}/nb-runner
+        name: ${{inputs.notebook-path}}.html
+        path: ${{ RUNNER.temp }}/nb-runner/${{inputs.notebook-path}}.html
       env:
         RUNNER: ${{ toJson(runner) }}
