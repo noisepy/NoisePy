@@ -167,3 +167,6 @@ src/noisepy/seis/_version.py
 
 # MacOS
 .DS_Store
+
+# Temp locations for tutorials
+tutorials/get_started_data/
