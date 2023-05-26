@@ -17,6 +17,7 @@ runs:
     - uses: yaananth/run-notebook@v2
       env:
         RUNNER: ${{ toJson(runner) }}
+        SECRETS: "{}"
         # SECRETS: ${{ toJson(secrets) }}
         GITHUB: ${{ toJson(github) }}
       with:
