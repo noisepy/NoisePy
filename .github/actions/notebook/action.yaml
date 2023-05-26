@@ -20,13 +20,19 @@ runs:
         SECRETS: "{}"
         GITHUB: ${{ toJson(github) }}
       with:
-        notebook: ${{inputs.notebook-path}}.ipynb
+        notebook: ${{inputs.notebook-path}}
         isReport: False
         poll: False
+    - name: Get HTML file name
+      shell: bash
+      run: |
+        HTML_FILE=$(ls ${{ RUNNER.temp }}/nb-runner/*.html);export HTML_FILE
+        echo "HTML_FILE is $HTML_FILE"
+        echo "html_file=$HTML_FILE" >> "$GITHUB_ENV"
     - uses: actions/upload-artifact@v3
       if: always()
       with:
         name: ${{inputs.notebook-path}}.html
-        path: ${{ RUNNER.temp }}/nb-runner/${{inputs.notebook-path}}.html
+        path: ${{ env.html_file }}
       env:
         RUNNER: ${{ toJson(runner) }}
