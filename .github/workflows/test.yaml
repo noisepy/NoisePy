@@ -21,7 +21,6 @@ jobs:
     - name: pytest
       run: PYTHONPATH=src pytest tests/.
   s0_download:
-    if: false
     runs-on: ubuntu-22.04
     steps:
     - name: Checkout Repo
@@ -72,7 +71,6 @@ jobs:
       run: |
         noisepy stack --raw_data_path $RUNNER_TEMP/RAW_DATA --ccf_path $RUNNER_TEMP/CCF --stack_path $RUNNER_TEMP/STACK --stack_method ${{matrix.method}}
   s3_dates:
-    if: false
     strategy:
       fail-fast: true
       matrix:
@@ -92,7 +90,6 @@ jobs:
         --xml_path s3://scedc-pds/FDSNstationXML/CI/ \
         --stations "SBC,RIO" --start_date 2022-02-02 --end_date 2022-02-04
   s3_singlepath:
-    if: false
     strategy:
       fail-fast: true
       matrix:
@@ -115,7 +112,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        python_version: ['3.10']
+        python_version: ['3.8', '3.10']
     runs-on: ubuntu-22.04
     steps:
     - name: Checkout Repo
@@ -126,7 +123,6 @@ jobs:
         python-version: ${{matrix.python_version}}
         notebook-path: "tutorials/get_started.ipynb"
   test_scedc_nb:
-    if: false
     strategy:
       fail-fast: true
       matrix:
