@@ -3,7 +3,7 @@ import glob
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import obspy
@@ -16,52 +16,6 @@ from .datatypes import Channel, ChannelData, ChannelType, ConfigParameters, Stat
 from .stores import CrossCorrelationDataStore, RawDataStore
 
 logger = logging.getLogger(__name__)
-
-
-class ZarrRawDataStore(RawDataStore):
-    """
-    A data store implementation to read from a directory of Zarr files. Each file is considered
-    a timespan with the naming convention: 2019_02_01_00_00_00T2019_02_02_00_00_00.zarr
-    """
-
-    def __init__(self, directory: str):
-        super().__init__()
-        self.directory = directory
-        zarr_files = sorted(glob.glob(os.path.join(directory, "*.zarr")))
-        self.files = {str(self._parse_timespans(f)): f for f in zarr_files}
-        logger.info(f"Initialized store with {len(self.files)}")
-
-    def get_channels(self, timespan: DateTimeRange) -> List[Channel]:
-        store = zarr.DirectoryStore(self.files[str(timespan)])
-        arr = zarr.open(store)
-        # Assuming your Zarr structure follows a similar pattern, you may need to adjust the following lines accordingly
-        stations = [self._create_station(arr, sta) for sta in arr["waveforms"].keys() if sta is not None]
-        channels = [Channel(ChannelType(tag), sta) for sta in stations for tag in arr["waveforms"][str(sta)].keys()]
-        return channels
-
-    def get_timespans(self) -> List[DateTimeRange]:
-        return [DateTimeRange.from_range_text(d) for d in sorted(self.files.keys())]
-
-    def read_data(self, timespan: DateTimeRange, chan: Channel) -> np.ndarray:
-        store = zarr.DirectoryStore(self.files[str(timespan)])
-        arr = zarr.open(store)
-        stream = arr["waveforms"][str(chan.station)][str(chan.type)][0]
-        return ChannelData(stream, arr.attrs["sampling_rate"], arr.attrs["starttime"])
-
-    def _parse_timespans(self, filename: str) -> DateTimeRange:
-        parts = os.path.splitext(os.path.basename(filename))[0].split("T")
-        dates = [obspy.UTCDateTime(p).datetime.replace(tzinfo=datetime.timezone.utc) for p in parts]
-        return DateTimeRange(dates[0], dates[1])
-
-    def _create_station(self, arr, name: str) -> Optional[Station]:
-        # What should we do if there's not StationXML?
-        try:
-            inventory = arr[name]["StationXML"]
-            sta, net, lon, lat, elv, loc = noise_module.sta_info_from_inv(inventory)
-            return Station(net, sta, lat, lon, elv, loc)
-        except Exception as e:
-            logger.warning(f"Missing StationXML for station {name}. {e}")
-            return None
 
 
 class ZarrCCStore(CrossCorrelationDataStore):
@@ -81,7 +35,6 @@ class ZarrCCStore(CrossCorrelationDataStore):
         if contains:
             logger.info(f"Cross-correlation {station_pair} and {channel_pair} already exists")
         return contains
-
 
     def append(
         self,
@@ -134,10 +87,11 @@ class ZarrCCStore(CrossCorrelationDataStore):
             ccf_ds.attrs["auxiliary_data"][data_type][path] = {"parameters": params}
             ccf_ds.create_dataset(f"auxiliary_data/{data_type}/{path}", data=data)
 
-    def _get_station_pair(self, src_chan: Channel, rec_chan: Channel) -> str:
-        return f"{src_chan.station}_{rec_chan.station}"
+    def _get_station_pairs(self, timespan: DateTimeRange) -> List[Tuple[Station, Station]]:
+        pairs = CrossCorrelationDataStore.get_station_pairs(timespan)
+        return pairs
 
-    def _get_channel_pair(self, src_chan: Channel, rec_chan: Channel) -> str:
+    def _get_channel_pairs(self, src_chan: Channel, rec_chan: Channel) -> str:
         return f"{src_chan.type.name}_{rec_chan.type.name}"
 
     def _get_filename(self, timespan: DateTimeRange) -> str:

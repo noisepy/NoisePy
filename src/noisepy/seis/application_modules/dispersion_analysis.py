@@ -147,9 +147,9 @@ for comp in rtz_system:
     # extract dispersion curves for ZZ, RR and TT
     if comp == "ZZ" or comp == "RR" or comp == "TT":
         nper, gv = noise_module.extract_dispersion(rcwt_new, per, vel)
-        fphase = open(os.path.join(outdir, spair + "_group_" + comp + ".txt"), "w")
+        fphase = open(os.path.join(outdir, spair + "_group_" + comp + ".csv"), "w")
         for iii in range(len(nper)):
-            fphase.write("%5.1f %5.2f\n" % (nper[iii], gv[iii]))
+            fphase.write("%5.1f,%5.2f\n" % (nper[iii], gv[iii]))
         fphase.close()
 
     # plot wavelet spectrum
