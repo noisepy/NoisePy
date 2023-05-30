@@ -1,19 +1,15 @@
-import datetime
-import glob
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Tuple
 
 import numpy as np
-import obspy
 import zarr
 from datetimerange import DateTimeRange
 
-from . import noise_module
 from .constants import DATE_FORMAT, DONE_PATH, PROGRESS_DATATYPE
-from .datatypes import Channel, ChannelData, ChannelType, ConfigParameters, Station
-from .stores import CrossCorrelationDataStore, RawDataStore
+from .datatypes import Channel, ChannelType, ConfigParameters, Station
+from .stores import CrossCorrelationDataStore
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +58,8 @@ class ZarrCCStore(CrossCorrelationDataStore):
             logger.info(f"Timespan {timespan} already computed")
         return done
 
-    def read(self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station, src_ch: ChannelType, rec_ch: ChannelType
+    def read(
+        self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station, src_ch: ChannelType, rec_ch: ChannelType
     ) -> Tuple[Dict, np.ndarray]:
         dtype = CrossCorrelationDataStore._get_station_pair(self, src_sta, rec_sta)
         path = CrossCorrelationDataStore._get_channel_pair(self, src_ch, rec_ch)
