@@ -120,8 +120,8 @@ class ASDFCCStore(CrossCorrelationDataStore):
 
     # CrossCorrelationDataStore implementation
     def contains(self, timespan: DateTimeRange, src_chan: Channel, rec_chan: Channel) -> bool:
-        station_pair = self._get_station_pair(src_chan.station, rec_chan.station)
-        channel_pair = self._get_channel_pair(src_chan.type, rec_chan.type)
+        station_pair = CrossCorrelationDataStore._get_station_pair(self, src_chan.station, rec_chan.station)
+        channel_pair = CrossCorrelationDataStore._get_channel_pair(self, src_chan.type, rec_chan.type)
         logger.debug(f"station pair {station_pair} channel pair {channel_pair}")
         contains = self.datasets.contains(timespan, station_pair, channel_pair)
         if contains:
@@ -137,9 +137,9 @@ class ASDFCCStore(CrossCorrelationDataStore):
         corr: np.ndarray,
     ):
         # source-receiver pair: e.g. CI.ARV_CI.BAK
-        station_pair = self._get_station_pair(src_chan.station, rec_chan.station)
+        station_pair = CrossCorrelationDataStore._get_station_pair(self, src_chan.station, rec_chan.station)
         # channels, e.g. bhn_bhn
-        channels = self._get_channel_pair(src_chan.type, rec_chan.type)
+        channels = CrossCorrelationDataStore._get_channel_pair(self, src_chan.type, rec_chan.type)
         self.datasets.add_aux_data(timespan, cc_params, station_pair, channels, corr)
 
     def mark_done(self, timespan: DateTimeRange):
@@ -160,25 +160,17 @@ class ASDFCCStore(CrossCorrelationDataStore):
         self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station
     ) -> List[Tuple[Channel, Channel]]:
         ccf_ds = self.datasets[timespan]
-        dtype = self._get_station_pair(src_sta, rec_sta)
+        dtype = CrossCorrelationDataStore._get_station_pair(self, src_sta, rec_sta)
         ch_pairs = ccf_ds.auxiliary_data[dtype].list()
         return [tuple(map(ChannelType, ch.split("_"))) for ch in ch_pairs]
 
     def read(
         self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station, src_ch: ChannelType, rec_ch: ChannelType
     ) -> Tuple[Dict, np.ndarray]:
-        dtype = self._get_station_pair(src_sta, rec_sta)
-        path = self._get_channel_pair(src_ch, rec_ch)
+        dtype = CrossCorrelationDataStore._get_station_pair(self, src_sta, rec_sta)
+        path = CrossCorrelationDataStore._get_channel_pair(self, src_ch, rec_ch)
         stream = self.datasets[timespan].auxiliary_data[dtype][path]
         return (stream.parameters, stream.data)
-
-    # private helper methods
-
-    def _get_station_pair(self, src_sta: Station, rec_sta: Station) -> str:
-        return f"{src_sta}_{rec_sta}"
-
-    def _get_channel_pair(self, src_chan: ChannelType, rec_chan: ChannelType) -> str:
-        return f"{src_chan.name}_{rec_chan.name}"
 
 
 @lru_cache

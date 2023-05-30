@@ -28,8 +28,8 @@ class ZarrCCStore(CrossCorrelationDataStore):
     def contains(
         self, timespan: DateTimeRange, src_chan: Channel, rec_chan: Channel, parameters: ConfigParameters
     ) -> bool:
-        station_pair = self._get_station_pair(src_chan, rec_chan)
-        channel_pair = self._get_channel_pair(src_chan, rec_chan)
+        station_pair = CrossCorrelationDataStore._get_station_pair(self, src_chan, rec_chan)
+        channel_pair = CrossCorrelationDataStore._get_channel_pair(self, src_chan, rec_chan)
         logger.debug(f"station pair {station_pair} channel pair {channel_pair}")
         contains = self._contains(timespan, station_pair, channel_pair)
         if contains:
@@ -46,7 +46,7 @@ class ZarrCCStore(CrossCorrelationDataStore):
         corr: np.ndarray,
     ):
         # source-receiver pair: e.g. CI.ARV_CI.BAK
-        station_pair = self._get_station_pair(src_chan, rec_chan)
+        station_pair = CrossCorrelationDataStore._get_station_pair(self, src_chan, rec_chan)
         # channels, e.g. bhn_bhn
         channels = f"{src_chan.type.name}_{rec_chan.type.name}"
         data = np.zeros(corr.shape, dtype=corr.dtype)
@@ -62,8 +62,12 @@ class ZarrCCStore(CrossCorrelationDataStore):
             logger.info(f"Timespan {timespan} already computed")
         return done
 
-    def read(self, chan1: Channel, chan2: Channel, start: datetime, end: datetime) -> np.ndarray:
-        pass
+    def read(self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station, src_ch: ChannelType, rec_ch: ChannelType
+    ) -> Tuple[Dict, np.ndarray]:
+        dtype = CrossCorrelationDataStore._get_station_pair(self, src_sta, rec_sta)
+        path = CrossCorrelationDataStore._get_channel_pair(self, src_ch, rec_ch)
+        stream = self.datasets[timespan].auxiliary_data[dtype][path]
+        return (stream.parameters, stream.data)
 
     # private helper methods
     def _contains(self, timespan: DateTimeRange, data_type: str, path: str = None):
@@ -86,13 +90,6 @@ class ZarrCCStore(CrossCorrelationDataStore):
             ccf_ds.attrs.setdefault("auxiliary_data", {}).setdefault(data_type, {})
             ccf_ds.attrs["auxiliary_data"][data_type][path] = {"parameters": params}
             ccf_ds.create_dataset(f"auxiliary_data/{data_type}/{path}", data=data)
-
-    def _get_station_pairs(self, timespan: DateTimeRange) -> List[Tuple[Station, Station]]:
-        pairs = CrossCorrelationDataStore.get_station_pairs(timespan)
-        return pairs
-
-    def _get_channel_pairs(self, src_chan: Channel, rec_chan: Channel) -> str:
-        return f"{src_chan.type.name}_{rec_chan.type.name}"
 
     def _get_filename(self, timespan: DateTimeRange) -> str:
         return os.path.join(

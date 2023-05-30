@@ -5,7 +5,6 @@ import numpy as np
 import obspy
 from datetimerange import DateTimeRange
 
-from .constants import DATE_FORMAT, DONE_PATH, PROGRESS_DATATYPE
 from .datatypes import Channel, ChannelData, ChannelType, ConfigParameters, Station
 
 
@@ -84,10 +83,6 @@ class CrossCorrelationDataStore:
 
     @abstractmethod
     def get_station_pairs(self, timespan: DateTimeRange) -> List[Tuple[Station, Station]]:
-        #    ccf_ds = self.datasets[timespan]
-        #   data = ccf_ds.auxiliary_data.list()
-        #  return [_parse_station_pair(p) for p in data if p != PROGRESS_DATATYPE]
-
         pass
 
     @abstractmethod
@@ -102,10 +97,8 @@ class CrossCorrelationDataStore:
     ) -> Tuple[Dict, np.ndarray]:
         pass
 
-    def _parse_station_pair(pair: str) -> Tuple[Station, Station]:
-        # Parse from:'CI.ARV_CI.BAK
-        def station(sta: str) -> Station:
-            net, name = sta.split(".")
-            return Station(net, name)
+    def _get_station_pair(self, src_sta: Station, rec_sta: Station) -> str:
+        return f"{src_sta}_{rec_sta}"
 
-        return tuple(map(station, pair.split("_")))
+    def _get_channel_pair(self, src_chan: Channel, rec_chan: Channel) -> str:
+        return f"{src_chan.type.name}_{rec_chan.type.name}"
