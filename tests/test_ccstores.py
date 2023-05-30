@@ -5,11 +5,11 @@ from datetimerange import DateTimeRange
 
 from noisepy.seis.asdfstore import ASDFCCStore
 from noisepy.seis.datatypes import Channel, ChannelType, Station
-from noisepy.seis.stores import CrossCorrelationStore
+from noisepy.seis.stores import CrossCorrelationDataStore
 from noisepy.seis.zarrstore import ZarrCCStore
 
 
-def _ccstore_test_helper(ccstore: CrossCorrelationStore):
+def _ccstore_test_helper(ccstore: CrossCorrelationDataStore):
     def make_1dts(dt: datetime):
         dt = dt.replace(tzinfo=timezone.utc, microsecond=0)
         return DateTimeRange(dt, dt + timedelta(days=1))
