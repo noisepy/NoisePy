@@ -82,7 +82,7 @@ def download(
     sta_list = prepro_para.stations
 
     tt0 = time.time()
-    dlist = os.path.join(direc, "station.txt")  # CSV file for station location info
+    dlist = os.path.join(direc, "station.csv")  # CSV file for station location info
     prepro_para.respdir = os.path.join(
         direc, "../resp"
     )  # directory where resp files are located (required if rm_resp is neither 'no' nor 'inv')
@@ -205,7 +205,7 @@ def download(
                 "elevation": elev,
             }
             locs = pd.DataFrame(dict)
-            locs.to_csv(os.path.join(direc, "station.txt"), index=False)
+            locs.to_csv(os.path.join(direc, "station.csv"), index=False)
 
         # get MPI variables ready
         all_chunk = noise_module.get_event_list(prepro_para.start_date, prepro_para.end_date, prepro_para.inc_hours)

@@ -5,7 +5,7 @@ from s3fs import S3FileSystem
 from noisepy.seis.utils import fs_join, get_filesystem
 
 paths = [
-    ("/dir/", "file.txt", "/dir/file.txt"),
+    ("/dir/", "file.csv", "/dir/file.csv"),
     ("../relative", "file.json", "../relative/file.json"),
     ("s3://bucket/path", "file.xml", "s3://bucket/path/file.xml"),
 ]

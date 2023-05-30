@@ -49,7 +49,7 @@ def stack(cc_store: CrossCorrelationDataStore, stack_dir: str, fft_params: Confi
     tlog = TimeLogger(logger=logger)
     t_tot = tlog.reset()
     if fft_params.rotation and fft_params.correction:
-        corrfile = os.path.join(stack_dir, "../meso_angles.txt")  # csv file containing angle info to be corrected
+        corrfile = os.path.join(stack_dir, "../meso_angles.csv")  # csv file containing angle info to be corrected
         locs = pd.read_csv(corrfile)
     else:
         locs = []
