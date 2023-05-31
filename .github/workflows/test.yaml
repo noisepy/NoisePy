@@ -108,3 +108,31 @@ jobs:
         --ccf_path $RUNNER_TEMP/CCF_S3 --freq_norm rma \
         --xml_path s3://scedc-pds/FDSNstationXML/CI/ \
         --stations "SBC,RIO"
+  test_get_started_nb:
+    strategy:
+      fail-fast: true
+      matrix:
+        python_version: ['3.8', '3.10']
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v3.3.0
+    - name: Test get_started notebook
+      uses: ./.github/actions/notebook
+      with:
+        python-version: ${{matrix.python_version}}
+        notebook-path: "tutorials/get_started.ipynb"
+  test_scedc_nb:
+    strategy:
+      fail-fast: true
+      matrix:
+        python_version: ['3.8', '3.10']
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v3.3.0
+    - name: Test get_started notebook
+      uses: ./.github/actions/notebook
+      with:
+        python-version: ${{matrix.python_version}}
+        notebook-path: "tutorials/noisepy_scedc_tutorial.ipynb"
