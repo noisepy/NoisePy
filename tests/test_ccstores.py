@@ -1,12 +1,19 @@
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import numpy as np
+import pytest
 from datetimerange import DateTimeRange
 
 from noisepy.seis.asdfstore import ASDFCCStore
 from noisepy.seis.datatypes import Channel, ChannelType, Station
 from noisepy.seis.stores import CrossCorrelationDataStore
 from noisepy.seis.zarrstore import ZarrCCStore
+
+
+@pytest.fixture
+def ccstore(tmp_path: Path) -> CrossCorrelationDataStore:
+    return CrossCorrelationDataStore(str(tmp_path))
 
 
 def _ccstore_test_helper(ccstore: CrossCorrelationDataStore):
