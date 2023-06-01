@@ -5,4 +5,3 @@ format: jb-book
 root: get_started
 chapters:
 - file: noisepy_scedc_tutorial
-- file: run_mpi_scedc
