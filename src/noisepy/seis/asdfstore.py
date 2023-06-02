@@ -183,7 +183,7 @@ class ASDFCCStore(CrossCorrelationDataStore):
         path = self._get_channel_pair(src_ch, rec_ch)
         ds = self.datasets[timespan]
         stream = ds.auxiliary_data[dtype][path]
-        return (stream.parameters, stream.data)
+        return (stream.parameters, stream.data[:])
 
     def close(self) -> None:
         self.datasets.close()
