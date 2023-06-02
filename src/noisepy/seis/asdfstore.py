@@ -2,7 +2,6 @@ import datetime
 import glob
 import logging
 import os
-from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable, Dict, Generic, List, Optional, Tuple, TypeVar
 
@@ -41,7 +40,7 @@ class ASDFDirectory(Generic[T]):
     def __getitem__(self, key: T) -> pyasdf.ASDFDataSet:
         file_name = self.get_filename(key)
         file_path = os.path.join(self.directory, file_name)
-        return _get_dataset_cached(file_path, self.mode)
+        return _get_dataset(file_path, self.mode)
 
     def get_keys(self) -> List[T]:
         h5files = sorted(glob.glob(os.path.join(self.directory, "*.h5")))
@@ -57,18 +56,18 @@ class ASDFDirectory(Generic[T]):
         return done
 
     def contains(self, key: T, data_type: str, path: str = None):
-        ccf_ds = self[key]
-        if not ccf_ds:
-            return False
-        # source-receiver pair
-        exists = data_type in ccf_ds.auxiliary_data
-        if path is not None and exists:
-            return path in ccf_ds.auxiliary_data[data_type]
-        return exists
+        with self[key] as ccf_ds:
+            if not ccf_ds:
+                return False
+            # source-receiver pair
+            exists = data_type in ccf_ds.auxiliary_data
+            if path is not None and exists:
+                return path in ccf_ds.auxiliary_data[data_type]
+            return exists
 
     def add_aux_data(self, key: T, params: Dict, data_type: str, path: str, data: np.ndarray):
-        ccf_ds = self[key]
-        ccf_ds.add_auxiliary_data(data=data, data_type=data_type, path=path, parameters=params)
+        with self[key] as ccf_ds:
+            ccf_ds.add_auxiliary_data(data=data, data_type=data_type, path=path, parameters=params)
 
 
 class ASDFRawDataStore(RawDataStore):
@@ -93,20 +92,21 @@ class ASDFRawDataStore(RawDataStore):
         return self.datasets.get_keys()
 
     def read_data(self, timespan: DateTimeRange, chan: Channel) -> np.ndarray:
-        ds = self.datasets[timespan]
-        stream = ds.waveforms[str(chan.station)][str(chan.type)]
+        with self.datasets[timespan] as ds:
+            stream = ds.waveforms[str(chan.station)][str(chan.type)]
         return ChannelData(stream)
 
     def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
-        ds = self.datasets[timespan]
-        return ds.waveforms[str(station)]["StationXML"]
+        with self.datasets[timespan] as ds:
+            return ds.waveforms[str(station)]["StationXML"]
 
     def _create_station(self, timespan: DateTimeRange, name: str) -> Optional[Station]:
         # What should we do if there's no StationXML?
         try:
-            inventory = self.datasets[timespan].waveforms[name]["StationXML"]
-            sta, net, lon, lat, elv, loc = noise_module.sta_info_from_inv(inventory)
-            return Station(net, sta, lat, lon, elv, loc)
+            with self.datasets[timespan] as ds:
+                inventory = ds.waveforms[name]["StationXML"]
+                sta, net, lon, lat, elv, loc = noise_module.sta_info_from_inv(inventory)
+                return Station(net, sta, lat, lon, elv, loc)
         except Exception as e:
             logger.warning(f"Missing StationXML for station {name}. {e}")
             return None
@@ -181,14 +181,14 @@ class ASDFCCStore(CrossCorrelationDataStore):
         return f"{src_chan.name}_{rec_chan.name}"
 
 
-@lru_cache
-def _get_dataset_cached(filename: str, mode: str) -> pyasdf.ASDFDataSet:
-    logger.info(f"ASDFCCStore - Opening {filename}")
+def _get_dataset(filename: str, mode: str) -> pyasdf.ASDFDataSet:
+    logger.debug(f"ASDFCCStore - Opening {filename}")
     if os.path.exists(filename):
         return pyasdf.ASDFDataSet(filename, mode=mode, mpi=False, compression=None)
     elif mode == "r":
         return None
     else:  # create new file
+        Path(filename).parent.mkdir(exist_ok=True)
         return pyasdf.ASDFDataSet(filename, mode=mode, mpi=False, compression=None)
 
 
