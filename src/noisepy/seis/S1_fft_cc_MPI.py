@@ -154,6 +154,8 @@ def cross_correlate(
         cc_store.mark_done(ts)
 
     tlog.log("Step 1 in total", t_s1_total)
+    raw_store.close()
+    cc_store.close()
 
 
 @ray.remote

@@ -45,6 +45,9 @@ class RawDataStore(DataStore):
     def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
         pass
 
+    def close(self) -> None:
+        pass
+
 
 class CrossCorrelationDataStore:
     @abstractmethod
@@ -95,4 +98,7 @@ class CrossCorrelationDataStore:
     def read(
         self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station, src_ch: ChannelType, rec_ch: ChannelType
     ) -> Tuple[Dict, np.ndarray]:
+        pass
+
+    def close(self) -> None:
         pass
