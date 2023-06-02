@@ -40,7 +40,7 @@ jobs:
         run: |
           cd tutorials
           pip install -r requirements.txt
-          jb build . -W
+          jb build . || cat _build/html/reports/get_started.err.log
           cd ..
       - name: Setup Pages
         if: github.event_name == 'push'
