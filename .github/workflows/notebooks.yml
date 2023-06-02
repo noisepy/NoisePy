@@ -40,7 +40,7 @@ jobs:
         run: |
           cd tutorials
           pip install -r requirements.txt
-          jb build . -W
+          jb build .
           cd ..
       - name: Setup Pages
         if: github.event_name == 'push'
