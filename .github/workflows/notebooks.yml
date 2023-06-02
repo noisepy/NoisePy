@@ -40,11 +40,7 @@ jobs:
         run: |
           cd tutorials
           pip install -r requirements.txt
-          jb build . || echo FAILED!
-          echo ******* GET STARTED LOGS **************
-          cat _build/html/reports/get_started.err.log
-          echo ********* SCEDC LOGS *****************
-          cat _build/html/reports/noisepy_scedc_tutorial.err.log
+          jb build . -W
           cd ..
       - name: Setup Pages
         if: github.event_name == 'push'
