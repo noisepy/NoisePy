@@ -2,8 +2,8 @@ import gc
 import logging
 import sys
 from collections import OrderedDict
-from concurrent.futures import Executor, ThreadPoolExecutor, as_completed, wait
-from typing import Dict, List, Tuple
+from concurrent.futures import Executor, Future, ThreadPoolExecutor, as_completed
+from typing import Dict, Iterable, List, Tuple
 
 import numpy as np
 import obspy
@@ -309,6 +309,5 @@ def check_memory(params: ConfigParameters, nsta: int) -> int:
     return nseg_chunk
 
 
-def _get_results(futures):
-    completed, _ = wait(futures)
-    return [f.result() for f in completed]
+def _get_results(futures: Iterable[Future]) -> Iterable[Future]:
+    return [f.result() for f in futures]
