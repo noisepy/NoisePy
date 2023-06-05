@@ -81,12 +81,12 @@ class ASDFRawDataStore(RawDataStore):
         self.datasets = ASDFDirectory(directory, mode, _filename_from_timespan, _parse_timespan)
 
     def get_channels(self, timespan: DateTimeRange) -> List[Channel]:
-        ds = self.datasets[timespan]
-        stations = [self._create_station(timespan, sta) for sta in ds.waveforms.list() if sta is not None]
-        channels = [
-            Channel(ChannelType(tag), sta) for sta in stations for tag in ds.waveforms[str(sta)].get_waveform_tags()
-        ]
-        return channels
+        with self.datasets[timespan] as ds:
+            stations = [self._create_station(timespan, sta) for sta in ds.waveforms.list() if sta is not None]
+            channels = [
+                Channel(ChannelType(tag), sta) for sta in stations for tag in ds.waveforms[str(sta)].get_waveform_tags()
+            ]
+            return channels
 
     def get_timespans(self) -> List[DateTimeRange]:
         return self.datasets.get_keys()
@@ -152,26 +152,26 @@ class ASDFCCStore(CrossCorrelationDataStore):
         return self.datasets.get_keys()
 
     def get_station_pairs(self, timespan: DateTimeRange) -> List[Tuple[Station, Station]]:
-        ccf_ds = self.datasets[timespan]
-        data = ccf_ds.auxiliary_data.list()
-        return [_parse_station_pair(p) for p in data if p != PROGRESS_DATATYPE]
+        with self.datasets[timespan] as ccf_ds:
+            data = ccf_ds.auxiliary_data.list()
+            return [_parse_station_pair(p) for p in data if p != PROGRESS_DATATYPE]
 
     def get_channeltype_pairs(
         self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station
     ) -> List[Tuple[Channel, Channel]]:
-        ccf_ds = self.datasets[timespan]
-        dtype = self._get_station_pair(src_sta, rec_sta)
-        ch_pairs = ccf_ds.auxiliary_data[dtype].list()
-        return [tuple(map(ChannelType, ch.split("_"))) for ch in ch_pairs]
+        with self.datasets[timespan] as ccf_ds:
+            dtype = self._get_station_pair(src_sta, rec_sta)
+            ch_pairs = ccf_ds.auxiliary_data[dtype].list()
+            return [tuple(map(ChannelType, ch.split("_"))) for ch in ch_pairs]
 
     def read(
         self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station, src_ch: ChannelType, rec_ch: ChannelType
     ) -> Tuple[Dict, np.ndarray]:
         dtype = self._get_station_pair(src_sta, rec_sta)
         path = self._get_channel_pair(src_ch, rec_ch)
-        ds = self.datasets[timespan]
-        stream = ds.auxiliary_data[dtype][path]
-        return (stream.parameters, stream.data[:])
+        with self.datasets[timespan] as ds:
+            stream = ds.auxiliary_data[dtype][path]
+            return (stream.parameters, stream.data[:])
 
     # private helper methods
 
