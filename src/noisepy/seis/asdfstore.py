@@ -36,15 +36,11 @@ class ASDFDirectory(Generic[T]):
         self.mode = mode
         self.get_filename = get_filename
         self.parse_filename = parse_filename
-        self.open_datasets = {}
 
     def __getitem__(self, key: T) -> pyasdf.ASDFDataSet:
         file_name = self.get_filename(key)
         file_path = os.path.join(self.directory, file_name)
-        ds = _get_dataset(file_path, self.mode)
-        if self.mode != "r":
-            self.open_datasets[file_path] = ds
-        return ds
+        return _get_dataset(file_path, self.mode)
 
     def get_keys(self) -> List[T]:
         h5files = sorted(glob.glob(os.path.join(self.directory, "*.h5")))
@@ -73,11 +69,6 @@ class ASDFDirectory(Generic[T]):
         with self[key] as ccf_ds:
             ccf_ds.add_auxiliary_data(data=data, data_type=data_type, path=path, parameters=params)
 
-    def close(self) -> None:
-        for ds in self.open_datasets.values():
-            del ds
-        self.open_datasets.clear()
-
 
 class ASDFRawDataStore(RawDataStore):
     """
@@ -101,24 +92,21 @@ class ASDFRawDataStore(RawDataStore):
         return self.datasets.get_keys()
 
     def read_data(self, timespan: DateTimeRange, chan: Channel) -> np.ndarray:
-        ds = self.datasets[timespan]
-        stream = ds.waveforms[str(chan.station)][str(chan.type)]
+        with self.datasets[timespan] as ds:
+            stream = ds.waveforms[str(chan.station)][str(chan.type)]
         return ChannelData(stream)
 
     def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
-        ds = self.datasets[timespan]
-        return ds.waveforms[str(station)]["StationXML"]
-
-    def close(self) -> None:
-        self.datasets.close()
+        with self.datasets[timespan] as ds:
+            return ds.waveforms[str(station)]["StationXML"]
 
     def _create_station(self, timespan: DateTimeRange, name: str) -> Optional[Station]:
         # What should we do if there's no StationXML?
         try:
-            ds = self.datasets[timespan]
-            inventory = ds.waveforms[name]["StationXML"]
-            sta, net, lon, lat, elv, loc = noise_module.sta_info_from_inv(inventory)
-            return Station(net, sta, lat, lon, elv, loc)
+            with self.datasets[timespan] as ds:
+                inventory = ds.waveforms[name]["StationXML"]
+                sta, net, lon, lat, elv, loc = noise_module.sta_info_from_inv(inventory)
+                return Station(net, sta, lat, lon, elv, loc)
         except Exception as e:
             logger.warning(f"Missing StationXML for station {name}. {e}")
             return None
@@ -184,9 +172,6 @@ class ASDFCCStore(CrossCorrelationDataStore):
         ds = self.datasets[timespan]
         stream = ds.auxiliary_data[dtype][path]
         return (stream.parameters, stream.data[:])
-
-    def close(self) -> None:
-        self.datasets.close()
 
     # private helper methods
 
