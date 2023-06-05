@@ -211,7 +211,7 @@ class ChannelData:
 
     def __init__(self, stream: obspy.Stream):
         self.stream = stream
-        self.data = stream[0].data
+        self.data = stream[0].data[:]
         self.sampling_rate = stream[0].stats.sampling_rate
         self.start_timestamp = stream[0].stats.starttime.timestamp
 
