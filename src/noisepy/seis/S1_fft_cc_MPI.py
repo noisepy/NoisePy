@@ -7,6 +7,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 import obspy
 import ray
+from dask.distributed import Client
 from datetimerange import DateTimeRange
 from scipy.fftpack.helper import next_fast_len
 
@@ -51,6 +52,8 @@ NOTE:
     for better performance.
 """
 
+client = Client()
+
 
 def cross_correlate(
     raw_store: RawDataStore,
@@ -70,10 +73,10 @@ def cross_correlate(
     tlog = TimeLogger(logger, logging.INFO)
     t_s1_total = tlog.reset()
 
-    if not ray.is_initialized():
-        context = ray.init(ignore_reinit_error=True)
-        tlog.log("Ray init")
-        logger.info(context.dashboard_url)
+    # if not ray.is_initialized():
+    #     context = ray.init(ignore_reinit_error=True)
+    #     tlog.log("Ray init")
+    #     logger.info(context.dashboard_url)
 
     # set variables to broadcast
     timespans = raw_store.get_timespans()
@@ -110,8 +113,9 @@ def cross_correlate(
         # loop through all channels
         tlog.reset()
 
-        fft_refs = [compute_fft_ray.remote(fft_params, chd[1]) for chd in ch_data_tuples]
-        fft_datas = ray.get(fft_refs)
+        # fft_refs = [compute_fft_ray.remote(fft_params, chd[1]) for chd in ch_data_tuples]
+        # fft_datas = ray.get(fft_refs)
+        fft_datas = client.map(compute_fft_ray, ch_data_tuples)
         for ix_ch, fft_data in enumerate(fft_datas):
             if fft_data.fft.size > 0:
                 ffts[ix_ch] = fft_data
@@ -126,7 +130,7 @@ def cross_correlate(
         tasks = []
 
         # Put the FFTs into Ray's shared memory since they will be used by all tasks
-        ffts_ref = ray.put(ffts)
+        # ffts_ref = ray.put(ffts)
         tlog.log("ray.put(ffts)")
         # # ###########PERFORM CROSS-CORRELATION##################
         for iiS in ffts.keys():  # looping over the channel source
@@ -135,7 +139,8 @@ def cross_correlate(
             # This means the first task is the longest and the last one if very short. However,
             # parallelizing over the full set of pairs results in too many tiny tasks and the parallelization
             # overhead outweighs the benefits.
-            task = source_cross_correlation.remote(fft_params, channels, ffts_ref, Nfft, iiS)
+            # task = source_cross_correlation.remote(fft_params, channels, ffts_ref, Nfft, iiS)
+            task = client.submit(source_cross_correlation, fft_params, channels, ffts, Nfft, iiS)
             tasks.append(task)
         tlog.log(f"Created {len(tasks)} CC tasks", t_tasks)
         while len(tasks) > 0:
@@ -156,7 +161,7 @@ def cross_correlate(
     tlog.log("Step 1 in total", t_s1_total)
 
 
-@ray.remote
+# @ray.remote
 def source_cross_correlation(
     fft_params: ConfigParameters,
     channels: List[Channel],
@@ -203,6 +208,7 @@ def preprocess(
 ) -> List[Tuple[Channel, ChannelData]]:
     stream_refs = [preprocess_ray.remote(raw_store, t[0], t[1], fft_params, ts) for t in ch_data]
     new_streams = ray.get(stream_refs)
+    # new_streams = client.map(preprocess_ray, ch)
     channels = list(zip(*ch_data))[0]
     return list(zip(channels, [ChannelData(st) for st in new_streams]))
 
@@ -243,7 +249,7 @@ def cross_corr(
     return (src_chan, rec_chan, parameters, corr)
 
 
-@ray.remote
+# @ray.remote
 def preprocess_ray(
     raw_store: RawDataStore, ch: Channel, ch_data: ChannelData, fft_params: ConfigParameters, ts: DateTimeRange
 ) -> obspy.Stream:
@@ -256,7 +262,7 @@ def preprocess_ray(
     )
 
 
-@ray.remote
+# @ray.remote
 def compute_fft_ray(fft_params: ConfigParameters, ch_data: ChannelData) -> NoiseFFT:
     if ch_data.data.size == 0:
         return NoiseFFT(np.empty(0), np.empty(0), np.empty(0), 0, 0)
@@ -294,7 +300,7 @@ def _read_channels(
     return _filter_channel_data(tuples, samp_freq)
 
 
-@ray.remote
+# @ray.remote
 def read_data_ray(store: RawDataStore, ts: DateTimeRange, ch: Channel) -> ChannelData:
     return store.read_data(ts, ch)
 
