@@ -244,7 +244,6 @@ def download(
         with pyasdf.ASDFDataSet(ff, mpi=False, compression="gzip-3", mode="a") as ds:
             # loop through each channel
             for ista in range(nsta):
-                logger.info(f"Start download for {ff} / {sta[ista]}")
                 # continue when there are alreay data for sta A at day X
                 if num_records[ista] == ncomp:
                     continue
@@ -263,7 +262,6 @@ def download(
                     logger.error(e)
                     continue
 
-                logger.info(f"Got station inventory for {sta[ista]}")
                 # add the inventory for all components + all time of this tation
                 try:
                     ds.add_stationxml(sta_inv)
@@ -285,8 +283,6 @@ def download(
                 except Exception as e:
                     logger.error(f"{e} for {sta[ista]}")
                     continue
-
-                logger.info(f"Got waveforms for {sta[ista]}")
 
                 # preprocess to clean data
                 tr = noise_module.preprocess_raw(

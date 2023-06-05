@@ -3,6 +3,5 @@
 
 format: jb-book
 root: get_started
-# root: noisepy_scedc_tutorial
 chapters:
 - file: noisepy_scedc_tutorial
