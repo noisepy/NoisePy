@@ -1,0 +1,170 @@
+import logging
+import os
+import io
+import re
+import sqlite3
+from datetime import datetime, timedelta, timezone
+from typing import Callable, List
+
+import obspy
+from datetimerange import DateTimeRange
+
+from noisepy.seis.channelcatalog import ChannelCatalog
+from noisepy.seis.stores import RawDataStore
+
+from .datatypes import Channel, ChannelData, ChannelType, Station
+from .utils import fs_join, get_filesystem
+
+logger = logging.getLogger(__name__)
+
+
+def channel_filter(stations: List[str], ch_prefix: str) -> Callable[[Channel], bool]:
+    """
+    Helper function for creating a channel filter to be used in the constructor of the store.
+    This filter uses a list of allowed station name along with a channel filter prefix.
+    """
+    sta_set = set(stations)
+
+    def filter(ch: Channel) -> bool:
+        return ch.station.name in sta_set and ch.type.name.lower().startswith(ch_prefix.lower())
+
+    return filter
+
+
+class PNWDataStore(RawDataStore):
+    """
+    A data store implementation to read from a directory of miniSEED (.ms) files from PNWstore1 data storage.
+    Every directory is a a day and each .ms file contains the data for a station.
+    """
+
+    # TODO: Support reading directly from the S3 bucket
+
+    # for checking the filename has the form: CIGMR__LHN___2022002.ms
+    file_re = re.compile(r".*[0-9]{7}$", re.IGNORECASE)
+
+    def __init__(
+        self,
+        path: str,
+        chan_catalog: ChannelCatalog,
+        ch_filter: Callable[[Channel], bool] = None,
+        date_range: DateTimeRange = None,
+    ):
+        """
+        Parameters:
+            path: path to look for ms files. Can be a local file directory or an s3://... url path
+            chan_catalog: ChannelCatalog to retrieve inventory information for the channels
+            channel_filter: Function to decide whether a channel should be used or not,
+                            if None, all channels are used
+        """
+        super().__init__()
+        self.fs = get_filesystem(path)
+        self.channel_catalog = chan_catalog
+        self.path = path
+        self.paths = {}
+        # to store a dict of {timerange: list of channels}
+        self.channels = {}
+        if ch_filter is None:
+            ch_filter = lambda s: True  # noqa: E731
+
+        if date_range is None:
+            self._load_channels(self.path, ch_filter)
+        else:
+            dt = date_range.end_datetime - date_range.start_datetime
+            for d in range(0, dt.days):
+                date = date_range.start_datetime + timedelta(days=d)
+                date_path = str(date.year) + "/" + str(date.timetuple().tm_yday).zfill(3) + "/"
+                full_path = fs_join(self.path, date_path)
+                self._load_channels(full_path, ch_filter)
+
+    def _load_channels(self, full_path: str, ch_filter: Callable[[Channel], bool]):
+        _, _, _, _, _, net, year, doy, _ = full_path.split('/')
+        sqlite = f"/fd1/yiyu_data/PNWstore_sqlite/{year}.sqlite"
+        db = sqlite3.connect(sqlite)
+        cursor = db.cursor()
+        rst = cursor.execute(f"SELECT network, station, channel, location, filename, byteoffset, bytes " \
+                              f"FROM tsindex WHERE filename LIKE '%%/{net}/{year}/{doy}/%%'")
+        timespans = []
+        for i in rst:
+            timespan = PNWDataStore._parse_timespan(os.path.basename(i[4]))
+            self.paths[timespan.start_datetime] = full_path
+            channel = PNWDataStore._parse_channel(i)
+            if not ch_filter(channel):
+                continue
+            key = str(timespan) 
+            if key not in self.channels:
+                timespans.append(timespan)
+                self.channels[key] = [channel]
+            else:
+                self.channels[key].append(channel)
+        # msfiles = [f for f in self.fs.glob(fs_join(full_path, "*"))]
+        # logger.info(f"Loading {len(msfiles)} files from {full_path}")
+        # timespans = []
+        # for f in msfiles:
+            # timespan = PNWDataStore._parse_timespan(f)
+        #     self.paths[timespan.start_datetime] = full_path
+        #     channel = PNWDataStore._parse_channel(os.path.basename(f))
+        #     if not ch_filter(channel):
+        #         continue
+        #     key = str(timespan)  # DataTimeFrame is not hashable
+        #     if key not in self.channels:
+        #         timespans.append(timespan)
+        #         self.channels[key] = [channel]
+        #     else:
+        #         self.channels[key].append(channel)
+        # logger.info(
+        #     f"Init: {len(self.channels)} timespans and {sum(len(ch) for ch in  self.channels.values())} channels"
+        # )
+
+    def get_channels(self, timespan: DateTimeRange) -> List[Channel]:
+        tmp_channels = self.channels.get(str(timespan), [])
+        # return list(map(lambda c: self.channel_catalog.get_full_channel(timespan, c), tmp_channels))
+        return tmp_channels
+
+    def get_timespans(self) -> List[DateTimeRange]:
+        return list([DateTimeRange.from_range_text(d) for d in sorted(self.channels.keys())])
+
+    def read_data(self, timespan: DateTimeRange, chan: Channel) -> ChannelData:
+        # reconstruct the file name from the channel parameters
+        chan_str = (
+            f"{chan.station.name}.{chan.station.network}.{timespan.start_datetime.strftime('%Y.%j')}"
+        )
+        filename = fs_join(
+            self.paths[timespan.start_datetime], f"{chan_str}"
+        )
+        if not self.fs.exists(filename):
+            logger.warning(f"Could not find file {filename}")
+            return ChannelData.empty()
+
+        with self.fs.open(filename, "rb") as f:
+            f.seek(chan.byteoffset)
+            buff = io.BytesIO(f.read(chan.bytes))
+            stream = obspy.read(buff)
+        return ChannelData(stream)
+
+    def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
+        return self.channel_catalog.get_inventory(timespan, station)
+
+    def _parse_timespan(filename: str) -> DateTimeRange:
+        # The PNWStore repository stores files in the form: STA.NET.YYYY.DOY
+        # YA2.UW.2020.366
+        year = int(filename.split('.')[2])
+        day = int(filename.split('.')[3])
+        jan1 = datetime(year, 1, 1, tzinfo=timezone.utc)
+        return DateTimeRange(jan1 + timedelta(days=day - 1), jan1 + timedelta(days=day))
+
+    def _parse_channel(query: tuple) -> Channel:
+        # e.g.
+        # YA2.UW.2020.366
+        network = query[0]
+        station = query[1]
+        channel = query[2]
+        location = query[3]
+        c =  Channel(
+            ChannelType(channel, location),
+            # lat/lon/elev will be populated later
+            Station(network, station, location=location),
+        )
+        c.filename = query[4]
+        c.byteoffset = query[5]
+        c.bytes = query[6]
+        return c

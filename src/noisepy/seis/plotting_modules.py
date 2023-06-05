@@ -145,10 +145,10 @@ def plot_substack_cc(sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir=
         ds = pyasdf.ASDFDataSet(sfile, mode="r")
         # extract common variables
         spairs = ds.auxiliary_data.list()
-        path_lists = ds.auxiliary_data[spairs[0]].list()
-        flag = ds.auxiliary_data[spairs[0]][path_lists[0]].parameters["substack"]
-        dt = ds.auxiliary_data[spairs[0]][path_lists[0]].parameters["dt"]
-        maxlag = ds.auxiliary_data[spairs[0]][path_lists[0]].parameters["maxlag"]
+        path_lists = ds.auxiliary_data[spairs[1]].list()
+        flag = ds.auxiliary_data[spairs[1]][path_lists[0]].parameters["substack"]
+        dt = ds.auxiliary_data[spairs[1]][path_lists[0]].parameters["dt"]
+        maxlag = ds.auxiliary_data[spairs[1]][path_lists[0]].parameters["maxlag"]
     except Exception:
         raise Exception("exit! cannot open %s to read" % sfile)
 
