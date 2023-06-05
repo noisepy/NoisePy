@@ -71,6 +71,7 @@ def cross_correlate(
     t_s1_total = tlog.reset()
 
     if not ray.is_initialized():
+        logger.info("Initializing Ray")
         context = ray.init(ignore_reinit_error=True)
         tlog.log("Ray init")
         logger.info(context.dashboard_url)
