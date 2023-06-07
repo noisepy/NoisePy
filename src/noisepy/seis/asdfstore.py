@@ -13,7 +13,7 @@ from datetimerange import DateTimeRange
 from . import noise_module
 from .constants import DATE_FORMAT, DONE_PATH, PROGRESS_DATATYPE
 from .datatypes import Channel, ChannelData, ChannelType, Station
-from .stores import CrossCorrelationDataStore, RawDataStore
+from .stores import CrossCorrelationDataStore, RawDataStore, StackStore
 
 logger = logging.getLogger(__name__)
 
@@ -182,6 +182,18 @@ class ASDFCCStore(CrossCorrelationDataStore):
         return f"{src_chan.name}_{rec_chan.name}"
 
 
+class ASDFStackStore(StackStore):
+    def __init__(self, directory: str, mode: str = "w"):
+        super().__init__()
+        self.datasets = ASDFDirectory(directory, mode, _filename_from_stations, _parse_station_pair)
+
+    def append(
+        self, src: Station, rec: Station, components: str, name: str, stack_params: Dict[str, Any], data: np.ndarray
+    ):
+        logger.info(f"Writing {name}/{components}")
+        self.datasets.add_aux_data((src, rec), stack_params, name, components, data)
+
+
 def _get_dataset(filename: str, mode: str) -> pyasdf.ASDFDataSet:
     logger.debug(f"ASDFCCStore - Opening {filename}")
     if os.path.exists(filename):
@@ -189,7 +201,7 @@ def _get_dataset(filename: str, mode: str) -> pyasdf.ASDFDataSet:
     elif mode == "r":
         return None
     else:  # create new file
-        Path(filename).parent.mkdir(exist_ok=True)
+        Path(filename).parent.mkdir(exist_ok=True, parents=True)
         return pyasdf.ASDFDataSet(filename, mode=mode, mpi=False, compression=None)
 
 
@@ -204,7 +216,7 @@ def _filename_from_timespan(timespan: DateTimeRange) -> str:
 
 
 def _filename_from_stations(pair: Tuple[Station, Station]) -> str:
-    return f"{pair[0]}_{pair[1]}.h5"
+    return f"{pair[0]}/{pair[0]}_{pair[1]}.h5"
 
 
 def _parse_station_pair(pair: str) -> Tuple[Station, Station]:

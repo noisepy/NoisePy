@@ -21,15 +21,6 @@ class DataStore(ABC):
     def get_timespans(self) -> List[DateTimeRange]:
         pass
 
-    # TODO: Temporary method to get a list of stations to pass to the
-    # stack() function. It can be removed once the stacking uses
-    # the DataStores instead of direct file access
-    def get_station_list(self) -> List[str]:
-        ts = self.get_timespans()
-        chs = self.get_channels(ts[0])
-        stations = sorted(set(map(lambda c: str(c.station), chs)))
-        return stations
-
 
 class RawDataStore(DataStore):
     """
@@ -95,4 +86,12 @@ class CrossCorrelationDataStore:
     def read(
         self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station, src_ch: ChannelType, rec_ch: ChannelType
     ) -> Tuple[Dict, np.ndarray]:
+        pass
+
+
+class StackStore:
+    @abstractmethod
+    def append(
+        self, src: Station, rec: Station, components: str, name: str, stack_params: Dict[str, Any], data: np.ndarray
+    ):
         pass

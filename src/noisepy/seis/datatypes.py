@@ -84,6 +84,16 @@ class CorrelationMethod(Enum):
     DECONV = 2
 
 
+class StackMethod(str, Enum):
+    LINEAR = "linear"
+    PWS = "pws"
+    ROBUST = "robust"
+    AUTO_COVARIANCE = "auto_covariance"
+    NROOT = "nroot"
+    SELECTIVE = "selective"
+    ALL = "all"
+
+
 class ConfigParameters(YamlModel):
     start_date: datetime = Field(default=datetime(2019, 1, 1))
     end_date: datetime = Field(default=datetime(2019, 1, 2))
@@ -147,12 +157,12 @@ class ConfigParameters(YamlModel):
     acorr_only: bool = Field(default=False, description="only perform auto-correlation")
     xcorr_only: bool = Field(default=True, description="only perform cross-correlation or not")
     # Stacking parameters:
-    stack_method: str = Field(default="linear")
+    stack_method: str = Field(default=StackMethod.LINEAR, type=StackMethod)
     keep_substack: bool = Field(default=False, description="keep all sub-stacks in final ASDF file")
     # new rotation para
     rotation: bool = Field(default=True, description="rotation from E-N-Z to R-T-Z")
     correction: bool = Field(default=False, description="angle correction due to mis-orientation")
-
+    correction_csv: str = Field(default=None, description="Path to e.g. meso_angles.csv")
     # 'RESP', or 'polozeros' to remove response
 
     @property
