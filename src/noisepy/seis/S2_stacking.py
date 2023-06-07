@@ -72,16 +72,9 @@ def stack(cc_store: CrossCorrelationDataStore, stack_store: StackStore, fft_para
     size = comm.Get_size()
 
     if rank == 0:
-        # if not os.path.isdir(stack_dir):
-        #     os.mkdir(stack_dir)
-
         timespans = cc_store.get_timespans()
         pairs_all = list(set(pair for ts in timespans for pair in cc_store.get_station_pairs(ts)))
         logger.info(f"Station pairs: {pairs_all}")
-        # stations = set(pair[0] for pair in pairs_all)
-
-        # for station in stations:
-        #     os.makedirs(os.path.join(stack_dir, str(station)), exist_ok=True)
 
         splits = len(pairs_all)
         if len(timespans) == 0 or splits == 0:
@@ -113,9 +106,8 @@ def stack(cc_store: CrossCorrelationDataStore, stack_store: StackStore, fft_para
         else:
             fauto = 0
 
-        # toutfn = os.path.join(stack_dir, idir, f"{src_sta}_{rec_sta}.tmp")
-        # if os.path.isfile(toutfn):
-        #     continue
+        if stack_store.is_done(src_sta, rec_sta):
+            continue
 
         # crude estimation on memory needs (assume float32)
         num_segmts, npts_segmt = calc_segments(fft_params, num_chunk)
@@ -212,63 +204,24 @@ def stack(cc_store: CrossCorrelationDataStore, stack_store: StackStore, fft_para
                     bigstack1[icomp] = allstacks2
                     bigstack2[icomp] = allstacks3
 
-                # write stacked data into ASDF file
-                # with pyasdf.ASDFDataSet(stack_h5, mpi=False) as ds:
                 tparameters["time"] = stamps_final[0]
                 tparameters["ngood"] = nstacks
                 if fft_params.stack_method != "all":
                     to_write = [(fft_params.stack_method, allstacks1)]
-                    # data_type = "Allstack_" + fft_params.stack_method
-                    # stack_name = "Allstack_" + fft_params.stack_method
-                    # ds.add_auxiliary_data(
-                    #     data=allstacks1,
-                    #     data_type=data_type,
-                    #     path=comp,
-                    #     parameters=tparameters,
-                    # )
                 else:
                     to_write = [
                         (StackMethod.LINEAR, allstacks1),
                         (StackMethod.PWS, allstacks2),
                         (StackMethod.ROBUST, allstacks3),
                     ]
-                    # ds.add_auxiliary_data(
-                    #     data=allstacks1,
-                    #     data_type="Allstack_linear",
-                    #     path=comp,
-                    #     parameters=tparameters,
-                    # )
-                    # ds.add_auxiliary_data(
-                    #     data=allstacks2,
-                    #     data_type="Allstack_pws",
-                    #     path=comp,
-                    #     parameters=tparameters,
-                    # )
-                    # ds.add_auxiliary_data(
-                    #     data=allstacks3,
-                    #     data_type="Allstack_robust",
-                    #     path=comp,
-                    #     parameters=tparameters,
-                    # )
                 write_stacks(comp, tparameters, to_write)
 
             # keep a track of all sub-stacked data from S1
             if fft_params.keep_substack:
                 for ii in range(cc_final.shape[0]):
-                    # with pyasdf.ASDFDataSet(stack_h5, mpi=False) as ds:
-                    #     tparameters["time"] = stamps_final[ii]
-                    #     tparameters["ngood"] = ngood_final[ii]
-                    #     data_type = "T" + str(int(stamps_final[ii]))
-                    #     ds.add_auxiliary_data(
-                    #         data=cc_final[ii],
-                    #         data_type=data_type,
-                    #         path=comp,
-                    #         parameters=tparameters,
-                    #     )
                     tparameters["time"] = stamps_final[ii]
                     tparameters["ngood"] = ngood_final[ii]
                     stack_name = "T" + str(int(stamps_final[ii]))
-                    # stack_store.append(comp, stack_name, tparameters, cc_final[ii])
                     write_stacks(comp, tparameters, [(stack_name, cc_final[ii])])
 
             tlog.log(f"stack one component with {fft_params.stack_method} stacking method")
@@ -287,14 +240,6 @@ def stack(cc_store: CrossCorrelationDataStore, stack_store: StackStore, fft_para
                     comp = rtz_components[icomp]
                     tparameters["time"] = stamps_final[0]
                     tparameters["ngood"] = nstacks
-                    # data_type = "Allstack_" + fft_params.stack_method
-                    # with pyasdf.ASDFDataSet(stack_h5, mpi=False) as ds2:
-                    #     ds2.add_auxiliary_data(
-                    #         data=bigstack_rotated[icomp],
-                    #         data_type=data_type,
-                    #         path=comp,
-                    #         parameters=tparameters,
-                    #     )
                     write_stacks(comp, tparameters, [(fft_params.stack_method, bigstack_rotated[icomp])])
             else:
                 bigstack_rotated = noise_module.rotation(bigstack, tparameters, locs)
@@ -306,24 +251,6 @@ def stack(cc_store: CrossCorrelationDataStore, stack_store: StackStore, fft_para
                     comp = rtz_components[icomp]
                     tparameters["time"] = stamps_final[0]
                     tparameters["ngood"] = nstacks
-                    # with pyasdf.ASDFDataSet(stack_h5, mpi=False) as ds2:
-                    #     ds2.add_auxiliary_data(
-                    #         data_type="Allstack_linear",
-                    #         path=comp,
-                    #         parameters=tparameters,
-                    #     )
-                    #     ds2.add_auxiliary_data(
-                    #         data=bigstack_rotated1[icomp],
-                    #         data_type="Allstack_pws",
-                    #         path=comp,
-                    #         parameters=tparameters,
-                    #     )
-                    #     ds2.add_auxiliary_data(
-                    #         data=bigstack_rotated2[icomp],
-                    #         data_type="Allstack_robust",
-                    #         path=comp,
-                    #         parameters=tparameters,
-                    #     )
                     stacks = [
                         (StackMethod.LINEAR, bigstack_rotated[icomp]),
                         (StackMethod.PWS, bigstack_rotated1[icomp]),
@@ -332,10 +259,7 @@ def stack(cc_store: CrossCorrelationDataStore, stack_store: StackStore, fft_para
                     write_stacks(comp, tparameters, stacks)
         tlog.log(f"stack/rotate all station pairs {pairs_all[ipair]}", t_load)
 
-        # write file stamps
-        # ftmp = open(toutfn, "w")
-        # ftmp.write("done")
-        # ftmp.close()
+        stack_store.mark_done(src_sta, rec_sta)
 
     tlog.log("step 2 in total", t_tot)
     comm.barrier()

@@ -183,14 +183,19 @@ class ASDFCCStore(CrossCorrelationDataStore):
 
 
 class ASDFStackStore(StackStore):
-    def __init__(self, directory: str, mode: str = "w"):
+    def __init__(self, directory: str, mode: str = "a"):
         super().__init__()
         self.datasets = ASDFDirectory(directory, mode, _filename_from_stations, _parse_station_pair)
+
+    def mark_done(self, src: Station, rec: Station):
+        self.datasets.mark_done((src, rec))
+
+    def is_done(self, src: Station, rec: Station):
+        return self.datasets.is_done((src, rec))
 
     def append(
         self, src: Station, rec: Station, components: str, name: str, stack_params: Dict[str, Any], data: np.ndarray
     ):
-        logger.info(f"Writing {name}/{components}")
         self.datasets.add_aux_data((src, rec), stack_params, name, components, data)
 
 

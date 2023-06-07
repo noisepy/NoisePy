@@ -91,6 +91,14 @@ class CrossCorrelationDataStore:
 
 class StackStore:
     @abstractmethod
+    def mark_done(self, src: Station, rec: Station):
+        pass
+
+    @abstractmethod
+    def is_done(self, src: Station, rec: Station):
+        pass
+
+    @abstractmethod
     def append(
         self, src: Station, rec: Station, components: str, name: str, stack_params: Dict[str, Any], data: np.ndarray
     ):
