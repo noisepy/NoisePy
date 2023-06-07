@@ -42,7 +42,6 @@ NOTE:
 MAX_MEM = 4.0
 
 
-# def stack(cc_store: CrossCorrelationDataStore, stack_dir: str, fft_params: ConfigParameters):
 def stack(cc_store: CrossCorrelationDataStore, stack_store: StackStore, fft_params: ConfigParameters):
     tlog = TimeLogger(logger=logger)
     t_tot = tlog.reset()
@@ -183,7 +182,6 @@ def stack(cc_store: CrossCorrelationDataStore, stack_store: StackStore, fft_para
                 iflag = 0
                 continue
 
-            # logger.debug(f"h5 stack path: {stack_h5}")
             # output stacked data
             (
                 cc_final,
