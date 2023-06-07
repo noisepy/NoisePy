@@ -98,7 +98,6 @@ def stack(cc_store: CrossCorrelationDataStore, stack_store: StackStore, fft_para
         sta_pair = pairs_all[ipair]
         src_sta = sta_pair[0]
         rec_sta = sta_pair[1]
-        # idir = str(src_sta)
 
         # check if it is auto-correlation
         if src_sta == rec_sta:

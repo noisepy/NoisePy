@@ -90,6 +90,10 @@ class CrossCorrelationDataStore:
 
 
 class StackStore:
+    """
+    A class for writing stack data
+    """
+
     @abstractmethod
     def mark_done(self, src: Station, rec: Station):
         pass
