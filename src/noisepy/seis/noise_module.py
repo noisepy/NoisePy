@@ -23,7 +23,7 @@ from obspy.signal.util import _npts2nfft
 from scipy.fftpack import next_fast_len
 from scipy.signal import hilbert
 
-from noisepy.seis.datatypes import ChannelData
+from noisepy.seis.datatypes import ChannelData, StackMethod
 from noisepy.seis.S1_fft_cc_MPI import ConfigParameters
 
 logger = logging.getLogger(__name__)
@@ -878,13 +878,13 @@ def correlate_nonlinear_stack(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
 
     else:
         # average daily cross correlation functions
-        if stack_method == "linear":
+        if stack_method == StackMethod.LINEAR:
             ampmax = np.max(s_corr, axis=1)
             tindx = np.where((ampmax < 20 * np.median(ampmax)) & (ampmax > 0))[0]
             s_corr = np.mean(s_corr[tindx], axis=0)
             t_corr = dataS_t[0]
             n_corr = len(tindx)
-        elif stack_method == "robust":
+        elif stack_method == StackMethod.ROBUST:
             logger.info("do robust substacking")
             s_corr = robust_stack(s_corr, 0.001)
             t_corr = dataS_t[0]
@@ -994,17 +994,17 @@ def stacking(cc_array, cc_time, cc_ngood, stack_para):
         allstacks2 = np.zeros(npts, dtype=np.float32)
         allstacks3 = np.zeros(npts, dtype=np.float32)
 
-        if smethod == "linear":
+        if smethod == StackMethod.LINEAR:
             allstacks1 = np.mean(cc_array, axis=0)
-        elif smethod == "pws":
+        elif smethod == StackMethod.PWS:
             allstacks1 = pws(cc_array, samp_freq)
-        elif smethod == "robust":
+        elif smethod == StackMethod.ROBUST:
             allstacks1, w, nstep = robust_stack(cc_array, 0.001)
-        elif smethod == "auto_covariance":
+        elif smethod == StackMethod.AUTO_COVARIANCE:
             allstacks1 = adaptive_filter(cc_array, 1)
-        elif smethod == "nroot":
+        elif smethod == StackMethod.NROOT:
             allstacks1 = nroot_stack(cc_array, 2)
-        elif smethod == "all":
+        elif smethod == StackMethod.ALL:
             allstacks1 = np.mean(cc_array, axis=0)
             allstacks2 = pws(cc_array, samp_freq)
             allstacks3, w, nstep = robust_stack(cc_array, 0.001)
@@ -1088,18 +1088,18 @@ def stacking_rma(cc_array, cc_time, cc_ngood, stack_para):
         allstacks3 = np.zeros(npts, dtype=np.float32)
         allstacks4 = np.zeros(npts, dtype=np.float32)
 
-        if smethod == "linear":
+        if smethod == StackMethod.LINEAR:
             allstacks1 = np.mean(cc_array, axis=0)
-        elif smethod == "pws":
+        elif smethod == StackMethod.PWS:
             allstacks1 = pws(cc_array, samp_freq)
-        elif smethod == "robust":
+        elif smethod == StackMethod.ROBUST:
             (
                 allstacks1,
                 w,
             ) = robust_stack(cc_array, 0.001)
-        elif smethod == "selective":
+        elif smethod == StackMethod.SELECTIVE:
             allstacks1 = selective_stack(cc_array, 0.001)
-        elif smethod == "all":
+        elif smethod == StackMethod.ALL:
             allstacks1 = np.mean(cc_array, axis=0)
             allstacks2 = pws(cc_array, samp_freq)
             allstacks3 = robust_stack(cc_array, 0.001)
