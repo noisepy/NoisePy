@@ -10,6 +10,8 @@ import obspy
 from pydantic import Field, root_validator
 from pydantic_yaml import YamlModel
 
+INVALID_COORD = -sys.float_info.max
+
 
 @dataclass
 class ChannelType:
@@ -60,9 +62,9 @@ class Station:
         self,
         network: str,
         name: str,
-        lat: float = sys.float_info.min,
-        lon: float = sys.float_info.min,
-        elevation: float = sys.float_info.min,
+        lat: float = INVALID_COORD,
+        lon: float = INVALID_COORD,
+        elevation: float = INVALID_COORD,
         location: str = "",
     ):
         self.network = network
@@ -71,6 +73,9 @@ class Station:
         self.lon = lon
         self.elevation = elevation
         self.location = location
+
+    def valid(self) -> bool:
+        return min(self.lat, self.lon, self.elevation) > INVALID_COORD
 
     def __repr__(self) -> str:
         return f"{self.network}.{self.name}"
