@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from noisepy.seis.datatypes import ChannelType, ConfigParameters, StackMethod
+from noisepy.seis.datatypes import ChannelType, ConfigParameters, StackMethod, Station
 
 
 def test_channeltype():
@@ -25,3 +25,12 @@ def test_config_yaml(tmp_path: Path):
     c1.save_yaml(file)
     c2 = ConfigParameters.parse_file(file)
     assert c1 == c2
+
+
+def test_station_valid():
+    s = Station("CI", "BAK")
+    assert not s.valid()
+    s = Station("CI", "BAK", 110.0, 120.1, 15.0)
+    assert s.valid()
+    s = Station("CI", "BAK", -110.0, 120.1, 15.0)
+    assert s.valid()

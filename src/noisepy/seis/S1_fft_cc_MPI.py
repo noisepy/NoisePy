@@ -14,7 +14,7 @@ from noisepy.seis.datatypes import Channel, ChannelData, ConfigParameters, Noise
 
 from . import noise_module
 from .stores import CrossCorrelationDataStore, RawDataStore
-from .utils import TimeLogger
+from .utils import TimeLogger, error_if
 
 logger = logging.getLogger(__name__)
 # ignore warnings
@@ -88,6 +88,11 @@ def cross_correlate(
 
         t_chunk = tlog.reset()  # for tracking overall chunk processing time
         all_channels = raw_store.get_channels(ts)
+        error_if(
+            not all(map(lambda c: c.station.valid(), all_channels)),
+            "The stations don't have their lat/lon/elev properties populated. Problem with the ChannelCatalog used?",
+        )
+
         tlog.log("get channels")
         ch_data_tuples = _read_channels(executor, ts, raw_store, all_channels, fft_params.samp_freq)
         # only the channels we are using
