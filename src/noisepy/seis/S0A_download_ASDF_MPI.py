@@ -18,7 +18,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from noisepy.seis.datatypes import ConfigParameters
 from noisepy.seis.utils import TimeLogger
 from . import noise_module
-from mpi4py import MPI
 from obspy.clients.fdsn import Client
 
 logger = logging.getLogger(__name__)
@@ -84,7 +83,7 @@ def download(
     sta_list = prepro_para.stations
     executor = ThreadPoolExecutor()
 
-    tlog = TimeLogger()
+    tlog = TimeLogger(logger, logging.INFO)
     t_tot = tlog.reset()
     dlist = os.path.join(direc, "station.csv")  # CSV file for station location info
     prepro_para.respdir = os.path.join(
@@ -186,40 +185,30 @@ def download(
     # ###############DOWNLOAD SECTION#######################
     ########################################################
 
-    # --------MPI---------
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
-    size = comm.Get_size()
+    os.makedirs(direc, exist_ok=True)
 
-    if rank == 0:
-        os.makedirs(direc, exist_ok=True)
+    # output station list
+    if not prepro_para.down_list:
+        dict = {
+            "network": net,
+            "station": sta,
+            "channel": chan,
+            "latitude": lat,
+            "longitude": lon,
+            "elevation": elev,
+        }
+        locs = pd.DataFrame(dict)
+        locs.to_csv(os.path.join(direc, "station.csv"), index=False)
 
-        # output station list
-        if not prepro_para.down_list:
-            dict = {
-                "network": net,
-                "station": sta,
-                "channel": chan,
-                "latitude": lat,
-                "longitude": lon,
-                "elevation": elev,
-            }
-            locs = pd.DataFrame(dict)
-            locs.to_csv(os.path.join(direc, "station.csv"), index=False)
-
-        # get MPI variables ready
-        all_chunk = noise_module.get_event_list(prepro_para.start_date, prepro_para.end_date, prepro_para.inc_hours)
-        if len(all_chunk) < 1:
-            raise ValueError("Abort! no data chunk between %s and %s" % (prepro_para.start_date, prepro_para.end_date))
-        splits = len(all_chunk) - 1
-    else:
-        splits, all_chunk = [None for _ in range(2)]
+    # get MPI variables ready
+    all_chunk = noise_module.get_event_list(prepro_para.start_date, prepro_para.end_date, prepro_para.inc_hours)
+    if len(all_chunk) < 1:
+        raise ValueError("Abort! no data chunk between %s and %s" % (prepro_para.start_date, prepro_para.end_date))
+    splits = len(all_chunk) - 1
 
     # broadcast the variables
-    splits = comm.bcast(splits, root=0)
-    all_chunk = comm.bcast(all_chunk, root=0)
     # MPI: loop through each time chunk
-    for ick in range(rank, splits, size):
+    for ick in range(splits):
         starttime = obspy.UTCDateTime(all_chunk[ick])
         endtime = obspy.UTCDateTime(all_chunk[ick + 1])
 
@@ -275,16 +264,13 @@ def download(
                     else:
                         tlocation = location[ista]
                     new_tags = "{0:s}_{1:s}".format(chan[ista].lower(), tlocation.lower())
-                    logger.info(f"adding tags {new_tags}")
+                    logger.info(f"Downloaded {chan[ista]}/{new_tags}")
                     # above we should change the dag for: net.sta.loc.chan
                     ds.add_waveforms(tr, tag=new_tags)
 
     tlog.log("Total Download", t_tot)
 
-    comm.barrier()
 
-
-# @ray.remote
 def download_stream(
     prepro_para: ConfigParameters,
     url_key: str,
@@ -297,7 +283,7 @@ def download_stream(
     endtime: obspy.UTCDateTime,
     index: int,
 ) -> Tuple[int, obspy.Stream]:
-    logger.info(f"Start download for {sta}.{chan}")
+    logger.debug(f"Start download for {sta}.{chan}")
     client = Client(url_key, timeout=15)
     retries = 5
     while retries > 0:
@@ -311,10 +297,9 @@ def download_stream(
                 endtime=endtime,
             )
         except Exception as e:
-            logger.error(f"{e} for get_waveforms({sta}.{chan})")
-            return -1, None
+            logger.warning(f"{e} for get_waveforms({sta}.{chan})")
 
-        logger.info(f"Got waveforms for {sta}.{chan}")
+        logger.debug(f"Got waveforms for {sta}.{chan}")
 
         # preprocess to clean data
         tr = noise_module.preprocess_raw(
