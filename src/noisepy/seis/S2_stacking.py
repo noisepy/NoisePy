@@ -1,16 +1,14 @@
 import logging
-import os
 import sys
-from typing import Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
-import pyasdf
 from datetimerange import DateTimeRange
 from mpi4py import MPI
 
-from noisepy.seis.datatypes import ConfigParameters
-from noisepy.seis.stores import CrossCorrelationDataStore
+from noisepy.seis.datatypes import ConfigParameters, StackMethod
+from noisepy.seis.stores import CrossCorrelationDataStore, StackStore
 from noisepy.seis.utils import TimeLogger
 
 from . import noise_module
@@ -44,13 +42,14 @@ NOTE:
 MAX_MEM = 4.0
 
 
-# TODO: make stack_method an enum
-def stack(cc_store: CrossCorrelationDataStore, stack_dir: str, fft_params: ConfigParameters):
+def stack(cc_store: CrossCorrelationDataStore, stack_store: StackStore, fft_params: ConfigParameters):
     tlog = TimeLogger(logger=logger)
     t_tot = tlog.reset()
     if fft_params.rotation and fft_params.correction:
-        corrfile = os.path.join(stack_dir, "../meso_angles.csv")  # csv file containing angle info to be corrected
-        locs = pd.read_csv(corrfile)
+        if not fft_params.correction_csv:
+            logger.warning("Missing correction_csv parameter but rotation=True and correction=True")
+        else:
+            locs = pd.read_csv(fft_params.correction_csv)
     else:
         locs = []
 
@@ -72,16 +71,9 @@ def stack(cc_store: CrossCorrelationDataStore, stack_dir: str, fft_params: Confi
     size = comm.Get_size()
 
     if rank == 0:
-        if not os.path.isdir(stack_dir):
-            os.mkdir(stack_dir)
-
         timespans = cc_store.get_timespans()
         pairs_all = list(set(pair for ts in timespans for pair in cc_store.get_station_pairs(ts)))
         logger.info(f"Station pairs: {pairs_all}")
-        stations = set(pair[0] for pair in pairs_all)
-
-        for station in stations:
-            os.makedirs(os.path.join(stack_dir, str(station)), exist_ok=True)
 
         splits = len(pairs_all)
         if len(timespans) == 0 or splits == 0:
@@ -105,7 +97,6 @@ def stack(cc_store: CrossCorrelationDataStore, stack_dir: str, fft_params: Confi
         sta_pair = pairs_all[ipair]
         src_sta = sta_pair[0]
         rec_sta = sta_pair[1]
-        idir = str(src_sta)
 
         # check if it is auto-correlation
         if src_sta == rec_sta:
@@ -113,9 +104,7 @@ def stack(cc_store: CrossCorrelationDataStore, stack_dir: str, fft_params: Confi
         else:
             fauto = 0
 
-        # continue when file is done: TODO: Remove this and use a Store.contains() function.
-        toutfn = os.path.join(stack_dir, idir, f"{src_sta}_{rec_sta}.tmp")
-        if os.path.isfile(toutfn):
+        if stack_store.is_done(src_sta, rec_sta):
             continue
 
         # crude estimation on memory needs (assume float32)
@@ -176,6 +165,10 @@ def stack(cc_store: CrossCorrelationDataStore, stack_dir: str, fft_params: Confi
             bigstack1 = np.zeros(shape=(9, npts_segmt), dtype=np.float32)
             bigstack2 = np.zeros(shape=(9, npts_segmt), dtype=np.float32)
 
+        def write_stacks(comp: str, tparameters: Dict[str, Any], stacks: List[Tuple[str, np.ndarray]]):
+            for name, data in stacks:
+                stack_store.append(src_sta, rec_sta, comp, f"Allstack_{name}", tparameters, data)
+
         # loop through cross-component for stacking
         iflag = 1
         for icomp in range(nccomp):
@@ -189,8 +182,6 @@ def stack(cc_store: CrossCorrelationDataStore, stack_dir: str, fft_params: Confi
                 iflag = 0
                 continue
 
-            stack_h5 = os.path.join(stack_dir, idir + "/" + outfn)
-            logger.debug(f"h5 stack path: {stack_h5}")
             # output stacked data
             (
                 cc_final,
@@ -210,50 +201,25 @@ def stack(cc_store: CrossCorrelationDataStore, stack_dir: str, fft_params: Confi
                     bigstack1[icomp] = allstacks2
                     bigstack2[icomp] = allstacks3
 
-            # write stacked data into ASDF file
-            with pyasdf.ASDFDataSet(stack_h5, mpi=False) as ds:
                 tparameters["time"] = stamps_final[0]
                 tparameters["ngood"] = nstacks
                 if fft_params.stack_method != "all":
-                    data_type = "Allstack_" + fft_params.stack_method
-                    ds.add_auxiliary_data(
-                        data=allstacks1,
-                        data_type=data_type,
-                        path=comp,
-                        parameters=tparameters,
-                    )
+                    to_write = [(fft_params.stack_method, allstacks1)]
                 else:
-                    ds.add_auxiliary_data(
-                        data=allstacks1,
-                        data_type="Allstack_linear",
-                        path=comp,
-                        parameters=tparameters,
-                    )
-                    ds.add_auxiliary_data(
-                        data=allstacks2,
-                        data_type="Allstack_pws",
-                        path=comp,
-                        parameters=tparameters,
-                    )
-                    ds.add_auxiliary_data(
-                        data=allstacks3,
-                        data_type="Allstack_robust",
-                        path=comp,
-                        parameters=tparameters,
-                    )
+                    to_write = [
+                        (StackMethod.LINEAR, allstacks1),
+                        (StackMethod.PWS, allstacks2),
+                        (StackMethod.ROBUST, allstacks3),
+                    ]
+                write_stacks(comp, tparameters, to_write)
+
             # keep a track of all sub-stacked data from S1
             if fft_params.keep_substack:
                 for ii in range(cc_final.shape[0]):
-                    with pyasdf.ASDFDataSet(stack_h5, mpi=False) as ds:
-                        tparameters["time"] = stamps_final[ii]
-                        tparameters["ngood"] = ngood_final[ii]
-                        data_type = "T" + str(int(stamps_final[ii]))
-                        ds.add_auxiliary_data(
-                            data=cc_final[ii],
-                            data_type=data_type,
-                            path=comp,
-                            parameters=tparameters,
-                        )
+                    tparameters["time"] = stamps_final[ii]
+                    tparameters["ngood"] = ngood_final[ii]
+                    stack_name = "T" + str(int(stamps_final[ii]))
+                    write_stacks(comp, tparameters, [(stack_name, cc_final[ii])])
 
             tlog.log(f"stack one component with {fft_params.stack_method} stacking method")
 
@@ -271,14 +237,7 @@ def stack(cc_store: CrossCorrelationDataStore, stack_dir: str, fft_params: Confi
                     comp = rtz_components[icomp]
                     tparameters["time"] = stamps_final[0]
                     tparameters["ngood"] = nstacks
-                    data_type = "Allstack_" + fft_params.stack_method
-                    with pyasdf.ASDFDataSet(stack_h5, mpi=False) as ds2:
-                        ds2.add_auxiliary_data(
-                            data=bigstack_rotated[icomp],
-                            data_type=data_type,
-                            path=comp,
-                            parameters=tparameters,
-                        )
+                    write_stacks(comp, tparameters, [(fft_params.stack_method, bigstack_rotated[icomp])])
             else:
                 bigstack_rotated = noise_module.rotation(bigstack, tparameters, locs)
                 bigstack_rotated1 = noise_module.rotation(bigstack1, tparameters, locs)
@@ -289,32 +248,15 @@ def stack(cc_store: CrossCorrelationDataStore, stack_dir: str, fft_params: Confi
                     comp = rtz_components[icomp]
                     tparameters["time"] = stamps_final[0]
                     tparameters["ngood"] = nstacks
-                    with pyasdf.ASDFDataSet(stack_h5, mpi=False) as ds2:
-                        ds2.add_auxiliary_data(
-                            data=bigstack_rotated[icomp],
-                            data_type="Allstack_linear",
-                            path=comp,
-                            parameters=tparameters,
-                        )
-                        ds2.add_auxiliary_data(
-                            data=bigstack_rotated1[icomp],
-                            data_type="Allstack_pws",
-                            path=comp,
-                            parameters=tparameters,
-                        )
-                        ds2.add_auxiliary_data(
-                            data=bigstack_rotated2[icomp],
-                            data_type="Allstack_robust",
-                            path=comp,
-                            parameters=tparameters,
-                        )
-
+                    stacks = [
+                        (StackMethod.LINEAR, bigstack_rotated[icomp]),
+                        (StackMethod.PWS, bigstack_rotated1[icomp]),
+                        (StackMethod.ROBUST, bigstack_rotated2[icomp]),
+                    ]
+                    write_stacks(comp, tparameters, stacks)
         tlog.log(f"stack/rotate all station pairs {pairs_all[ipair]}", t_load)
 
-        # write file stamps
-        ftmp = open(toutfn, "w")
-        ftmp.write("done")
-        ftmp.close()
+        stack_store.mark_done(src_sta, rec_sta)
 
     tlog.log("step 2 in total", t_tot)
     comm.barrier()
@@ -350,8 +292,3 @@ def calc_segments(fft_params: ConfigParameters, num_chunk: int) -> Tuple[int, in
         )
     logger.debug("Good on memory (need %5.2f G and %s G provided)!" % (memory_size, MAX_MEM))
     return num_segmts, npts_segmt
-
-
-# Point people to new entry point:
-if __name__ == "__main__":
-    print("Please see:\n\npython noisepy.py stack --help\n")

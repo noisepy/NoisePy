@@ -22,5 +22,5 @@ The main functions exported by the package are:
 - plotting_modules: Utility functions for plotting the data
 """
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(module)s %(funcName)s %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(module)s.%(funcName)s(): %(message)s")
 logger = logging.getLogger(__name__)
