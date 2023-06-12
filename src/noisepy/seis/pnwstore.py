@@ -1,6 +1,6 @@
+import io
 import logging
 import os
-import io
 import re
 import sqlite3
 from datetime import datetime, timedelta, timezone
@@ -18,6 +18,7 @@ from .utils import fs_join, get_filesystem
 logger = logging.getLogger(__name__)
 
 
+# TODO: de-dupe -  this is the same as in scedc_s3store.py
 def channel_filter(stations: List[str], ch_prefix: str) -> Callable[[Channel], bool]:
     """
     Helper function for creating a channel filter to be used in the constructor of the store.
@@ -77,12 +78,15 @@ class PNWDataStore(RawDataStore):
                 self._load_channels(full_path, ch_filter)
 
     def _load_channels(self, full_path: str, ch_filter: Callable[[Channel], bool]):
-        _, _, _, _, _, net, year, doy, _ = full_path.split('/')
+        _, _, _, _, _, net, year, doy, _ = full_path.split("/")
         sqlite = f"/fd1/yiyu_data/PNWstore_sqlite/{year}.sqlite"
         db = sqlite3.connect(sqlite)
         cursor = db.cursor()
-        rst = cursor.execute(f"SELECT network, station, channel, location, filename, byteoffset, bytes " \
-                              f"FROM tsindex WHERE filename LIKE '%%/{net}/{year}/{doy}/%%'")
+        rst = cursor.execute(
+            # f"SELECT network, station, channel, location, filename, byteoffset, bytes "
+            f"SELECT network, station, channel, location, filename"
+            f"FROM tsindex WHERE filename LIKE '%%/{net}/{year}/{doy}/%%'"
+        )
         timespans = []
         for i in rst:
             timespan = PNWDataStore._parse_timespan(os.path.basename(i[4]))
@@ -90,7 +94,7 @@ class PNWDataStore(RawDataStore):
             channel = PNWDataStore._parse_channel(i)
             if not ch_filter(channel):
                 continue
-            key = str(timespan) 
+            key = str(timespan)
             if key not in self.channels:
                 timespans.append(timespan)
                 self.channels[key] = [channel]
@@ -100,7 +104,7 @@ class PNWDataStore(RawDataStore):
         # logger.info(f"Loading {len(msfiles)} files from {full_path}")
         # timespans = []
         # for f in msfiles:
-            # timespan = PNWDataStore._parse_timespan(f)
+        # timespan = PNWDataStore._parse_timespan(f)
         #     self.paths[timespan.start_datetime] = full_path
         #     channel = PNWDataStore._parse_channel(os.path.basename(f))
         #     if not ch_filter(channel):
@@ -124,20 +128,34 @@ class PNWDataStore(RawDataStore):
         return list([DateTimeRange.from_range_text(d) for d in sorted(self.channels.keys())])
 
     def read_data(self, timespan: DateTimeRange, chan: Channel) -> ChannelData:
+        assert timespan.start_datetime.year == timespan.end_datetime.year, "Did not expect timespans to cross years"
+        year = timespan.start_datetime.year
+        doy = timespan.start_datetime.timetuple().tm_yday
+
+        # TODO: Refactor and deduplicate the DB querying code with _load_channels()
+        sqlite = f"/fd1/yiyu_data/PNWstore_sqlite/{year}.sqlite"
+        db = sqlite3.connect(sqlite)
+        cursor = db.cursor()
+        rst = cursor.execute(
+            f"SELECT byteoffset, bytes"
+            f"FROM tsindex WHERE network='{chan.station.name}' AND station='{chan.station.name}'"
+            f"AND channel='{chan.type.name}' and location='{chan.station.location}'"
+            f"AND filename LIKE '%%/{chan.station.network}/{year}/{doy}/%%'"
+        )
+        rec = next(rst)
+        byteoffset = rec[0]
+        bytes = rec[1]
+
         # reconstruct the file name from the channel parameters
-        chan_str = (
-            f"{chan.station.name}.{chan.station.network}.{timespan.start_datetime.strftime('%Y.%j')}"
-        )
-        filename = fs_join(
-            self.paths[timespan.start_datetime], f"{chan_str}"
-        )
+        chan_str = f"{chan.station.name}.{chan.station.network}.{timespan.start_datetime.strftime('%Y.%j')}"
+        filename = fs_join(self.paths[timespan.start_datetime], f"{chan_str}")
         if not self.fs.exists(filename):
             logger.warning(f"Could not find file {filename}")
             return ChannelData.empty()
 
         with self.fs.open(filename, "rb") as f:
-            f.seek(chan.byteoffset)
-            buff = io.BytesIO(f.read(chan.bytes))
+            f.seek(byteoffset)
+            buff = io.BytesIO(f.read(bytes))
             stream = obspy.read(buff)
         return ChannelData(stream)
 
@@ -147,8 +165,8 @@ class PNWDataStore(RawDataStore):
     def _parse_timespan(filename: str) -> DateTimeRange:
         # The PNWStore repository stores files in the form: STA.NET.YYYY.DOY
         # YA2.UW.2020.366
-        year = int(filename.split('.')[2])
-        day = int(filename.split('.')[3])
+        year = int(filename.split(".")[2])
+        day = int(filename.split(".")[3])
         jan1 = datetime(year, 1, 1, tzinfo=timezone.utc)
         return DateTimeRange(jan1 + timedelta(days=day - 1), jan1 + timedelta(days=day))
 
@@ -159,12 +177,12 @@ class PNWDataStore(RawDataStore):
         station = query[1]
         channel = query[2]
         location = query[3]
-        c =  Channel(
+        c = Channel(
             ChannelType(channel, location),
             # lat/lon/elev will be populated later
             Station(network, station, location=location),
         )
-        c.filename = query[4]
-        c.byteoffset = query[5]
-        c.bytes = query[6]
+        # c.filename = query[4]
+        # c.byteoffset = query[5]
+        # c.bytes = query[6]
         return c
