@@ -7,14 +7,16 @@
 
 import logging
 import sys
-import time
+from typing import Tuple
 import obspy
 import pyasdf
 import os
 import numpy as np
 import pandas as pd
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from noisepy.seis.datatypes import ConfigParameters
+from noisepy.seis.utils import TimeLogger
 from . import noise_module
 from mpi4py import MPI
 from obspy.clients.fdsn import Client
@@ -80,8 +82,10 @@ def download(
     client = Client(client_url_key)
     chan_list = prepro_para.channels
     sta_list = prepro_para.stations
+    executor = ThreadPoolExecutor()
 
-    tt0 = time.time()
+    tlog = TimeLogger()
+    t_tot = tlog.reset()
     dlist = os.path.join(direc, "station.csv")  # CSV file for station location info
     prepro_para.respdir = os.path.join(
         direc, "../resp"
@@ -134,43 +138,39 @@ def download(
         elev = []
         nsta = 0
         # loop through specified network, station and channel lists
+        bulk_req = []
         for inet in prepro_para.net_list:
             for ista in sta_list:
                 for ichan in chan_list:
-                    # gather station info
-                    try:
-                        inv = client.get_stations(
-                            network=inet,
-                            station=ista,
-                            channel=ichan,
-                            location="*",
-                            starttime=starttime,
-                            endtime=endtime,
-                            minlatitude=prepro_para.lamin,
-                            maxlatitude=prepro_para.lamax,
-                            minlongitude=prepro_para.lomin,
-                            maxlongitude=prepro_para.lomax,
-                            level="response",
-                        )
-                    except Exception as e:
-                        raise Exception("Abort at S0A client.get_stations due to " + str(e))
+                    bulk_req.append((inet, ista, "*", ichan, starttime, endtime))
 
-                    for K in inv:
-                        for tsta in K:
-                            sta.append(tsta.code)
-                            net.append(K.code)
-                            chan.append(ichan)
-                            lon.append(tsta.longitude)
-                            lat.append(tsta.latitude)
-                            elev.append(tsta.elevation)
-                            # sometimes one station has many locations and
-                            # here we only get the first location
-                            if tsta[0].location_code:
-                                location.append(tsta[0].location_code)
-                            else:
-                                location.append("*")
-                            nsta += 1
-
+        # gather station info
+        inv = client.get_stations_bulk(
+            bulk=bulk_req,
+            minlatitude=prepro_para.lamin,
+            maxlatitude=prepro_para.lamax,
+            minlongitude=prepro_para.lomin,
+            maxlongitude=prepro_para.lomax,
+            level="response",
+        )
+        logger.info("Fetched inventory")
+        for K in inv:
+            for tsta in K:
+                for ch in tsta.channels:
+                    net.append(K.code)
+                    sta.append(tsta.code)
+                    chan.append(ch.code)
+                    lon.append(tsta.longitude)
+                    lat.append(tsta.latitude)
+                    elev.append(tsta.elevation)
+                    # sometimes one station has many locations and
+                    # here we only get the first location
+                    if tsta[0].location_code:
+                        location.append(tsta[0].location_code)
+                    else:
+                        location.append("*")
+                    nsta += 1
+    tlog.log("Getting inventory")
     # rough estimation on memory needs (assume float32 dtype)
     nsec_chunk = prepro_para.inc_hours / 24 * 86400
     nseg_chunk = int(np.floor((nsec_chunk - prepro_para.cc_len) / prepro_para.step)) + 1
@@ -218,7 +218,6 @@ def download(
     # broadcast the variables
     splits = comm.bcast(splits, root=0)
     all_chunk = comm.bcast(all_chunk, root=0)
-    tp = 0
     # MPI: loop through each time chunk
     for ick in range(rank, splits, size):
         starttime = obspy.UTCDateTime(all_chunk[ick])
@@ -239,78 +238,94 @@ def download(
                     tname = net[ista] + "." + sta[ista]
                     if tname in alist:
                         num_records[ista] = len(rds.waveforms[tname].get_waveform_tags())
+                        logger.info(f"Found {num_records[ista]} records for {sta[ista]} in {ff}")
 
         # appending when file exists
         with pyasdf.ASDFDataSet(ff, mpi=False, compression="gzip-3", mode="a") as ds:
+            ds.add_stationxml(inv)
             # loop through each channel
+            tasks = []
             for ista in range(nsta):
                 # continue when there are alreay data for sta A at day X
                 if num_records[ista] == ncomp:
+                    logger.info(f"Already have {num_records[ista]} for {sta[ista]}")
                     continue
-
-                # get inventory for specific station
-                try:
-                    sta_inv = client.get_stations(
-                        network=net[ista],
-                        station=sta[ista],
-                        location=location[ista],
-                        starttime=starttime,
-                        endtime=endtime,
-                        level="response",
-                    )
-                except Exception as e:
-                    logger.error(e)
-                    continue
-
-                # add the inventory for all components + all time of this tation
-                try:
-                    ds.add_stationxml(sta_inv)
-                except Exception:
-                    pass
-
-                try:
-                    # get data
-                    t0 = time.time()
-                    tr = client.get_waveforms(
-                        network=net[ista],
-                        station=sta[ista],
-                        channel=chan[ista],
-                        location=location[ista],
-                        starttime=starttime,
-                        endtime=endtime,
-                    )
-                    t1 = time.time()
-                except Exception as e:
-                    logger.error(f"{e} for {sta[ista]}")
-                    continue
-
-                # preprocess to clean data
-                tr = noise_module.preprocess_raw(
-                    tr,
-                    sta_inv,
+                task = executor.submit(
+                    download_stream,
                     prepro_para,
+                    client_url_key,
+                    inv,
+                    net[ista],
+                    sta[ista],
+                    chan[ista],
+                    location[ista],
                     starttime,
                     endtime,
+                    ista,
                 )
-                t2 = time.time()
-                tp += t2 - t1
+                tasks.append(task)
 
-                if len(tr):
+            for ready in as_completed(tasks):
+                # Use partial waits so we can start savign results to the store
+                # while other computations are still running
+                ista, tr = ready.result()
+                if tr and len(tr):
                     if location[ista] == "*":
                         tlocation = str("00")
                     else:
                         tlocation = location[ista]
                     new_tags = "{0:s}_{1:s}".format(chan[ista].lower(), tlocation.lower())
+                    logger.info(f"adding tags {new_tags}")
                     # above we should change the dag for: net.sta.loc.chan
                     ds.add_waveforms(tr, tag=new_tags)
 
-                # if flag:
-                logger.info("downloading data %6.2f s; pre-process %6.2f s" % ((t1 - t0), (t2 - t1)))
-
-    tt1 = time.time()
-    logger.info("downloading step takes %6.2f s with %6.2f for preprocess" % (tt1 - tt0, tp))
+    tlog.log("Total Download", t_tot)
 
     comm.barrier()
+
+
+# @ray.remote
+def download_stream(
+    prepro_para: ConfigParameters,
+    url_key: str,
+    inv: obspy.Inventory,
+    net: str,
+    sta: str,
+    chan: str,
+    location: str,
+    starttime: obspy.UTCDateTime,
+    endtime: obspy.UTCDateTime,
+    index: int,
+) -> Tuple[int, obspy.Stream]:
+    logger.info(f"Start download for {sta}.{chan}")
+    client = Client(url_key, timeout=15)
+    retries = 5
+    while retries > 0:
+        try:
+            tr = client.get_waveforms(
+                network=net,
+                station=sta,
+                channel=chan,
+                location=location,
+                starttime=starttime,
+                endtime=endtime,
+            )
+        except Exception as e:
+            logger.error(f"{e} for get_waveforms({sta}.{chan})")
+            return -1, None
+
+        logger.info(f"Got waveforms for {sta}.{chan}")
+
+        # preprocess to clean data
+        tr = noise_module.preprocess_raw(
+            tr,
+            inv,
+            prepro_para,
+            starttime,
+            endtime,
+        )
+        return index, tr
+    return -1, None
 
 
 # Point people to new entry point:
