@@ -13,7 +13,7 @@ import dateutil.parser
 import obspy
 from datetimerange import DateTimeRange
 
-from .asdfstore import ASDFCCStore, ASDFRawDataStore
+from .asdfstore import ASDFCCStore, ASDFRawDataStore, ASDFStackStore
 from .channelcatalog import CSVChannelCatalog, XMLStationChannelCatalog
 from .constants import CONFIG_FILE, STATION_FILE
 from .datatypes import Channel, ConfigParameters
@@ -161,8 +161,9 @@ def main(args: typing.Any):
 
     def run_stack():
         cc_store = ASDFCCStore(args.ccf_path, "r")
+        stack_store = ASDFStackStore(args.stack_path)
         params = initialize_params(args, args.ccf_path)
-        stack(cc_store, args.stack_path, params)
+        stack(cc_store, stack_store, params)
         params.save_yaml(fs_join(args.stack_path, CONFIG_FILE))
 
     if args.cmd == Command.DOWNLOAD:

@@ -73,3 +73,16 @@ class TimeLogger:
         if self.enabled:
             self.logger.log(self.level, f"TIMING: {dt:6.4f} for {message}")
         return self.time
+
+
+def error_if(condition: bool, msg: str, error_type: type = RuntimeError):
+    """
+    Raise an error if the condition is True
+
+    Args:
+        condition (bool): Condition to evaluate
+        msg (str): Error message
+        error_type (type): Type of error to raise, e.g. ValueError
+    """
+    if condition:
+        raise error_type(msg)
