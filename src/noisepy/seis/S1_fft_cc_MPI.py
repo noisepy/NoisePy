@@ -2,11 +2,11 @@ import gc
 import logging
 import sys
 from collections import OrderedDict
-from typing import Dict, List, Tuple
+from concurrent.futures import Executor, Future, ThreadPoolExecutor, as_completed
+from typing import Dict, Iterable, List, Tuple
 
 import numpy as np
 import obspy
-import ray
 from datetimerange import DateTimeRange
 from scipy.fftpack.helper import next_fast_len
 
@@ -14,7 +14,7 @@ from noisepy.seis.datatypes import Channel, ChannelData, ConfigParameters, Noise
 
 from . import noise_module
 from .stores import CrossCorrelationDataStore, RawDataStore
-from .utils import TimeLogger
+from .utils import TimeLogger, error_if
 
 logger = logging.getLogger(__name__)
 # ignore warnings
@@ -67,13 +67,9 @@ def cross_correlate(
 
     """
 
+    executor = ThreadPoolExecutor()
     tlog = TimeLogger(logger, logging.INFO)
     t_s1_total = tlog.reset()
-
-    if not ray.is_initialized():
-        context = ray.init(ignore_reinit_error=True)
-        tlog.log("Ray init")
-        logger.info(context.dashboard_url)
 
     # set variables to broadcast
     timespans = raw_store.get_timespans()
@@ -92,13 +88,18 @@ def cross_correlate(
 
         t_chunk = tlog.reset()  # for tracking overall chunk processing time
         all_channels = raw_store.get_channels(ts)
+        error_if(
+            not all(map(lambda c: c.station.valid(), all_channels)),
+            "The stations don't have their lat/lon/elev properties populated. Problem with the ChannelCatalog used?",
+        )
+
         tlog.log("get channels")
-        ch_data_tuples = _read_channels(ts, raw_store, all_channels, fft_params.samp_freq)
+        ch_data_tuples = _read_channels(executor, ts, raw_store, all_channels, fft_params.samp_freq)
         # only the channels we are using
         channels = list(zip(*ch_data_tuples))[0]
         tlog.log("read channel data")
 
-        ch_data_tuples = preprocess(ch_data_tuples, raw_store, fft_params, ts)
+        ch_data_tuples = preprocess_all(executor, ch_data_tuples, raw_store, fft_params, ts)
         tlog.log("preprocess")
 
         nchannels = len(ch_data_tuples)
@@ -110,42 +111,39 @@ def cross_correlate(
         # loop through all channels
         tlog.reset()
 
-        fft_refs = [compute_fft_ray.remote(fft_params, chd[1]) for chd in ch_data_tuples]
-        fft_datas = ray.get(fft_refs)
+        fft_refs = [executor.submit(compute_fft, fft_params, chd[1]) for chd in ch_data_tuples]
+        fft_datas = _get_results(fft_refs)
         for ix_ch, fft_data in enumerate(fft_datas):
             if fft_data.fft.size > 0:
                 ffts[ix_ch] = fft_data
             else:
                 logger.warning(f"No data available for channel '{channels[ix_ch]}', skipped")
         Nfft = fft_data.length
-        t_tasks = tlog.log("Compute FFTs")
+        tlog.log("Compute FFTs")
 
         if len(ffts) != nchannels:
             logger.warning("it seems some stations miss data in download step, but it is OKAY!")
 
         tasks = []
 
-        # Put the FFTs into Ray's shared memory since they will be used by all tasks
-        ffts_ref = ray.put(ffts)
-        tlog.log("ray.put(ffts)")
         # # ###########PERFORM CROSS-CORRELATION##################
-        for iiS in ffts.keys():  # looping over the channel source
-            # We parallelize over the channel sources. This is less than ideal because for each subsequent
-            # source there are fewer receiving channels to correlate with (ie. its a diagonal) matrix.
-            # This means the first task is the longest and the last one if very short. However,
-            # parallelizing over the full set of pairs results in too many tiny tasks and the parallelization
-            # overhead outweighs the benefits.
-            task = source_cross_correlation.remote(fft_params, channels, ffts_ref, Nfft, iiS)
-            tasks.append(task)
-        tlog.log(f"Created {len(tasks)} CC tasks", t_tasks)
-        while len(tasks) > 0:
-            # Use partial waits so we can start savign results to the store
+        for iiS in range(nchannels):
+            for iiR in range(iiS, nchannels):
+                src_chan = channels[iiS]
+                rec_chan = channels[iiR]
+                if fft_params.acorr_only:
+                    if src_chan.station != rec_chan.station:
+                        continue
+                if iiR not in ffts:
+                    continue
+                t = executor.submit(cross_correlation, fft_params, iiS, iiR, channels, ffts, Nfft)
+                tasks.append(t)
+
+        for t in as_completed(tasks):
+            # Use as_completed so we can start saving results to the store
             # while other computations are still running
-            ready, tasks = ray.wait(tasks, num_returns=min(len(tasks), 4), timeout=0.250)
-            results = ray.get(ready)
-            results = [r for subresult in results for r in subresult]
-            for src_chan, rec_chan, parameters, corr in results:
-                cc_store.append(ts, src_chan, rec_chan, parameters, corr)
+            src_chan, rec_chan, parameters, corr = t.result()
+            cc_store.append(ts, src_chan, rec_chan, parameters, corr)
 
         ffts.clear()
         gc.collect()
@@ -154,17 +152,19 @@ def cross_correlate(
         cc_store.mark_done(ts)
 
     tlog.log("Step 1 in total", t_s1_total)
+    executor.shutdown()
 
 
-@ray.remote
-def source_cross_correlation(
+def cross_correlation(
     fft_params: ConfigParameters,
+    iiS: int,
+    iiR: int,
     channels: List[Channel],
     ffts: Dict[int, NoiseFFT],
     Nfft: int,
-    iiS: int,
-) -> List[Tuple[Channel, Channel, dict, np.ndarray]]:
+) -> Tuple[Channel, Channel, dict, np.ndarray]:
     src_chan = channels[iiS]  # this is the name of the source channel
+    rec_chan = channels[iiR]
     src_fft = ffts[iiS]
     src_std = src_fft.std
     # this finds the windows of "good" noise
@@ -180,29 +180,19 @@ def source_cross_correlation(
     else:
         sfft1 = np.conj(src_fft.fft).reshape(src_fft.window_count, src_fft.length // 2)
 
-        # get index right for auto/cross correlation
-    istart = iiS  # start at the channel source / only fills the upper right triangle matrix of channel pairs
-    iend = len(channels)
-    # -----------now loop III for each receiver B----------
-    results = []
-    for iiR in range(istart, iend):
-        rec_chan = channels[iiR]
-        if fft_params.acorr_only:
-            if src_chan.station != rec_chan.station:
-                continue
-        if iiR not in ffts:
-            continue
-        result = cross_corr(fft_params, src_chan, rec_chan, sfft1, sou_ind, ffts[iiR], Nfft)
-        results.append(result)
-    del sfft1
-    return results
+    result = cross_corr(fft_params, src_chan, rec_chan, sfft1, sou_ind, ffts[iiR], Nfft)
+    return result
 
 
-def preprocess(
-    ch_data: List[Tuple[Channel, ChannelData]], raw_store: RawDataStore, fft_params: ConfigParameters, ts: DateTimeRange
+def preprocess_all(
+    executor: Executor,
+    ch_data: List[Tuple[Channel, ChannelData]],
+    raw_store: RawDataStore,
+    fft_params: ConfigParameters,
+    ts: DateTimeRange,
 ) -> List[Tuple[Channel, ChannelData]]:
-    stream_refs = [preprocess_ray.remote(raw_store, t[0], t[1], fft_params, ts) for t in ch_data]
-    new_streams = ray.get(stream_refs)
+    stream_refs = [executor.submit(preprocess, raw_store, t[0], t[1], fft_params, ts) for t in ch_data]
+    new_streams = _get_results(stream_refs)
     channels = list(zip(*ch_data))[0]
     return list(zip(channels, [ChannelData(st) for st in new_streams]))
 
@@ -243,8 +233,7 @@ def cross_corr(
     return (src_chan, rec_chan, parameters, corr)
 
 
-@ray.remote
-def preprocess_ray(
+def preprocess(
     raw_store: RawDataStore, ch: Channel, ch_data: ChannelData, fft_params: ConfigParameters, ts: DateTimeRange
 ) -> obspy.Stream:
     return noise_module.preprocess_raw(
@@ -256,8 +245,7 @@ def preprocess_ray(
     )
 
 
-@ray.remote
-def compute_fft_ray(fft_params: ConfigParameters, ch_data: ChannelData) -> NoiseFFT:
+def compute_fft(fft_params: ConfigParameters, ch_data: ChannelData) -> NoiseFFT:
     if ch_data.data.size == 0:
         return NoiseFFT(np.empty(0), np.empty(0), np.empty(0), 0, 0)
 
@@ -286,17 +274,12 @@ def compute_fft_ray(fft_params: ConfigParameters, ch_data: ChannelData) -> Noise
 
 
 def _read_channels(
-    ts: DateTimeRange, store: RawDataStore, channels: List[Channel], samp_freq: int
+    executor: Executor, ts: DateTimeRange, store: RawDataStore, channels: List[Channel], samp_freq: int
 ) -> List[Tuple[Channel, ChannelData]]:
-    ch_data_refs = [read_data_ray.remote(store, ts, ch) for ch in channels]
-    ch_data = ray.get(ch_data_refs)
+    ch_data_refs = [executor.submit(store.read_data, ts, ch) for ch in channels]
+    ch_data = _get_results(ch_data_refs)
     tuples = list(zip(channels, ch_data))
     return _filter_channel_data(tuples, samp_freq)
-
-
-@ray.remote
-def read_data_ray(store: RawDataStore, ts: DateTimeRange, ch: Channel) -> ChannelData:
-    return store.read_data(ts, ch)
 
 
 def _filter_channel_data(
@@ -331,6 +314,5 @@ def check_memory(params: ConfigParameters, nsta: int) -> int:
     return nseg_chunk
 
 
-# Point people to new entry point:
-if __name__ == "__main__":
-    print("Please see:\n\npython noisepy.py cross_correlate --help\n")
+def _get_results(futures: Iterable[Future]) -> Iterable[Future]:
+    return [f.result() for f in futures]

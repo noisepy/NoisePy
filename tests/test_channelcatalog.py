@@ -72,3 +72,11 @@ def test_XMLStationChannelCatalog(path):
     yaq_inv = cat.get_inventory(DateTimeRange(), Station("CI", "YAQ"))
     assert len(yaq_inv) == 1
     assert len(yaq_inv.networks[0].stations) == 1
+
+
+def test_XMLStationChannelCatalogCustomPath():
+    # Check that a custom file name is also found properly, e.g. CI/CI.YAQ.xml
+    cat = XMLStationChannelCatalog(xmlpaths[0], "{network}" + os.path.sep + "{network}.{name}.xml")
+    yaq_inv = cat.get_inventory(DateTimeRange(), Station("CI", "YAQ"))
+    assert len(yaq_inv) == 1
+    assert len(yaq_inv.networks[0].stations) == 1

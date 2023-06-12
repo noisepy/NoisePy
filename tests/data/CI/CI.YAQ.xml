@@ -1,0 +1,69 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<fsx:FDSNStationXML xmlns:fsx="http://www.fdsn.org/xml/station/1" xmlns:sis="http://anss-sis.scsn.org/xml/ext-stationxml/2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" schemaVersion="1.1" xsi:schemaLocation="http://www.fdsn.org/xml/station/1 http://www.fdsn.org/xml/station/fdsn-station-1.1.xsd">
+  <fsx:Source>ANSS Station Information System</fsx:Source>
+  <fsx:Sender>ANSS Station Information System</fsx:Sender>
+  <fsx:Created>2015-10-21T17:51:40.481255Z</fsx:Created>
+  <fsx:Network code="CI">
+    <fsx:Description>Southern California Seismic Network</fsx:Description>
+    <fsx:TotalNumberStations>725</fsx:TotalNumberStations>
+    <fsx:SelectedNumberStations>1</fsx:SelectedNumberStations>
+    <fsx:Station code="YAQ" startDate="1981-04-04T00:00:00Z" endDate="1998-02-02T00:00:00Z">
+      <fsx:Latitude>33.166610</fsx:Latitude>
+      <fsx:Longitude>-116.353860</fsx:Longitude>
+      <fsx:Elevation>430.0</fsx:Elevation>
+      <fsx:Site>
+        <fsx:Name>YAQUI MEADOWS</fsx:Name>
+      </fsx:Site>
+      <fsx:Operator>
+        <fsx:Agency>SCSN-CA</fsx:Agency>
+      </fsx:Operator>
+      <fsx:CreationDate>1981-04-04T00:00:00Z</fsx:CreationDate>
+      <fsx:TotalNumberChannels>1</fsx:TotalNumberChannels>
+      <fsx:SelectedNumberChannels>1</fsx:SelectedNumberChannels>
+      <fsx:Channel code="EHZ" startDate="1981-04-04T00:00:00Z" endDate="1998-02-02T00:00:00Z" locationCode="">
+        <fsx:Comment>
+          <fsx:Value>Historical epoch</fsx:Value>
+          <fsx:BeginEffectiveTime>1981-04-04T00:00:00Z</fsx:BeginEffectiveTime>
+          <fsx:EndEffectiveTime>1998-02-02T00:00:00Z</fsx:EndEffectiveTime>
+          <fsx:Author>
+            <fsx:Name>sis2.0_migration-SCSN LEGACY DB-SIS</fsx:Name>
+          </fsx:Author>
+        </fsx:Comment>
+        <fsx:Latitude>33.166610</fsx:Latitude>
+        <fsx:Longitude>-116.353860</fsx:Longitude>
+        <fsx:Elevation>430.0</fsx:Elevation>
+        <fsx:Depth>0.0</fsx:Depth>
+        <fsx:Azimuth>0.0</fsx:Azimuth>
+        <fsx:Dip>-90.0</fsx:Dip>
+        <fsx:Type>GEOPHYSICAL</fsx:Type>
+        <fsx:SampleRate>9.990000000000E+02</fsx:SampleRate>
+
+        <fsx:CalibrationUnits>
+          <fsx:Name>A</fsx:Name>
+          <fsx:Description>Electric Current in Amperes</fsx:Description>
+        </fsx:CalibrationUnits>
+        <fsx:Sensor>
+          <fsx:Type>UNKNOWN:UNKNOWN_VEL:YAQ_EHZ</fsx:Type>
+          <fsx:Manufacturer>UNKNOWN</fsx:Manufacturer>
+          <fsx:Model>UNKNOWN_VEL</fsx:Model>
+          <fsx:SerialNumber>YAQ_EHZ</fsx:SerialNumber>
+          <fsx:CalibrationDate>1981-04-04T00:00:00Z</fsx:CalibrationDate>
+        </fsx:Sensor>
+        <fsx:Response>
+          <fsx:InstrumentSensitivity>
+            <fsx:Value>1.000000000000E+00</fsx:Value>
+            <fsx:Frequency>1.000000000000E+00</fsx:Frequency>
+            <fsx:InputUnits>
+              <fsx:Name>m/s</fsx:Name>
+              <fsx:Description>Velocity in meters per second</fsx:Description>
+            </fsx:InputUnits>
+            <fsx:OutputUnits>
+              <fsx:Name>V</fsx:Name>
+              <fsx:Description>Voltage in Volts</fsx:Description>
+            </fsx:OutputUnits>
+          </fsx:InstrumentSensitivity>
+        </fsx:Response>
+      </fsx:Channel>
+    </fsx:Station>
+  </fsx:Network>
+</fsx:FDSNStationXML>

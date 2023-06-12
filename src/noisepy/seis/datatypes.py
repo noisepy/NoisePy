@@ -10,6 +10,8 @@ import obspy
 from pydantic import Field, root_validator
 from pydantic_yaml import YamlModel
 
+INVALID_COORD = -sys.float_info.max
+
 
 @dataclass
 class ChannelType:
@@ -60,9 +62,9 @@ class Station:
         self,
         network: str,
         name: str,
-        lat: float = sys.float_info.min,
-        lon: float = sys.float_info.min,
-        elevation: float = sys.float_info.min,
+        lat: float = INVALID_COORD,
+        lon: float = INVALID_COORD,
+        elevation: float = INVALID_COORD,
         location: str = "",
     ):
         self.network = network
@@ -71,6 +73,9 @@ class Station:
         self.lon = lon
         self.elevation = elevation
         self.location = location
+
+    def valid(self) -> bool:
+        return min(self.lat, self.lon, self.elevation) > INVALID_COORD
 
     def __repr__(self) -> str:
         return f"{self.network}.{self.name}"
@@ -82,6 +87,16 @@ class Station:
 class CorrelationMethod(Enum):
     XCORR = 1
     DECONV = 2
+
+
+class StackMethod(Enum):
+    LINEAR = "linear"
+    PWS = "pws"
+    ROBUST = "robust"
+    AUTO_COVARIANCE = "auto_covariance"
+    NROOT = "nroot"
+    SELECTIVE = "selective"
+    ALL = "all"
 
 
 class ConfigParameters(YamlModel):
@@ -147,13 +162,16 @@ class ConfigParameters(YamlModel):
     acorr_only: bool = Field(default=False, description="only perform auto-correlation")
     xcorr_only: bool = Field(default=True, description="only perform cross-correlation or not")
     # Stacking parameters:
-    stack_method: str = Field(default="linear")
+    stack_method: StackMethod = Field(default=StackMethod.LINEAR)
     keep_substack: bool = Field(default=False, description="keep all sub-stacks in final ASDF file")
     # new rotation para
     rotation: bool = Field(default=True, description="rotation from E-N-Z to R-T-Z")
     correction: bool = Field(default=False, description="angle correction due to mis-orientation")
-
+    correction_csv: str = Field(default=None, description="Path to e.g. meso_angles.csv")
     # 'RESP', or 'polozeros' to remove response
+
+    class Config:
+        use_enum_values = True
 
     @property
     def dt(self) -> float:
@@ -211,7 +229,7 @@ class ChannelData:
 
     def __init__(self, stream: obspy.Stream):
         self.stream = stream
-        self.data = stream[0].data
+        self.data = stream[0].data[:]
         self.sampling_rate = stream[0].stats.sampling_rate
         self.start_timestamp = stream[0].stats.starttime.timestamp
 
