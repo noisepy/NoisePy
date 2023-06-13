@@ -16,6 +16,16 @@ def ccstore(tmp_path: Path) -> CrossCorrelationDataStore:
     return CrossCorrelationDataStore(str(tmp_path))
 
 
+@pytest.fixture
+def asdfstore(tmp_path: Path) -> ASDFCCStore:
+    return ASDFCCStore(str(tmp_path))
+
+
+@pytest.fixture
+def zarrstore(tmp_path: Path) -> ZarrCCStore:
+    return ZarrCCStore(str(tmp_path))
+
+
 def _ccstore_test_helper(ccstore: CrossCorrelationDataStore):
     def make_1dts(dt: datetime):
         dt = dt.replace(tzinfo=timezone.utc, microsecond=0)
