@@ -37,26 +37,33 @@ jobs:
         with:
           python-version: "3.10"
       - name: Build pages
+        id: build
+        continue-on-error: true
         run: |
           cd tutorials
           pip install -r requirements.txt
-          jb build .
+          jb build . -W
           cd ..
+      - name: Publish as artifact
+        uses: actions/upload-artifact@v3
+        if: github.event_name == 'pull_request' || steps.build.outcome == 'failure'
+        with:
+          path: './tutorials/_build/html'
       - name: Setup Pages
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && steps.build.outcome == 'success'
         uses: actions/configure-pages@v3
-      - name: Upload artifact
-        if: github.event_name == 'push'
+      - name: Upload pages artifact
+        if: github.event_name == 'push' && steps.build.outcome == 'success'
         uses: actions/upload-pages-artifact@v1
         with:
           # Upload html output
           path: './tutorials/_build/html'
       - name: Deploy to GitHub Pages
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && steps.build.outcome == 'success'
         id: deployment
         uses: actions/deploy-pages@v2
-      - name: Publish as artifact
-        uses: actions/upload-artifact@v3
-        if: github.event_name == 'pull_request'
-        with:
-          path: './tutorials/_build/html'
+      - name: Job failed
+        if: steps.build.outcome != 'success'
+        run: |
+          echo Build step outcome: ${{steps.build.outcome}}
+          exit 1
