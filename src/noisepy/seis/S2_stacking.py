@@ -165,9 +165,9 @@ def stack(cc_store: CrossCorrelationDataStore, stack_store: StackStore, fft_para
             bigstack1 = np.zeros(shape=(9, npts_segmt), dtype=np.float32)
             bigstack2 = np.zeros(shape=(9, npts_segmt), dtype=np.float32)
 
-        def write_stacks(comp: str, tparameters: Dict[str, Any], stacks: List[Tuple[str, np.ndarray]]):
-            for name, data in stacks:
-                stack_store.append(src_sta, rec_sta, comp, f"Allstack_{name}", tparameters, data)
+        def write_stacks(comp: str, tparameters: Dict[str, Any], stacks: List[Tuple[StackMethod, np.ndarray]]):
+            for method, data in stacks:
+                stack_store.append(src_sta, rec_sta, comp, f"Allstack_{method.value}", tparameters, data)
 
         # loop through cross-component for stacking
         iflag = 1
