@@ -76,11 +76,17 @@ class CrossCorrelationDataStore:
     def get_station_pairs(self, timespan: DateTimeRange) -> List[Tuple[Station, Station]]:
         pass
 
+    def _get_station_pair(self, src_sta: Station, rec_sta: Station) -> str:
+        return f"{src_sta}_{rec_sta}"
+
     @abstractmethod
     def get_channeltype_pairs(
         self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station
     ) -> List[Tuple[ChannelType, ChannelType]]:
         pass
+
+    def _get_channel_pair(self, src_chan: Channel, rec_chan: Channel) -> str:
+        return f"{src_chan.type.name}_{rec_chan.type.name}"
 
     @abstractmethod
     def read(
