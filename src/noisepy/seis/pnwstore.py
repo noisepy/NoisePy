@@ -34,8 +34,10 @@ class PNWDataStore(RawDataStore):
         Parameters:
             path: path to look for ms files. Can be a local file directory or an s3://... url path
             chan_catalog: ChannelCatalog to retrieve inventory information for the channels
-            channel_filter: Function to decide whether a channel should be used or not,
+            db_file: path to the sqlite DB file
+            channel_filter: Optional function to decide whether a channel should be used or not,
                             if None, all channels are used
+            date_range: Optional date range to filter the data
         """
         super().__init__()
         self.fs = get_filesystem(path)
@@ -59,7 +61,11 @@ class PNWDataStore(RawDataStore):
                 self._load_channels(full_path, ch_filter)
 
     def _load_channels(self, full_path: str, ch_filter: Callable[[Channel], bool]):
-        _, _, _, _, _, net, year, doy, _ = full_path.split("/")
+        # The path should look like: .../UW/2020/125/
+        parts = full_path.split(os.path.sep)
+        assert len(parts) >= 4
+        net, year, doy = parts[-4:-1]
+
         rst = self._dbquery(
             f"SELECT network, station, channel, location, filename "
             f"FROM tsindex WHERE filename LIKE '%%/{net}/{year}/{doy}/%%'"
@@ -100,9 +106,7 @@ class PNWDataStore(RawDataStore):
         if len(rst) == 0:
             logger.warning(f"Could not find file {timespan}/{chan} in the database")
             return ChannelData.empty()
-        rec = rst[0]
-        byteoffset = rec[0]
-        bytes = rec[1]
+        byteoffset, bytes = rst[0]
 
         # reconstruct the file name from the channel parameters
         chan_str = f"{chan.station.name}.{chan.station.network}.{timespan.start_datetime.strftime('%Y.%j')}"
@@ -128,13 +132,13 @@ class PNWDataStore(RawDataStore):
         jan1 = datetime(year, 1, 1, tzinfo=timezone.utc)
         return DateTimeRange(jan1 + timedelta(days=day - 1), jan1 + timedelta(days=day))
 
-    def _parse_channel(query: tuple) -> Channel:
+    def _parse_channel(record: tuple) -> Channel:
         # e.g.
         # YA2.UW.2020.366
-        network = query[0]
-        station = query[1]
-        channel = query[2]
-        location = query[3]
+        network = record[0]
+        station = record[1]
+        channel = record[2]
+        location = record[3]
         c = Channel(
             ChannelType(channel, location),
             # lat/lon/elev will be populated later
