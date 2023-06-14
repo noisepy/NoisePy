@@ -238,7 +238,7 @@ def preprocess(
 ) -> obspy.Stream:
     return noise_module.preprocess_raw(
         ch_data.stream.copy(),  # If we don't copy it's not writeable
-        raw_store.get_inventory(ts, ch.station),
+        raw_store.get_inventory(ts, ch.station).select(channel=ch.type.name, time=ts.start_datetime),
         fft_params,
         obspy.UTCDateTime(ts.start_datetime),
         obspy.UTCDateTime(ts.end_datetime),
