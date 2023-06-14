@@ -244,7 +244,7 @@ def preprocess_raw(
             if not inv[0][0][0].response:
                 raise ValueError("no response found in the inventory! abort!")
             elif inv[0][0][0].response == obspy.core.inventory.response.Response():
-                raise ValueError("The response found in the inventory is empty (no stages)! abort!")
+                raise ValueError("The response found in the inventory is empty (no stages)! abort!  %s" % st[0])
             else:
                 try:
                     logger.info("removing response for %s using inv" % st[0])

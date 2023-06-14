@@ -145,6 +145,7 @@ def plot_substack_cc(sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir=
         ds = pyasdf.ASDFDataSet(sfile, mode="r")
         # extract common variables
         spairs = ds.auxiliary_data.list()
+        spairs = list(filter(lambda x: x != PROGRESS_DATATYPE, spairs))
         path_lists = ds.auxiliary_data[spairs[0]].list()
         flag = ds.auxiliary_data[spairs[0]][path_lists[0]].parameters["substack"]
         dt = ds.auxiliary_data[spairs[0]][path_lists[0]].parameters["dt"]
@@ -169,8 +170,6 @@ def plot_substack_cc(sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir=
     indx2 = indx1 + 2 * int(disp_lag / dt) + 1
 
     for spair in spairs:
-        if spair == PROGRESS_DATATYPE:
-            continue
         ttr = spair.split("_")
         net1, sta1 = ttr[0].split(".")
         net2, sta2 = ttr[1].split(".")

@@ -236,9 +236,16 @@ def cross_corr(
 def preprocess(
     raw_store: RawDataStore, ch: Channel, ch_data: ChannelData, fft_params: ConfigParameters, ts: DateTimeRange
 ) -> obspy.Stream:
+    inv = raw_store.get_inventory(ts, ch.station)
+    ch_inv = inv.select(channel=ch.type.name, time=ts.start_datetime)
+    # if we don't find an inventory when filtering by time, back off and try
+    # without this constraint
+    if len(ch_inv) < 1:
+        ch_inv = inv.select(channel=ch.type.name)
+
     return noise_module.preprocess_raw(
         ch_data.stream.copy(),  # If we don't copy it's not writeable
-        raw_store.get_inventory(ts, ch.station),
+        ch_inv,
         fft_params,
         obspy.UTCDateTime(ts.start_datetime),
         obspy.UTCDateTime(ts.end_datetime),
