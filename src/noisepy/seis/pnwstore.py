@@ -88,12 +88,12 @@ class PNWDataStore(RawDataStore):
     def read_data(self, timespan: DateTimeRange, chan: Channel) -> ChannelData:
         assert timespan.start_datetime.year == timespan.end_datetime.year, "Did not expect timespans to cross years"
         year = timespan.start_datetime.year
-        doy = timespan.start_datetime.timetuple().tm_yday
+        doy = str(timespan.start_datetime.timetuple().tm_yday).zfill(3)
 
         rst = self._dbquery(
-            f"SELECT byteoffset, bytes"
-            f"FROM tsindex WHERE network='{chan.station.name}' AND station='{chan.station.name}'"
-            f"AND channel='{chan.type.name}' and location='{chan.station.location}'"
+            f"SELECT byteoffset, bytes "
+            f"FROM tsindex WHERE network='{chan.station.network}' AND station='{chan.station.name}' "
+            f"AND channel='{chan.type.name}' and location='{chan.station.location}' "
             f"AND filename LIKE '%%/{chan.station.network}/{year}/{doy}/%%'"
         )
 
