@@ -75,7 +75,9 @@ dev = [
     "pytest>=7.2.2",
     "memory-profiler>=0.61",
     "pre-commit>=3.2",
-    "ray[default]>=2.4.0",
+]
+sql = [
+    "SQLite3-0611",
 ]
 
 [project.scripts]
