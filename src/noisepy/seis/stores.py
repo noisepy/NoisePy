@@ -39,9 +39,7 @@ class RawDataStore(DataStore):
 
 class CrossCorrelationDataStore:
     @abstractmethod
-    def contains(
-        self, timespan: DateTimeRange, src_chan: Channel, rec_chan: Channel, parameters: ConfigParameters
-    ) -> bool:
+    def contains(self, timespan: DateTimeRange, src_chan: Channel, rec_chan: Channel) -> bool:
         pass
 
     @abstractmethod
@@ -85,7 +83,7 @@ class CrossCorrelationDataStore:
     ) -> List[Tuple[ChannelType, ChannelType]]:
         pass
 
-    def _get_channel_pair(self, src_chan: Channel, rec_chan: Channel) -> str:
+    def _get_channel_pair(self, src_chan: ChannelType, rec_chan: ChannelType) -> str:
         return f"{src_chan.type.name}_{rec_chan.type.name}"
 
     @abstractmethod
