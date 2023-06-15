@@ -21,9 +21,7 @@ class ZarrCCStore(CrossCorrelationDataStore):
         Path(directory).mkdir(exist_ok=True)
 
     # CrossCorrelationDataStore implementation
-    def contains(
-        self, timespan: DateTimeRange, src_chan: Channel, rec_chan: Channel, parameters: ConfigParameters
-    ) -> bool:
+    def contains(self, timespan: DateTimeRange, src_chan: Channel, rec_chan: Channel) -> bool:
         station_pair = CrossCorrelationDataStore._get_station_pair(self, src_chan, rec_chan)
         channel_pair = CrossCorrelationDataStore._get_channel_pair(self, src_chan, rec_chan)
         logger.debug(f"station pair {station_pair} channel pair {channel_pair}")
