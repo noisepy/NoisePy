@@ -35,17 +35,14 @@ class ZarrCCStore(CrossCorrelationDataStore):
         timespan: DateTimeRange,
         src_chan: Channel,
         rec_chan: Channel,
-        params: ConfigParameters,
         cc_params: Dict[str, Any],
         corr: np.ndarray,
     ):
         # source-receiver pair: e.g. CI.ARV_CI.BAK
-        station_pair = CrossCorrelationDataStore._get_station_pair(self, src_chan, rec_chan)
+        station_pair = CrossCorrelationDataStore._get_station_pair(self, src_chan.station, rec_chan.station)
         # channels, e.g. bhn_bhn
-        channels = f"{src_chan.type.name}_{rec_chan.type.name}"
-        data = np.zeros(corr.shape, dtype=corr.dtype)
-        data[:] = corr[:]
-        self._add_aux_data(timespan, cc_params, station_pair, channels, data)
+        channels = CrossCorrelationDataStore._get_channel_pair(self, src_chan.type, rec_chan.type)
+        self.datasets.add_aux_data(timespan, cc_params, station_pair, channels, corr)
 
     def mark_done(self, timespan: DateTimeRange):
         self._add_aux_data(timespan, {}, PROGRESS_DATATYPE, DONE_PATH, np.zeros(0))
