@@ -84,7 +84,7 @@ class CrossCorrelationDataStore:
         pass
 
     def _get_channel_pair(self, src_chan: ChannelType, rec_chan: ChannelType) -> str:
-        return f"{src_chan.name}_{rec_chan.name}"
+        return f"{src_chan}_{rec_chan}"
 
     @abstractmethod
     def read(
