@@ -100,6 +100,7 @@ class StackMethod(Enum):
 
 
 class ConfigParameters(YamlModel):
+    client_url_key: str = "SCEDC"
     start_date: datetime = Field(default=datetime(2019, 1, 1))
     end_date: datetime = Field(default=datetime(2019, 1, 2))
     samp_freq: float = Field(default=20)  # TODO: change this samp_freq for the obspy "sampling_rate"
