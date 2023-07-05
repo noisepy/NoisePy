@@ -72,13 +72,9 @@ MAX_MEM = 5.0  # maximum memory allowed per core in GB
 # we expect no parameters need to be changed below
 
 
-def download(
-    direc: str,
-    prepro_para: ConfigParameters,
-    client_url_key: str = "SCEDC",
-):
+def download(direc: str, prepro_para: ConfigParameters):
     # client/data center. see https://docs.obspy.org/packages/obspy.clients.fdsn.html for a list
-    client = Client(client_url_key)
+    client = Client(prepro_para.client_url_key)
     chan_list = prepro_para.channels
     sta_list = prepro_para.stations
     executor = ThreadPoolExecutor()
@@ -242,7 +238,6 @@ def download(
                 task = executor.submit(
                     download_stream,
                     prepro_para,
-                    client_url_key,
                     inv,
                     net[ista],
                     sta[ista],
@@ -273,7 +268,6 @@ def download(
 
 def download_stream(
     prepro_para: ConfigParameters,
-    url_key: str,
     inv: obspy.Inventory,
     net: str,
     sta: str,
@@ -284,7 +278,7 @@ def download_stream(
     index: int,
 ) -> Tuple[int, obspy.Stream]:
     logger.debug(f"Start download for {sta}.{chan}")
-    client = Client(url_key, timeout=15)
+    client = Client(prepro_para.client_url_key, timeout=15)
     retries = 5
     while retries > 0:
         try:
