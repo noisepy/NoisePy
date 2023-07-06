@@ -78,7 +78,7 @@ class MPIScheduler(Scheduler):
             logger.debug(f"RANK {rank}, vars = {vars}")
             return vars
 
-    def get_indices(self, items: list) -> list[int]:
+    def get_indices(self, items: list) -> List[int]:
         rank = self.comm.Get_rank()
         size = self.comm.Get_size()
         rank = self.comm.Get_rank()
