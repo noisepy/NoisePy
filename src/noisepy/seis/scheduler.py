@@ -21,7 +21,7 @@ class Scheduler(ABC):
         pass
 
     @abstractmethod
-    def get_indices(items: list) -> list[int]:
+    def get_indices(items: list) -> List[int]:
         """Get the indices of the items this process should work on"""
         pass
 
@@ -37,7 +37,7 @@ class SingleNodeScheduler(Scheduler):
     def initialize(self, initializer: Callable[[], List], shared_vars: int) -> List:
         return initializer()
 
-    def get_indices(self, items: list) -> list[int]:
+    def get_indices(self, items: list) -> List[int]:
         indices = list(range(len(items)))
         logger.debug(f"RANK -, INDICES: {indices}")
         return indices
