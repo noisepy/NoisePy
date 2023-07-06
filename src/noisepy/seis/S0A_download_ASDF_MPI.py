@@ -292,6 +292,7 @@ def download_stream(
             )
         except Exception as e:
             logger.warning(f"{e} for get_waveforms({sta}.{chan})")
+            continue
 
         logger.debug(f"Got waveforms for {sta}.{chan}")
 

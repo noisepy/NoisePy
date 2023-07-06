@@ -5,9 +5,9 @@ from typing import Any, Dict, List, Tuple
 import numpy as np
 import pandas as pd
 from datetimerange import DateTimeRange
-from mpi4py import MPI
 
 from noisepy.seis.datatypes import ConfigParameters, StackMethod
+from noisepy.seis.scheduler import Scheduler, SingleNodeScheduler
 from noisepy.seis.stores import CrossCorrelationDataStore, StackStore
 from noisepy.seis.utils import TimeLogger
 
@@ -42,7 +42,12 @@ NOTE:
 MAX_MEM = 4.0
 
 
-def stack(cc_store: CrossCorrelationDataStore, stack_store: StackStore, fft_params: ConfigParameters):
+def stack(
+    cc_store: CrossCorrelationDataStore,
+    stack_store: StackStore,
+    fft_params: ConfigParameters,
+    scheduler: Scheduler = SingleNodeScheduler(),
+):
     tlog = TimeLogger(logger=logger)
     t_tot = tlog.reset()
     if fft_params.rotation and fft_params.correction:
@@ -64,33 +69,23 @@ def stack(cc_store: CrossCorrelationDataStore, stack_store: StackStore, fft_para
     #######################################
     # #########PROCESSING SECTION##########
     #######################################
-
-    # --------MPI---------
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
-    size = comm.Get_size()
-
-    if rank == 0:
+    def initializer():
         timespans = cc_store.get_timespans()
         pairs_all = list(set(pair for ts in timespans for pair in cc_store.get_station_pairs(ts)))
         logger.info(f"Station pairs: {pairs_all}")
 
-        splits = len(pairs_all)
-        if len(timespans) == 0 or splits == 0:
+        if len(timespans) == 0 or len(pairs_all) == 0:
             raise IOError("Abort! no available CCF data for stacking")
-    else:
-        splits, timespans, pairs_all = [None for _ in range(3)]
+        return timespans, pairs_all
 
-    # broadcast the variables
-    splits = comm.bcast(splits, root=0)
-    timespans = comm.bcast(timespans, root=0)
-    pairs_all = comm.bcast(pairs_all, root=0)
+    timespans, pairs_all = scheduler.initialize(initializer, 2)
+
     nccomp = fft_params.ncomp * fft_params.ncomp
     num_chunk = len(timespans) * nccomp
     num_segmts = 1
 
-    # MPI loop: loop through each user-defined time chunck
-    for ipair in range(rank, splits, size):
+    # loop through each pair assigned to this process by the scheduler
+    for ipair in scheduler.get_indices(pairs_all):
         tlog.reset()
 
         logger.debug("%dth path for station-pair %s" % (ipair, pairs_all[ipair]))
@@ -259,7 +254,7 @@ def stack(cc_store: CrossCorrelationDataStore, stack_store: StackStore, fft_para
         stack_store.mark_done(src_sta, rec_sta)
 
     tlog.log("step 2 in total", t_tot)
-    comm.barrier()
+    scheduler.synchronize()
 
 
 def validate_pairs(ncomp: int, sta_pair: str, fauto: int, ts: DateTimeRange, n_pairs: int) -> bool:

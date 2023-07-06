@@ -35,7 +35,6 @@ classifiers = [
 dependencies = [
     "DateTimeRange==2.0.0",
     "h5py>=3.8.0",
-    "mpi4py>=3.1.4",
     "numba>=0.57.0",
     "numpy>=1.22.0",
     "pandas>=1.5.3",
@@ -78,6 +77,9 @@ dev = [
 ]
 sql = [
     "SQLite3-0611",
+]
+mpi = [
+    "mpi4py>=3.1.4",
 ]
 
 [project.scripts]

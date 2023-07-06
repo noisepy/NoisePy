@@ -21,6 +21,7 @@ from .S0A_download_ASDF_MPI import download
 from .S1_fft_cc_MPI import cross_correlate
 from .S2_stacking import stack
 from .scedc_s3store import SCEDCS3DataStore
+from .scheduler import MPIScheduler, SingleNodeScheduler
 from .utils import fs_join, get_filesystem
 
 logger = logging.getLogger(__name__)
@@ -163,7 +164,8 @@ def main(args: typing.Any):
         cc_store = ASDFCCStore(args.ccf_path, "r")
         stack_store = ASDFStackStore(args.stack_path)
         params = initialize_params(args, args.ccf_path)
-        stack(cc_store, stack_store, params)
+        scheduler = MPIScheduler(0) if args.mpi else SingleNodeScheduler()
+        stack(cc_store, stack_store, params, scheduler)
         params.save_yaml(fs_join(args.stack_path, CONFIG_FILE))
 
     if args.cmd == Command.DOWNLOAD:
@@ -192,7 +194,7 @@ def add_paths(parser, types: List[str]):
         add_path(parser, t)
 
 
-def make_step_parser(subparsers: Any, cmd: Command, paths: List[str]):
+def make_step_parser(subparsers: Any, cmd: Command, paths: List[str]) -> Any:
     parser = subparsers.add_parser(
         cmd.name.lower(),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -209,6 +211,11 @@ def make_step_parser(subparsers: Any, cmd: Command, paths: List[str]):
         "-c", "--config", type=lambda f: _valid_config_file(parser, f), required=False, help="Configuration YAML file"
     )
     add_model(parser, ConfigParameters())
+    return parser
+
+
+def add_mpi(parser: Any):
+    parser.add_argument("-m", "--mpi", action="store_true")
 
 
 def main_cli():
@@ -221,8 +228,8 @@ def parse_args(arguments: Iterable[str]) -> argparse.Namespace:
     subparsers = parser.add_subparsers(dest="cmd", required=True)
     make_step_parser(subparsers, Command.DOWNLOAD, ["raw_data"])
     make_step_parser(subparsers, Command.CROSS_CORRELATE, ["raw_data", "ccf", "xml"])
-    make_step_parser(subparsers, Command.STACK, ["raw_data", "stack", "ccf"])
-    make_step_parser(subparsers, Command.ALL, ["raw_data", "ccf", "stack", "xml"])
+    add_mpi(make_step_parser(subparsers, Command.STACK, ["raw_data", "stack", "ccf"]))
+    add_mpi(make_step_parser(subparsers, Command.ALL, ["raw_data", "ccf", "stack", "xml"]))
 
     args = parser.parse_args(arguments)
 
