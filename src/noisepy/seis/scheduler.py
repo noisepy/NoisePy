@@ -81,7 +81,7 @@ class MPIScheduler(Scheduler):
     def get_indices(self, items: list) -> List[int]:
         rank = self.comm.Get_rank()
         size = self.comm.Get_size()
-        
+
         rng = range(rank, len(items), size)
         indices = list(rng)
         logger.debug(f"RANK {rank}, INDICES: {indices}")
