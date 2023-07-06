@@ -19,6 +19,7 @@ from noisepy.seis.datatypes import ConfigParameters
 from noisepy.seis.utils import TimeLogger
 from . import noise_module
 from obspy.clients.fdsn import Client
+from obspy.clients.fdsn.header import FDSNNoDataException
 
 logger = logging.getLogger(__name__)
 if not sys.warnoptions:
@@ -281,6 +282,7 @@ def download_stream(
     client = Client(prepro_para.client_url_key, timeout=15)
     retries = 5
     while retries > 0:
+        retries -= 1
         try:
             tr = client.get_waveforms(
                 network=net,
@@ -290,8 +292,11 @@ def download_stream(
                 starttime=starttime,
                 endtime=endtime,
             )
+        except FDSNNoDataException:
+            logger.warning(f"No data available for {starttime}-{endtime}/{sta}.{chan}")
+            return -1, None
         except Exception as e:
-            logger.warning(f"{e} for get_waveforms({sta}.{chan})")
+            logger.warning(f"{type(e)}/{e} for get_waveforms({sta}.{chan})")
             continue
 
         logger.debug(f"Got waveforms for {sta}.{chan}")
@@ -305,6 +310,7 @@ def download_stream(
             endtime,
         )
         return index, tr
+    logger.warning(f"Could not download data for {starttime}-{endtime}/{sta}.{chan}")
     return -1, None
 
 

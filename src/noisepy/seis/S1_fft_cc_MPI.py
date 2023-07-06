@@ -10,9 +10,9 @@ import obspy
 from datetimerange import DateTimeRange
 from scipy.fftpack.helper import next_fast_len
 
-from noisepy.seis.datatypes import Channel, ChannelData, ConfigParameters, NoiseFFT
-
 from . import noise_module
+from .datatypes import Channel, ChannelData, ConfigParameters, NoiseFFT
+from .scheduler import Scheduler, SingleNodeScheduler
 from .stores import CrossCorrelationDataStore, RawDataStore
 from .utils import TimeLogger, error_if
 
@@ -35,19 +35,13 @@ Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
          Marine Denolle (mdenolle@fas.harvard.edu)
 
 NOTE:
-    0. MOST occasions you just need to change parameters followed with detailed
-    explanations to run the script.
-    1. To read SAC/mseed files, we assume the users have sorted the data
-    by the time chunk they prefer (e.g., 1day)
-        and store them in folders named after the time chunk (e.g, 2010_10_1).
-        modify L135 to find your local data;
-    2. A script of S0B_to_ASDF.py is provided to help clean messy SAC/MSEED data and
+    1. A script of S0B_to_ASDF.py is provided to help clean messy SAC/MSEED data and
     convert them into ASDF format.
         the script takes minor time compared to that for cross-correlation.
         so we recommend to use S0B script for
         better NoisePy performance. the downside is that it duplicates the
         continuous noise data on your machine;
-    3. When "coherency" is preferred, please set "freq_norm" to "rma" and "time_norm" to "no"
+    2. When "coherency" is preferred, please set "freq_norm" to "rma" and "time_norm" to "no"
     for better performance.
 """
 
@@ -56,28 +50,32 @@ def cross_correlate(
     raw_store: RawDataStore,
     fft_params: ConfigParameters,
     cc_store: CrossCorrelationDataStore,
+    scheduler: Scheduler = SingleNodeScheduler(),
 ):
     """
     Perform the cross-correlation analysis
 
-        Parameters:
-                raw_store: Store to load data from
-                fft_params: Parameters for the FFT calculations
-                cc_store: Store for saving cross correlations
-
+    Args:
+        raw_store: Store to load data from
+        fft_params: Parameters for the FFT calculations
+        cc_store: Store for saving cross correlations
     """
 
     executor = ThreadPoolExecutor()
     tlog = TimeLogger(logger, logging.INFO)
     t_s1_total = tlog.reset()
 
-    # set variables to broadcast
-    timespans = raw_store.get_timespans()
-    splits = len(timespans)
-    if splits == 0:
-        raise IOError("Abort! no available seismic files for FFT")
+    def init() -> List:
+        # set variables to broadcast
+        timespans = raw_store.get_timespans()
+        if len(timespans) == 0:
+            raise IOError("Abort! no available seismic files for FFT")
+        return [timespans]
 
-    for ts in timespans:
+    [timespans] = scheduler.initialize(init, 1)
+
+    for its in scheduler.get_indices(timespans):
+        ts = timespans[its]
         if cc_store.is_done(ts):
             continue
 

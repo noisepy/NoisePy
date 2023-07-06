@@ -31,7 +31,7 @@ jobs:
         python-version: ${{env.python_version}}
     - name: Test Download (S0)
       working-directory: ./src
-      run: noisepy download --start_date 2019-02-01T00:00:00 --end_date 2019-02-01T01:00:00 --stations ARV,BAK --inc_hours 1 --raw_data_path $RUNNER_TEMP/RAW_DATA
+      run: noisepy download --start_date 2019-02-01T00:00:00 --end_date 2019-02-01T02:00:00 --stations ARV,BAK --inc_hours 1 --raw_data_path $RUNNER_TEMP/RAW_DATA
     - name: Cache data
       uses: actions/cache/save@v3
       with:
@@ -99,7 +99,7 @@ jobs:
     - name: Test Cross-Correlation (S1)
       working-directory: ./src
       run: |
-        noisepy cross_correlate --raw_data_path $RUNNER_TEMP/RAW_DATA --ccf_path $RUNNER_TEMP/CCF --freq_norm ${{matrix.freq_norm}}
+        mpiexec -n 2 noisepy cross_correlate --mpi --raw_data_path $RUNNER_TEMP/RAW_DATA --ccf_path $RUNNER_TEMP/CCF --freq_norm ${{matrix.freq_norm}}
     - name: Test Stacking (S2)
       working-directory: ./src
       run: |
