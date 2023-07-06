@@ -46,7 +46,12 @@ This combines the time-chunked ASDF files to stack over each time chunk and at e
 ```sh
 noisepy stack --ccf_path ./tmpdata/CCF --stack_path ./tmpdata/STACK
 ```
+Optionally, this step can be run via MPI (e.g. with 3 processes). See [Installation](../../README.md#installation):
+```sh
+mpiexec -n 3 noisepy stack --mpi --ccf_path ./tmpdata/CCF --stack_path ./tmpdata/STACK
+```
+
 
 ```sh
-ls -R tmpdata/STAC
+ls -R tmpdata/STACK
 ```
