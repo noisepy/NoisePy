@@ -23,11 +23,24 @@ The nature of NoisePy being composed of python scripts allows flexible package i
 ```bash
 conda create -n noisepy python=3.8 pip
 conda activate noisepy
-conda install -c conda-forge openmpi
 pip install noisepy-seis
 ```
 
+## With Conda and pip and MPI support:
+```bash
+conda create -n noisepy python=3.8 pip
+conda activate noisepy
+conda install -c conda-forge openmpi
+pip install noisepy-seis[mpi]
+```
+
 ## With virtual environment:
+```bash
+python -m venv noisepy
+source noisepy/bin/activate
+pip install noisepy-seis
+```
+## With virtual environment and MPI support:
 An MPI installation is required. E.g. for macOS using [brew](https://brew.sh/) :
 ```bash
 brew install open-mpi
@@ -36,7 +49,7 @@ brew install open-mpi
 ```bash
 python -m venv noisepy
 source noisepy/bin/activate
-pip install noisepy-seis
+pip install noisepy-seis[mpi]
 ```
 
 
