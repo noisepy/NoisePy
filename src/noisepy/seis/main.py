@@ -157,7 +157,8 @@ def main(args: typing.Any):
         cc_store = ASDFCCStore(ccf_dir)
         params = initialize_params(args, args.raw_data_path)
         raw_store = create_raw_store(args, params)
-        cross_correlate(raw_store, params, cc_store)
+        scheduler = MPIScheduler(0) if args.mpi else SingleNodeScheduler()
+        cross_correlate(raw_store, params, cc_store, scheduler)
         params.save_yaml(fs_join(ccf_dir, CONFIG_FILE))
 
     def run_stack():
@@ -227,7 +228,7 @@ def parse_args(arguments: Iterable[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="cmd", required=True)
     make_step_parser(subparsers, Command.DOWNLOAD, ["raw_data"])
-    make_step_parser(subparsers, Command.CROSS_CORRELATE, ["raw_data", "ccf", "xml"])
+    add_mpi(make_step_parser(subparsers, Command.CROSS_CORRELATE, ["raw_data", "ccf", "xml"]))
     add_mpi(make_step_parser(subparsers, Command.STACK, ["raw_data", "stack", "ccf"]))
     add_mpi(make_step_parser(subparsers, Command.ALL, ["raw_data", "ccf", "stack", "xml"]))
 
