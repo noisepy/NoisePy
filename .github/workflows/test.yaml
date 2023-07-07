@@ -31,7 +31,7 @@ jobs:
         python-version: ${{env.python_version}}
     - name: Test Download (S0)
       working-directory: ./src
-      run: noisepy download --start_date 2019-02-01T00:00:00 --end_date 2019-02-01T01:00:00 --stations ARV,BAK --inc_hours 1 --raw_data_path $RUNNER_TEMP/RAW_DATA
+      run: noisepy download --start_date 2019-02-01T00:00:00 --end_date 2019-02-01T02:00:00 --stations ARV,BAK --inc_hours 1 --raw_data_path $RUNNER_TEMP/RAW_DATA
     - name: Cache data
       uses: actions/cache/save@v3
       with:
@@ -70,6 +70,40 @@ jobs:
       working-directory: ./src
       run: |
         noisepy stack --raw_data_path $RUNNER_TEMP/RAW_DATA --ccf_path $RUNNER_TEMP/CCF --stack_path $RUNNER_TEMP/STACK --stack_method ${{matrix.method}}
+  s1_s2_mpi:
+    strategy:
+      fail-fast: true
+      matrix:
+        python_version: ['3.10']
+        method: [linear]
+        freq_norm: [rma]
+    runs-on: ubuntu-22.04
+    needs: s0_download
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v3.3.0
+    - name: Setup NoisePy
+      uses: ./.github/actions/setup
+      with:
+        python-version: ${{matrix.python_version}}
+        mpi: 'true'
+    - name: Cache data
+      id: cache
+      uses: actions/cache/restore@v3
+      with:
+        key: download_data-${{ github.sha }}
+        path: ${{runner.temp}}
+    - name: Check cache hit
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: exit 1
+    - name: Test Cross-Correlation (S1)
+      working-directory: ./src
+      run: |
+        mpiexec -n 2 noisepy cross_correlate --mpi --raw_data_path $RUNNER_TEMP/RAW_DATA --ccf_path $RUNNER_TEMP/CCF --freq_norm ${{matrix.freq_norm}}
+    - name: Test Stacking (S2)
+      working-directory: ./src
+      run: |
+        mpiexec -n 3 noisepy stack --mpi --raw_data_path $RUNNER_TEMP/RAW_DATA --ccf_path $RUNNER_TEMP/CCF --stack_path $RUNNER_TEMP/STACK --stack_method ${{matrix.method}}
   s3_dates:
     strategy:
       fail-fast: true
