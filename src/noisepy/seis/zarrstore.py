@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
@@ -14,25 +15,31 @@ from .stores import (
     timespan_str,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class ZarrCCStore(CrossCorrelationDataStore):
     """
-    TODO:
-    docs
-    make chunking an argument
-    update tutorials to use Zarr?
-    update CLI to use Zarr?
+    CrossCorrelationDataStore that uses hierarchical Zarr files for storage. The directory organization is as follows:
     /                           (root)
         station_pair            (group)
             timestamp           (group)
                 channel_pair    (array)
         'done'                  (array)
+    'done' is a dummy array to track completed timespans in its attribute dictionary.
+    Args:
+        root_dir: Storage location
+        mode: "r" or "w" for read-only or writing mode
+        chunks: Chunking or tile size for the arrays. The individual arrays should not be huge since the data
+                is already partioned by station pair, timespan and channel pair.
+
     """
 
-    def __init__(self, root_dir: str, mode: str = "w") -> None:
+    def __init__(self, root_dir: str, mode: str = "w", chunks: Tuple[int, int] = (4 * 1024, 4 * 1024)) -> None:
         super().__init__()
-        self.chunks = (1000, 1000)
+        self.chunks = chunks
         self.root = zarr.open(root_dir, mode=mode)
+        logging.info(f"store created at {root_dir}")
 
     def contains(self, timespan: DateTimeRange, src_chan: Channel, rec_chan: Channel) -> bool:
         path = self._get_path(timespan, src_chan, rec_chan)
@@ -47,6 +54,7 @@ class ZarrCCStore(CrossCorrelationDataStore):
         data: np.ndarray,
     ):
         path = self._get_path(timespan, src_chan, rec_chan)
+        logging.debug(f"Appending to {path}: {data.shape}")
         array = self.root.require_dataset(
             path,
             shape=data.shape,
@@ -55,7 +63,7 @@ class ZarrCCStore(CrossCorrelationDataStore):
         )
         array[:] = data
         for k, v in cc_params.items():
-            array.attrs[k] = v
+            array.attrs[k] = _to_json(v)
 
     def is_done(self, timespan: DateTimeRange):
         if DONE_PATH not in self.root.array_keys():
@@ -107,3 +115,9 @@ class ZarrCCStore(CrossCorrelationDataStore):
         channels = self._get_channel_pair(src_chan.type, rec_chan.type)
         station_path = self._get_station_path(timespan, src_chan.station, rec_chan.station)
         return f"{station_path}/{channels}"
+
+
+def _to_json(value: Any) -> Any:
+    if type(value) == np.ndarray:
+        return value.tolist()
+    return value
