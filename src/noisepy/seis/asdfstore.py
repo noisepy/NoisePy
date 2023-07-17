@@ -1,4 +1,3 @@
-import datetime
 import glob
 import logging
 import os
@@ -11,9 +10,16 @@ import pyasdf
 from datetimerange import DateTimeRange
 
 from . import noise_module
-from .constants import DATE_FORMAT, DONE_PATH, PROGRESS_DATATYPE
+from .constants import DONE_PATH, PROGRESS_DATATYPE
 from .datatypes import Channel, ChannelData, ChannelType, Station
-from .stores import CrossCorrelationDataStore, RawDataStore, StackStore
+from .stores import (
+    CrossCorrelationDataStore,
+    RawDataStore,
+    StackStore,
+    parse_station_pair,
+    parse_timespan,
+    timespan_str,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +84,7 @@ class ASDFRawDataStore(RawDataStore):
 
     def __init__(self, directory: str, mode: str = "r"):
         super().__init__()
-        self.datasets = ASDFDirectory(directory, mode, _filename_from_timespan, _parse_timespan)
+        self.datasets = ASDFDirectory(directory, mode, _filename_from_timespan, parse_timespan)
 
     def get_channels(self, timespan: DateTimeRange) -> List[Channel]:
         with self.datasets[timespan] as ds:
@@ -116,7 +122,7 @@ class ASDFCCStore(CrossCorrelationDataStore):
     def __init__(self, directory: str, mode: str = "a") -> None:
         super().__init__()
         Path(directory).mkdir(exist_ok=True)
-        self.datasets = ASDFDirectory(directory, mode, _filename_from_timespan, _parse_timespan)
+        self.datasets = ASDFDirectory(directory, mode, _filename_from_timespan, parse_timespan)
 
     # CrossCorrelationDataStore implementation
     def contains(self, timespan: DateTimeRange, src_chan: Channel, rec_chan: Channel) -> bool:
@@ -151,10 +157,14 @@ class ASDFCCStore(CrossCorrelationDataStore):
     def get_timespans(self) -> List[DateTimeRange]:
         return self.datasets.get_keys()
 
-    def get_station_pairs(self, timespan: DateTimeRange) -> List[Tuple[Station, Station]]:
-        with self.datasets[timespan] as ccf_ds:
-            data = ccf_ds.auxiliary_data.list()
-            return [_parse_station_pair(p) for p in data if p != PROGRESS_DATATYPE]
+    def get_station_pairs(self) -> List[Tuple[Station, Station]]:
+        timespans = self.get_timespans()
+        pairs_all = []
+        for timespan in timespans:
+            with self.datasets[timespan] as ccf_ds:
+                data = ccf_ds.auxiliary_data.list()
+                pairs_all.extend(parse_station_pair(p) for p in data if p != PROGRESS_DATATYPE)
+        return list(set(pairs_all))
 
     def get_channeltype_pairs(
         self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station
@@ -173,19 +183,11 @@ class ASDFCCStore(CrossCorrelationDataStore):
             stream = ds.auxiliary_data[dtype][path]
             return (stream.parameters, stream.data[:])
 
-    # private helper methods
-
-    def _get_station_pair(self, src_sta: Station, rec_sta: Station) -> str:
-        return f"{src_sta}_{rec_sta}"
-
-    def _get_channel_pair(self, src_chan: ChannelType, rec_chan: ChannelType) -> str:
-        return f"{src_chan.name}_{rec_chan.name}"
-
 
 class ASDFStackStore(StackStore):
     def __init__(self, directory: str, mode: str = "a"):
         super().__init__()
-        self.datasets = ASDFDirectory(directory, mode, _filename_from_stations, _parse_station_pair)
+        self.datasets = ASDFDirectory(directory, mode, _filename_from_stations, parse_station_pair)
 
     def mark_done(self, src: Station, rec: Station):
         self.datasets.mark_done((src, rec))
@@ -210,24 +212,9 @@ def _get_dataset(filename: str, mode: str) -> pyasdf.ASDFDataSet:
         return pyasdf.ASDFDataSet(filename, mode=mode, mpi=False, compression=None)
 
 
-def _parse_timespan(filename: str) -> DateTimeRange:
-    parts = os.path.splitext(os.path.basename(filename))[0].split("T")
-    dates = [obspy.UTCDateTime(p).datetime.replace(tzinfo=datetime.timezone.utc) for p in parts]
-    return DateTimeRange(dates[0], dates[1])
-
-
-def _filename_from_timespan(timespan: DateTimeRange) -> str:
-    return f"{timespan.start_datetime.strftime(DATE_FORMAT)}T{timespan.end_datetime.strftime(DATE_FORMAT)}.h5"
-
-
 def _filename_from_stations(pair: Tuple[Station, Station]) -> str:
     return f"{pair[0]}/{pair[0]}_{pair[1]}.h5"
 
 
-def _parse_station_pair(pair: str) -> Tuple[Station, Station]:
-    # Parse from:'CI.ARV_CI.BAK
-    def station(sta: str) -> Station:
-        net, name = sta.split(".")
-        return Station(net, name)
-
-    return tuple(map(station, pair.split("_")))
+def _filename_from_timespan(timespan: DateTimeRange) -> str:
+    return f"{timespan_str(timespan)}.h5"

@@ -71,7 +71,7 @@ def stack(
     #######################################
     def initializer():
         timespans = cc_store.get_timespans()
-        pairs_all = list(set(pair for ts in timespans for pair in cc_store.get_station_pairs(ts)))
+        pairs_all = cc_store.get_station_pairs()
         logger.info(f"Station pairs: {pairs_all}")
 
         if len(timespans) == 0 or len(pairs_all) == 0:

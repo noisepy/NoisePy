@@ -1,9 +1,13 @@
+import datetime
+import os
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import obspy
 from datetimerange import DateTimeRange
+
+from noisepy.seis.constants import DATE_FORMAT
 
 from .datatypes import Channel, ChannelData, ChannelType, ConfigParameters, Station
 
@@ -45,16 +49,11 @@ class CrossCorrelationDataStore:
         pass
 
     @abstractmethod
-    def save_parameters(self, parameters: ConfigParameters):
-        pass
-
-    @abstractmethod
     def append(
         self,
         timespan: DateTimeRange,
-        chan1: Channel,
-        chan2: Channel,
-        parameters: ConfigParameters,
+        src_chan: Channel,
+        rec_chan: Channel,
         cc_params: Dict[str, Any],
         data: np.ndarray,
     ):
@@ -73,7 +72,7 @@ class CrossCorrelationDataStore:
         pass
 
     @abstractmethod
-    def get_station_pairs(self, timespan: DateTimeRange) -> List[Tuple[Station, Station]]:
+    def get_station_pairs(self) -> List[Tuple[Station, Station]]:
         pass
 
     @abstractmethod
@@ -87,6 +86,13 @@ class CrossCorrelationDataStore:
         self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station, src_ch: ChannelType, rec_ch: ChannelType
     ) -> Tuple[Dict, np.ndarray]:
         pass
+
+    # private helpers
+    def _get_station_pair(self, src_sta: Station, rec_sta: Station) -> str:
+        return f"{src_sta}_{rec_sta}"
+
+    def _get_channel_pair(self, src_chan: ChannelType, rec_chan: ChannelType) -> str:
+        return f"{src_chan.name}_{rec_chan.name}"
 
 
 class StackStore:
@@ -107,3 +113,22 @@ class StackStore:
         self, src: Station, rec: Station, components: str, name: str, stack_params: Dict[str, Any], data: np.ndarray
     ):
         pass
+
+
+def timespan_str(timespan: DateTimeRange) -> str:
+    return f"{timespan.start_datetime.strftime(DATE_FORMAT)}T{timespan.end_datetime.strftime(DATE_FORMAT)}"
+
+
+def parse_station_pair(pair: str) -> Tuple[Station, Station]:
+    # Parse from:'CI.ARV_CI.BAK
+    def station(sta: str) -> Station:
+        net, name = sta.split(".")
+        return Station(net, name)
+
+    return tuple(map(station, pair.split("_")))
+
+
+def parse_timespan(filename: str) -> DateTimeRange:
+    parts = os.path.splitext(os.path.basename(filename))[0].split("T")
+    dates = [obspy.UTCDateTime(p).datetime.replace(tzinfo=datetime.timezone.utc) for p in parts]
+    return DateTimeRange(dates[0], dates[1])
