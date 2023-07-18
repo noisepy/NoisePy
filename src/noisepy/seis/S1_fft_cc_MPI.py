@@ -95,7 +95,11 @@ def cross_correlate(
         ch_data_tuples = _read_channels(executor, ts, raw_store, all_channels, fft_params.samp_freq)
         # only the channels we are using
 
-        channels = list(zip(*ch_data_tuples))[0] if len(ch_data_tuples) > 0 else []
+        if len(ch_data_tuples) == 0:
+            logger.warning(f"No data available for {ts}")
+            continue
+
+        channels = list(zip(*ch_data_tuples))[0]
         tlog.log("read channel data")
 
         ch_data_tuples = preprocess_all(executor, ch_data_tuples, raw_store, fft_params, ts)

@@ -39,7 +39,7 @@ class ZarrCCStore(CrossCorrelationDataStore):
         super().__init__()
         self.chunks = chunks
         self.root = zarr.open(root_dir, mode=mode)
-        logging.info(f"store created at {root_dir}")
+        logger.info(f"store created at {root_dir}")
 
     def contains(self, timespan: DateTimeRange, src_chan: Channel, rec_chan: Channel) -> bool:
         path = self._get_path(timespan, src_chan, rec_chan)
@@ -54,7 +54,7 @@ class ZarrCCStore(CrossCorrelationDataStore):
         data: np.ndarray,
     ):
         path = self._get_path(timespan, src_chan, rec_chan)
-        logging.debug(f"Appending to {path}: {data.shape}")
+        logger.debug(f"Appending to {path}: {data.shape}")
         array = self.root.require_dataset(
             path,
             shape=data.shape,
