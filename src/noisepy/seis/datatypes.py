@@ -4,7 +4,7 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 import obspy
@@ -162,7 +162,7 @@ class ConfigParameters(BaseModel):
     )
     rm_resp: str = Field(default="no", description="select 'no' to not remove response and use 'inv','spectrum',")
     rm_resp_out: str = Field(default="VEL", description="output location from response removal")
-    respdir: str | None = Field(default=None, description="response directory")
+    respdir: Optional[str] = Field(default=None, description="response directory")
     # some control parameters
     acorr_only: bool = Field(default=False, description="only perform auto-correlation")
     xcorr_only: bool = Field(default=True, description="only perform cross-correlation or not")
@@ -172,7 +172,7 @@ class ConfigParameters(BaseModel):
     # new rotation para
     rotation: bool = Field(default=True, description="rotation from E-N-Z to R-T-Z")
     correction: bool = Field(default=False, description="angle correction due to mis-orientation")
-    correction_csv: str | None = Field(default=None, description="Path to e.g. meso_angles.csv")
+    correction_csv: Optional[str] = Field(default=None, description="Path to e.g. meso_angles.csv")
     # 'RESP', or 'polozeros' to remove response
 
     @property
