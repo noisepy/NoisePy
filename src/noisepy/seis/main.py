@@ -61,7 +61,7 @@ def parse_bool(bstr: str) -> bool:
 
 
 def get_arg_type(arg_type):
-    if arg_type == list:
+    if arg_type == List[str]:
         return list_str
     if arg_type == datetime:
         return dateutil.parser.isoparse
@@ -72,14 +72,14 @@ def get_arg_type(arg_type):
 
 def add_model(parser: argparse.ArgumentParser, model: ConfigParameters):
     # Add config model to the parser
-    fields = model.__fields__
+    fields = model.model_fields
     for name, field in fields.items():
         parser.add_argument(
             f"--{name}",
             dest=name,
-            type=get_arg_type(field.type_),
+            type=get_arg_type(field.annotation),
             default=argparse.SUPPRESS,
-            help=field.field_info.description,
+            help=field.description,
         )
 
 
