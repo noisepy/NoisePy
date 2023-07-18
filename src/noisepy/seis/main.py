@@ -97,7 +97,7 @@ def initialize_params(args, data_dir: str) -> ConfigParameters:
         config_path = fs_join(data_dir, CONFIG_FILE)
     if config_path is not None and os.path.isfile(config_path):
         logger.info(f"Loading parameters from {config_path}")
-        params = ConfigParameters.parse_file(config_path)
+        params = ConfigParameters.load_yaml(config_path)
     else:
         logger.warning(f"Config file {config_path if config_path else ''} not found. Using default parameters.")
         params = ConfigParameters()

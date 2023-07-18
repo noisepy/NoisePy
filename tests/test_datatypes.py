@@ -23,7 +23,7 @@ def test_config_yaml(tmp_path: Path):
     c1.step = 800
     c1.stack_method = StackMethod.ROBUST
     c1.save_yaml(file)
-    c2 = ConfigParameters.parse_file(file)
+    c2 = ConfigParameters.load_yaml(file)
     assert c1 == c2
 
 

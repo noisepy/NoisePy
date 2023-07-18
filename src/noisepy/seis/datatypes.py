@@ -7,8 +7,8 @@ from enum import Enum
 
 import numpy as np
 import obspy
-from pydantic import Field, root_validator
-from pydantic_yaml import YamlModel
+from pydantic import BaseModel, Field, root_validator
+from pydantic_yaml import parse_yaml_raw_as, to_yaml_str
 
 INVALID_COORD = -sys.float_info.max
 
@@ -99,7 +99,7 @@ class StackMethod(Enum):
     ALL = "all"
 
 
-class ConfigParameters(YamlModel):
+class ConfigParameters(BaseModel):
     client_url_key: str = "SCEDC"
     start_date: datetime = Field(default=datetime(2019, 1, 1))
     end_date: datetime = Field(default=datetime(2019, 1, 2))
@@ -191,10 +191,18 @@ class ConfigParameters(YamlModel):
         return self.__dict__[key]
 
     def save_yaml(self, filename: str):
-        # yaml_str = yaml.dump(self.__dict__)
-        yaml_str = self.yaml()
+        yaml_str = to_yaml_str(self)
         with open(filename, "w") as f:
             f.write(yaml_str)
+
+    def load_yaml(filename: str) -> ConfigParameters:
+        with open(filename, "r") as f:
+            yaml_str = f.read()
+            # TODO: parse_yaml_raw_as appears to have a bug where if the model
+            # has a root validator it returns a dictionary of values instead
+            # of the model instance
+            values_dict = parse_yaml_raw_as(ConfigParameters, yaml_str)
+            return ConfigParameters(**values_dict)
 
 
 @dataclass
