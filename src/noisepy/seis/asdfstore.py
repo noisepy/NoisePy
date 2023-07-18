@@ -159,12 +159,12 @@ class ASDFCCStore(CrossCorrelationDataStore):
 
     def get_station_pairs(self) -> List[Tuple[Station, Station]]:
         timespans = self.get_timespans()
-        pairs_all = []
+        pairs_all = set()
         for timespan in timespans:
             with self.datasets[timespan] as ccf_ds:
                 data = ccf_ds.auxiliary_data.list()
-                pairs_all.extend(parse_station_pair(p) for p in data if p != PROGRESS_DATATYPE)
-        return list(set(pairs_all))
+                pairs_all.update(parse_station_pair(p) for p in data if p != PROGRESS_DATATYPE)
+        return list(pairs_all)
 
     def get_channeltype_pairs(
         self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station
