@@ -61,7 +61,7 @@ def parse_bool(bstr: str) -> bool:
 
 
 def get_arg_type(arg_type):
-    if arg_type == list:
+    if arg_type == List[str]:
         return list_str
     if arg_type == datetime:
         return dateutil.parser.isoparse
@@ -72,14 +72,14 @@ def get_arg_type(arg_type):
 
 def add_model(parser: argparse.ArgumentParser, model: ConfigParameters):
     # Add config model to the parser
-    fields = model.__fields__
+    fields = model.model_fields
     for name, field in fields.items():
         parser.add_argument(
             f"--{name}",
             dest=name,
-            type=get_arg_type(field.type_),
+            type=get_arg_type(field.annotation),
             default=argparse.SUPPRESS,
-            help=field.field_info.description,
+            help=field.description,
         )
 
 
@@ -97,7 +97,7 @@ def initialize_params(args, data_dir: str) -> ConfigParameters:
         config_path = fs_join(data_dir, CONFIG_FILE)
     if config_path is not None and os.path.isfile(config_path):
         logger.info(f"Loading parameters from {config_path}")
-        params = ConfigParameters.parse_file(config_path)
+        params = ConfigParameters.load_yaml(config_path)
     else:
         logger.warning(f"Config file {config_path if config_path else ''} not found. Using default parameters.")
         params = ConfigParameters()

@@ -19,11 +19,12 @@ def test_orientation(ch, orien):
 def test_config_yaml(tmp_path: Path):
     file = str(tmp_path.joinpath("config.yaml"))
     c1 = ConfigParameters()
+    ConfigParameters.validate(c1)
     # change a couple of properties
     c1.step = 800
     c1.stack_method = StackMethod.ROBUST
     c1.save_yaml(file)
-    c2 = ConfigParameters.parse_file(file)
+    c2 = ConfigParameters.load_yaml(file)
     assert c1 == c2
 
 
