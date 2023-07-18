@@ -97,7 +97,7 @@ class ASDFRawDataStore(RawDataStore):
     def get_timespans(self) -> List[DateTimeRange]:
         return self.datasets.get_keys()
 
-    def read_data(self, timespan: DateTimeRange, chan: Channel) -> np.ndarray:
+    def read_data(self, timespan: DateTimeRange, chan: Channel) -> ChannelData:
         with self.datasets[timespan] as ds:
             stream = ds.waveforms[str(chan.station)][str(chan.type)]
         return ChannelData(stream)
@@ -171,6 +171,9 @@ class ASDFCCStore(CrossCorrelationDataStore):
     ) -> List[Tuple[Channel, Channel]]:
         with self.datasets[timespan] as ccf_ds:
             dtype = self._get_station_pair(src_sta, rec_sta)
+            if dtype not in ccf_ds.auxiliary_data:
+                logging.warning(f"No data available for {timespan}/{dtype}")
+                return []
             ch_pairs = ccf_ds.auxiliary_data[dtype].list()
             return [tuple(map(ChannelType, ch.split("_"))) for ch in ch_pairs]
 

@@ -192,7 +192,7 @@ def preprocess_all(
     stream_refs = [executor.submit(preprocess, raw_store, t[0], t[1], fft_params, ts) for t in ch_data]
     new_streams = _get_results(stream_refs)
     channels = list(zip(*ch_data))[0]
-    return list(zip(channels, [ChannelData(st) for st in new_streams]))
+    return list(zip(channels, [ChannelData(st) for st in new_streams if len(st) > 0]))
 
 
 def cross_corr(
@@ -293,6 +293,7 @@ def _filter_channel_data(
     frequencies = set(t[1].sampling_rate for t in tuples)
     frequencies = list(filter(lambda f: f >= samp_freq, frequencies))
     if len(frequencies) == 0:
+        logging.warning(f"No data available with sampling frequency >= {samp_freq}")
         return []
     closest_freq = min(
         frequencies,
