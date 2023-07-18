@@ -94,6 +94,11 @@ def cross_correlate(
         tlog.log("get channels")
         ch_data_tuples = _read_channels(executor, ts, raw_store, all_channels, fft_params.samp_freq)
         # only the channels we are using
+
+        if len(ch_data_tuples) == 0:
+            logger.warning(f"No data available for {ts}")
+            continue
+
         channels = list(zip(*ch_data_tuples))[0]
         tlog.log("read channel data")
 
@@ -291,8 +296,12 @@ def _filter_channel_data(
     tuples: List[Tuple[Channel, ChannelData]], samp_freq: int
 ) -> List[Tuple[Channel, ChannelData]]:
     frequencies = set(t[1].sampling_rate for t in tuples)
+    frequencies = list(filter(lambda f: f >= samp_freq, frequencies))
+    if len(frequencies) == 0:
+        logging.warning(f"No data available with sampling frequency >= {samp_freq}")
+        return []
     closest_freq = min(
-        filter(lambda f: f >= samp_freq, frequencies),
+        frequencies,
         key=lambda f: max(f - samp_freq, 0),
     )
     filtered_tuples = list(filter(lambda tup: tup[1].sampling_rate == closest_freq, tuples))
