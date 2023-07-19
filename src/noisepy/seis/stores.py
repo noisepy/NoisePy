@@ -97,7 +97,7 @@ class CrossCorrelationDataStore:
 
 class StackStore:
     """
-    A class for writing stack data
+    A class for reading and writing stack data
     """
 
     @abstractmethod
@@ -114,13 +114,29 @@ class StackStore:
     ):
         pass
 
+    @abstractmethod
+    def get_station_pairs(self) -> List[Tuple[Station, Station]]:
+        pass
+
+    @abstractmethod
+    def get_stack_names(self, src: Station, rec: Station) -> List[str]:
+        pass
+
+    @abstractmethod
+    def get_components(self, src: Station, rec: Station, name: str) -> List[str]:
+        pass
+
+    @abstractmethod
+    def read(self, src: Station, rec: Station, component: str, name: str) -> Tuple[Dict[str, Any], np.ndarray]:
+        pass
+
 
 def timespan_str(timespan: DateTimeRange) -> str:
     return f"{timespan.start_datetime.strftime(DATE_FORMAT)}T{timespan.end_datetime.strftime(DATE_FORMAT)}"
 
 
 def parse_station_pair(pair: str) -> Tuple[Station, Station]:
-    # Parse from:'CI.ARV_CI.BAK
+    # Parse from: CI.ARV_CI.BAK
     def station(sta: str) -> Station:
         net, name = sta.split(".")
         return Station(net, name)

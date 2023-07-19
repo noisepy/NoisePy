@@ -1,9 +1,8 @@
 from datetime import datetime
-from pathlib import Path
 
 import pytest
 
-from noisepy.seis.asdfstore import ASDFCCStore, ASDFRawDataStore
+from noisepy.seis.asdfstore import ASDFRawDataStore
 
 
 @pytest.fixture
@@ -11,13 +10,6 @@ def store():
     import os
 
     return ASDFRawDataStore(os.path.join(os.path.dirname(__file__), "./data"))
-
-
-# Use the built in tmp_path fixture: https://docs.pytest.org/en/7.1.x/how-to/tmp_path.html
-# to create a CC store
-@pytest.fixture
-def ccstore(tmp_path: Path) -> ASDFCCStore:
-    return ASDFCCStore(str(tmp_path))
 
 
 def test_get_timespans(store: ASDFRawDataStore):

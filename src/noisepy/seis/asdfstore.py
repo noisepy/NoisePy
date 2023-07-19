@@ -49,7 +49,7 @@ class ASDFDirectory(Generic[T]):
         return _get_dataset(file_path, self.mode)
 
     def get_keys(self) -> List[T]:
-        h5files = sorted(glob.glob(os.path.join(self.directory, "*.h5")))
+        h5files = sorted(glob.glob(os.path.join(self.directory, "**/*.h5"), recursive=True))
         return list(map(self.parse_filename, h5files))
 
     def mark_done(self, key: T):
@@ -190,7 +190,7 @@ class ASDFCCStore(CrossCorrelationDataStore):
 class ASDFStackStore(StackStore):
     def __init__(self, directory: str, mode: str = "a"):
         super().__init__()
-        self.datasets = ASDFDirectory(directory, mode, _filename_from_stations, parse_station_pair)
+        self.datasets = ASDFDirectory(directory, mode, _filename_from_stations, _parse_station_pair_h5file)
 
     def mark_done(self, src: Station, rec: Station):
         self.datasets.mark_done((src, rec))
@@ -202,6 +202,28 @@ class ASDFStackStore(StackStore):
         self, src: Station, rec: Station, components: str, name: str, stack_params: Dict[str, Any], data: np.ndarray
     ):
         self.datasets.add_aux_data((src, rec), stack_params, name, components, data)
+
+    def get_station_pairs(self) -> List[Tuple[Station, Station]]:
+        return self.datasets.get_keys()
+
+    def get_stack_names(self, src: Station, rec: Station) -> List[str]:
+        with self.datasets[(src, rec)] as ds:
+            return [name for name in ds.auxiliary_data.list() if name != PROGRESS_DATATYPE]
+
+    def get_components(self, src: Station, rec: Station, name: str) -> List[str]:
+        with self.datasets[(src, rec)] as ds:
+            if name not in ds.auxiliary_data:
+                logger.warning(f"Not data available for {src}_{rec}/{name}")
+                return []
+            return ds.auxiliary_data[name].list()
+
+    def read(self, src: Station, rec: Station, component: str, name: str) -> Tuple[Dict[str, Any], np.ndarray]:
+        with self.datasets[(src, rec)] as ds:
+            if name not in ds.auxiliary_data or component not in ds.auxiliary_data[name]:
+                logger.warning(f"Not data available for {src}_{rec}/{name}/{component}")
+                return ({}, np.empty(0))
+            stream = ds.auxiliary_data[name][component]
+            return (stream.parameters, stream.data[:])
 
 
 def _get_dataset(filename: str, mode: str) -> pyasdf.ASDFDataSet:
@@ -221,3 +243,8 @@ def _filename_from_stations(pair: Tuple[Station, Station]) -> str:
 
 def _filename_from_timespan(timespan: DateTimeRange) -> str:
     return f"{timespan_str(timespan)}.h5"
+
+
+def _parse_station_pair_h5file(path: str) -> Tuple[Station, Station]:
+    pair = Path(path).stem
+    return parse_station_pair(pair)

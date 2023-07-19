@@ -10,7 +10,7 @@ from datetimerange import DateTimeRange
 from obspy.signal.filter import bandpass
 from scipy.fftpack import next_fast_len
 
-from noisepy.seis.stores import CrossCorrelationDataStore
+from noisepy.seis.stores import CrossCorrelationDataStore, StackStore
 
 logging.getLogger("matplotlib.font_manager").disabled = True
 logger = logging.getLogger(__name__)
@@ -629,8 +629,8 @@ def plot_substack_all_spect(
 
 
 def plot_all_moveout(
-    sfiles,
-    dtype,
+    store: StackStore,
+    stack_name,
     freqmin,
     freqmax,
     ccomp,
@@ -644,8 +644,8 @@ def plot_all_moveout(
 
     PARAMETERS:
     ---------------------
-    sfile: cross-correlation functions outputed by S2
-    dtype: datatype either 'Allstack0pws' or 'Allstack0linear'
+    store: StackStore to read stacked data
+    stack_name: datatype either 'Allstack0pws' or 'Allstack0linear'
     freqmin: min frequency to be filtered
     freqmax: max frequency to be filtered
     ccomp:   cross component
@@ -661,18 +661,20 @@ def plot_all_moveout(
     # open data for read
     if savefig:
         if sdir is None:
-            print("no path selected! save figures in the default path")
+            raise ValueError("sdir argument must be provided if savefig=True")
 
-    path = ccomp
+    sta_pairs = store.get_station_pairs()
+    if len(sta_pairs) == 0:
+        logger.error("No data available for plotting")
+        return
 
-    # extract common variables
-    try:
-        ds = pyasdf.ASDFDataSet(sfiles[0], mode="r")
-        dt = ds.auxiliary_data[dtype][path].parameters["dt"]
-        maxlag = ds.auxiliary_data[dtype][path].parameters["maxlag"]
-        stack_method = dtype.split("0")[-1]
-    except Exception:
-        raise Exception("exit! cannot open %s to read" % sfiles[0])
+    # Read some common arguments from the first available data set:
+    params, dtmp = store.read(sta_pairs[0][0], sta_pairs[0][1], ccomp, stack_name)
+    if len(params) == 0 or dtmp.size == 0:
+        logger.error(f"No data available for plotting {stack_name}/{ccomp}")
+
+    dt, maxlag = (params[p] for p in ["dt", "maxlag"])
+    stack_method = stack_name.split("0")[-1]
 
     # lags for display
     if not disp_lag:
@@ -684,26 +686,18 @@ def plot_all_moveout(
     indx2 = indx1 + 2 * int(disp_lag / dt) + 1
 
     # cc matrix
-    nwin = len(sfiles)
+    nwin = len(sta_pairs)
     data = np.zeros(shape=(nwin, indx2 - indx1), dtype=np.float32)
     dist = np.zeros(nwin, dtype=np.float32)
     ngood = np.zeros(nwin, dtype=np.int16)
 
     # load cc and parameter matrix
-    for ii in range(len(sfiles)):
-        sfile = sfiles[ii]
+    for ii, (src, rec) in enumerate(sta_pairs):
+        params, all_data = store.read(src, rec, ccomp, stack_name)
+        dist[ii] = params["dist"]
+        ngood[ii] = params["ngood"]
 
-        ds = pyasdf.ASDFDataSet(sfile, mode="r")
-        try:
-            # load data to variables
-            dist[ii] = ds.auxiliary_data[dtype][path].parameters["dist"]
-            ngood[ii] = ds.auxiliary_data[dtype][path].parameters["ngood"]
-            tdata = ds.auxiliary_data[dtype][path].data[indx1:indx2]
-        except Exception as e:
-            print(f"continue! cannot read {sfile}: {e}")
-            continue
-
-        data[ii] = bandpass(tdata, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
+        data[ii] = bandpass(all_data[indx1:indx2], freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
 
     # average cc
     ntrace = int(np.round(np.max(dist) + 0.51) / dist_inc)
