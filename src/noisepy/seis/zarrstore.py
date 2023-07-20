@@ -72,7 +72,8 @@ class ZarrStoreHelper:
 
     def read(self, path: str) -> Tuple[Dict, np.ndarray]:
         if path not in self.root:
-            return ({}, np.empty)
+            # return empty data with the same dimensions as the chunks
+            return ({}, np.empty(tuple(0 for i in range(len(self.chunks)))))
         array = self.root[path]
         data = array[:]
         params = {k: array.attrs[k] for k in array.attrs.keys()}
@@ -158,7 +159,7 @@ class ZarrStackStore:
                 component       (array)
     """
 
-    def __init__(self, root_dir: str, mode: str = "w", chunks: Tuple[int, int] = (4 * 1024)) -> None:
+    def __init__(self, root_dir: str, mode: str = "w", chunks: Tuple[int] = (4 * 1024,)) -> None:
         super().__init__()
         self.helper = ZarrStoreHelper(root_dir, mode, chunks)
 

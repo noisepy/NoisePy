@@ -28,11 +28,12 @@ def _ccstore_test_helper(ccstore: CrossCorrelationDataStore):
         dt = dt.replace(tzinfo=timezone.utc, microsecond=0)
         return DateTimeRange(dt, dt + timedelta(days=1))
 
-    data = np.zeros((10, 10))
+    data = np.random.random((10, 10))
     ts1 = make_1dts(datetime.now())
     ts2 = make_1dts(ts1.end_datetime)
     src = Channel(ChannelType("foo"), Station("nw", "sta1"))
     rec = Channel(ChannelType("bar"), Station("nw", "sta2"))
+    params = {"key": "Value"}
 
     # assert empty state
     assert not ccstore.is_done(ts1)
@@ -41,7 +42,7 @@ def _ccstore_test_helper(ccstore: CrossCorrelationDataStore):
     assert not ccstore.contains(ts2, src, rec)
 
     # add CC (src->rec) for ts1
-    ccstore.append(ts1, src, rec, {}, data)
+    ccstore.append(ts1, src, rec, params, data)
     # assert ts1 is there, but not ts2
     assert ccstore.contains(ts1, src, rec)
     assert not ccstore.contains(ts2, src, rec)
@@ -66,6 +67,13 @@ def _ccstore_test_helper(ccstore: CrossCorrelationDataStore):
     assert sta_pairs == [(src.station, rec.station)]
     cha_pairs = ccstore.get_channeltype_pairs(ts1, sta_pairs[0][0], sta_pairs[0][1])
     assert cha_pairs == [(src.type, rec.type)]
+    read_params, read_data = ccstore.read(ts1, src.station, rec.station, src.type, rec.type)
+    assert params == read_params
+    assert np.all(data == read_data)
+
+    read_params, read_data = ccstore.read(ts1, src.station, Station("nw", "wrong"), src.type, rec.type)
+    assert len(read_params) == 0
+    assert read_data.shape == (0, 0)
 
 
 def test_asdfccstore(asdfstore: ASDFCCStore):

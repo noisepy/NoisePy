@@ -49,6 +49,10 @@ def _stackstore_test_helper(store: StackStore):
     assert params == read_params
     assert np.all(data == read_data)
 
+    read_params, read_data = store.read(src, rec, comp, name + "_wrong")
+    assert len(read_params) == 0
+    assert read_data.shape == (0,)
+
 
 def test_asdfstore(asdfstore: ASDFStackStore):
     _stackstore_test_helper(asdfstore)
