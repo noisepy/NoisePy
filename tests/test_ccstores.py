@@ -11,6 +11,8 @@ from noisepy.seis.stores import CrossCorrelationDataStore
 from noisepy.seis.zarrstore import ZarrCCStore
 
 
+# Use the built in tmp_path fixture: https://docs.pytest.org/en/7.1.x/how-to/tmp_path.html
+# to create CC stores
 @pytest.fixture
 def asdfstore(tmp_path: Path) -> ASDFCCStore:
     return ASDFCCStore(str(tmp_path))
