@@ -17,7 +17,7 @@ from .utils import fs_join, get_filesystem
 logger = logging.getLogger(__name__)
 
 
-def channel_filter(stations: List[str], ch_prefix: str) -> Callable[[Channel], bool]:
+def channel_filter(stations: List[str], ch_prefixes: str) -> Callable[[Channel], bool]:
     """
     Helper function for creating a channel filter to be used in the constructor of the store.
     This filter uses a list of allowed station name along with a channel filter prefix.
