@@ -173,7 +173,7 @@ def plot_substack_cc(sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir=
         ttr = spair.split("_")
         net1, sta1 = ttr[0].split(".")
         net2, sta2 = ttr[1].split(".")
-        for ipath in ds.auxiliary_data[spair].list():
+        for ipath in path_lists:
             chan1, chan2 = ipath.split("_")
             try:
                 dist = ds.auxiliary_data[spair][ipath].parameters["dist"]
