@@ -110,7 +110,7 @@ class PNWDataStore(RawDataStore):
 
         # reconstruct the file name from the channel parameters
         chan_str = f"{chan.station.name}.{chan.station.network}.{timespan.start_datetime.strftime('%Y.%j')}"
-        filename = fs_join(self.paths[timespan.start_datetime], f"{chan_str}")
+        filename = fs_join(self.paths[timespan.start_datetime].replace("__", chan.station.network), f"{chan_str}")
         if not self.fs.exists(filename):
             logger.warning(f"Could not find file {filename}")
             return ChannelData.empty()
