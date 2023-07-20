@@ -101,7 +101,7 @@ def initialize_params(args, data_dir: str) -> ConfigParameters:
     else:
         logger.warning(f"Config file {config_path if config_path else ''} not found. Using default parameters.")
         params = ConfigParameters()
-    cpy = params.copy(update={k: v for (k, v) in vars(args).items() if k in params.__fields__})
+    cpy = params.model_copy(update={k: v for (k, v) in vars(args).items() if k in params.__fields__})
     return cpy
 
 

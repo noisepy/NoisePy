@@ -6,6 +6,7 @@ import pytest
 from noisepy.seis.asdfstore import ASDFStackStore
 from noisepy.seis.datatypes import Station
 from noisepy.seis.stores import StackStore
+from noisepy.seis.zarrstore import ZarrStackStore
 
 
 # Use the built in tmp_path fixture: https://docs.pytest.org/en/7.1.x/how-to/tmp_path.html
@@ -13,6 +14,11 @@ from noisepy.seis.stores import StackStore
 @pytest.fixture
 def asdfstore(tmp_path: Path) -> ASDFStackStore:
     return ASDFStackStore(str(tmp_path))
+
+
+@pytest.fixture
+def zarrstore(tmp_path: Path) -> ZarrStackStore:
+    return ZarrStackStore(str(tmp_path))
 
 
 def _stackstore_test_helper(store: StackStore):
@@ -46,3 +52,7 @@ def _stackstore_test_helper(store: StackStore):
 
 def test_asdfstore(asdfstore: ASDFStackStore):
     _stackstore_test_helper(asdfstore)
+
+
+def test_zarrstore(zarrstore: ZarrStackStore):
+    _stackstore_test_helper(zarrstore)

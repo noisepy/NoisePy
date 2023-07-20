@@ -187,9 +187,9 @@ def plot_substack_cc(
             try:
                 params, all_data = cc_store.read(ts, src_sta, rec_sta, src_cha, rec_cha)
                 dist, ngood, ttime = (params[p] for p in ["dist", "ngood", "time"])
-                timestamp = np.empty(ttime.size, dtype="datetime64[s]")
-            except Exception:
-                logger.warning(f"continue! something wrong with {src_sta}_{rec_sta}/{src_cha}_{rec_cha}")
+                timestamp = np.empty(len(ttime), dtype="datetime64[s]")
+            except Exception as e:
+                logger.warning(f"continue! something wrong with {src_sta}_{rec_sta}/{src_cha}_{rec_cha}: {e}")
                 continue
 
             # cc matrix
