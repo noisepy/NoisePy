@@ -229,7 +229,7 @@ class ASDFStackStore(StackStore):
 
 
 def _get_dataset(filename: str, mode: str) -> pyasdf.ASDFDataSet:
-    logger.debug(f"ASDFCCStore - Opening {filename}")
+    logger.debug(f"Opening {filename}")
     if os.path.exists(filename):
         return pyasdf.ASDFDataSet(filename, mode=mode, mpi=False, compression=None)
     elif mode == "r":

@@ -1,6 +1,7 @@
 import gc
 import logging
 import sys
+import time
 from collections import OrderedDict
 from concurrent.futures import Executor, Future, ThreadPoolExecutor, as_completed
 from typing import Dict, Iterable, List, Tuple
@@ -77,6 +78,7 @@ def cross_correlate(
     for its in scheduler.get_indices(timespans):
         ts = timespans[its]
         if cc_store.is_done(ts):
+            logger.info(f"{ts} already processed, skipped")
             continue
 
         """
@@ -142,11 +144,15 @@ def cross_correlate(
                 t = executor.submit(cross_correlation, fft_params, iiS, iiR, channels, ffts, Nfft)
                 tasks.append(t)
 
+        t_append = 0
         for t in as_completed(tasks):
             # Use as_completed so we can start saving results to the store
             # while other computations are still running
             src_chan, rec_chan, parameters, corr = t.result()
+            t_start = time.time()
             cc_store.append(ts, src_chan, rec_chan, parameters, corr)
+            t_append += time.time() - t_start
+        tlog.log_raw("Append to store", t_append)
 
         ffts.clear()
         gc.collect()

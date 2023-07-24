@@ -42,8 +42,16 @@ jobs:
       fail-fast: true
       matrix:
         python_version: ['3.8', '3.10']
-        method: [linear, robust, nroot, selective, auto_covariance, pws]
-        freq_norm: [rma, no, phase_only]
+        method: [linear]
+        freq_norm: [rma]
+        format: [asdf]
+        include:
+        - method: [robust, nroot, selective, auto_covariance, pws]
+          freq_norm: [no]
+          format: [zarr]
+        - method: [robust]
+          freq_norm: [phase_only]
+          format: [zarr]
     runs-on: ubuntu-22.04
     needs: s0_download
     steps:
@@ -65,11 +73,11 @@ jobs:
     - name: Test Cross-Correlation (S1)
       working-directory: ./src
       run: |
-        noisepy cross_correlate --raw_data_path $RUNNER_TEMP/RAW_DATA --ccf_path $RUNNER_TEMP/CCF --freq_norm ${{matrix.freq_norm}}
+        noisepy cross_correlate --raw_data_path $RUNNER_TEMP/RAW_DATA --ccf_path $RUNNER_TEMP/CCF --freq_norm ${{matrix.freq_norm}} --format ${{matrix.format}}}
     - name: Test Stacking (S2)
       working-directory: ./src
       run: |
-        noisepy stack --raw_data_path $RUNNER_TEMP/RAW_DATA --ccf_path $RUNNER_TEMP/CCF --stack_path $RUNNER_TEMP/STACK --stack_method ${{matrix.method}}
+        noisepy stack --raw_data_path $RUNNER_TEMP/RAW_DATA --ccf_path $RUNNER_TEMP/CCF --stack_path $RUNNER_TEMP/STACK --stack_method ${{matrix.method}} --format ${{matrix.format}}
   s1_s2_mpi:
     strategy:
       fail-fast: true

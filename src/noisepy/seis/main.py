@@ -23,6 +23,7 @@ from .S2_stacking import stack
 from .scedc_s3store import SCEDCS3DataStore
 from .scheduler import MPIScheduler, SingleNodeScheduler
 from .utils import fs_join, get_filesystem
+from .zarrstore import ZarrCCStore, ZarrStackStore
 
 logger = logging.getLogger(__name__)
 # Utility running the different steps from the command line. Defines the arguments for each step
@@ -35,6 +36,11 @@ class Command(Enum):
     CROSS_CORRELATE = 2
     STACK = 3
     ALL = 4
+
+
+class DataFormat(Enum):
+    ZARR = 1
+    ASDF = 2
 
 
 def valid_date(d: str) -> str:
@@ -152,9 +158,23 @@ def main(args: typing.Any):
         download(args.raw_data_path, params)
         params.save_yaml(fs_join(args.raw_data_path, CONFIG_FILE))
 
+    def get_cc_store(args, mode="a"):
+        return (
+            ZarrCCStore(args.ccf_path, mode=mode, chunks=(200, 8001))
+            if args.format == DataFormat.ZARR.name.lower()
+            else ASDFCCStore(args.ccf_path, mode=mode)
+        )
+
+    def get_stack_store(args):
+        return (
+            ZarrStackStore(args.stack_path, mode="a", chunks=(8001,))
+            if args.format == DataFormat.ZARR.name.lower()
+            else ASDFStackStore(args.stack_path, "w")
+        )
+
     def run_cross_correlation():
         ccf_dir = args.ccf_path
-        cc_store = ASDFCCStore(ccf_dir)
+        cc_store = get_cc_store(args)
         params = initialize_params(args, args.raw_data_path)
         raw_store = create_raw_store(args, params)
         scheduler = MPIScheduler(0) if args.mpi else SingleNodeScheduler()
@@ -162,8 +182,8 @@ def main(args: typing.Any):
         params.save_yaml(fs_join(ccf_dir, CONFIG_FILE))
 
     def run_stack():
-        cc_store = ASDFCCStore(args.ccf_path, "r")
-        stack_store = ASDFStackStore(args.stack_path)
+        cc_store = get_cc_store(args, mode="r")
+        stack_store = get_stack_store(args)
         params = initialize_params(args, args.ccf_path)
         scheduler = MPIScheduler(0) if args.mpi else SingleNodeScheduler()
         stack(cc_store, stack_store, params, scheduler)
@@ -212,6 +232,14 @@ def make_step_parser(subparsers: Any, cmd: Command, paths: List[str]) -> Any:
         "-c", "--config", type=lambda f: _valid_config_file(parser, f), required=False, help="Configuration YAML file"
     )
     add_model(parser, ConfigParameters())
+
+    if cmd != Command.DOWNLOAD:
+        parser.add_argument(
+            "--format",
+            default=DataFormat.ZARR.name.lower(),
+            choices=[f.name.lower() for f in DataFormat],
+            help="Format of the raw data files",
+        )
     return parser
 
 
