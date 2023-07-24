@@ -75,7 +75,7 @@ jobs:
     - name: Test Cross-Correlation (S1)
       working-directory: ./src
       run: |
-        noisepy cross_correlate --raw_data_path $RUNNER_TEMP/RAW_DATA --ccf_path $RUNNER_TEMP/CCF --freq_norm ${{matrix.freq_norm}} --format ${{matrix.format}}}
+        noisepy cross_correlate --raw_data_path $RUNNER_TEMP/RAW_DATA --ccf_path $RUNNER_TEMP/CCF --freq_norm ${{matrix.freq_norm}} --format ${{matrix.format}}
     - name: Test Stacking (S2)
       working-directory: ./src
       run: |
