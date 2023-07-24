@@ -74,7 +74,7 @@ packages = ["src/noisepy"]
 dev = [
     "pytest>=7.2.2",
     "memory-profiler>=0.61",
-    "pre-commit>=3.2",
+    "pre-commit>=3.3,<4",
 ]
 sql = [
     "SQLite3-0611",
