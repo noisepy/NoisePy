@@ -51,7 +51,7 @@ jobs:
           freq_norm: no
           format: zarr
         - method: robust
-          python_version: '3.8'
+          python_version: '3.9'
           freq_norm: phase_only
           format: zarr
     runs-on: ubuntu-22.04

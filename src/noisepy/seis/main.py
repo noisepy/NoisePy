@@ -39,8 +39,8 @@ class Command(Enum):
 
 
 class DataFormat(Enum):
-    ZARR = 1
-    ASDF = 2
+    ZARR = "zarr"
+    ASDF = "asdf"
 
 
 def valid_date(d: str) -> str:
@@ -161,14 +161,14 @@ def main(args: typing.Any):
     def get_cc_store(args, mode="a"):
         return (
             ZarrCCStore(args.ccf_path, mode=mode, chunks=(200, 8001))
-            if args.format == DataFormat.ZARR.name.lower()
+            if args.format == DataFormat.ZARR.value
             else ASDFCCStore(args.ccf_path, mode=mode)
         )
 
     def get_stack_store(args):
         return (
             ZarrStackStore(args.stack_path, mode="a", chunks=(8001,))
-            if args.format == DataFormat.ZARR.name.lower()
+            if args.format == DataFormat.ZARR.value
             else ASDFStackStore(args.stack_path, "w")
         )
 
@@ -236,8 +236,8 @@ def make_step_parser(subparsers: Any, cmd: Command, paths: List[str]) -> Any:
     if cmd != Command.DOWNLOAD:
         parser.add_argument(
             "--format",
-            default=DataFormat.ZARR.name.lower(),
-            choices=[f.name.lower() for f in DataFormat],
+            default=DataFormat.ZARR.value,
+            choices=[f.value for f in DataFormat],
             help="Format of the raw data files",
         )
     return parser
