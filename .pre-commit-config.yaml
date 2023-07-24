@@ -12,6 +12,7 @@ repos:
       - id: check-json
       - id: check-yaml
       - id: pretty-format-json
+        files: \.(json|json5|js)$
         args: ["--autofix", "--indent=2", "--no-sort-keys"]
 
   - repo: https://github.com/PyCQA/isort
