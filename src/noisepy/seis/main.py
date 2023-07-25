@@ -160,14 +160,14 @@ def main(args: typing.Any):
 
     def get_cc_store(args, mode="a"):
         return (
-            ZarrCCStore(args.ccf_path, mode=mode, chunks=(200, 8001))
+            ZarrCCStore(args.ccf_path, mode=mode)
             if args.format == DataFormat.ZARR.value
             else ASDFCCStore(args.ccf_path, mode=mode)
         )
 
     def get_stack_store(args):
         return (
-            ZarrStackStore(args.stack_path, mode="a", chunks=(8001,))
+            ZarrStackStore(args.stack_path, mode="a")
             if args.format == DataFormat.ZARR.value
             else ASDFStackStore(args.stack_path, "w")
         )
