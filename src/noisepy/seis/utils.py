@@ -70,6 +70,10 @@ class TimeLogger:
         stop = time.time()
         dt = stop - self.time if start <= 0 else stop - start
         self.reset()
+        self.log_raw(message, dt)
+        return self.time
+
+    def log_raw(self, message: str, dt: float):
         if self.enabled:
             self.logger.log(self.level, f"TIMING: {dt:6.4f} for {message}")
         return self.time

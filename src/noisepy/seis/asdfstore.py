@@ -183,6 +183,8 @@ class ASDFCCStore(CrossCorrelationDataStore):
         dtype = self._get_station_pair(src_sta, rec_sta)
         path = self._get_channel_pair(src_ch, rec_ch)
         with self.datasets[timespan] as ds:
+            if dtype not in ds.auxiliary_data or path not in ds.auxiliary_data[dtype]:
+                return ({}, np.empty((0, 0)))
             stream = ds.auxiliary_data[dtype][path]
             return (stream.parameters, stream.data[:])
 
@@ -227,7 +229,7 @@ class ASDFStackStore(StackStore):
 
 
 def _get_dataset(filename: str, mode: str) -> pyasdf.ASDFDataSet:
-    logger.debug(f"ASDFCCStore - Opening {filename}")
+    logger.debug(f"Opening {filename}")
     if os.path.exists(filename):
         return pyasdf.ASDFDataSet(filename, mode=mode, mpi=False, compression=None)
     elif mode == "r":
