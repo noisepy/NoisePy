@@ -169,7 +169,7 @@ def main(args: typing.Any):
         return (
             ZarrStackStore(args.stack_path, mode="a")
             if args.format == DataFormat.ZARR.value
-            else ASDFStackStore(args.stack_path, "w")
+            else ASDFStackStore(args.stack_path, "a")
         )
 
     def run_cross_correlation():

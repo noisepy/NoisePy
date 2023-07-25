@@ -3,8 +3,8 @@ import logging
 import sys
 import time
 from collections import OrderedDict
-from concurrent.futures import Executor, Future, ThreadPoolExecutor, as_completed
-from typing import Dict, Iterable, List, Tuple
+from concurrent.futures import Executor, ThreadPoolExecutor, as_completed
+from typing import Dict, List, Tuple
 
 import numpy as np
 import obspy
@@ -15,7 +15,7 @@ from . import noise_module
 from .datatypes import Channel, ChannelData, ConfigParameters, NoiseFFT
 from .scheduler import Scheduler, SingleNodeScheduler
 from .stores import CrossCorrelationDataStore, RawDataStore
-from .utils import TimeLogger, error_if
+from .utils import TimeLogger, _get_results, error_if
 
 logger = logging.getLogger(__name__)
 # ignore warnings
@@ -342,7 +342,3 @@ def check_memory(params: ConfigParameters, nsta: int) -> int:
             % (memory_size, MAX_MEM)
         )
     return nseg_chunk
-
-
-def _get_results(futures: Iterable[Future]) -> Iterable[Future]:
-    return [f.result() for f in futures]
