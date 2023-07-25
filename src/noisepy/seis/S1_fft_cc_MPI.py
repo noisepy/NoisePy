@@ -202,8 +202,18 @@ def preprocess_all(
 ) -> List[Tuple[Channel, ChannelData]]:
     stream_refs = [executor.submit(preprocess, raw_store, t[0], t[1], fft_params, ts) for t in ch_data]
     new_streams = _get_results(stream_refs)
+    # Log if any streams were removed during pre-processing
+    for ch, st in zip(ch_data, new_streams):
+        if len(st) == 0:
+            logging.warning(
+                f"Empty stream for {ts}/{ch[0]} after pre-processing. "
+                f"Before pre-processing data.shape: {ch[1].data.shape}, len(stream): {len(ch[1].stream)}"
+            )
+
+    # Filter to only non-empty streams
     channels = list(zip(*ch_data))[0]
-    return list(zip(channels, [ChannelData(st) for st in new_streams]))
+    non_empty = filter(lambda tup: len(tup[1]) > 0, zip(channels, new_streams))
+    return [(ch, ChannelData(st)) for ch, st in non_empty]
 
 
 def cross_corr(

@@ -89,7 +89,7 @@ class ZarrCCStore(CrossCorrelationDataStore):
                 channel_pair    (array)
     """
 
-    def __init__(self, root_dir: str, mode: str = "a", chunks: Tuple[int, int] = (500, 500)) -> None:
+    def __init__(self, root_dir: str, mode: str = "a", chunks: Tuple[int, int] = (46, 8001)) -> None:
         super().__init__()
         self.helper = ZarrStoreHelper(root_dir, mode, chunks)
 
@@ -159,7 +159,7 @@ class ZarrStackStore:
                 component       (array)
     """
 
-    def __init__(self, root_dir: str, mode: str = "a", chunks: Tuple[int] = (500,)) -> None:
+    def __init__(self, root_dir: str, mode: str = "a", chunks: Tuple[int] = (8001,)) -> None:
         super().__init__()
         self.helper = ZarrStoreHelper(root_dir, mode, chunks)
 
