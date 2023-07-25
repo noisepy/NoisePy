@@ -30,7 +30,7 @@ class ZarrStoreHelper:
 
     """
 
-    def __init__(self, root_dir: str, mode: str = "w", chunks: Tuple[int, int] = (4 * 1024, 4 * 1024)) -> None:
+    def __init__(self, root_dir: str, mode: str, chunks: Tuple[int, int]) -> None:
         super().__init__()
         self.chunks = chunks
         self.root = zarr.open(root_dir, mode=mode)

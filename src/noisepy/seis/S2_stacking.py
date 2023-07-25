@@ -1,5 +1,6 @@
 import logging
 import sys
+import time
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
@@ -48,7 +49,7 @@ def stack(
     fft_params: ConfigParameters,
     scheduler: Scheduler = SingleNodeScheduler(),
 ):
-    tlog = TimeLogger(logger=logger)
+    tlog = TimeLogger(logger=logger, level=logging.INFO)
     t_tot = tlog.reset()
     if fft_params.rotation and fft_params.correction:
         if not fft_params.correction_csv:
@@ -87,6 +88,7 @@ def stack(
     # loop through each pair assigned to this process by the scheduler
     for ipair in scheduler.get_indices(pairs_all):
         tlog.reset()
+        t_append = 0.0
 
         logger.debug("%dth path for station-pair %s" % (ipair, pairs_all[ipair]))
         sta_pair = pairs_all[ipair]
@@ -161,8 +163,11 @@ def stack(
             bigstack2 = np.zeros(shape=(9, npts_segmt), dtype=np.float32)
 
         def write_stacks(comp: str, tparameters: Dict[str, Any], stacks: List[Tuple[StackMethod, np.ndarray]]):
+            nonlocal t_append
+            t_start = time.time()
             for method, data in stacks:
                 stack_store.append(src_sta, rec_sta, comp, f"Allstack_{method.value}", tparameters, data)
+            t_append += time.time() - t_start
 
         # loop through cross-component for stacking
         iflag = 1
@@ -216,8 +221,6 @@ def stack(
                     stack_name = "T" + str(int(stamps_final[ii]))
                     write_stacks(comp, tparameters, [(stack_name, cc_final[ii])])
 
-            tlog.log(f"stack one component with {fft_params.stack_method} stacking method")
-
         # do rotation if needed
         if fft_params.rotation and iflag:
             if np.all(bigstack == 0):
@@ -250,6 +253,7 @@ def stack(
                     ]
                     write_stacks(comp, tparameters, stacks)
         tlog.log(f"stack/rotate all station pairs {pairs_all[ipair]}", t_load)
+        tlog.log_raw("store.append", t_append)
 
         stack_store.mark_done(src_sta, rec_sta)
 
