@@ -65,7 +65,8 @@ def stack(
     else:
         enz_system = ["EE", "EN", "EZ", "NE", "NN", "NZ", "ZE", "ZN", "ZZ"]
 
-    rtz_components = ["ZR", "ZT", "ZZ", "RR", "RT", "RZ", "TR", "TT", "TZ"]
+    # ZZ_R component used to avoid a collision with ZZ component above
+    rtz_components = ["ZR", "ZT", "ZZ_R", "RR", "RT", "RZ", "TR", "TT", "TZ"]
 
     #######################################
     # #########PROCESSING SECTION##########

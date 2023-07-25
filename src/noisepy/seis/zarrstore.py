@@ -25,14 +25,13 @@ class ZarrStoreHelper:
     Args:
         root_dir: Storage location
         mode: "r" or "w" for read-only or writing mode
-        chunks: Chunking or tile size for the arrays. The individual arrays should not be huge since the data
-                is already partioned by station pair, timespan and channel pair.
+        dims: number dimensions of the data
 
     """
 
-    def __init__(self, root_dir: str, mode: str, chunks: Tuple[int, int]) -> None:
+    def __init__(self, root_dir: str, mode: str, dims: int) -> None:
         super().__init__()
-        self.chunks = chunks
+        self.dims = dims
         self.root = zarr.open(root_dir, mode=mode)
         logger.info(f"store created at {root_dir}")
 
@@ -46,15 +45,15 @@ class ZarrStoreHelper:
         data: np.ndarray,
     ):
         logger.debug(f"Appending to {path}: {data.shape}")
-        array = self.root.require_dataset(
+        array = self.root.create_dataset(
             path,
-            shape=data.shape,
-            chunks=self.chunks,
+            data=data,
+            chunks=data.shape,
             dtype=data.dtype,
         )
-        array[:] = data
-        for k, v in params.items():
-            array.attrs[k] = _to_json(v)
+
+        to_save = {k: _to_json(v) for k, v in params.items()}
+        array.attrs.update(to_save)
 
     def is_done(self, key: str):
         if DONE_PATH not in self.root.array_keys():
@@ -73,10 +72,10 @@ class ZarrStoreHelper:
     def read(self, path: str) -> Tuple[Dict, np.ndarray]:
         if path not in self.root:
             # return empty data with the same dimensions as the chunks
-            return ({}, np.empty(tuple(0 for i in range(len(self.chunks)))))
+            return ({}, np.empty(tuple(0 for i in range(self.dims))))
         array = self.root[path]
         data = array[:]
-        params = {k: array.attrs[k] for k in array.attrs.keys()}
+        params = dict(array.attrs.items())
         return (params, data)
 
 
@@ -89,9 +88,9 @@ class ZarrCCStore(CrossCorrelationDataStore):
                 channel_pair    (array)
     """
 
-    def __init__(self, root_dir: str, mode: str = "a", chunks: Tuple[int, int] = (46, 8001)) -> None:
+    def __init__(self, root_dir: str, mode: str = "a") -> None:
         super().__init__()
-        self.helper = ZarrStoreHelper(root_dir, mode, chunks)
+        self.helper = ZarrStoreHelper(root_dir, mode, dims=2)
 
     def contains(self, timespan: DateTimeRange, src_chan: Channel, rec_chan: Channel) -> bool:
         path = self._get_path(timespan, src_chan, rec_chan)
@@ -159,9 +158,9 @@ class ZarrStackStore:
                 component       (array)
     """
 
-    def __init__(self, root_dir: str, mode: str = "a", chunks: Tuple[int] = (8001,)) -> None:
+    def __init__(self, root_dir: str, mode: str = "a") -> None:
         super().__init__()
-        self.helper = ZarrStoreHelper(root_dir, mode, chunks)
+        self.helper = ZarrStoreHelper(root_dir, mode, dims=1)
 
     def mark_done(self, src: Station, rec: Station):
         path = self._get_station_path(src, rec)
