@@ -2,6 +2,8 @@ import logging
 import os
 import posixpath
 import time
+from concurrent.futures import Future
+from typing import Iterable
 from urllib.parse import urlparse
 
 import fsspec
@@ -90,3 +92,7 @@ def error_if(condition: bool, msg: str, error_type: type = RuntimeError):
     """
     if condition:
         raise error_type(msg)
+
+
+def _get_results(futures: Iterable[Future]) -> Iterable[Future]:
+    return [f.result() for f in futures]
