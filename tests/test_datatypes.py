@@ -48,5 +48,6 @@ def test_storage_options():
     c.storage_options["s3"] = {"profile": "my_profile"}
     assert c.get_storage_options("s3://my_bucket/my_file") == {"profile": "my_profile"}
 
-    c.storage_options["file"]["foo"] = "bar"
+    # scheme is '' for local files
+    c.storage_options[""]["foo"] = "bar"
     assert c.get_storage_options("/local/file") == {"foo": "bar"}

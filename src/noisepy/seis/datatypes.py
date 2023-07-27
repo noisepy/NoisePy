@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import sys
+import typing
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Annotated, Any, DefaultDict, Dict, List, Optional
+from typing import Any, DefaultDict, Dict, List, Optional
 from urllib.parse import urlparse
 
 import numpy as np
@@ -178,10 +180,10 @@ class ConfigParameters(BaseModel):
     correction_csv: Optional[str] = Field(default=None, description="Path to e.g. meso_angles.csv")
     # 'RESP', or 'polozeros' to remove response
 
-    storage_options: Annotated[
-        DefaultDict[str, Annotated[Dict[str, Any], Field(default_factory=dict)]],
-        Field(description="Storage options to pass to fsspec, keyed by protocol"),
-    ] = {}
+    storage_options: DefaultDict[str, typing.MutableMapping] = Field(
+        default=defaultdict(dict),
+        description="Storage options to pass to fsspec, keyed by protocol (local files are ''))",
+    )
 
     def get_storage_options(self, path: str) -> Dict[str, Any]:
         """The storage options for the given path"""
