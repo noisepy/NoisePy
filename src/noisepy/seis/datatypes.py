@@ -4,13 +4,16 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional
+from typing import Annotated, Any, DefaultDict, Dict, List, Optional
+from urllib.parse import urlparse
 
 import numpy as np
 import obspy
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.functional_validators import model_validator
 from pydantic_yaml import parse_yaml_raw_as, to_yaml_str
+
+from noisepy.seis.utils import get_filesystem
 
 INVALID_COORD = -sys.float_info.max
 
@@ -175,6 +178,16 @@ class ConfigParameters(BaseModel):
     correction_csv: Optional[str] = Field(default=None, description="Path to e.g. meso_angles.csv")
     # 'RESP', or 'polozeros' to remove response
 
+    storage_options: Annotated[
+        DefaultDict[str, Annotated[Dict[str, Any], Field(default_factory=dict)]],
+        Field(description="Storage options to pass to fsspec, keyed by protocol"),
+    ] = {}
+
+    def get_storage_options(self, path: str) -> Dict[str, Any]:
+        """The storage options for the given path"""
+        url = urlparse(path)
+        return self.storage_options.get(url.scheme, {})
+
     @property
     def dt(self) -> float:
         return 1.0 / self.samp_freq
@@ -194,11 +207,13 @@ class ConfigParameters(BaseModel):
 
     def save_yaml(self, filename: str):
         yaml_str = to_yaml_str(self)
-        with open(filename, "w") as f:
+        fs = get_filesystem(filename, storage_options=self.storage_options)
+        with fs.open(filename, "w") as f:
             f.write(yaml_str)
 
-    def load_yaml(filename: str) -> ConfigParameters:
-        with open(filename, "r") as f:
+    def load_yaml(filename: str, storage_options={}) -> ConfigParameters:
+        fs = get_filesystem(filename, storage_options=storage_options)
+        with fs.open(filename, "r") as f:
             yaml_str = f.read()
             config = parse_yaml_raw_as(ConfigParameters, yaml_str)
             return config
