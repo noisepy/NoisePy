@@ -35,3 +35,19 @@ def test_station_valid():
     assert s.valid()
     s = Station("CI", "BAK", -110.0, 120.1, 15.0)
     assert s.valid()
+
+
+def test_storage_options():
+    c = ConfigParameters()
+    assert c.storage_options == {}
+    # make sure missing keys default to {}
+    assert c.storage_options["some_key"] == {}
+    c.storage_options["some_key"]["some_other_key"] = 6
+    assert c.storage_options["some_key"]["some_other_key"] == 6
+
+    c.storage_options["s3"] = {"profile": "my_profile"}
+    assert c.get_storage_options("s3://my_bucket/my_file") == {"profile": "my_profile"}
+
+    # scheme is '' for local files
+    c.storage_options[""]["foo"] = "bar"
+    assert c.get_storage_options("/local/file") == {"foo": "bar"}

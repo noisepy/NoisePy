@@ -23,16 +23,16 @@ class ZarrStoreHelper:
     Helper object for storing data and parameters into Zarr and track a "done" bit for subsets of the data
     'done' is a dummy array to track completed sets in its attribute dictionary.
     Args:
-        root_dir: Storage location
-        mode: "r" or "w" for read-only or writing mode
+        root_dir: Storage location, can be a local or S3 path
+        mode: "r" or "a" for read-only or writing mode
         dims: number dimensions of the data
-
+        storage_options: options to pass to fsspec
     """
 
-    def __init__(self, root_dir: str, mode: str, dims: int) -> None:
+    def __init__(self, root_dir: str, mode: str, dims: int, storage_options={}) -> None:
         super().__init__()
         self.dims = dims
-        self.root = zarr.open(root_dir, mode=mode)
+        self.root = zarr.open_group(root_dir, mode=mode, storage_options=storage_options)
         logger.info(f"store created at {root_dir}")
 
     def contains(self, path: str) -> bool:
@@ -88,9 +88,9 @@ class ZarrCCStore(CrossCorrelationDataStore):
                 channel_pair    (array)
     """
 
-    def __init__(self, root_dir: str, mode: str = "a") -> None:
+    def __init__(self, root_dir: str, mode: str = "a", storage_options={}) -> None:
         super().__init__()
-        self.helper = ZarrStoreHelper(root_dir, mode, dims=2)
+        self.helper = ZarrStoreHelper(root_dir, mode, dims=2, storage_options=storage_options)
 
     def contains(self, timespan: DateTimeRange, src_chan: Channel, rec_chan: Channel) -> bool:
         path = self._get_path(timespan, src_chan, rec_chan)
@@ -158,9 +158,9 @@ class ZarrStackStore:
                 component       (array)
     """
 
-    def __init__(self, root_dir: str, mode: str = "a") -> None:
+    def __init__(self, root_dir: str, mode: str = "a", storage_options={}) -> None:
         super().__init__()
-        self.helper = ZarrStoreHelper(root_dir, mode, dims=1)
+        self.helper = ZarrStoreHelper(root_dir, mode, dims=1, storage_options=storage_options)
 
     def mark_done(self, src: Station, rec: Station):
         path = self._get_station_path(src, rec)
