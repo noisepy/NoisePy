@@ -533,7 +533,7 @@ def cut_trace_make_stat(fc_para: ConfigParameters, ch_data: ChannelData):
     return trace_stdS, dataS_t, dataS
 
 
-def noise_processing(fft_para, dataS):
+def noise_processing(fft_para: ConfigParameters, dataS):
     """
     this function performs time domain and frequency domain normalization if needed. in real case, we prefer use include
     the normalization in the cross-correaltion steps by selecting coherency or decon
@@ -545,26 +545,20 @@ def noise_processing(fft_para, dataS):
     # OUTPUT VARIABLES:
     source_white: 2D matrix of data spectra
     """
-    # load parameters first
-    time_norm = fft_para["time_norm"]
-    freq_norm = fft_para["freq_norm"]
-    smooth_N = fft_para["smooth_N"]
-    N = dataS.shape[0]
-
     # ------to normalize in time or not------
-    if time_norm != "no":
-        if time_norm == "one_bit":  # sign normalization
+    if fft_para.time_norm != "no":
+        if fft_para.time_norm == "one_bit":  # sign normalization
             white = np.sign(dataS)
-        elif time_norm == "rma":  # running mean: normalization over smoothed absolute average
+        elif fft_para.time_norm == "rma":  # running mean: normalization over smoothed absolute average
             white = np.zeros(shape=dataS.shape, dtype=dataS.dtype)
-            for kkk in range(N):
-                white[kkk, :] = dataS[kkk, :] / moving_ave(np.abs(dataS[kkk, :]), smooth_N)
+            for kkk in range(dataS.shape[0]):
+                white[kkk, :] = dataS[kkk, :] / moving_ave(np.abs(dataS[kkk, :]), fft_para.smooth_N)
 
     else:  # don't normalize
         white = dataS
 
     # -----to whiten or not------
-    if freq_norm != "no":
+    if fft_para.freq_norm != "no":
         source_white = whiten(white, fft_para)  # whiten and return FFT
     else:
         Nfft = int(next_fast_len(int(dataS.shape[1])))
