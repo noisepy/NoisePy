@@ -94,7 +94,9 @@ def cross_correlate(
         )
 
         tlog.log("get channels")
-        ch_data_tuples = _read_channels(executor, ts, raw_store, all_channels, fft_params.samp_freq)
+        ch_data_tuples = _read_channels(
+            executor, ts, raw_store, all_channels, fft_params.samp_freq, fft_params.single_freq
+        )
         # only the channels we are using
 
         if len(ch_data_tuples) == 0:
@@ -139,7 +141,11 @@ def cross_correlate(
                 if fft_params.acorr_only:
                     if src_chan.station != rec_chan.station:
                         continue
+                if iiS not in ffts:
+                    logger.warning(f"No FFT data available for channel '{src_chan}', skipped")
+                    continue
                 if iiR not in ffts:
+                    logger.warning(f"No FFT data available for channel '{rec_chan}', skipped")
                     continue
                 t = executor.submit(cross_correlation, fft_params, iiS, iiR, channels, ffts, Nfft)
                 tasks.append(t)
@@ -300,31 +306,39 @@ def compute_fft(fft_params: ConfigParameters, ch_data: ChannelData) -> NoiseFFT:
 
 
 def _read_channels(
-    executor: Executor, ts: DateTimeRange, store: RawDataStore, channels: List[Channel], samp_freq: int
+    executor: Executor,
+    ts: DateTimeRange,
+    store: RawDataStore,
+    channels: List[Channel],
+    samp_freq: int,
+    single_freq: bool = True,
 ) -> List[Tuple[Channel, ChannelData]]:
     ch_data_refs = [executor.submit(store.read_data, ts, ch) for ch in channels]
     ch_data = _get_results(ch_data_refs)
     tuples = list(zip(channels, ch_data))
-    return _filter_channel_data(tuples, samp_freq)
+    return _filter_channel_data(tuples, samp_freq, single_freq)
 
 
 def _filter_channel_data(
-    tuples: List[Tuple[Channel, ChannelData]], samp_freq: int
+    tuples: List[Tuple[Channel, ChannelData]], samp_freq: int, single_freq: bool = True
 ) -> List[Tuple[Channel, ChannelData]]:
     frequencies = set(t[1].sampling_rate for t in tuples)
     frequencies = list(filter(lambda f: f >= samp_freq, frequencies))
     if len(frequencies) == 0:
         logging.warning(f"No data available with sampling frequency >= {samp_freq}")
         return []
-    closest_freq = min(
-        frequencies,
-        key=lambda f: max(f - samp_freq, 0),
-    )
-    filtered_tuples = list(filter(lambda tup: tup[1].sampling_rate == closest_freq, tuples))
-    logger.info(
-        f"Picked {closest_freq} as the closest sampling frequence to {samp_freq}. "
-        f"Filtered to {len(filtered_tuples)}/{len(tuples)} channels"
-    )
+    if single_freq:
+        closest_freq = min(
+            frequencies,
+            key=lambda f: max(f - samp_freq, 0),
+        )
+        logger.info(f"Picked {closest_freq} as the closest sampling frequence to {samp_freq}. ")
+        filtered_tuples = list(filter(lambda tup: tup[1].sampling_rate == closest_freq, tuples))
+        logger.info(f"Filtered to {len(filtered_tuples)}/{len(tuples)} channels with sampling rate == {closest_freq}")
+    else:
+        filtered_tuples = list(filter(lambda tup: tup[1].sampling_rate >= samp_freq, tuples))
+        logger.info(f"Filtered to {len(filtered_tuples)}/{len(tuples)} channels with sampling rate >= {samp_freq}")
+
     return filtered_tuples
 
 

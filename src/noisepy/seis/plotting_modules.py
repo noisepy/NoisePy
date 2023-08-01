@@ -672,6 +672,7 @@ def plot_all_moveout(
     params, dtmp = store.read(sta_pairs[0][0], sta_pairs[0][1], ccomp, stack_name)
     if len(params) == 0 or dtmp.size == 0:
         logger.error(f"No data available for plotting {stack_name}/{ccomp}")
+        return
 
     dt, maxlag = (params[p] for p in ["dt", "maxlag"])
     stack_method = stack_name.split("0")[-1]
@@ -694,6 +695,9 @@ def plot_all_moveout(
     # load cc and parameter matrix
     for ii, (src, rec) in enumerate(sta_pairs):
         params, all_data = store.read(src, rec, ccomp, stack_name)
+        if len(params) == 0 or all_data.size == 0:
+            logger.warning(f"No data available for {src}_{rec}/{stack_name}/{ccomp}")
+            continue
         dist[ii] = params["dist"]
         ngood[ii] = params["ngood"]
 
