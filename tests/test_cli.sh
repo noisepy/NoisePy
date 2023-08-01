@@ -2,11 +2,12 @@
 
 FORMAT=$1
 LOG_LEVEL=info
-if [[ "$FORMAT" -ne "zarr" && "$FORMAT" -ne "asdf" ]]; then
-       echo "Missing FORMAT argument (zarr or asdf)"
+
+if [[ "$FORMAT" != "zarr" && "$FORMAT" != "asdf" ]]; then
+       echo "Missing or incorrect FORMAT argument. Needs to be zarr or asdf, not ${FORMAT}}"
        exit 1
 fi
-echo "FORMAT is $FORMAT"
+echo "FORMAT is _${FORMAT}_"
 RUNNER_TEMP=~/test_temp_${FORMAT}
 mkdir $RUNNER_TEMP
 LOGFILE="$HOME/logs/log_${FORMAT}_$(date -j +'%Y%m%d_%H%M%S').txt"
