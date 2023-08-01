@@ -42,7 +42,9 @@ tests/test_cli.sh zarr
 tests/test_cli.sh asdf
 ```
 
-NOTE: This last downloads a small amount of data from SCEDC to test the download funcionality. Occationally, the serv
+NOTE: The CLI tests download a small amount of data from SCEDC to test the download funcionality. Occassionally, the service
+is unavailable and the test will fail. This is usually resolved in a few minutes.
+
 
 ## Overview
 
