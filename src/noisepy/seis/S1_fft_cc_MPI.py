@@ -125,8 +125,11 @@ def cross_correlate(
                 ffts[ix_ch] = fft_data
             else:
                 logger.warning(f"No data available for channel '{channels[ix_ch]}', skipped")
-        Nfft = fft_data.length
         tlog.log("Compute FFTs")
+        Nfft = max(map(lambda d: d.length, fft_datas))
+        if Nfft == 0:
+            logger.error(f"No FFT data available for any channel in {ts}, skipping")
+            continue
 
         if len(ffts) != nchannels:
             logger.warning("it seems some stations miss data in download step, but it is OKAY!")
