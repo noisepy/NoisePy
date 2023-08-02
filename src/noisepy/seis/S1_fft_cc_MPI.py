@@ -125,7 +125,7 @@ def cross_correlate(
                 ffts[ix_ch] = fft_data
             else:
                 logger.warning(f"No data available for channel '{channels[ix_ch]}', skipped")
-        Nfft = max(map(lambda fft: fft_data.length, fft_datas))
+        Nfft = max(map(lambda fft: fft.length, fft_datas))
 
         tlog.log("Compute FFTs")
 
