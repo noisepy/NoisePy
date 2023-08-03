@@ -105,6 +105,13 @@ Taxonomy of the NoisePy variables.
 
 
 # Acknowledgements
+
+## Contributing
+
+Thanks to our contributors so far!
+
+[![Contributors](https://contrib.rocks/image?repo=mdenolle/NoisePy)](https://github.com/mdenolle/NoisePy/graphs/contributors)
+
 ## Use this reference when publishing on your work with noisepy
 
 Main code:
