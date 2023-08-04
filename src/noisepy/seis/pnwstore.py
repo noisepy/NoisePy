@@ -101,7 +101,7 @@ class PNWDataStore(RawDataStore):
             f"FROM tsindex WHERE network='{chan.station.network}' AND station='{chan.station.name}' "
             f"AND channel='{chan.type.name}' and location='{chan.station.location}' "
             f"AND filename LIKE '%%/{chan.station.network}/{year}/{doy}/%%'"
-             "ORDER BY byteoffset ASC"
+            "ORDER BY byteoffset ASC"
         )
 
         if len(rst) == 0:
