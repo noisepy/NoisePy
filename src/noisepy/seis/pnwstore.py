@@ -107,6 +107,9 @@ class PNWDataStore(RawDataStore):
         if len(rst) == 0:
             logger.warning(f"Could not find file {timespan}/{chan} in the database")
             return ChannelData.empty()
+        elif len(rst) > 10:
+            logger.warning(f"Too many gaps (>10) from {timespan}/{chan}")
+            return ChannelData.empty()
 
         # reconstruct the file name from the channel parameters
         chan_str = f"{chan.station.name}.{chan.station.network}.{timespan.start_datetime.strftime('%Y.%j')}"
@@ -115,8 +118,8 @@ class PNWDataStore(RawDataStore):
             logger.warning(f"Could not find file {filename}")
             return ChannelData.empty()
 
+        stream = obspy.Stream()
         with self.fs.open(filename, "rb") as f:
-            stream = obspy.Stream()
             for byteoffset, bytes in rst:
                 f.seek(byteoffset)
                 buff = io.BytesIO(f.read(bytes))
