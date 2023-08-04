@@ -4,9 +4,10 @@ import scipy
 from scipy.fftpack import next_fast_len
 
 from noisepy.seis.noise_module import moving_ave, whiten
+from noisepy.seis.S1_fft_cc_MPI import ConfigParameters
 
 
-def whiten_original(data, fft_para):
+def whiten_original(data, fft_para: ConfigParameters):
     """
     This function takes 1-dimensional timeseries array, transforms to frequency domain using fft,
     whitens the amplitude of the spectrum in frequency domain between *freqmin* and *freqmax*
@@ -25,13 +26,6 @@ def whiten_original(data, fft_para):
     FFTRawSign: numpy.ndarray contains the FFT of the whitened input trace between the frequency bounds
     """
 
-    # load parameters
-    delta = fft_para["dt"]
-    freqmin = fft_para["freqmin"]
-    freqmax = fft_para["freqmax"]
-    smooth_N = fft_para["smooth_N"]
-    freq_norm = fft_para["freq_norm"]
-
     # Speed up FFT by padding to optimal size for FFTPACK
     if data.ndim == 1:
         axis = 0
@@ -42,8 +36,8 @@ def whiten_original(data, fft_para):
 
     Napod = 100
     Nfft = int(Nfft)
-    freqVec = scipy.fftpack.fftfreq(Nfft, d=delta)[: Nfft // 2]
-    J = np.where((freqVec >= freqmin) & (freqVec <= freqmax))[0]
+    freqVec = scipy.fftpack.fftfreq(Nfft, d=fft_para.dt)[: Nfft // 2]
+    J = np.where((freqVec >= fft_para.freqmin) & (freqVec <= fft_para.freqmax))[0]
     low = J[0] - Napod
     if low <= 0:
         low = 1
@@ -62,11 +56,11 @@ def whiten_original(data, fft_para):
             1j * np.angle(FFTRawSign[:, low:left])
         )
         # Pass band:
-        if freq_norm == "phase_only":
+        if fft_para.freq_norm == "phase_only":
             FFTRawSign[:, left:right] = np.exp(1j * np.angle(FFTRawSign[:, left:right]))
-        elif freq_norm == "rma":
+        elif fft_para.freq_norm == "rma":
             for ii in range(data.shape[0]):
-                tave = moving_ave(np.abs(FFTRawSign[ii, left:right]), smooth_N)
+                tave = moving_ave(np.abs(FFTRawSign[ii, left:right]), fft_para.smooth_N)
                 FFTRawSign[ii, left:right] = FFTRawSign[ii, left:right] / tave
         # Right tapering:
         FFTRawSign[:, right:high] = np.cos(np.linspace(0.0, np.pi / 2.0, high - right)) ** 2 * np.exp(
@@ -82,10 +76,10 @@ def whiten_original(data, fft_para):
             1j * np.angle(FFTRawSign[low:left])
         )
         # Pass band:
-        if freq_norm == "phase_only":
+        if fft_para.freq_norm == "phase_only":
             FFTRawSign[left:right] = np.exp(1j * np.angle(FFTRawSign[left:right]))
-        elif freq_norm == "rma":
-            tave = moving_ave(np.abs(FFTRawSign[left:right]), smooth_N)
+        elif fft_para.freq_norm == "rma":
+            tave = moving_ave(np.abs(FFTRawSign[left:right]), fft_para.smooth_N)
             FFTRawSign[left:right] = FFTRawSign[left:right] / tave
         # Right tapering:
         FFTRawSign[right:high] = np.cos(np.linspace(0.0, np.pi / 2.0, high - right)) ** 2 * np.exp(
@@ -104,13 +98,12 @@ def whiten_original(data, fft_para):
 # it is not expected that the smoothed version returns the same, so currently no test for that
 # (would be good to add one based on some expected outcome)
 
-fft_para = {
-    "dt": 1.0,
-    "freqmin": 0.01,
-    "freqmax": 0.2,
-    "smooth_N": 1,
-    "freq_norm": "phase_only",
-}
+fft_para = ConfigParameters()
+fft_para.samp_freq = 1.0
+fft_para.freqmin = 0.01
+fft_para.freqmax = 0.2
+fft_para.smooth_N = 1
+fft_para.freq_norm = "phase_only"
 
 
 def whiten1d():
