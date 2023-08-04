@@ -67,7 +67,7 @@ class PNWDataStore(RawDataStore):
         net, year, doy = parts[-4:-1]
 
         rst = self._dbquery(
-            f"SELECT network, station, channel, location, filename "
+            f"SELECT DISTINCT network, station, channel, location, filename "
             f"FROM tsindex WHERE filename LIKE '%%/{net}/{year}/{doy}/%%'"
         )
         timespans = []
@@ -101,12 +101,16 @@ class PNWDataStore(RawDataStore):
             f"FROM tsindex WHERE network='{chan.station.network}' AND station='{chan.station.name}' "
             f"AND channel='{chan.type.name}' and location='{chan.station.location}' "
             f"AND filename LIKE '%%/{chan.station.network}/{year}/{doy}/%%'"
+            "ORDER BY byteoffset ASC"
         )
 
         if len(rst) == 0:
             logger.warning(f"Could not find file {timespan}/{chan} in the database")
             return ChannelData.empty()
-        byteoffset, bytes = rst[0]
+        elif len(rst) > 10:
+            # skip if stream has more than 10 gaps
+            logger.warning(f"Too many gaps (>10) from {timespan}/{chan}")
+            return ChannelData.empty()
 
         # reconstruct the file name from the channel parameters
         chan_str = f"{chan.station.name}.{chan.station.network}.{timespan.start_datetime.strftime('%Y.%j')}"
@@ -115,11 +119,15 @@ class PNWDataStore(RawDataStore):
             logger.warning(f"Could not find file {filename}")
             return ChannelData.empty()
 
+        stream = obspy.Stream()
         with self.fs.open(filename, "rb") as f:
-            f.seek(byteoffset)
-            buff = io.BytesIO(f.read(bytes))
-            stream = obspy.read(buff)
-        return ChannelData(stream)
+            for byteoffset, bytes in rst:
+                f.seek(byteoffset)
+                buff = io.BytesIO(f.read(bytes))
+                stream += obspy.read(buff)
+        # taper each segment
+        stream = stream.taper(max_percentage=0.03)
+        return ChannelData(stream.merge(fill_value=0))
 
     def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
         return self.channel_catalog.get_inventory(timespan, station)
