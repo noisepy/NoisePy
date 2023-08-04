@@ -63,6 +63,9 @@ def cross_correlate(
         cc_store: Store for saving cross correlations
         scheduler: Scheduler to use for parallelization
         pair_filter: Function to decide whether a pair of channels should be used or not. E.g.
+
+        .. code-block:: python
+
             def filter_by_lat(s: Channel, d: Channel) -> bool:
                 return abs(s.station.lat - d.station.lat) > 0.1
 
