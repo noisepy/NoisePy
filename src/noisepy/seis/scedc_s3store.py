@@ -44,7 +44,7 @@ class SCEDCS3DataStore(RawDataStore):
         self,
         path: str,
         chan_catalog: ChannelCatalog,
-        ch_filter: Callable[[Channel], bool] = None,
+        ch_filter: Callable[[Channel], bool] = lambda s: True,  # noqa: E731
         date_range: DateTimeRange = None,
     ):
         """
@@ -61,8 +61,6 @@ class SCEDCS3DataStore(RawDataStore):
         self.paths = {}
         # to store a dict of {timerange: list of channels}
         self.channels = {}
-        if ch_filter is None:
-            ch_filter = lambda s: True  # noqa: E731
 
         if date_range is None:
             self._load_channels(self.path, ch_filter)
