@@ -4,7 +4,7 @@ import sys
 import time
 from collections import OrderedDict
 from concurrent.futures import Executor, ThreadPoolExecutor, as_completed
-from typing import Dict, List, Tuple
+from typing import Callable, Dict, List, Tuple
 
 import numpy as np
 import obspy
@@ -52,6 +52,7 @@ def cross_correlate(
     fft_params: ConfigParameters,
     cc_store: CrossCorrelationDataStore,
     scheduler: Scheduler = SingleNodeScheduler(),
+    pair_filter: Callable[[Channel, Channel], bool] = lambda src, rec: True,
 ):
     """
     Perform the cross-correlation analysis
@@ -60,6 +61,15 @@ def cross_correlate(
         raw_store: Store to load data from
         fft_params: Parameters for the FFT calculations
         cc_store: Store for saving cross correlations
+        scheduler: Scheduler to use for parallelization
+        pair_filter: Function to decide whether a pair of channels should be used or not. E.g.
+
+        .. code-block:: python
+
+            def filter_by_lat(s: Channel, d: Channel) -> bool:
+                return abs(s.station.lat - d.station.lat) > 0.1
+
+            cross_correlate(..., pair_filter=filter_by_lat)
     """
 
     executor = ThreadPoolExecutor()
@@ -141,6 +151,8 @@ def cross_correlate(
             for iiR in range(iiS, nchannels):
                 src_chan = channels[iiS]
                 rec_chan = channels[iiR]
+                if not pair_filter(src_chan, rec_chan):
+                    continue
                 if fft_params.acorr_only:
                     if src_chan.station != rec_chan.station:
                         continue

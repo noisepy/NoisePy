@@ -2,6 +2,7 @@ import logging
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import get_context
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
@@ -50,7 +51,8 @@ def stack(
     fft_params: ConfigParameters,
     scheduler: Scheduler = SingleNodeScheduler(),
 ):
-    executor = ProcessPoolExecutor()
+    # Use 'spawn' to avoid issues with multiprocessing on linux and 'fork'
+    executor = ProcessPoolExecutor(mp_context=get_context("spawn"))
     tlog = TimeLogger(logger=logger, level=logging.INFO)
     t_tot = tlog.reset()
 
