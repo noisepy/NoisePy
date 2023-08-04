@@ -15,7 +15,7 @@ def whiten_original(data, fft_para: ConfigParameters):
     PARAMETERS:
     ----------------------
     data: numpy.ndarray contains the 1D time series to whiten
-    fft_para: dict containing all fft_cc parameters such as
+    fft_para: ConfigParameters class containing all fft_cc parameters such as
         dt: The sampling space of the `data`
         freqmin: The lower frequency bound
         freqmax: The upper frequency bound

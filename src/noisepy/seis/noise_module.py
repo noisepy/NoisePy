@@ -540,7 +540,7 @@ def noise_processing(fft_para: ConfigParameters, dataS):
     (Prieto et al, 2008, 2009; Denolle et al, 2013)
     PARMAETERS:
     ------------------------
-    fft_para: dictionary containing all useful variables used for fft and cc
+    fft_para: ConfigParameters class containing all useful variables used for fft and cc
     dataS: 2D matrix of all segmented noise data
     # OUTPUT VARIABLES:
     source_white: 2D matrix of data spectra
@@ -1592,7 +1592,7 @@ def whiten_1D(timeseries, fft_para: ConfigParameters, n_taper):
     PARAMETERS:
     ----------------------
     data: numpy.ndarray contains the 1D time series to whiten
-    fft_para: dict containing all fft_cc parameters such as
+    fft_para: ConfigParameters class containing all fft_cc parameters such as
         dt: The sampling space of the `data`
         freqmin: The lower frequency bound
         freqmax: The upper frequency bound
@@ -1645,7 +1645,7 @@ def whiten_2D(timeseries, fft_para: ConfigParameters, n_taper):
     PARAMETERS:
     ----------------------
     data: numpy.ndarray contains the 1D time series to whiten
-    fft_para: dict containing all fft_cc parameters such as
+    fft_para: ConfigParameters class containing all fft_cc parameters such as
         dt: The sampling space of the `data`
         freqmin: The lower frequency bound
         freqmax: The upper frequency bound
@@ -1698,7 +1698,7 @@ def whiten(data, fft_para: ConfigParameters, n_taper=100):
     PARAMETERS:
     ----------------------
     data: numpy.ndarray contains the 1D time series to whiten
-    fft_para: dict containing all fft_cc parameters such as
+    fft_para: ConfigParameters class containing all fft_cc parameters such as
         dt: The sampling space of the `data`
         freqmin: The lower frequency bound
         freqmax: The upper frequency bound
