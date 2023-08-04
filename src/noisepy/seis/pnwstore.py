@@ -108,6 +108,7 @@ class PNWDataStore(RawDataStore):
             logger.warning(f"Could not find file {timespan}/{chan} in the database")
             return ChannelData.empty()
         elif len(rst) > 10:
+            # skip if stream has more than 10 gaps
             logger.warning(f"Too many gaps (>10) from {timespan}/{chan}")
             return ChannelData.empty()
 
@@ -124,6 +125,8 @@ class PNWDataStore(RawDataStore):
                 f.seek(byteoffset)
                 buff = io.BytesIO(f.read(bytes))
                 stream += obspy.read(buff)
+        # taper each segment
+        stream = stream.taper(max_percentage=0.03)
         return ChannelData(stream.merge(fill_value=0))
 
     def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
