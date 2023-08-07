@@ -533,38 +533,32 @@ def cut_trace_make_stat(fc_para: ConfigParameters, ch_data: ChannelData):
     return trace_stdS, dataS_t, dataS
 
 
-def noise_processing(fft_para, dataS):
+def noise_processing(fft_para: ConfigParameters, dataS):
     """
     this function performs time domain and frequency domain normalization if needed. in real case, we prefer use include
     the normalization in the cross-correaltion steps by selecting coherency or decon
     (Prieto et al, 2008, 2009; Denolle et al, 2013)
     PARMAETERS:
     ------------------------
-    fft_para: dictionary containing all useful variables used for fft and cc
+    fft_para: ConfigParameters class containing all useful variables used for fft and cc
     dataS: 2D matrix of all segmented noise data
     # OUTPUT VARIABLES:
     source_white: 2D matrix of data spectra
     """
-    # load parameters first
-    time_norm = fft_para["time_norm"]
-    freq_norm = fft_para["freq_norm"]
-    smooth_N = fft_para["smooth_N"]
-    N = dataS.shape[0]
-
     # ------to normalize in time or not------
-    if time_norm != "no":
-        if time_norm == "one_bit":  # sign normalization
+    if fft_para.time_norm != "no":
+        if fft_para.time_norm == "one_bit":  # sign normalization
             white = np.sign(dataS)
-        elif time_norm == "rma":  # running mean: normalization over smoothed absolute average
+        elif fft_para.time_norm == "rma":  # running mean: normalization over smoothed absolute average
             white = np.zeros(shape=dataS.shape, dtype=dataS.dtype)
-            for kkk in range(N):
-                white[kkk, :] = dataS[kkk, :] / moving_ave(np.abs(dataS[kkk, :]), smooth_N)
+            for kkk in range(dataS.shape[0]):
+                white[kkk, :] = dataS[kkk, :] / moving_ave(np.abs(dataS[kkk, :]), fft_para.smooth_N)
 
     else:  # don't normalize
         white = dataS
 
     # -----to whiten or not------
-    if freq_norm != "no":
+    if fft_para.freq_norm != "no":
         source_white = whiten(white, fft_para)  # whiten and return FFT
     else:
         Nfft = int(next_fast_len(int(dataS.shape[1])))
@@ -1590,7 +1584,7 @@ def selective_stack(cc_array, epsilon):
     return newstack, cc
 
 
-def whiten_1D(timeseries, fft_para, n_taper):
+def whiten_1D(timeseries, fft_para: ConfigParameters, n_taper):
     """
     This function takes a 1-dimensional timeseries array, transforms to frequency domain using fft,
     whitens the amplitude of the spectrum in frequency domain between *freqmin* and *freqmax*
@@ -1598,7 +1592,7 @@ def whiten_1D(timeseries, fft_para, n_taper):
     PARAMETERS:
     ----------------------
     data: numpy.ndarray contains the 1D time series to whiten
-    fft_para: dict containing all fft_cc parameters such as
+    fft_para: ConfigParameters class containing all fft_cc parameters such as
         dt: The sampling space of the `data`
         freqmin: The lower frequency bound
         freqmax: The upper frequency bound
@@ -1608,18 +1602,12 @@ def whiten_1D(timeseries, fft_para, n_taper):
     ----------------------
     FFTRawSign: numpy.ndarray contains the FFT of the whitened input trace between the frequency bounds
     """
-    # load parameters
-    delta = fft_para["dt"]
-    freqmin = fft_para["freqmin"]
-    freqmax = fft_para["freqmax"]
-    smooth_N = fft_para["smooth_N"]
-
     nfft = next_fast_len(len(timeseries))
     spec = np.fft.fft(timeseries, nfft)
-    freq = np.fft.fftfreq(nfft, d=delta)
+    freq = np.fft.fftfreq(nfft, d=fft_para.dt)
 
-    ix0 = np.argmin(np.abs(freq - freqmin))
-    ix1 = np.argmin(np.abs(freq - freqmax))
+    ix0 = np.argmin(np.abs(freq - fft_para.freqmin))
+    ix1 = np.argmin(np.abs(freq - fft_para.freqmax))
 
     if ix1 + n_taper > nfft:
         ix11 = nfft
@@ -1635,10 +1623,10 @@ def whiten_1D(timeseries, fft_para, n_taper):
     spec_out[0:ix00] = 0.0 + 0.0j
     spec_out[ix11:] = 0.0 + 0.0j
 
-    if smooth_N <= 1:
+    if fft_para.smooth_N <= 1:
         spec_out[ix00:ix11] = np.exp(1.0j * np.angle(spec_out[ix00:ix11]))
     else:
-        spec_out[ix00:ix11] /= moving_ave(np.abs(spec_out[ix00:ix11]), smooth_N)
+        spec_out[ix00:ix11] /= moving_ave(np.abs(spec_out[ix00:ix11]), fft_para.smooth_N)
 
     x = np.linspace(np.pi / 2.0, np.pi, ix0 - ix00)
     spec_out[ix00:ix0] *= np.cos(x) ** 2
@@ -1649,7 +1637,7 @@ def whiten_1D(timeseries, fft_para, n_taper):
     return spec_out
 
 
-def whiten_2D(timeseries, fft_para, n_taper):
+def whiten_2D(timeseries, fft_para: ConfigParameters, n_taper):
     """
     This function takes a 2-dimensional timeseries array, transforms to frequency domain using fft,
     whitens the amplitude of the spectrum in frequency domain between *freqmin* and *freqmax*
@@ -1657,7 +1645,7 @@ def whiten_2D(timeseries, fft_para, n_taper):
     PARAMETERS:
     ----------------------
     data: numpy.ndarray contains the 1D time series to whiten
-    fft_para: dict containing all fft_cc parameters such as
+    fft_para: ConfigParameters class containing all fft_cc parameters such as
         dt: The sampling space of the `data`
         freqmin: The lower frequency bound
         freqmax: The upper frequency bound
@@ -1667,18 +1655,12 @@ def whiten_2D(timeseries, fft_para, n_taper):
     ----------------------
     FFTRawSign: numpy.ndarray contains the FFT of the whitened input trace between the frequency bounds
     """
-    # load parameters
-    delta = fft_para["dt"]
-    freqmin = fft_para["freqmin"]
-    freqmax = fft_para["freqmax"]
-    smooth_N = fft_para["smooth_N"]
-
     nfft = next_fast_len(timeseries.shape[1])
     spec = np.fft.fftn(timeseries, s=[nfft])
-    freq = np.fft.fftfreq(nfft, d=delta)
+    freq = np.fft.fftfreq(nfft, d=fft_para.dt)
 
-    ix0 = np.argmin(np.abs(freq - freqmin))
-    ix1 = np.argmin(np.abs(freq - freqmax))
+    ix0 = np.argmin(np.abs(freq - fft_para.freqmin))
+    ix1 = np.argmin(np.abs(freq - fft_para.freqmax))
 
     if ix1 + n_taper > nfft:
         ix11 = nfft
@@ -1694,10 +1676,10 @@ def whiten_2D(timeseries, fft_para, n_taper):
     spec_out[:, 0:ix00] = 0.0 + 0.0j
     spec_out[:, ix11:] = 0.0 + 0.0j
 
-    if smooth_N <= 1:
+    if fft_para.smooth_N <= 1:
         spec_out[:, ix00:ix11] = np.exp(1.0j * np.angle(spec_out[:, ix00:ix11]))
     else:
-        spec_out[:, ix00:ix11] /= moving_ave_2D(np.abs(spec_out[:, ix00:ix11]), smooth_N)
+        spec_out[:, ix00:ix11] /= moving_ave_2D(np.abs(spec_out[:, ix00:ix11]), fft_para.smooth_N)
 
     x = np.linspace(np.pi / 2.0, np.pi, ix0 - ix00)
     spec_out[:, ix00:ix0] *= np.cos(x) ** 2
@@ -1708,7 +1690,7 @@ def whiten_2D(timeseries, fft_para, n_taper):
     return spec_out
 
 
-def whiten(data, fft_para, n_taper=100):
+def whiten(data, fft_para: ConfigParameters, n_taper=100):
     """
     This function takes a timeseries array, transforms to frequency domain using fft,
     whitens the amplitude of the spectrum in frequency domain between *freqmin* and *freqmax*
@@ -1716,7 +1698,7 @@ def whiten(data, fft_para, n_taper=100):
     PARAMETERS:
     ----------------------
     data: numpy.ndarray contains the 1D time series to whiten
-    fft_para: dict containing all fft_cc parameters such as
+    fft_para: ConfigParameters class containing all fft_cc parameters such as
         dt: The sampling space of the `data`
         freqmin: The lower frequency bound
         freqmax: The upper frequency bound
