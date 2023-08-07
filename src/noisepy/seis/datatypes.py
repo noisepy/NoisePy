@@ -1,16 +1,21 @@
 from __future__ import annotations
 
 import sys
+import typing
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional
+from typing import Any, DefaultDict, Dict, List, Optional
+from urllib.parse import urlparse
 
 import numpy as np
 import obspy
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.functional_validators import model_validator
 from pydantic_yaml import parse_yaml_raw_as, to_yaml_str
+
+from noisepy.seis.utils import get_filesystem
 
 INVALID_COORD = -sys.float_info.max
 
@@ -108,6 +113,12 @@ class ConfigParameters(BaseModel):
     start_date: datetime = Field(default=datetime(2019, 1, 1))
     end_date: datetime = Field(default=datetime(2019, 1, 2))
     samp_freq: float = Field(default=20.0)  # TODO: change this samp_freq for the obspy "sampling_rate"
+    single_freq: bool = Field(
+        default=True,
+        description="Filter to only data sampled at ONE frequency (the closest >= to samp_freq). "
+        "If False, it will use all data sample at >=samp_freq",
+    )
+
     cc_len: float = Field(default=1800.0, description="basic unit of data length for fft (sec)")
     # download params.
     # Targeted region/station information: only needed when down_list is False
@@ -175,6 +186,16 @@ class ConfigParameters(BaseModel):
     correction_csv: Optional[str] = Field(default=None, description="Path to e.g. meso_angles.csv")
     # 'RESP', or 'polozeros' to remove response
 
+    storage_options: DefaultDict[str, typing.MutableMapping] = Field(
+        default=defaultdict(dict),
+        description="Storage options to pass to fsspec, keyed by protocol (local files are ''))",
+    )
+
+    def get_storage_options(self, path: str) -> Dict[str, Any]:
+        """The storage options for the given path"""
+        url = urlparse(path)
+        return self.storage_options.get(url.scheme, {})
+
     @property
     def dt(self) -> float:
         return 1.0 / self.samp_freq
@@ -194,11 +215,13 @@ class ConfigParameters(BaseModel):
 
     def save_yaml(self, filename: str):
         yaml_str = to_yaml_str(self)
-        with open(filename, "w") as f:
+        fs = get_filesystem(filename, storage_options=self.storage_options)
+        with fs.open(filename, "w") as f:
             f.write(yaml_str)
 
-    def load_yaml(filename: str) -> ConfigParameters:
-        with open(filename, "r") as f:
+    def load_yaml(filename: str, storage_options={}) -> ConfigParameters:
+        fs = get_filesystem(filename, storage_options=storage_options)
+        with fs.open(filename, "r") as f:
             yaml_str = f.read()
             config = parse_yaml_raw_as(ConfigParameters, yaml_str)
             return config

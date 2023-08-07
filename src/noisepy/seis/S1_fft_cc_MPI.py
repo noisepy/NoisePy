@@ -3,8 +3,8 @@ import logging
 import sys
 import time
 from collections import OrderedDict
-from concurrent.futures import Executor, Future, ThreadPoolExecutor, as_completed
-from typing import Dict, Iterable, List, Tuple
+from concurrent.futures import Executor, ThreadPoolExecutor, as_completed
+from typing import Callable, Dict, List, Tuple
 
 import numpy as np
 import obspy
@@ -15,7 +15,7 @@ from . import noise_module
 from .datatypes import Channel, ChannelData, ConfigParameters, NoiseFFT
 from .scheduler import Scheduler, SingleNodeScheduler
 from .stores import CrossCorrelationDataStore, RawDataStore
-from .utils import TimeLogger, error_if
+from .utils import TimeLogger, _get_results, error_if
 
 logger = logging.getLogger(__name__)
 # ignore warnings
@@ -52,6 +52,7 @@ def cross_correlate(
     fft_params: ConfigParameters,
     cc_store: CrossCorrelationDataStore,
     scheduler: Scheduler = SingleNodeScheduler(),
+    pair_filter: Callable[[Channel, Channel], bool] = lambda src, rec: True,
 ):
     """
     Perform the cross-correlation analysis
@@ -60,6 +61,15 @@ def cross_correlate(
         raw_store: Store to load data from
         fft_params: Parameters for the FFT calculations
         cc_store: Store for saving cross correlations
+        scheduler: Scheduler to use for parallelization
+        pair_filter: Function to decide whether a pair of channels should be used or not. E.g.
+
+        .. code-block:: python
+
+            def filter_by_lat(s: Channel, d: Channel) -> bool:
+                return abs(s.station.lat - d.station.lat) > 0.1
+
+            cross_correlate(..., pair_filter=filter_by_lat)
     """
 
     executor = ThreadPoolExecutor()
@@ -94,7 +104,9 @@ def cross_correlate(
         )
 
         tlog.log("get channels")
-        ch_data_tuples = _read_channels(executor, ts, raw_store, all_channels, fft_params.samp_freq)
+        ch_data_tuples = _read_channels(
+            executor, ts, raw_store, all_channels, fft_params.samp_freq, fft_params.single_freq
+        )
         # only the channels we are using
 
         if len(ch_data_tuples) == 0:
@@ -123,8 +135,11 @@ def cross_correlate(
                 ffts[ix_ch] = fft_data
             else:
                 logger.warning(f"No data available for channel '{channels[ix_ch]}', skipped")
-        Nfft = fft_data.length
         tlog.log("Compute FFTs")
+        Nfft = max(map(lambda d: d.length, fft_datas))
+        if Nfft == 0:
+            logger.error(f"No FFT data available for any channel in {ts}, skipping")
+            continue
 
         if len(ffts) != nchannels:
             logger.warning("it seems some stations miss data in download step, but it is OKAY!")
@@ -136,10 +151,16 @@ def cross_correlate(
             for iiR in range(iiS, nchannels):
                 src_chan = channels[iiS]
                 rec_chan = channels[iiR]
+                if not pair_filter(src_chan, rec_chan):
+                    continue
                 if fft_params.acorr_only:
                     if src_chan.station != rec_chan.station:
                         continue
+                if iiS not in ffts:
+                    logger.warning(f"No FFT data available for channel '{src_chan}', skipped")
+                    continue
                 if iiR not in ffts:
+                    logger.warning(f"No FFT data available for channel '{rec_chan}', skipped")
                     continue
                 t = executor.submit(cross_correlation, fft_params, iiS, iiR, channels, ffts, Nfft)
                 tasks.append(t)
@@ -300,31 +321,39 @@ def compute_fft(fft_params: ConfigParameters, ch_data: ChannelData) -> NoiseFFT:
 
 
 def _read_channels(
-    executor: Executor, ts: DateTimeRange, store: RawDataStore, channels: List[Channel], samp_freq: int
+    executor: Executor,
+    ts: DateTimeRange,
+    store: RawDataStore,
+    channels: List[Channel],
+    samp_freq: int,
+    single_freq: bool = True,
 ) -> List[Tuple[Channel, ChannelData]]:
     ch_data_refs = [executor.submit(store.read_data, ts, ch) for ch in channels]
     ch_data = _get_results(ch_data_refs)
     tuples = list(zip(channels, ch_data))
-    return _filter_channel_data(tuples, samp_freq)
+    return _filter_channel_data(tuples, samp_freq, single_freq)
 
 
 def _filter_channel_data(
-    tuples: List[Tuple[Channel, ChannelData]], samp_freq: int
+    tuples: List[Tuple[Channel, ChannelData]], samp_freq: int, single_freq: bool = True
 ) -> List[Tuple[Channel, ChannelData]]:
     frequencies = set(t[1].sampling_rate for t in tuples)
     frequencies = list(filter(lambda f: f >= samp_freq, frequencies))
     if len(frequencies) == 0:
         logging.warning(f"No data available with sampling frequency >= {samp_freq}")
         return []
-    closest_freq = min(
-        frequencies,
-        key=lambda f: max(f - samp_freq, 0),
-    )
-    filtered_tuples = list(filter(lambda tup: tup[1].sampling_rate == closest_freq, tuples))
-    logger.info(
-        f"Picked {closest_freq} as the closest sampling frequence to {samp_freq}. "
-        f"Filtered to {len(filtered_tuples)}/{len(tuples)} channels"
-    )
+    if single_freq:
+        closest_freq = min(
+            frequencies,
+            key=lambda f: max(f - samp_freq, 0),
+        )
+        logger.info(f"Picked {closest_freq} as the closest sampling frequence to {samp_freq}. ")
+        filtered_tuples = list(filter(lambda tup: tup[1].sampling_rate == closest_freq, tuples))
+        logger.info(f"Filtered to {len(filtered_tuples)}/{len(tuples)} channels with sampling rate == {closest_freq}")
+    else:
+        filtered_tuples = list(filter(lambda tup: tup[1].sampling_rate >= samp_freq, tuples))
+        logger.info(f"Filtered to {len(filtered_tuples)}/{len(tuples)} channels with sampling rate >= {samp_freq}")
+
     return filtered_tuples
 
 
@@ -342,7 +371,3 @@ def check_memory(params: ConfigParameters, nsta: int) -> int:
             % (memory_size, MAX_MEM)
         )
     return nseg_chunk
-
-
-def _get_results(futures: Iterable[Future]) -> Iterable[Future]:
-    return [f.result() for f in futures]

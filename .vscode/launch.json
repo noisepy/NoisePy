@@ -19,6 +19,23 @@
       "justMyCode": true
     },
     {
+      "name": "Stack S3",
+      "type": "python",
+      "request": "launch",
+      "module": "noisepy.seis.main",
+      "args": [
+        "stack",
+        "--ccf_path",
+        "${userHome}/test_temp_zarr/CCF",
+        "--stack_path",
+        "s3://carlos-noisepy/scratch/",
+        "--stack_method",
+        "linear"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
       "name": "Python: stack",
       "type": "python",
       "request": "launch",

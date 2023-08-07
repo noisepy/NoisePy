@@ -27,6 +27,25 @@ pre-commit install
 
 This will run the linting and formatting checks configured in the project before every commit.
 
+## Testing
+
+When making changes, please run the following two tests:
+
+Unit tests:
+```
+pytest ./tests
+```
+
+CLI Integration tests:
+```
+tests/test_cli.sh zarr
+tests/test_cli.sh asdf
+```
+
+NOTE: The CLI tests download a small amount of data from SCEDC to test the download funcionality. Occassionally, the service
+is unavailable and the test will fail. This is usually resolved in a few minutes.
+
+
 ## Overview
 
 <img src="./docs/figures/data_flow.png">
@@ -41,7 +60,6 @@ locally using the `aws` CLI, or streamed directly from S3.
 ### Data Formats
 
 NoisePy accesses data through 3 "DataStore" abstract classes: `RawDataStore`, `CrossCorrelationDataStore` and `StackDataStore`. Concrete implementations are provided for ASDF and miniSEED formats (Zarr is in progress). Support for other formats or file organizations can be extended through these classes.
-
 
 ## Using VS Code
 

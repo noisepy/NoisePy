@@ -158,33 +158,37 @@ def main(args: typing.Any):
         download(args.raw_data_path, params)
         params.save_yaml(fs_join(args.raw_data_path, CONFIG_FILE))
 
-    def get_cc_store(args, mode="a"):
+    def get_cc_store(args, params: ConfigParameters, mode="a"):
         return (
-            ZarrCCStore(args.ccf_path, mode=mode)
+            ZarrCCStore(
+                args.ccf_path,
+                mode=mode,
+                storage_options=params.get_storage_options(args.ccf_path),
+            )
             if args.format == DataFormat.ZARR.value
             else ASDFCCStore(args.ccf_path, mode=mode)
         )
 
-    def get_stack_store(args):
+    def get_stack_store(args, params: ConfigParameters):
         return (
-            ZarrStackStore(args.stack_path, mode="a")
+            ZarrStackStore(args.stack_path, mode="a", storage_options=params.get_storage_options(args.stack_path))
             if args.format == DataFormat.ZARR.value
-            else ASDFStackStore(args.stack_path, "w")
+            else ASDFStackStore(args.stack_path, "a")
         )
 
     def run_cross_correlation():
         ccf_dir = args.ccf_path
-        cc_store = get_cc_store(args)
         params = initialize_params(args, args.raw_data_path)
+        cc_store = get_cc_store(args, params)
         raw_store = create_raw_store(args, params)
         scheduler = MPIScheduler(0) if args.mpi else SingleNodeScheduler()
         cross_correlate(raw_store, params, cc_store, scheduler)
         params.save_yaml(fs_join(ccf_dir, CONFIG_FILE))
 
     def run_stack():
-        cc_store = get_cc_store(args, mode="r")
-        stack_store = get_stack_store(args)
         params = initialize_params(args, args.ccf_path)
+        cc_store = get_cc_store(args, params, mode="r")
+        stack_store = get_stack_store(args, params)
         scheduler = MPIScheduler(0) if args.mpi else SingleNodeScheduler()
         stack(cc_store, stack_store, params, scheduler)
         params.save_yaml(fs_join(args.stack_path, CONFIG_FILE))
