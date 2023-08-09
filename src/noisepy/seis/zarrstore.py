@@ -32,6 +32,7 @@ class ZarrStoreHelper:
     def __init__(self, root_dir: str, mode: str, dims: int, storage_options={}) -> None:
         super().__init__()
         self.dims = dims
+        logger.info(f"store creating at {root_dir}, mode={mode}, dims={dims}, storage_options={storage_options}")
         self.root = zarr.open_group(root_dir, mode=mode, storage_options=storage_options)
         logger.info(f"store created at {root_dir}")
 

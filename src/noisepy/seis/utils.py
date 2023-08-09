@@ -9,7 +9,6 @@ from urllib.parse import urlparse
 import fsspec
 
 S3_SCHEME = "s3"
-ANON_ARG = "anon"
 utils_logger = logging.getLogger(__name__)
 
 
@@ -18,9 +17,6 @@ def get_filesystem(path: str, storage_options: dict = {}) -> fsspec.AbstractFile
     url = urlparse(path)
     # The storage_options coming from the ConfigParameters is keyed by protocol
     storage_options = storage_options.get(url.scheme, storage_options)
-    # default to anonymous access for S3 if the this is not already specified
-    if url.scheme == S3_SCHEME and ANON_ARG not in storage_options:
-        storage_options = {ANON_ARG: True}
     return fsspec.filesystem(url.scheme, **storage_options)
 
 

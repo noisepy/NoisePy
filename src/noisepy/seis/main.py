@@ -7,7 +7,7 @@ from datetime import datetime
 
 # from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Iterable, List
+from typing import Any, Callable, Iterable, List, Optional
 
 import dateutil.parser
 import obspy
@@ -21,7 +21,12 @@ from .S0A_download_ASDF_MPI import download
 from .S1_fft_cc_MPI import cross_correlate
 from .S2_stacking import stack
 from .scedc_s3store import SCEDCS3DataStore
-from .scheduler import MPIScheduler, SingleNodeScheduler
+from .scheduler import (
+    AWSBatchArrayScheduler,
+    MPIScheduler,
+    Scheduler,
+    SingleNodeScheduler,
+)
 from .utils import fs_join, get_filesystem
 from .zarrstore import ZarrCCStore, ZarrStackStore
 
@@ -149,14 +154,38 @@ def create_raw_store(args, params: ConfigParameters):
         return SCEDCS3DataStore(raw_dir, catalog, get_channel_filter(params.stations), date_range)
 
 
+def save_log(data_dir: str, log_file: Optional[str], storage_options: dict = {}):
+    if log_file is None:
+        return
+    fs = get_filesystem(data_dir, storage_options=storage_options)
+    fs.put(log_file, fs_join(data_dir, os.path.basename(log_file)))
+
+
+def get_scheduler(args) -> Scheduler:
+    if args.mpi:
+        return MPIScheduler(0)
+    elif AWSBatchArrayScheduler.is_array_job():
+        return AWSBatchArrayScheduler()
+    else:
+        return SingleNodeScheduler()
+
+
 def main(args: typing.Any):
     logger = logging.getLogger(__package__)
     logger.setLevel(args.loglevel.upper())
+
+    if args.logfile is not None:
+        fh = logging.FileHandler(
+            args.logfile,
+        )
+        fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(module)s.%(funcName)s(): %(message)s"))
+        logging.getLogger("").addHandler(fh)
 
     def run_download():
         params = initialize_params(args, None)
         download(args.raw_data_path, params)
         params.save_yaml(fs_join(args.raw_data_path, CONFIG_FILE))
+        save_log(args.raw_data_path, args.logfile, params.storage_options)
 
     def get_cc_store(args, params: ConfigParameters, mode="a"):
         return (
@@ -181,17 +210,19 @@ def main(args: typing.Any):
         params = initialize_params(args, args.raw_data_path)
         cc_store = get_cc_store(args, params)
         raw_store = create_raw_store(args, params)
-        scheduler = MPIScheduler(0) if args.mpi else SingleNodeScheduler()
+        scheduler = get_scheduler(args)
         cross_correlate(raw_store, params, cc_store, scheduler)
         params.save_yaml(fs_join(ccf_dir, CONFIG_FILE))
+        save_log(args.ccf_path, args.logfile, params.storage_options)
 
     def run_stack():
         params = initialize_params(args, args.ccf_path)
         cc_store = get_cc_store(args, params, mode="r")
         stack_store = get_stack_store(args, params)
-        scheduler = MPIScheduler(0) if args.mpi else SingleNodeScheduler()
+        scheduler = get_scheduler(args)
         stack(cc_store, stack_store, params, scheduler)
         params.save_yaml(fs_join(args.stack_path, CONFIG_FILE))
+        save_log(args.stack_path, args.logfile, params.storage_options)
 
     if args.cmd == Command.DOWNLOAD:
         run_download()
@@ -232,6 +263,7 @@ def make_step_parser(subparsers: Any, cmd: Command, paths: List[str]) -> Any:
         default="info",
         choices=["notset", "debug", "info", "warning", "error", "critical"],
     )
+    parser.add_argument("--logfile", type=str, default=None, help="Log file")
     parser.add_argument(
         "-c", "--config", type=lambda f: _valid_config_file(parser, f), required=False, help="Configuration YAML file"
     )

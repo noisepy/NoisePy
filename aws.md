@@ -22,39 +22,35 @@ ssh -i ec2.pem ec2-user@<public dns name>
 ```
 
 
-## Setup Docker
+## Setup NoisePy
 
-Install docker
-```
-sudo yum update
-sudo yum install docker
-```
+Inside your EC2 instance SSH session, run:
 
-Setup group membership
 ```
-sudo usermod -a -G docker ec2-user
-id ec2-user
-newgrp docker
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh
+source .bashrc
+conda create -n noisepy python==3.10
+conda activate noisepy
+pip install noisepy-seis
 ```
 
-Start docker service
+## Cross-correlation
+
 ```
-sudo systemctl enable docker.service
-sudo systemctl start docker.service
+noisepy cross_correlate --format zarr --raw_data_path s3://scedc-pds/continuous_waveforms/ \
+--xml_path s3://scedc-pds/FDSNstationXML/CI/ \
+--ccf_path s3://<YOUR_S3_BUCKET>/<CC_PATH> \
+--stations=SBC,RIO,DEV \
+--start=2022-02-02 \
+--end=2022-02-03
 ```
 
-# Run NoisePy
+## Stacking
 
-Download data, e.g.:
 ```
- docker run -v ~/tmp:/tmp ghcr.io/mdenolle/noisepy download --start 2019_02_01_00_00_00 --end 2019_02_01_01_00_00 --stations ARV,BAK --inc_hours 1 --path /tmp
-```
-Run cross correlation:
-```
- docker run -v ~/tmp:/tmp ghcr.io/mdenolle/noisepy cross_correlate --path /tmp
-```
-
-Stack:
-```
- docker run -v ~/tmp:/tmp ghcr.io/mdenolle/noisepy stack --method linear --path /tmp
+noisepy stack \
+--format zarr \
+--ccf_path s3://<YOUR_S3_BUCKET>/<CC_PATH> \
+--stack_path s3://<YOUR_S3_BUCKET>/<STACK_PATH> \
 ```
