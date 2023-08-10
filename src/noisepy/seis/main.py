@@ -144,7 +144,7 @@ def create_raw_store(args, params: ConfigParameters):
     else:
         # assert count("*.ms") > 0 or count("*.sac") > 0, f"Can not find any .h5, .ms or .sac files in {raw_dir}"
         if args.xml_path is not None:
-            catalog = XMLStationChannelCatalog(args.xml_path)
+            catalog = XMLStationChannelCatalog(args.xml_path, storage_options=params.storage_options)
         elif os.path.isfile(os.path.join(raw_dir, STATION_FILE)):
             catalog = CSVChannelCatalog(raw_dir)
         else:
