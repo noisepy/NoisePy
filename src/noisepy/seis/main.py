@@ -133,7 +133,7 @@ def get_date_range(args) -> DateTimeRange:
 def create_raw_store(args, params: ConfigParameters):
     raw_dir = args.raw_data_path
 
-    fs = get_filesystem(raw_dir)
+    fs = get_filesystem(raw_dir, storage_options=params.storage_options)
 
     def count(pat):
         return len(fs.glob(fs_join(raw_dir, pat)))
