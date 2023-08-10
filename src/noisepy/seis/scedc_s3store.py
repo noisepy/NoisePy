@@ -46,6 +46,7 @@ class SCEDCS3DataStore(RawDataStore):
         chan_catalog: ChannelCatalog,
         ch_filter: Callable[[Channel], bool] = lambda s: True,  # noqa: E731
         date_range: DateTimeRange = None,
+        storage_options: dict = {},
     ):
         """
         Parameters:
@@ -55,7 +56,7 @@ class SCEDCS3DataStore(RawDataStore):
                             if None, all channels are used
         """
         super().__init__()
-        self.fs = get_filesystem(path)
+        self.fs = get_filesystem(path, storage_options=storage_options)
         self.channel_catalog = chan_catalog
         self.path = path
         self.paths = {}

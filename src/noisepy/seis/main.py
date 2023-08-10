@@ -151,7 +151,9 @@ def create_raw_store(args, params: ConfigParameters):
             raise ValueError(f"Either an --xml_path argument or a {STATION_FILE} must be provided")
 
         date_range = get_date_range(args)
-        return SCEDCS3DataStore(raw_dir, catalog, get_channel_filter(params.stations), date_range)
+        return SCEDCS3DataStore(
+            raw_dir, catalog, get_channel_filter(params.stations), date_range, params.storage_options
+        )
 
 
 def save_log(data_dir: str, log_file: Optional[str], storage_options: dict = {}):
