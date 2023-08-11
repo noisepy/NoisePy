@@ -57,7 +57,7 @@ class XMLStationChannelCatalog(ChannelCatalog):
     A channel catalog that reads <station>.XML files from a directory or an s3://... bucket url path.
     """
 
-    def __init__(self, xmlpath: str, path_format: str = "{network}_{name}.xml") -> None:
+    def __init__(self, xmlpath: str, path_format: str = "{network}_{name}.xml", storage_options={}) -> None:
         """
         Constructs a XMLStationChannelCatalog
 
@@ -69,7 +69,7 @@ class XMLStationChannelCatalog(ChannelCatalog):
         super().__init__()
         self.xmlpath = xmlpath
         self.path_format = path_format
-        self.fs = get_filesystem(xmlpath)
+        self.fs = get_filesystem(xmlpath, storage_options=storage_options)
         if not self.fs.exists(self.xmlpath):
             raise Exception(f"The XML Station file directory '{xmlpath}' doesn't exist")
 

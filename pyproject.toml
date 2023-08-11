@@ -40,9 +40,10 @@ dependencies = [
     "pandas>=1.5.3,<2.0.0",
     "pyasdf>=0.7.5,<1.0.0",
     "pycwt>=0.3.0a22,<1.0.0",
-    "diskcache>=5.5,<6.0",
+    "diskcache>=5.6.1,<6.0",
     "fsspec>=2023.4.0,<2024.0.0",
     "s3fs>=2023.4.0,<2024.0.0",
+    "aiobotocore==2.5.2", # "2.5.3 is broken"
     "pydantic>=2.0.0,<3.0.0",
     "PyYAML>=6.0,<7.0",
     "pydantic-yaml>=1.0,<2.0",
@@ -55,6 +56,9 @@ Homepage = "https://github.com/mdenolle/NoisePy"
 
 [tool.hatch.version]
 source = "vcs"
+# LOCALDEV: uncomment to use hard coded version
+# [tool.hatch.version]
+# path = "ver.py"
 
 [tool.hatch.build.hooks.vcs]
 version-file = "src/noisepy/seis/_version.py"

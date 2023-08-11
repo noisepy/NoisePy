@@ -37,8 +37,9 @@ read_channels = [
 
 @pytest.fixture(params=data_paths)
 def store(request):
+    storage_options = {"s3": {"anon": True}}
     (path, timespan) = request.param
-    return SCEDCS3DataStore(path, MockCatalog(), lambda ch: ch in read_channels, timespan)
+    return SCEDCS3DataStore(path, MockCatalog(), lambda ch: ch in read_channels, timespan, storage_options)
 
 
 @pytest.mark.parametrize("channel", read_channels)

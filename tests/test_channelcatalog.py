@@ -66,7 +66,7 @@ xmlpaths = [os.path.join(os.path.dirname(__file__), "./data/"), "s3://scedc-pds/
 
 @pytest.mark.parametrize("path", xmlpaths)
 def test_XMLStationChannelCatalog(path):
-    cat = XMLStationChannelCatalog(path)
+    cat = XMLStationChannelCatalog(path, storage_options={"s3": {"anon": True}})
     empty_inv = cat.get_inventory(DateTimeRange(), Station("non-existent", "non-existent", ""))
     assert len(empty_inv) == 0
     yaq_inv = cat.get_inventory(DateTimeRange(), Station("CI", "YAQ"))

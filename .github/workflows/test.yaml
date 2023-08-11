@@ -132,7 +132,8 @@ jobs:
         noisepy cross_correlate --raw_data_path s3://scedc-pds/continuous_waveforms/ \
         --ccf_path $RUNNER_TEMP/CCF_S3 --freq_norm rma \
         --xml_path s3://scedc-pds/FDSNstationXML/CI/ \
-        --stations "SBC,RIO" --start_date 2022-02-02 --end_date 2022-02-04
+        --stations "SBC,RIO" --start_date 2022-02-02 --end_date 2022-02-04 \
+        --config configs/s3_anon.yaml
   s3_singlepath:
     strategy:
       fail-fast: true
@@ -151,4 +152,5 @@ jobs:
         noisepy cross_correlate --raw_data_path s3://scedc-pds/continuous_waveforms/2022/2022_002/ \
         --ccf_path $RUNNER_TEMP/CCF_S3 --freq_norm rma \
         --xml_path s3://scedc-pds/FDSNstationXML/CI/ \
-        --stations "SBC,RIO"
+        --stations "SBC,RIO" \
+        --config configs/s3_anon.yaml

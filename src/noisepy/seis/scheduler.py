@@ -1,6 +1,9 @@
 import logging
+import os
 from abc import ABC, abstractmethod
 from typing import Callable, List
+
+from noisepy.seis.constants import AWS_BATCH_JOB_ARRAY_INDEX
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +47,24 @@ class SingleNodeScheduler(Scheduler):
 
     def synchronize(self):
         pass
+
+
+class AWSBatchArrayScheduler(SingleNodeScheduler):
+    """A scheduler implementation for AWS Batch using array jobs"""
+
+    def is_array_job() -> bool:
+        aws_array_index = os.environ.get(AWS_BATCH_JOB_ARRAY_INDEX)
+        return aws_array_index is not None
+
+    def get_indices(self, items: list) -> List[int]:
+        # read environment variable set by AWS Batch
+        aws_array_index = os.environ.get(AWS_BATCH_JOB_ARRAY_INDEX)
+        if aws_array_index is None:
+            raise EnvironmentError("AWS_BATCH_JOB_ARRAY_INDEX environment variable not set")
+        logger.info(f"Running in AWS Batch array job, index: {aws_array_index}")
+        indices = [int(aws_array_index)]
+        logger.debug(f"RANK -, INDICES: {indices}")
+        return indices
 
 
 class MPIScheduler(Scheduler):
