@@ -6,7 +6,7 @@ import pytest
 from datetimerange import DateTimeRange
 
 from noisepy.seis.asdfstore import ASDFCCStore
-from noisepy.seis.datatypes import Channel, ChannelType, Station
+from noisepy.seis.datatypes import Channel, ChannelType, CrossCorrelation, Station
 from noisepy.seis.stores import CrossCorrelationDataStore
 from noisepy.seis.zarrstore import ZarrCCStore
 
@@ -42,7 +42,7 @@ def _ccstore_test_helper(ccstore: CrossCorrelationDataStore):
     assert not ccstore.contains(ts2, src, rec)
 
     # add CC (src->rec) for ts1
-    ccstore.append(ts1, src, rec, params, data)
+    ccstore.append(ts1, src.station, rec.station, [CrossCorrelation(src.type, rec.type, params, data)])
     # assert ts1 is there, but not ts2
     assert ccstore.contains(ts1, src, rec)
     assert not ccstore.contains(ts2, src, rec)
@@ -55,7 +55,7 @@ def _ccstore_test_helper(ccstore: CrossCorrelationDataStore):
     assert not ccstore.is_done(ts2)
 
     # now add CC for ts2
-    ccstore.append(ts2, src, rec, {}, data)
+    ccstore.append(ts2, src.station, rec.station, [CrossCorrelation(src.type, rec.type, {}, data)])
     assert ccstore.contains(ts2, src, rec)
     assert not ccstore.is_done(ts2)
     ccstore.mark_done(ts2)
@@ -65,15 +65,14 @@ def _ccstore_test_helper(ccstore: CrossCorrelationDataStore):
     assert timespans == [ts1, ts2]
     sta_pairs = ccstore.get_station_pairs()
     assert sta_pairs == [(src.station, rec.station)]
-    cha_pairs = ccstore.get_channeltype_pairs(ts1, sta_pairs[0][0], sta_pairs[0][1])
+    ccs = ccstore.read_correlations(ts1, sta_pairs[0][0], sta_pairs[0][1])
+    cha_pairs = [(c.src, c.rec) for c in ccs]
     assert cha_pairs == [(src.type, rec.type)]
-    read_params, read_data = ccstore.read(ts1, src.station, rec.station, src.type, rec.type)
-    assert params == read_params
-    assert np.all(data == read_data)
+    assert params == ccs[0].parameters
+    assert np.all(data == ccs[0].data)
 
-    read_params, read_data = ccstore.read(ts1, src.station, Station("nw", "wrong"), src.type, rec.type)
-    assert len(read_params) == 0
-    assert read_data.shape == (0, 0)
+    wrong_ccs = ccstore.read_correlations(ts1, src.station, Station("nw", "wrong"))
+    assert len(wrong_ccs) == 0
 
 
 def test_asdfccstore(asdfstore: ASDFCCStore):

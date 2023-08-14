@@ -59,7 +59,7 @@ def stack(
     def initializer():
         timespans = cc_store.get_timespans()
         pairs_all = cc_store.get_station_pairs()
-        logger.info(f"Station pairs: {pairs_all}")
+        logger.info(f"Station pairs: {pairs_all}, timespans:{timespans}")
 
         if len(timespans) == 0 or len(pairs_all) == 0:
             raise IOError("Abort! no available CCF data for stacking")
@@ -125,21 +125,21 @@ def stack_pair(
     iseg = 0
     for ts in timespans:
         # load the data from daily compilation
-        ch_pairs = cc_store.get_channeltype_pairs(ts, src_sta, rec_sta)
+        cross_correlations = cc_store.read_correlations(ts, src_sta, rec_sta)
 
-        logger.debug(f"path_list for {src_sta}-{rec_sta}: {ch_pairs}")
+        logger.debug(f"path_list for {src_sta}-{rec_sta}: {cross_correlations}")
         # seperate auto and cross-correlation
-        if not validate_pairs(fft_params.ncomp, str((src_sta, rec_sta)), fauto, ts, len(ch_pairs)):
+        if not validate_pairs(fft_params.ncomp, str((src_sta, rec_sta)), fauto, ts, len(cross_correlations)):
             continue
 
-        # load the 9-component data, which is in order in the ASDF
-        for ch_pair in ch_pairs:
-            src_chan, rec_chan = ch_pair
+        # load the 9-component data
+        for cc in cross_correlations:
+            src_chan, rec_chan = cc.src, cc.rec
+            tparameters, tdata = cc.parameters, cc.data
             tcmp1 = src_chan.get_orientation()
             tcmp2 = rec_chan.get_orientation()
 
             # read data and parameter matrix
-            tparameters, tdata = cc_store.read(ts, src_sta, rec_sta, src_chan, rec_chan)
             ttime = tparameters["time"]
             tgood = tparameters["ngood"]
             if fft_params.substack:

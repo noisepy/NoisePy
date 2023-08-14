@@ -1,9 +1,9 @@
 import gc
 import logging
+import os
 import sys
-import time
-from collections import OrderedDict
-from concurrent.futures import Executor, ThreadPoolExecutor, as_completed
+from collections import OrderedDict, defaultdict
+from concurrent.futures import Executor, ThreadPoolExecutor
 from typing import Callable, Dict, List, Tuple
 
 import numpy as np
@@ -12,7 +12,14 @@ from datetimerange import DateTimeRange
 from scipy.fftpack.helper import next_fast_len
 
 from . import noise_module
-from .datatypes import Channel, ChannelData, ConfigParameters, NoiseFFT
+from .datatypes import (
+    Channel,
+    ChannelData,
+    ConfigParameters,
+    CrossCorrelation,
+    NoiseFFT,
+    Station,
+)
 from .scheduler import Scheduler, SingleNodeScheduler
 from .stores import CrossCorrelationDataStore, RawDataStore
 from .utils import TimeLogger, _get_results, error_if
@@ -146,6 +153,8 @@ def cross_correlate(
 
         tasks = []
 
+        tlog.reset()
+        station_pairs = defaultdict(list)
         # # ###########PERFORM CROSS-CORRELATION##################
         for iiS in range(nchannels):
             for iiR in range(iiS, nchannels):
@@ -162,18 +171,26 @@ def cross_correlate(
                 if iiR not in ffts:
                     logger.warning(f"No FFT data available for channel '{rec_chan}', skipped")
                     continue
-                t = executor.submit(cross_correlation, fft_params, iiS, iiR, channels, ffts, Nfft)
-                tasks.append(t)
 
-        t_append = 0
-        for t in as_completed(tasks):
-            # Use as_completed so we can start saving results to the store
-            # while other computations are still running
-            src_chan, rec_chan, parameters, corr = t.result()
-            t_start = time.time()
-            cc_store.append(ts, src_chan, rec_chan, parameters, corr)
-            t_append += time.time() - t_start
-        tlog.log_raw("Append to store", t_append)
+                station_pairs[(src_chan.station, rec_chan.station)].append((iiS, iiR))
+
+        for station_pair, ch_pairs in station_pairs.items():
+            t = executor.submit(
+                stations_cross_correlation,
+                ts,
+                fft_params,
+                station_pair[0],
+                station_pair[1],
+                channels,
+                ch_pairs,
+                ffts,
+                Nfft,
+                cc_store,
+            )
+            tasks.append(t)
+
+        _get_results(tasks)
+        tlog.log(f"Correlate and write to store: {len(tasks)} station pairs")
 
         ffts.clear()
         gc.collect()
@@ -181,8 +198,30 @@ def cross_correlate(
         tlog.log(f"Process the chunk of {ts}", t_chunk)
         cc_store.mark_done(ts)
 
-    tlog.log("Step 1 in total", t_s1_total)
+    tlog.log(f"Step 1 in total with {os.cpu_count()} cores", t_s1_total)
     executor.shutdown()
+
+
+def stations_cross_correlation(
+    ts: DateTimeRange,
+    fft_params: ConfigParameters,
+    src: Station,
+    rec: Station,
+    channels: List[Channel],
+    channel_pairs: List[Tuple[int, int]],
+    ffts: Dict[int, NoiseFFT],
+    Nfft: int,
+    cc_store: CrossCorrelationDataStore,
+):
+    datas = []
+    # TODO: Are there any potential gains to parallelliing this? It could make a difference if
+    # num station pairs < num cores since we are already parallelizing at the station pair level
+    for src_chan, rec_chan in channel_pairs:
+        result = cross_correlation(fft_params, src_chan, rec_chan, channels, ffts, Nfft)
+        if result is not None:
+            data = CrossCorrelation(result[0].type, result[1].type, result[2], result[3])
+            datas.append(data)
+    cc_store.append(ts, src, rec, datas)
 
 
 def cross_correlation(

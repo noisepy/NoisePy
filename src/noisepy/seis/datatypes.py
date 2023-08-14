@@ -276,3 +276,23 @@ class NoiseFFT:
     fft_time: np.ndarray
     window_count: int
     length: int
+
+
+class CrossCorrelation:
+    src: ChannelType
+    rec: ChannelType
+    parameters: Dict[str, Any]
+    data: np.ndarray
+
+    def __init__(self, src: ChannelType, rec: ChannelType, params: Dict[str, Any], data: np.ndarray):
+        self.src = src
+        self.rec = rec
+        self.data = data
+        self.parameters = {k: _to_json_type(v) for k, v in params.items()}
+
+
+def _to_json_type(value: Any) -> Any:
+    # special case since numpy arrays are not json serializable
+    if type(value) == np.ndarray:
+        return value.tolist()
+    return value
