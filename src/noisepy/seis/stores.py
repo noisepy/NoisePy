@@ -9,7 +9,14 @@ from datetimerange import DateTimeRange
 
 from noisepy.seis.constants import DATE_FORMAT
 
-from .datatypes import Channel, ChannelData, ChannelType, ConfigParameters, Station
+from .datatypes import (
+    Channel,
+    ChannelData,
+    ChannelType,
+    ConfigParameters,
+    CrossCorrelation,
+    Station,
+)
 
 
 class DataStore(ABC):
@@ -52,10 +59,9 @@ class CrossCorrelationDataStore:
     def append(
         self,
         timespan: DateTimeRange,
-        src_chan: Channel,
-        rec_chan: Channel,
-        cc_params: Dict[str, Any],
-        data: np.ndarray,
+        src: Station,
+        rec: Station,
+        ccs: List[CrossCorrelation],
     ):
         pass
 
@@ -76,15 +82,7 @@ class CrossCorrelationDataStore:
         pass
 
     @abstractmethod
-    def get_channeltype_pairs(
-        self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station
-    ) -> List[Tuple[ChannelType, ChannelType]]:
-        pass
-
-    @abstractmethod
-    def read(
-        self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station, src_ch: ChannelType, rec_ch: ChannelType
-    ) -> Tuple[Dict, np.ndarray]:
+    def read_correlations(self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station) -> List[CrossCorrelation]:
         pass
 
     # private helpers
@@ -92,7 +90,7 @@ class CrossCorrelationDataStore:
         return f"{src_sta}_{rec_sta}"
 
     def _get_channel_pair(self, src_chan: ChannelType, rec_chan: ChannelType) -> str:
-        return f"{src_chan.name}_{rec_chan.name}"
+        return f"{src_chan}_{rec_chan}"
 
 
 class StackStore:

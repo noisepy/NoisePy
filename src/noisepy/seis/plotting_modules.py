@@ -155,13 +155,13 @@ def plot_substack_cc(
         logger.error("No data available for plotting")
         return
 
-    ch_pairs = cc_store.get_channeltype_pairs(ts, sta_pairs[0][0], sta_pairs[0][1])
-    if len(ch_pairs) == 0:
+    ccs = cc_store.read_correlations(ts, sta_pairs[0][0], sta_pairs[0][1])
+    if len(ccs) == 0:
         logger.error(f"No data available for plotting in {ts}/{sta_pairs[0]}")
         return
 
     # Read some common arguments from the first available data set:
-    params, _ = cc_store.read(ts, sta_pairs[0][0], sta_pairs[0][1], ch_pairs[0][0], ch_pairs[0][1])
+    params = ccs[0].parameters
     substack_flag, dt, maxlag = (params[p] for p in ["substack", "dt", "maxlag"])
 
     # only works for cross-correlation with substacks generated
@@ -182,10 +182,9 @@ def plot_substack_cc(
 
     # for spair in spairs:
     for src_sta, rec_sta in sta_pairs:
-        ch_pairs = cc_store.get_channeltype_pairs(ts, src_sta, rec_sta)
-        for src_cha, rec_cha in ch_pairs:
+        for cc in ccs:
+            src_cha, rec_cha, params, all_data = cc.src, cc.rec, cc.parameters, cc.data
             try:
-                params, all_data = cc_store.read(ts, src_sta, rec_sta, src_cha, rec_cha)
                 dist, ngood, ttime = (params[p] for p in ["dist", "ngood", "time"])
                 timestamp = np.empty(len(ttime), dtype="datetime64[s]")
             except Exception as e:

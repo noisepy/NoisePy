@@ -11,7 +11,7 @@ from datetimerange import DateTimeRange
 
 from . import noise_module
 from .constants import DONE_PATH, PROGRESS_DATATYPE
-from .datatypes import Channel, ChannelData, ChannelType, Station
+from .datatypes import Channel, ChannelData, ChannelType, CrossCorrelation, Station
 from .stores import (
     CrossCorrelationDataStore,
     RawDataStore,
@@ -137,16 +137,16 @@ class ASDFCCStore(CrossCorrelationDataStore):
     def append(
         self,
         timespan: DateTimeRange,
-        src_chan: Channel,
-        rec_chan: Channel,
-        cc_params: Dict[str, Any],
-        corr: np.ndarray,
+        src: Station,
+        rec: Station,
+        ccs: List[CrossCorrelation],
     ):
-        # source-receiver pair: e.g. CI.ARV_CI.BAK
-        station_pair = self._get_station_pair(src_chan.station, rec_chan.station)
-        # channels, e.g. bhn_bhn
-        channels = self._get_channel_pair(src_chan.type, rec_chan.type)
-        self.datasets.add_aux_data(timespan, cc_params, station_pair, channels, corr)
+        for cc in ccs:
+            station_pair = self._get_station_pair(src, rec)
+            # source-receiver pair: e.g. CI.ARV_CI.BAK
+            # channels, e.g. bhn_bhn
+            channels = self._get_channel_pair(cc.src, cc.rec)
+            self.datasets.add_aux_data(timespan, cc.parameters, station_pair, channels, cc.data)
 
     def mark_done(self, timespan: DateTimeRange):
         self.datasets.mark_done(timespan)
@@ -166,27 +166,19 @@ class ASDFCCStore(CrossCorrelationDataStore):
                 pairs_all.update(parse_station_pair(p) for p in data if p != PROGRESS_DATATYPE)
         return list(pairs_all)
 
-    def get_channeltype_pairs(
-        self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station
-    ) -> List[Tuple[Channel, Channel]]:
+    def read_correlations(self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station) -> List[CrossCorrelation]:
         with self.datasets[timespan] as ccf_ds:
             dtype = self._get_station_pair(src_sta, rec_sta)
             if dtype not in ccf_ds.auxiliary_data:
                 logging.warning(f"No data available for {timespan}/{dtype}")
                 return []
-            ch_pairs = ccf_ds.auxiliary_data[dtype].list()
-            return [tuple(map(ChannelType, ch.split("_"))) for ch in ch_pairs]
-
-    def read(
-        self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station, src_ch: ChannelType, rec_ch: ChannelType
-    ) -> Tuple[Dict, np.ndarray]:
-        dtype = self._get_station_pair(src_sta, rec_sta)
-        path = self._get_channel_pair(src_ch, rec_ch)
-        with self.datasets[timespan] as ds:
-            if dtype not in ds.auxiliary_data or path not in ds.auxiliary_data[dtype]:
-                return ({}, np.empty((0, 0)))
-            stream = ds.auxiliary_data[dtype][path]
-            return (stream.parameters, stream.data[:])
+            ccs = []
+            ch_pair_paths = ccf_ds.auxiliary_data[dtype].list()
+            for ch_pair_path in ch_pair_paths:
+                src_ch, rec_ch = _parse_channel_path(ch_pair_path)
+                stream = ccf_ds.auxiliary_data[dtype][ch_pair_path]
+                ccs.append(CrossCorrelation(src_ch, rec_ch, stream.parameters, stream.data[:]))
+            return ccs
 
 
 class ASDFStackStore(StackStore):
@@ -250,3 +242,13 @@ def _filename_from_timespan(timespan: DateTimeRange) -> str:
 def _parse_station_pair_h5file(path: str) -> Tuple[Station, Station]:
     pair = Path(path).stem
     return parse_station_pair(pair)
+
+
+def _parse_channel_path(path: str) -> Tuple[ChannelType, ChannelType]:
+    parts = path.split("_")
+    if len(parts) == 2:
+        return tuple(map(ChannelType, parts))
+    elif len(parts) == 4:  # when we have location codes
+        return tuple(map(ChannelType, ["_".join(parts[0:2]), "_".join(parts[2:4])]))
+    else:
+        raise ValueError(f"Invalid channel path {path}")

@@ -3,10 +3,11 @@ import os
 import posixpath
 import time
 from concurrent.futures import Future
-from typing import Iterable
+from typing import Iterable, List
 from urllib.parse import urlparse
 
 import fsspec
+import numpy as np
 
 S3_SCHEME = "s3"
 utils_logger = logging.getLogger(__name__)
@@ -94,3 +95,17 @@ def error_if(condition: bool, msg: str, error_type: type = RuntimeError):
 
 def _get_results(futures: Iterable[Future]) -> Iterable[Future]:
     return [f.result() for f in futures]
+
+
+def unstack(stack: np.ndarray, axis=0) -> List[np.ndarray]:
+    """
+    Split a stack along the given axis into a list of arrays
+    """
+    return [np.squeeze(a, axis=axis) for a in np.split(stack, stack.shape[axis], axis=axis)]
+
+
+def remove_nan_rows(a: np.ndarray) -> np.ndarray:
+    """
+    Remove rows from a 2D array that contain NaN values
+    """
+    return a[~np.isnan(a).any(axis=1)]

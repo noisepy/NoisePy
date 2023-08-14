@@ -1,19 +1,23 @@
 import logging
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import zarr
 from datetimerange import DateTimeRange
 
 from noisepy.seis.constants import DONE_PATH
+from noisepy.seis.utils import remove_nan_rows, unstack
 
-from .datatypes import Channel, ChannelType, Station
+from .datatypes import Channel, ChannelType, CrossCorrelation, Station
 from .stores import (
     CrossCorrelationDataStore,
     parse_station_pair,
     parse_timespan,
     timespan_str,
 )
+
+CHANNELS_ATTR = "channels"
+VERSION_ATTR = "version"
 
 logger = logging.getLogger(__name__)
 
@@ -25,14 +29,12 @@ class ZarrStoreHelper:
     Args:
         root_dir: Storage location, can be a local or S3 path
         mode: "r" or "a" for read-only or writing mode
-        dims: number dimensions of the data
         storage_options: options to pass to fsspec
     """
 
-    def __init__(self, root_dir: str, mode: str, dims: int, storage_options={}) -> None:
+    def __init__(self, root_dir: str, mode: str, storage_options={}) -> None:
         super().__init__()
-        self.dims = dims
-        logger.info(f"store creating at {root_dir}, mode={mode}, dims={dims}, storage_options={storage_options}")
+        logger.info(f"store creating at {root_dir}, mode={mode}, storage_options={storage_options}")
         self.root = zarr.open_group(root_dir, mode=mode, storage_options=storage_options)
         logger.info(f"store created at {root_dir}")
 
@@ -52,9 +54,7 @@ class ZarrStoreHelper:
             chunks=data.shape,
             dtype=data.dtype,
         )
-
-        to_save = {k: _to_json(v) for k, v in params.items()}
-        array.attrs.update(to_save)
+        array.attrs.update(params)
 
     def is_done(self, key: str):
         if DONE_PATH not in self.root.array_keys():
@@ -70,14 +70,11 @@ class ZarrStoreHelper:
         pairs = [parse_station_pair(k) for k in self.root.group_keys() if k != DONE_PATH]
         return pairs
 
-    def read(self, path: str) -> Tuple[Dict, np.ndarray]:
+    def read(self, path: str) -> Optional[zarr.Array]:
         if path not in self.root:
-            # return empty data with the same dimensions as the chunks
-            return ({}, np.empty(tuple(0 for i in range(self.dims))))
+            return None
         array = self.root[path]
-        data = array[:]
-        params = dict(array.attrs.items())
-        return (params, data)
+        return array
 
 
 class ZarrCCStore(CrossCorrelationDataStore):
@@ -85,13 +82,15 @@ class ZarrCCStore(CrossCorrelationDataStore):
     CrossCorrelationDataStore that uses hierarchical Zarr files for storage. The directory organization is as follows:
     /                           (root)
         station_pair            (group)
-            timestamp           (group)
-                channel_pair    (array)
+            timestamp           (array)
+
+        The 'timestamp' arrays contain the cross-correlation data for all channels. The channel information is stored
+        as part of the array attributes.
     """
 
     def __init__(self, root_dir: str, mode: str = "a", storage_options={}) -> None:
         super().__init__()
-        self.helper = ZarrStoreHelper(root_dir, mode, dims=2, storage_options=storage_options)
+        self.helper = ZarrStoreHelper(root_dir, mode, storage_options=storage_options)
 
     def contains(self, timespan: DateTimeRange, src_chan: Channel, rec_chan: Channel) -> bool:
         path = self._get_path(timespan, src_chan, rec_chan)
@@ -100,13 +99,26 @@ class ZarrCCStore(CrossCorrelationDataStore):
     def append(
         self,
         timespan: DateTimeRange,
-        src_chan: Channel,
-        rec_chan: Channel,
-        cc_params: Dict[str, Any],
-        data: np.ndarray,
+        src: Station,
+        rec: Station,
+        ccs: List[CrossCorrelation],
     ):
-        path = self._get_path(timespan, src_chan, rec_chan)
-        return self.helper.append(path, cc_params, data)
+        path = self._get_station_path(timespan, src, rec)
+        # Some channels may have different lengths, so pad them with NaNs for stacking
+        max_rows = max(d.data.shape[0] for d in ccs)
+        max_cols = max(d.data.shape[1] for d in ccs)
+        padded = [
+            np.pad(
+                d.data,
+                ((0, max_rows - d.data.shape[0]), (0, max_cols - d.data.shape[1])),
+                mode="constant",
+                constant_values=np.nan,
+            )
+            for d in ccs
+        ]
+        all_ccs = np.stack(padded, axis=0)
+        json_params = [(p.src.name, p.src.location, p.rec.name, p.rec.location, p.parameters) for p in ccs]
+        self.helper.append(path, {CHANNELS_ATTR: json_params, VERSION_ATTR: 1.0}, all_ccs)
 
     def is_done(self, timespan: DateTimeRange):
         return self.helper.is_done(timespan_str(timespan))
@@ -118,26 +130,31 @@ class ZarrCCStore(CrossCorrelationDataStore):
         pairs = [k for k in self.helper.root.group_keys() if k != DONE_PATH]
         timespans = []
         for p in pairs:
-            timespans.extend(k for k in self.helper.root[p].group_keys())
+            timespans.extend(k for k in self.helper.root[p].array_keys())
         return list(parse_timespan(t) for t in sorted(set(timespans)))
 
     def get_station_pairs(self) -> List[Tuple[Station, Station]]:
         return self.helper.get_station_pairs()
 
-    def get_channeltype_pairs(
-        self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station
-    ) -> List[Tuple[ChannelType, ChannelType]]:
+    def read_correlations(self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station) -> List[CrossCorrelation]:
         path = self._get_station_path(timespan, src_sta, rec_sta)
-        if path not in self.helper.root:
-            return []
-        ch_pairs = self.helper.root[path].array_keys()
-        return [tuple(map(ChannelType, ch.split("_"))) for ch in ch_pairs]
 
-    def read(
-        self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station, src_ch: ChannelType, rec_ch: ChannelType
-    ) -> Tuple[Dict, np.ndarray]:
-        path = self._get_path(timespan, Channel(src_ch, src_sta), Channel(rec_ch, rec_sta))
-        return self.helper.read(path)
+        array = self.helper.read(path)
+        if not array:
+            return []
+
+        channels_dict = array.attrs[CHANNELS_ATTR]
+        channel_params = [
+            (ChannelType(src, src_loc), ChannelType(rec, rec_loc), params)
+            for src, src_loc, rec, rec_loc, params in channels_dict
+        ]
+        cc_stack = array[:]
+        ccs = unstack(cc_stack)
+
+        return [
+            CrossCorrelation(src, rec, params, remove_nan_rows(data))
+            for (src, rec, params), data in zip(channel_params, ccs)
+        ]
 
     def _get_station_path(self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station) -> str:
         stations = self._get_station_pair(src_sta, rec_sta)
@@ -161,7 +178,7 @@ class ZarrStackStore:
 
     def __init__(self, root_dir: str, mode: str = "a", storage_options={}) -> None:
         super().__init__()
-        self.helper = ZarrStoreHelper(root_dir, mode, dims=1, storage_options=storage_options)
+        self.helper = ZarrStoreHelper(root_dir, mode, storage_options=storage_options)
 
     def mark_done(self, src: Station, rec: Station):
         path = self._get_station_path(src, rec)
@@ -190,7 +207,10 @@ class ZarrStackStore:
 
     def read(self, src: Station, rec: Station, component: str, name: str) -> Tuple[Dict[str, Any], np.ndarray]:
         path = self._get_path(src, rec, component, name)
-        return self.helper.read(path)
+        array = self.helper.read(path)
+        if not array:
+            return {}, np.zeros((0,))
+        return array.attrs, array[:]
 
     def _get_children(self, path: str) -> List[str]:
         if path not in self.helper.root:
@@ -202,9 +222,3 @@ class ZarrStackStore:
 
     def _get_path(self, src: Station, rec: Station, component: str, name: str) -> str:
         return f"{self._get_station_path(src,rec)}/{name}/{component}"
-
-
-def _to_json(value: Any) -> Any:
-    if type(value) == np.ndarray:
-        return value.tolist()
-    return value
