@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Callable, List
 
@@ -61,22 +62,21 @@ class SCEDCS3DataStore(RawDataStore):
         self.path = path
         self.paths = {}
         # to store a dict of {timerange: list of channels}
-        self.channels = {}
+        self.channels = defaultdict(list)
+        self.ch_filter = ch_filter
+        if date_range is not None and date_range.start_datetime.tzinfo is None:
+            start_datetime = date_range.start_datetime.replace(tzinfo=timezone.utc)
+            end_datetime = date_range.end_datetime.replace(tzinfo=timezone.utc)
+            date_range = DateTimeRange(start_datetime, end_datetime)
+
+        self.date_range = date_range
 
         if date_range is None:
             self._load_channels(self.path, ch_filter)
-        else:
-            dt = date_range.end_datetime - date_range.start_datetime
-            for d in range(0, dt.days):
-                date = date_range.start_datetime + timedelta(days=d)
-                date_path = str(date.year) + "/" + str(date.year) + "_" + str(date.timetuple().tm_yday).zfill(3) + "/"
-                full_path = fs_join(self.path, date_path)
-                self._load_channels(full_path, ch_filter)
 
     def _load_channels(self, full_path: str, ch_filter: Callable[[Channel], bool]):
         msfiles = [f for f in self.fs.glob(fs_join(full_path, "*.ms")) if self.file_re.match(f) is not None]
         logger.info(f"Loading {len(msfiles)} files from {full_path}")
-        timespans = []
         for f in msfiles:
             timespan = SCEDCS3DataStore._parse_timespan(f)
             self.paths[timespan.start_datetime] = full_path
@@ -84,23 +84,42 @@ class SCEDCS3DataStore(RawDataStore):
             if not ch_filter(channel):
                 continue
             key = str(timespan)  # DataTimeFrame is not hashable
-            if key not in self.channels:
-                timespans.append(timespan)
-                self.channels[key] = [channel]
-            else:
-                self.channels[key].append(channel)
+            self.channels[key].append(channel)
         logger.info(
             f"Init: {len(self.channels)} timespans and {sum(len(ch) for ch in  self.channels.values())} channels"
         )
 
-    def get_channels(self, timespan: DateTimeRange) -> List[Channel]:
-        tmp_channels = self.channels.get(str(timespan), [])
-        return list(map(lambda c: self.channel_catalog.get_full_channel(timespan, c), tmp_channels))
+    def _ensure_channels_loaded(self, date_range: DateTimeRange):
+        key = str(date_range)
+        if key not in self.channels or date_range.start_datetime not in self.paths:
+            dt = date_range.end_datetime - date_range.start_datetime
+            for d in range(0, dt.days):
+                date = date_range.start_datetime + timedelta(days=d)
+                if self.date_range is None or date not in self.date_range:
+                    continue
+                date_path = str(date.year) + "/" + str(date.year) + "_" + str(date.timetuple().tm_yday).zfill(3) + "/"
+                full_path = fs_join(self.path, date_path)
+                self._load_channels(full_path, self.ch_filter)
+
+    def get_channels(self, date_range: DateTimeRange) -> List[Channel]:
+        self._ensure_channels_loaded(date_range)
+        tmp_channels = self.channels.get(str(date_range), [])
+        return list(map(lambda c: self.channel_catalog.get_full_channel(date_range, c), tmp_channels))
 
     def get_timespans(self) -> List[DateTimeRange]:
+        if self.date_range is not None:
+            days = (self.date_range.end_datetime - self.date_range.start_datetime).days
+            return [
+                DateTimeRange(
+                    self.date_range.start_datetime.replace(tzinfo=timezone.utc) + timedelta(days=d),
+                    self.date_range.start_datetime.replace(tzinfo=timezone.utc) + timedelta(days=d + 1),
+                )
+                for d in range(0, days)
+            ]
         return list([DateTimeRange.from_range_text(d) for d in sorted(self.channels.keys())])
 
     def read_data(self, timespan: DateTimeRange, chan: Channel) -> ChannelData:
+        self._ensure_channels_loaded(timespan)
         # reconstruct the file name from the channel parameters
         chan_str = (
             f"{chan.station.network}{chan.station.name.ljust(5, '_')}{chan.type.name}"
