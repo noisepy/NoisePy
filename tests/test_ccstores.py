@@ -6,7 +6,7 @@ import pytest
 from datetimerange import DateTimeRange
 
 from noisepy.seis.asdfstore import ASDFCCStore
-from noisepy.seis.datatypes import Channel, ChannelType, Station
+from noisepy.seis.datatypes import Channel, ChannelType, CrossCorrelation, Station
 from noisepy.seis.stores import CrossCorrelationDataStore
 from noisepy.seis.zarrstore import ZarrCCStore
 
@@ -42,7 +42,7 @@ def _ccstore_test_helper(ccstore: CrossCorrelationDataStore):
     assert not ccstore.contains(ts2, src, rec)
 
     # add CC (src->rec) for ts1
-    ccstore.append(ts1, src, rec, params, data)
+    ccstore.append(ts1, src.station, rec.station, [CrossCorrelation(src.type, rec.type, params, data)])
     # assert ts1 is there, but not ts2
     assert ccstore.contains(ts1, src, rec)
     assert not ccstore.contains(ts2, src, rec)
@@ -55,7 +55,7 @@ def _ccstore_test_helper(ccstore: CrossCorrelationDataStore):
     assert not ccstore.is_done(ts2)
 
     # now add CC for ts2
-    ccstore.append(ts2, src, rec, {}, data)
+    ccstore.append(ts2, src.station, rec.station, [CrossCorrelation(src.type, rec.type, {}, data)])
     assert ccstore.contains(ts2, src, rec)
     assert not ccstore.is_done(ts2)
     ccstore.mark_done(ts2)

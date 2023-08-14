@@ -93,8 +93,12 @@ class ZarrCCStore(CrossCorrelationDataStore):
         self.helper = ZarrStoreHelper(root_dir, mode, storage_options=storage_options)
 
     def contains(self, timespan: DateTimeRange, src_chan: Channel, rec_chan: Channel) -> bool:
-        path = self._get_path(timespan, src_chan, rec_chan)
-        return self.helper.contains(path)
+        path = self._get_station_path(timespan, src_chan.station, rec_chan.station)
+        array = self.helper.read(path)
+        if not array:
+            return False
+        tuples = [(src, rec) for src, rec, _ in self._read_cc_metadata(array)]
+        return (src_chan.type, rec_chan.type) in tuples
 
     def append(
         self,
@@ -143,11 +147,7 @@ class ZarrCCStore(CrossCorrelationDataStore):
         if not array:
             return []
 
-        channels_dict = array.attrs[CHANNELS_ATTR]
-        channel_params = [
-            (ChannelType(src, src_loc), ChannelType(rec, rec_loc), params)
-            for src, src_loc, rec, rec_loc, params in channels_dict
-        ]
+        channel_params = self._read_cc_metadata(array)
         cc_stack = array[:]
         ccs = unstack(cc_stack)
 
@@ -155,6 +155,15 @@ class ZarrCCStore(CrossCorrelationDataStore):
             CrossCorrelation(src, rec, params, remove_nan_rows(data))
             for (src, rec, params), data in zip(channel_params, ccs)
         ]
+
+    def _read_cc_metadata(self, array):
+        channels_dict = array.attrs[CHANNELS_ATTR]
+        channel_params = [
+            (ChannelType(src, src_loc), ChannelType(rec, rec_loc), params)
+            for src, src_loc, rec, rec_loc, params in channels_dict
+        ]
+
+        return channel_params
 
     def _get_station_path(self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station) -> str:
         stations = self._get_station_pair(src_sta, rec_sta)
