@@ -213,6 +213,7 @@ def stations_cross_correlation(
     Nfft: int,
     cc_store: CrossCorrelationDataStore,
 ):
+    logger.info(f"Cross-correlating {len(channel_pairs)} pairs for {src} and {rec} for {ts}")
     datas = []
     # TODO: Are there any potential gains to parallelliing this? It could make a difference if
     # num station pairs < num cores since we are already parallelizing at the station pair level

@@ -6,7 +6,7 @@ import zarr
 from datetimerange import DateTimeRange
 
 from noisepy.seis.constants import DONE_PATH
-from noisepy.seis.utils import remove_nan_rows, unstack
+from noisepy.seis.utils import TimeLogger, remove_nan_rows, unstack
 
 from .datatypes import Channel, ChannelType, CrossCorrelation, Station
 from .stores import (
@@ -122,7 +122,9 @@ class ZarrCCStore(CrossCorrelationDataStore):
         ]
         all_ccs = np.stack(padded, axis=0)
         json_params = [(p.src.name, p.src.location, p.rec.name, p.rec.location, p.parameters) for p in ccs]
+        tlog = TimeLogger(logger, logging.DEBUG)
         self.helper.append(path, {CHANNELS_ATTR: json_params, VERSION_ATTR: 1.0}, all_ccs)
+        tlog.log(f"writing {len(ccs)} CCs to {path}")
 
     def is_done(self, timespan: DateTimeRange):
         return self.helper.is_done(timespan_str(timespan))

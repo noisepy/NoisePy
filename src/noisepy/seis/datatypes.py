@@ -90,6 +90,9 @@ class Station:
     def __hash__(self) -> int:
         return str(self).__hash__()
 
+    def __eq__(self, __value: object) -> bool:
+        return str(self) == str(__value)
+
 
 class CorrelationMethod(Enum):
     XCORR = 1
