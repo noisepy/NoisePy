@@ -118,7 +118,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        python_version: ['3,9', '3.10']
+        python_version: ['3.9', '3.10']
     runs-on: ubuntu-22.04
     steps:
     - name: Checkout Repo
