@@ -12,7 +12,7 @@ NoisePy is going under major re-development. Part of the core development involv
 
 Fork the repository, and create your local version, then follow the installation steps:
 ```bash
-conda create -n noisepy python=3.8 pip
+conda create -n noisepy python=3.10 pip
 conda activate noisepy
 conda install -c conda-forge openmpi
 python -m ipykernel install --user --name noisepy
@@ -45,6 +45,9 @@ tests/test_cli.sh asdf
 NOTE: The CLI tests download a small amount of data from SCEDC to test the download funcionality. Occassionally, the service
 is unavailable and the test will fail. This is usually resolved in a few minutes.
 
+## Pull Requests
+
+Please follow the [Conventional Commits](https://github.com/uw-ssec/rse-guidelines/blob/main/conventional-commits.md) naming for pull request titles.
 
 ## Overview
 

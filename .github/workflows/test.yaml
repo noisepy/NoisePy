@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 env:
-  python_version: '3.8'
+  python_version: '3.10'
   RDMAV_FORK_SAFE: 1
 jobs:
   unit_tests:
@@ -41,17 +41,15 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        python_version: ['3.8', '3.10']
+        python_version: ['3.10']
         method: [linear,robust, nroot, selective, auto_covariance, pws]
         freq_norm: [rma]
         format: [asdf]
         include:
         - method: linear
-          python_version: '3.10'
           freq_norm: no
           format: zarr
         - method: robust
-          python_version: '3.9'
           freq_norm: phase_only
           format: zarr
     runs-on: ubuntu-22.04
@@ -118,7 +116,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        python_version: ['3.8', '3.10']
+        python_version: ['3.10']
     runs-on: ubuntu-22.04
     steps:
     - name: Checkout Repo
@@ -138,7 +136,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        python_version: ['3.8', '3.10']
+        python_version: ['3.10']
     runs-on: ubuntu-22.04
     steps:
     - name: Checkout Repo

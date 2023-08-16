@@ -21,14 +21,14 @@ The nature of NoisePy being composed of python scripts allows flexible package i
 
 ## With Conda and pip:
 ```bash
-conda create -n noisepy python=3.8 pip
+conda create -n noisepy python=3.10 pip
 conda activate noisepy
 pip install noisepy-seis
 ```
 
 ## With Conda and pip and MPI support:
 ```bash
-conda create -n noisepy python=3.8 pip
+conda create -n noisepy python=3.10 pip
 conda activate noisepy
 conda install -c conda-forge openmpi
 pip install noisepy-seis[mpi]
