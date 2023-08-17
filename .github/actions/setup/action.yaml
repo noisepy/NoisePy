@@ -4,6 +4,10 @@ inputs:
   python-version:
     required: true
     description: Python version to install
+  mpi:
+    required: false
+    description: Whether to install with MPI or not
+    default: 'false'
 runs:
   using: composite
   steps:
@@ -11,11 +15,19 @@ runs:
       uses: actions/setup-python@v4.5.0
       with:
         python-version: ${{inputs.python-version}}
-    - name: Setup MPI
-      uses: mpi4py/setup-mpi@v1
-    - name: Install project
+    - name: Setup pip
       shell: sh
       run: |
         python3 -m ensurepip
         pip3 install --upgrade pip
-        pip install ".[dev]"
+    - name: Setup MPI
+      if: ${{ inputs.mpi == 'true' }}
+      uses: mpi4py/setup-mpi@v1
+    - name: Install project no MPI
+      if: ${{ inputs.mpi == 'false' }}
+      shell: sh
+      run: pip install ".[dev]"
+    - name: Install project MPI
+      if: ${{ inputs.mpi == 'true' }}
+      shell: sh
+      run: pip install ".[dev,mpi]"

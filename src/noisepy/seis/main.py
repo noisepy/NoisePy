@@ -21,7 +21,9 @@ from .S0A_download_ASDF_MPI import download
 from .S1_fft_cc_MPI import cross_correlate
 from .S2_stacking import stack
 from .scedc_s3store import SCEDCS3DataStore
+from .scheduler import MPIScheduler, SingleNodeScheduler
 from .utils import fs_join, get_filesystem
+from .zarrstore import ZarrCCStore, ZarrStackStore
 
 logger = logging.getLogger(__name__)
 # Utility running the different steps from the command line. Defines the arguments for each step
@@ -34,6 +36,11 @@ class Command(Enum):
     CROSS_CORRELATE = 2
     STACK = 3
     ALL = 4
+
+
+class DataFormat(Enum):
+    ZARR = "zarr"
+    ASDF = "asdf"
 
 
 def valid_date(d: str) -> str:
@@ -60,7 +67,7 @@ def parse_bool(bstr: str) -> bool:
 
 
 def get_arg_type(arg_type):
-    if arg_type == list:
+    if arg_type == List[str]:
         return list_str
     if arg_type == datetime:
         return dateutil.parser.isoparse
@@ -71,14 +78,14 @@ def get_arg_type(arg_type):
 
 def add_model(parser: argparse.ArgumentParser, model: ConfigParameters):
     # Add config model to the parser
-    fields = model.__fields__
+    fields = model.model_fields
     for name, field in fields.items():
         parser.add_argument(
             f"--{name}",
             dest=name,
-            type=get_arg_type(field.type_),
+            type=get_arg_type(field.annotation),
             default=argparse.SUPPRESS,
-            help=field.field_info.description,
+            help=field.description,
         )
 
 
@@ -96,11 +103,11 @@ def initialize_params(args, data_dir: str) -> ConfigParameters:
         config_path = fs_join(data_dir, CONFIG_FILE)
     if config_path is not None and os.path.isfile(config_path):
         logger.info(f"Loading parameters from {config_path}")
-        params = ConfigParameters.parse_file(config_path)
+        params = ConfigParameters.load_yaml(config_path)
     else:
         logger.warning(f"Config file {config_path if config_path else ''} not found. Using default parameters.")
         params = ConfigParameters()
-    cpy = params.copy(update={k: v for (k, v) in vars(args).items() if k in params.__fields__})
+    cpy = params.model_copy(update={k: v for (k, v) in vars(args).items() if k in params.__fields__})
     return cpy
 
 
@@ -151,19 +158,39 @@ def main(args: typing.Any):
         download(args.raw_data_path, params)
         params.save_yaml(fs_join(args.raw_data_path, CONFIG_FILE))
 
+    def get_cc_store(args, params: ConfigParameters, mode="a"):
+        return (
+            ZarrCCStore(
+                args.ccf_path,
+                mode=mode,
+                storage_options=params.get_storage_options(args.ccf_path),
+            )
+            if args.format == DataFormat.ZARR.value
+            else ASDFCCStore(args.ccf_path, mode=mode)
+        )
+
+    def get_stack_store(args, params: ConfigParameters):
+        return (
+            ZarrStackStore(args.stack_path, mode="a", storage_options=params.get_storage_options(args.stack_path))
+            if args.format == DataFormat.ZARR.value
+            else ASDFStackStore(args.stack_path, "a")
+        )
+
     def run_cross_correlation():
         ccf_dir = args.ccf_path
-        cc_store = ASDFCCStore(ccf_dir)
         params = initialize_params(args, args.raw_data_path)
+        cc_store = get_cc_store(args, params)
         raw_store = create_raw_store(args, params)
-        cross_correlate(raw_store, params, cc_store)
+        scheduler = MPIScheduler(0) if args.mpi else SingleNodeScheduler()
+        cross_correlate(raw_store, params, cc_store, scheduler)
         params.save_yaml(fs_join(ccf_dir, CONFIG_FILE))
 
     def run_stack():
-        cc_store = ASDFCCStore(args.ccf_path, "r")
-        stack_store = ASDFStackStore(args.stack_path)
         params = initialize_params(args, args.ccf_path)
-        stack(cc_store, stack_store, params)
+        cc_store = get_cc_store(args, params, mode="r")
+        stack_store = get_stack_store(args, params)
+        scheduler = MPIScheduler(0) if args.mpi else SingleNodeScheduler()
+        stack(cc_store, stack_store, params, scheduler)
         params.save_yaml(fs_join(args.stack_path, CONFIG_FILE))
 
     if args.cmd == Command.DOWNLOAD:
@@ -192,7 +219,7 @@ def add_paths(parser, types: List[str]):
         add_path(parser, t)
 
 
-def make_step_parser(subparsers: Any, cmd: Command, paths: List[str]):
+def make_step_parser(subparsers: Any, cmd: Command, paths: List[str]) -> Any:
     parser = subparsers.add_parser(
         cmd.name.lower(),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -210,6 +237,19 @@ def make_step_parser(subparsers: Any, cmd: Command, paths: List[str]):
     )
     add_model(parser, ConfigParameters())
 
+    if cmd != Command.DOWNLOAD:
+        parser.add_argument(
+            "--format",
+            default=DataFormat.ZARR.value,
+            choices=[f.value for f in DataFormat],
+            help="Format of the raw data files",
+        )
+    return parser
+
+
+def add_mpi(parser: Any):
+    parser.add_argument("-m", "--mpi", action="store_true")
+
 
 def main_cli():
     args = parse_args(sys.argv[1:])
@@ -220,9 +260,9 @@ def parse_args(arguments: Iterable[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="cmd", required=True)
     make_step_parser(subparsers, Command.DOWNLOAD, ["raw_data"])
-    make_step_parser(subparsers, Command.CROSS_CORRELATE, ["raw_data", "ccf", "xml"])
-    make_step_parser(subparsers, Command.STACK, ["raw_data", "stack", "ccf"])
-    make_step_parser(subparsers, Command.ALL, ["raw_data", "ccf", "stack", "xml"])
+    add_mpi(make_step_parser(subparsers, Command.CROSS_CORRELATE, ["raw_data", "ccf", "xml"]))
+    add_mpi(make_step_parser(subparsers, Command.STACK, ["raw_data", "stack", "ccf"]))
+    add_mpi(make_step_parser(subparsers, Command.ALL, ["raw_data", "ccf", "stack", "xml"]))
 
     args = parser.parse_args(arguments)
 

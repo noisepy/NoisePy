@@ -31,7 +31,11 @@ This step will perform the cross correlation. For each time chunk, it will read 
 ```sh
 noisepy cross_correlate --raw_data_path ./tmpdata/RAW_DATA --ccf_path ./tmpdata/CCF
 ```
+Optionally, this step can be run via MPI (e.g. with 2 processes). See [Installation](../../README.md#installation):
 
+```sh
+mpiexec -n 2 noisepy cross_correlate --mpi --raw_data_path ./tmpdata/RAW_DATA --ccf_path ./tmpdata/CCF
+```
 NOTE: We didn't pass a `--config` argument explicitly because `noisepy` will always look for one in the input data directory for the given step, `./tmpdata/RAW_DATA` in this case.
 
 Once again, verify the data for this step:
@@ -46,7 +50,12 @@ This combines the time-chunked ASDF files to stack over each time chunk and at e
 ```sh
 noisepy stack --ccf_path ./tmpdata/CCF --stack_path ./tmpdata/STACK
 ```
+Optionally, this step can be run via MPI (e.g. with 3 processes). See [Installation](../../README.md#installation):
+```sh
+mpiexec -n 3 noisepy stack --mpi --ccf_path ./tmpdata/CCF --stack_path ./tmpdata/STACK
+```
+
 
 ```sh
-ls -R tmpdata/STAC
+ls -R tmpdata/STACK
 ```

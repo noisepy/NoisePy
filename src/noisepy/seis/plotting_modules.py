@@ -6,12 +6,14 @@ import numpy as np
 import obspy
 import pyasdf
 import scipy
+from datetimerange import DateTimeRange
 from obspy.signal.filter import bandpass
 from scipy.fftpack import next_fast_len
 
-from noisepy.seis.constants import PROGRESS_DATATYPE
+from noisepy.seis.stores import CrossCorrelationDataStore, StackStore
 
 logging.getLogger("matplotlib.font_manager").disabled = True
+logger = logging.getLogger(__name__)
 
 """
 Ensembles of plotting functions to display intermediate/final waveforms from the NoisePy package.
@@ -119,42 +121,51 @@ def plot_waveform(sfile, net, sta, freqmin, freqmax, savefig=False, sdir=None):
 #############################################################################
 
 
-def plot_substack_cc(sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir="./"):
+def plot_substack_cc(
+    cc_store: CrossCorrelationDataStore,
+    ts: DateTimeRange,
+    freqmin,
+    freqmax,
+    disp_lag=None,
+    savefig=True,
+    sdir="./",
+):
     """
     display the 2D matrix of the cross-correlation functions for a certain time-chunck.
 
     PARAMETERS:
     --------------------------
-    sfile: cross-correlation functions outputed by S1
+    cc_store: Store to read CC data from
+    ts: Timespan to ploe
     freqmin: min frequency to be filtered
     freqmax: max frequency to be filtered
     disp_lag: time ranges for display
-
-    USAGE:
-    --------------------------
-    plot_substack_cc('temp.h5',0.1,1,100,True,'./')
+    savefg: Whether to save the figures as a PDF on disk
+    sdir: Save directory
 
     Note: IMPORTANT!!!! this script only works for cross-correlation with sub-stacks being set to True in S1.
     """
     # open data for read
     if savefig:
         if sdir is None:
-            print("no path selected! save figures in the default path")
+            raise ValueError("sdir argument must be provided if savefig=True")
 
-    try:
-        ds = pyasdf.ASDFDataSet(sfile, mode="r")
-        # extract common variables
-        spairs = ds.auxiliary_data.list()
-        spairs = list(filter(lambda x: x != PROGRESS_DATATYPE, spairs))
-        path_lists = ds.auxiliary_data[spairs[0]].list()
-        flag = ds.auxiliary_data[spairs[0]][path_lists[0]].parameters["substack"]
-        dt = ds.auxiliary_data[spairs[0]][path_lists[0]].parameters["dt"]
-        maxlag = ds.auxiliary_data[spairs[0]][path_lists[0]].parameters["maxlag"]
-    except Exception:
-        raise Exception("exit! cannot open %s to read" % sfile)
+    sta_pairs = cc_store.get_station_pairs()
+    if len(sta_pairs) == 0:
+        logger.error("No data available for plotting")
+        return
+
+    ch_pairs = cc_store.get_channeltype_pairs(ts, sta_pairs[0][0], sta_pairs[0][1])
+    if len(ch_pairs) == 0:
+        logger.error(f"No data available for plotting in {ts}/{sta_pairs[0]}")
+        return
+
+    # Read some common arguments from the first available data set:
+    params, _ = cc_store.read(ts, sta_pairs[0][0], sta_pairs[0][1], ch_pairs[0][0], ch_pairs[0][1])
+    substack_flag, dt, maxlag = (params[p] for p in ["substack", "dt", "maxlag"])
 
     # only works for cross-correlation with substacks generated
-    if not flag:
+    if not substack_flag:
         raise ValueError("seems no substacks have been done! not suitable for this plotting function")
 
     # lags for display
@@ -169,23 +180,20 @@ def plot_substack_cc(sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir=
     indx1 = int((maxlag - disp_lag) / dt)
     indx2 = indx1 + 2 * int(disp_lag / dt) + 1
 
-    for spair in spairs:
-        ttr = spair.split("_")
-        net1, sta1 = ttr[0].split(".")
-        net2, sta2 = ttr[1].split(".")
-        for ipath in path_lists:
-            chan1, chan2 = ipath.split("_")
+    # for spair in spairs:
+    for src_sta, rec_sta in sta_pairs:
+        ch_pairs = cc_store.get_channeltype_pairs(ts, src_sta, rec_sta)
+        for src_cha, rec_cha in ch_pairs:
             try:
-                dist = ds.auxiliary_data[spair][ipath].parameters["dist"]
-                ngood = ds.auxiliary_data[spair][ipath].parameters["ngood"]
-                ttime = ds.auxiliary_data[spair][ipath].parameters["time"]
-                timestamp = np.empty(ttime.size, dtype="datetime64[s]")
-            except Exception:
-                print("continue! something wrong with %s %s" % (spair, ipath))
+                params, all_data = cc_store.read(ts, src_sta, rec_sta, src_cha, rec_cha)
+                dist, ngood, ttime = (params[p] for p in ["dist", "ngood", "time"])
+                timestamp = np.empty(len(ttime), dtype="datetime64[s]")
+            except Exception as e:
+                logger.warning(f"continue! something wrong with {src_sta}_{rec_sta}/{src_cha}_{rec_cha}: {e}")
                 continue
 
             # cc matrix
-            data = ds.auxiliary_data[spair][ipath].data[:, indx1:indx2]
+            data = all_data[:, indx1:indx2]
             nwin = data.shape[0]
             amax = np.zeros(nwin, dtype=np.float32)
             if nwin == 0 or len(ngood) == 1:
@@ -216,7 +224,7 @@ def plot_substack_cc(sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir=
                 extent=[-disp_lag, disp_lag, nwin, 0],
                 aspect="auto",
             )
-            ax1.set_title("%s.%s.%s  %s.%s.%s  dist:%5.2fkm" % (net1, sta1, chan1, net2, sta2, chan2, dist))
+            ax1.set_title(f"{src_sta}.{src_cha} {rec_sta}.{rec_cha}  dist:{dist:5.2f}km")
             ax1.set_xlabel("time [s]")
             ax1.set_xticks(t)
             ax1.set_yticks(np.arange(0, nwin, step=tick_inc))
@@ -234,13 +242,9 @@ def plot_substack_cc(sfile, freqmin, freqmax, disp_lag=None, savefig=True, sdir=
 
             # save figure or just show
             if savefig:
-                if sdir is None:
-                    sdir = sfile.split(".")[0]
                 if not os.path.isdir(sdir):
                     os.mkdir(sdir)
-                outfname = sdir + "/{0:s}.{1:s}.{2:s}_{3:s}.{4:s}.{5:s}.pdf".format(
-                    net1, sta1, chan1, net2, sta2, chan2
-                )
+                outfname = os.path.join(sdir, f"{src_sta}.{src_cha}_{rec_sta}.{rec_cha}.pdf")
                 fig.savefig(outfname, format="pdf", dpi=400)
                 plt.close()
             else:
@@ -625,8 +629,8 @@ def plot_substack_all_spect(
 
 
 def plot_all_moveout(
-    sfiles,
-    dtype,
+    store: StackStore,
+    stack_name,
     freqmin,
     freqmax,
     ccomp,
@@ -640,8 +644,8 @@ def plot_all_moveout(
 
     PARAMETERS:
     ---------------------
-    sfile: cross-correlation functions outputed by S2
-    dtype: datatype either 'Allstack0pws' or 'Allstack0linear'
+    store: StackStore to read stacked data
+    stack_name: datatype either 'Allstack0pws' or 'Allstack0linear'
     freqmin: min frequency to be filtered
     freqmax: max frequency to be filtered
     ccomp:   cross component
@@ -657,18 +661,21 @@ def plot_all_moveout(
     # open data for read
     if savefig:
         if sdir is None:
-            print("no path selected! save figures in the default path")
+            raise ValueError("sdir argument must be provided if savefig=True")
 
-    path = ccomp
+    sta_pairs = store.get_station_pairs()
+    if len(sta_pairs) == 0:
+        logger.error("No data available for plotting")
+        return
 
-    # extract common variables
-    try:
-        ds = pyasdf.ASDFDataSet(sfiles[0], mode="r")
-        dt = ds.auxiliary_data[dtype][path].parameters["dt"]
-        maxlag = ds.auxiliary_data[dtype][path].parameters["maxlag"]
-        stack_method = dtype.split("0")[-1]
-    except Exception:
-        raise Exception("exit! cannot open %s to read" % sfiles[0])
+    # Read some common arguments from the first available data set:
+    params, dtmp = store.read(sta_pairs[0][0], sta_pairs[0][1], ccomp, stack_name)
+    if len(params) == 0 or dtmp.size == 0:
+        logger.error(f"No data available for plotting {stack_name}/{ccomp}")
+        return
+
+    dt, maxlag = (params[p] for p in ["dt", "maxlag"])
+    stack_method = stack_name.split("0")[-1]
 
     # lags for display
     if not disp_lag:
@@ -680,26 +687,21 @@ def plot_all_moveout(
     indx2 = indx1 + 2 * int(disp_lag / dt) + 1
 
     # cc matrix
-    nwin = len(sfiles)
+    nwin = len(sta_pairs)
     data = np.zeros(shape=(nwin, indx2 - indx1), dtype=np.float32)
     dist = np.zeros(nwin, dtype=np.float32)
     ngood = np.zeros(nwin, dtype=np.int16)
 
     # load cc and parameter matrix
-    for ii in range(len(sfiles)):
-        sfile = sfiles[ii]
-
-        ds = pyasdf.ASDFDataSet(sfile, mode="r")
-        try:
-            # load data to variables
-            dist[ii] = ds.auxiliary_data[dtype][path].parameters["dist"]
-            ngood[ii] = ds.auxiliary_data[dtype][path].parameters["ngood"]
-            tdata = ds.auxiliary_data[dtype][path].data[indx1:indx2]
-        except Exception as e:
-            print(f"continue! cannot read {sfile}: {e}")
+    for ii, (src, rec) in enumerate(sta_pairs):
+        params, all_data = store.read(src, rec, ccomp, stack_name)
+        if len(params) == 0 or all_data.size == 0:
+            logger.warning(f"No data available for {src}_{rec}/{stack_name}/{ccomp}")
             continue
+        dist[ii] = params["dist"]
+        ngood[ii] = params["ngood"]
 
-        data[ii] = bandpass(tdata, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
+        data[ii] = bandpass(all_data[indx1:indx2], freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
 
     # average cc
     ntrace = int(np.round(np.max(dist) + 0.51) / dist_inc)

@@ -16,7 +16,7 @@ from .utils import fs_join, get_filesystem
 logger = logging.getLogger(__name__)
 
 
-def channel_filter(stations: List[str], ch_prefix: str) -> Callable[[Channel], bool]:
+def channel_filter(stations: List[str], ch_prefixes: str) -> Callable[[Channel], bool]:
     """
     Helper function for creating a channel filter to be used in the constructor of the store.
     This filter uses a list of allowed station name along with a channel filter prefix.
@@ -24,7 +24,7 @@ def channel_filter(stations: List[str], ch_prefix: str) -> Callable[[Channel], b
     sta_set = set(stations)
 
     def filter(ch: Channel) -> bool:
-        return ch.station.name in sta_set and ch.type.name.lower().startswith(ch_prefix.lower())
+        return ch.station.name in sta_set and ch.type.name.lower().startswith(tuple(ch_prefixes.lower().split(",")))
 
     return filter
 
@@ -44,7 +44,7 @@ class SCEDCS3DataStore(RawDataStore):
         self,
         path: str,
         chan_catalog: ChannelCatalog,
-        ch_filter: Callable[[Channel], bool] = None,
+        ch_filter: Callable[[Channel], bool] = lambda s: True,  # noqa: E731
         date_range: DateTimeRange = None,
     ):
         """
@@ -61,8 +61,6 @@ class SCEDCS3DataStore(RawDataStore):
         self.paths = {}
         # to store a dict of {timerange: list of channels}
         self.channels = {}
-        if ch_filter is None:
-            ch_filter = lambda s: True  # noqa: E731
 
         if date_range is None:
             self._load_channels(self.path, ch_filter)

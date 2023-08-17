@@ -1,14 +1,21 @@
 from __future__ import annotations
 
 import sys
+import typing
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+from typing import Any, DefaultDict, Dict, List, Optional
+from urllib.parse import urlparse
 
 import numpy as np
 import obspy
-from pydantic import Field, root_validator
-from pydantic_yaml import YamlModel
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic.functional_validators import model_validator
+from pydantic_yaml import parse_yaml_raw_as, to_yaml_str
+
+from noisepy.seis.utils import get_filesystem
 
 INVALID_COORD = -sys.float_info.max
 
@@ -99,22 +106,30 @@ class StackMethod(Enum):
     ALL = "all"
 
 
-class ConfigParameters(YamlModel):
+class ConfigParameters(BaseModel):
+    model_config = ConfigDict(validate_default=True)
+
     client_url_key: str = "SCEDC"
     start_date: datetime = Field(default=datetime(2019, 1, 1))
     end_date: datetime = Field(default=datetime(2019, 1, 2))
-    samp_freq: float = Field(default=20)  # TODO: change this samp_freq for the obspy "sampling_rate"
+    samp_freq: float = Field(default=20.0)  # TODO: change this samp_freq for the obspy "sampling_rate"
+    single_freq: bool = Field(
+        default=True,
+        description="Filter to only data sampled at ONE frequency (the closest >= to samp_freq). "
+        "If False, it will use all data sample at >=samp_freq",
+    )
+
     cc_len: float = Field(default=1800.0, description="basic unit of data length for fft (sec)")
     # download params.
     # Targeted region/station information: only needed when down_list is False
-    lamin: float = Field(default=31, description="Download: minimum latitude")
-    lamax: float = Field(default=36, description="Download: maximum latitude")
-    lomin: float = Field(default=-122, description="Download: minimum longitude")
-    lomax: float = Field(default=-115, description="Download: maximum longitude")
-    down_list = Field(default=False, description="download stations from a pre-compiled list or not")
-    net_list = Field(default=["CI"], description="network list")
-    stations = Field(default=["*"], description="station list")
-    channels = Field(default=["BHE", "BHN", "BHZ"], description="channel list")
+    lamin: float = Field(default=31.0, description="Download: minimum latitude")
+    lamax: float = Field(default=36.0, description="Download: maximum latitude")
+    lomin: float = Field(default=-122.0, description="Download: minimum longitude")
+    lomax: float = Field(default=-115.0, description="Download: maximum longitude")
+    down_list: bool = Field(default=False, description="download stations from a pre-compiled list or not")
+    net_list: List[str] = Field(default=["CI"], description="network list")
+    stations: List[str] = Field(default=["*"], description="station list")
+    channels: List[str] = Field(default=["BHE", "BHN", "BHZ"], description="channel list")
     # pre-processing parameters
     step: float = Field(default=450.0, description="overlapping between each cc_len (sec)")
     freqmin: float = Field(default=0.05)
@@ -158,7 +173,7 @@ class ConfigParameters(YamlModel):
     )
     rm_resp: str = Field(default="no", description="select 'no' to not remove response and use 'inv','spectrum',")
     rm_resp_out: str = Field(default="VEL", description="output location from response removal")
-    respdir: str = Field(default=None, description="response directory")
+    respdir: Optional[str] = Field(default=None, description="response directory")
     # some control parameters
     acorr_only: bool = Field(default=False, description="only perform auto-correlation")
     xcorr_only: bool = Field(default=True, description="only perform cross-correlation or not")
@@ -168,20 +183,28 @@ class ConfigParameters(YamlModel):
     # new rotation para
     rotation: bool = Field(default=True, description="rotation from E-N-Z to R-T-Z")
     correction: bool = Field(default=False, description="angle correction due to mis-orientation")
-    correction_csv: str = Field(default=None, description="Path to e.g. meso_angles.csv")
+    correction_csv: Optional[str] = Field(default=None, description="Path to e.g. meso_angles.csv")
     # 'RESP', or 'polozeros' to remove response
 
-    class Config:
-        use_enum_values = True
+    storage_options: DefaultDict[str, typing.MutableMapping] = Field(
+        default=defaultdict(dict),
+        description="Storage options to pass to fsspec, keyed by protocol (local files are ''))",
+    )
+
+    def get_storage_options(self, path: str) -> Dict[str, Any]:
+        """The storage options for the given path"""
+        url = urlparse(path)
+        return self.storage_options.get(url.scheme, {})
 
     @property
     def dt(self) -> float:
         return 1.0 / self.samp_freq
 
-    @root_validator
-    def validate(cld, values) -> dict:
-        assert values.get("substack_len") % values.get("cc_len") == 0
-        return values
+    @model_validator(mode="after")
+    def validate(cls, m: ConfigParameters) -> ConfigParameters:
+        if m.substack_len % m.cc_len != 0:
+            raise ValueError(f"substack_len ({m.substack_len}) must be a multiple of cc_len ({m.cc_len})")
+        return m
 
     # TODO: Remove once all uses of ConfigParameters have been converted to use strongly typed access
     def __getitem__(self, key):
@@ -191,10 +214,17 @@ class ConfigParameters(YamlModel):
         return self.__dict__[key]
 
     def save_yaml(self, filename: str):
-        # yaml_str = yaml.dump(self.__dict__)
-        yaml_str = self.yaml()
-        with open(filename, "w") as f:
+        yaml_str = to_yaml_str(self)
+        fs = get_filesystem(filename, storage_options=self.storage_options)
+        with fs.open(filename, "w") as f:
             f.write(yaml_str)
+
+    def load_yaml(filename: str, storage_options={}) -> ConfigParameters:
+        fs = get_filesystem(filename, storage_options=storage_options)
+        with fs.open(filename, "r") as f:
+            yaml_str = f.read()
+            config = parse_yaml_raw_as(ConfigParameters, yaml_str)
+            return config
 
 
 @dataclass

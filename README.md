@@ -12,7 +12,7 @@ Detailed documentation can be found at https://noisepy.readthedocs.io/en/latest/
 <img src="https://raw.githubusercontent.com/mdenolle/NoisePy/master/docs/figures/logo.png" width="800" height="400">
 
 ## Major updates coming
-NoisePy is going through a major refactoring to make this package easier to develop and deploy. Submit an issue, fork the repository and create pull requests to contribute.
+NoisePy is going through a major refactoring to make this package easier to develop and deploy. Submit an issue, fork the repository and create pull requests to [contribute](CONTRIBUTING.md).
 
 # Installation
 The nature of NoisePy being composed of python scripts allows flexible package installation, which is essentially to build dependent libraries the scripts and related functions live upon. We recommend using [conda](https://docs.conda.io/en/latest/) or [pip](https://pypi.org/project/pip/) to install.
@@ -23,11 +23,24 @@ The nature of NoisePy being composed of python scripts allows flexible package i
 ```bash
 conda create -n noisepy python=3.8 pip
 conda activate noisepy
-conda install -c conda-forge openmpi
 pip install noisepy-seis
 ```
 
+## With Conda and pip and MPI support:
+```bash
+conda create -n noisepy python=3.8 pip
+conda activate noisepy
+conda install -c conda-forge openmpi
+pip install noisepy-seis[mpi]
+```
+
 ## With virtual environment:
+```bash
+python -m venv noisepy
+source noisepy/bin/activate
+pip install noisepy-seis
+```
+## With virtual environment and MPI support:
 An MPI installation is required. E.g. for macOS using [brew](https://brew.sh/) :
 ```bash
 brew install open-mpi
@@ -36,7 +49,7 @@ brew install open-mpi
 ```bash
 python -m venv noisepy
 source noisepy/bin/activate
-pip install noisepy-seis
+pip install noisepy-seis[mpi]
 ```
 
 
@@ -92,6 +105,13 @@ Taxonomy of the NoisePy variables.
 
 
 # Acknowledgements
+
+## Contributing
+
+Thanks to our contributors so far!
+
+[![Contributors](https://contrib.rocks/image?repo=mdenolle/NoisePy)](https://github.com/mdenolle/NoisePy/graphs/contributors)
+
 ## Use this reference when publishing on your work with noisepy
 
 Main code:

@@ -2,6 +2,8 @@ import logging
 import os
 import posixpath
 import time
+from concurrent.futures import Future
+from typing import Iterable
 from urllib.parse import urlparse
 
 import fsspec
@@ -14,6 +16,8 @@ utils_logger = logging.getLogger(__name__)
 def get_filesystem(path: str, storage_options: dict = {}) -> fsspec.AbstractFileSystem:
     """Construct an fsspec filesystem for the given path"""
     url = urlparse(path)
+    # The storage_options coming from the ConfigParameters is keyed by protocol
+    storage_options = storage_options.get(url.scheme, storage_options)
     # default to anonymous access for S3 if the this is not already specified
     if url.scheme == S3_SCHEME and ANON_ARG not in storage_options:
         storage_options = {ANON_ARG: True}
@@ -70,6 +74,10 @@ class TimeLogger:
         stop = time.time()
         dt = stop - self.time if start <= 0 else stop - start
         self.reset()
+        self.log_raw(message, dt)
+        return self.time
+
+    def log_raw(self, message: str, dt: float):
         if self.enabled:
             self.logger.log(self.level, f"TIMING: {dt:6.4f} for {message}")
         return self.time
@@ -86,3 +94,7 @@ def error_if(condition: bool, msg: str, error_type: type = RuntimeError):
     """
     if condition:
         raise error_type(msg)
+
+
+def _get_results(futures: Iterable[Future]) -> Iterable[Future]:
+    return [f.result() for f in futures]
