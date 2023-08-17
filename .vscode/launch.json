@@ -42,12 +42,10 @@
       "module": "noisepy.seis.main",
       "args": [
         "stack",
-        "--raw_data_path",
-        "${userHome}/test_temp/RAW_DATA",
         "--ccf_path",
         "${userHome}/test_temp/CCF",
         "--stack_path",
-        "/Users/carlosg/test_temp/STACK",
+        "${userHome}/test_temp/STACK",
         "--stack_method",
         "linear"
       ],
@@ -85,9 +83,9 @@
         "--raw_data_path",
         "${userHome}/s3tmp/scedc/2022/002",
         "--ccf_path",
-        "${userHome}/ccfs3tmp/",
+        "${userHome}/test_temp/CCF",
         "--stations",
-        "SBC,RIO,DEV,HEC,RLR,SVD,RPV,BAK",
+        "CBC,BAK",
         "--xml_path",
         "/Users/carlosg/s3tmp/FDSNstationXML"
       ],
@@ -114,7 +112,7 @@
         "--start",
         "2022-02-02",
         "--end",
-        "2022-02-05"
+        "2022-02-03"
       ],
       "console": "integratedTerminal",
       "justMyCode": true
