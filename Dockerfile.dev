@@ -1,4 +1,5 @@
-FROM --platform=$TARGETPLATFORM python:3.10.12
+ARG PYTHON_VERSION=3.10.12
+FROM --platform=$TARGETPLATFORM python:${PYTHON_VERSION}
 
 # This is a version of Dockerfile to build from a local wheel
 # Build with:
@@ -10,7 +11,7 @@ COPY ./dist/_reqs.txt .
 RUN pip install -r _reqs.txt
 
 COPY ./dist/*.whl .
-RUN pip install *.whl
+RUN pip install --no-deps *.whl
 
 ENTRYPOINT ["noisepy"]
 CMD ["--help"]
