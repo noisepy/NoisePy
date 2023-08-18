@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 # Utility running the different steps from the command line. Defines the arguments for each step
 
 default_data_path = "Documents/SCAL"
+WILD_CARD = "*"
 
 
 class Command(Enum):
@@ -116,12 +117,16 @@ def initialize_params(args, data_dir: str) -> ConfigParameters:
     return cpy
 
 
-def get_channel_filter(sta_list: List[str]) -> Callable[[Channel], bool]:
-    if len(sta_list) == 1 and sta_list[0] == "*":
-        return lambda ch: True
-    else:
-        stations = set(sta_list)
-        return lambda ch: ch.station.name in stations
+def get_channel_filter(net_list: List[str], sta_list: List[str]) -> Callable[[Channel], bool]:
+    stations = set(sta_list)
+    networks = set(net_list)
+
+    def filter(ch: Channel) -> bool:
+        return (WILD_CARD in stations or ch.station.name in stations) and (
+            WILD_CARD in networks or ch.station.network in networks
+        )
+
+    return filter
 
 
 def get_date_range(args) -> DateTimeRange:
@@ -152,7 +157,7 @@ def create_raw_store(args, params: ConfigParameters):
 
         date_range = get_date_range(args)
         return SCEDCS3DataStore(
-            raw_dir, catalog, get_channel_filter(params.stations), date_range, params.storage_options
+            raw_dir, catalog, get_channel_filter(params.net_list, params.stations), date_range, params.storage_options
         )
 
 

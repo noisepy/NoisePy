@@ -36,30 +36,20 @@ def _ccstore_test_helper(ccstore: CrossCorrelationDataStore):
     params = {"key": "Value"}
 
     # assert empty state
-    assert not ccstore.is_done(ts1)
-    assert not ccstore.is_done(ts2)
-    assert not ccstore.contains(ts1, src, rec)
-    assert not ccstore.contains(ts2, src, rec)
+    assert not ccstore.contains(ts1, src.station, rec.station)
+    assert not ccstore.contains(ts2, src.station, rec.station)
 
     # add CC (src->rec) for ts1
     ccstore.append(ts1, src.station, rec.station, [CrossCorrelation(src.type, rec.type, params, data)])
     # assert ts1 is there, but not ts2
-    assert ccstore.contains(ts1, src, rec)
-    assert not ccstore.contains(ts2, src, rec)
+    assert ccstore.contains(ts1, src.station, rec.station)
+    assert not ccstore.contains(ts2, src.station, rec.station)
     # also rec->src should not be there for ts1
-    assert not ccstore.contains(ts1, rec, src)
-    assert not ccstore.is_done(ts1)
-    # now mark ts1 done and assert it
-    ccstore.mark_done(ts1)
-    assert ccstore.is_done(ts1)
-    assert not ccstore.is_done(ts2)
+    assert not ccstore.contains(ts1, rec.station, src.station)
 
     # now add CC for ts2
     ccstore.append(ts2, src.station, rec.station, [CrossCorrelation(src.type, rec.type, {}, data)])
-    assert ccstore.contains(ts2, src, rec)
-    assert not ccstore.is_done(ts2)
-    ccstore.mark_done(ts2)
-    assert ccstore.is_done(ts2)
+    assert ccstore.contains(ts2, src.station, rec.station)
 
     timespans = ccstore.get_timespans()
     assert timespans == [ts1, ts2]

@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Callable, List
 
 import obspy
+import psutil
 from datetimerange import DateTimeRange
 
 from noisepy.seis.channelcatalog import ChannelCatalog
@@ -134,7 +135,10 @@ class SCEDCS3DataStore(RawDataStore):
 
         with self.fs.open(filename) as f:
             stream = obspy.read(f)
-        return ChannelData(stream)
+        data = ChannelData(stream)
+        # TODO: Move this logging to S1 so it happens for all stores
+        logger.debug(f"Read data: {timespan}/{chan}: {data.data.size}. Memory: {psutil.virtual_memory()[2]}%")
+        return data
 
     def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
         return self.channel_catalog.get_inventory(timespan, station)
