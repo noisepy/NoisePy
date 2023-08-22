@@ -1,4 +1,5 @@
 import logging
+import threading
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -40,15 +41,17 @@ class ZarrStoreHelper:
             f"store creating at {root_dir}, mode={mode}, storage_options={storage_options}, cache_size={CACHE_SIZE}"
         )
         store = zarr.storage.FSStore(root_dir, **storage_options)
-        cache = zarr.LRUStoreCache(store, max_size=CACHE_SIZE)
-        self.root = zarr.open_group(cache, mode=mode)
-        self.keys_cache = set(cache.keys())
+        self.cache = zarr.LRUStoreCache(store, max_size=CACHE_SIZE)
+        self.root = zarr.open_group(self.cache, mode=mode)
+        self._lock = threading.Lock()
+        self.keys_cache = set(self.cache.keys())
         logger.info(f"store created at {root_dir}")
 
     def contains(self, path: str) -> bool:
-        # The keys have the full path to the .zarray/.zattrs/.zgroup files so we do a prefix check
-        # since the path is just the directory name
-        return any(map(lambda k: k.startswith(path), self.keys_cache))
+        with self._lock:
+            # The keys have the full path to the .zarray/.zattrs/.zgroup files so we do a prefix check
+            # since the path is just the directory name
+            return any(map(lambda k: k.startswith(path), self.keys_cache))
 
     def append(
         self,
@@ -64,6 +67,8 @@ class ZarrStoreHelper:
             dtype=data.dtype,
         )
         array.attrs.update(params)
+        with self._lock:
+            self.keys_cache.add(path)
 
     def is_done(self, key: str):
         if DONE_PATH not in self.root.array_keys():

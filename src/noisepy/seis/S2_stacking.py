@@ -71,7 +71,7 @@ def stack(
     pairs_node = [pairs_all[i] for i in scheduler.get_indices(pairs_all)]
 
     tasks = [executor.submit(stack_pair, p[0], p[1], timespans, cc_store, stack_store, fft_params) for p in pairs_node]
-    _ = _get_results(tasks)
+    _ = _get_results(tasks, "Stacking Pairs")
     scheduler.synchronize()
     tlog.log("step 2 in total", t_tot)
 
