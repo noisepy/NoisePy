@@ -146,10 +146,10 @@ def cross_correlate(
             continue
 
         channels = list(zip(*ch_data_tuples))[0]
-        tlog.log("read channel data")
+        tlog.log(f"Read channel data: {len(channels)} channels")
 
         ch_data_tuples = preprocess_all(executor, ch_data_tuples, raw_store, fft_params, ts)
-        tlog.log("preprocess")
+        tlog.log(f"Preprocess: {len(ch_data_tuples)} channels")
 
         nchannels = len(ch_data_tuples)
         nseg_chunk = check_memory(fft_params, nchannels)
@@ -167,7 +167,7 @@ def cross_correlate(
                 ffts[ix_ch] = fft_data
             else:
                 logger.warning(f"No data available for channel '{channels[ix_ch]}', skipped")
-        tlog.log("Compute FFTs")
+        tlog.log(f"Compute FFTs: {len(ffts)} channels")
         Nfft = max(map(lambda d: d.length, fft_datas))
         if Nfft == 0:
             logger.error(f"No FFT data available for any channel in {ts}, skipping")
@@ -198,8 +198,9 @@ def cross_correlate(
             )
             tasks.append(t)
 
-        _get_results(tasks, "Cross correlation")
-        tlog.log(f"Correlate and write to store: {len(tasks)} station pairs")
+        computed = _get_results(tasks, "Cross correlation")
+        total_computed = sum(computed)
+        tlog.log(f"Correlate and write to store: {total_computed} channel pairs")
 
         ffts.clear()
         gc.collect()
@@ -248,7 +249,7 @@ def stations_cross_correlation(
     ffts: Dict[int, NoiseFFT],
     Nfft: int,
     cc_store: CrossCorrelationDataStore,
-):
+) -> int:
     tlog = TimeLogger(logger, logging.DEBUG)
     datas = []
     try:
@@ -265,6 +266,7 @@ def stations_cross_correlation(
                 datas.append(data)
         tlog.log(f"Cross-correlated {len(datas)} pairs for {src} and {rec} for {ts}")
         cc_store.append(ts, src, rec, datas)
+        return len(datas)
     except Exception as e:
         logger.error(f"Error processing {src} and {rec} for {ts}: {e}")
 
