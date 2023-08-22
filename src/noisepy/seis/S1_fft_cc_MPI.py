@@ -8,6 +8,7 @@ from typing import Callable, Dict, List, Tuple
 
 import numpy as np
 import obspy
+import psutil
 from datetimerange import DateTimeRange
 from scipy.fftpack.helper import next_fast_len
 
@@ -80,7 +81,7 @@ def cross_correlate(
     """
 
     executor = ThreadPoolExecutor()
-    tlog = TimeLogger(logger, logging.INFO)
+    tlog = TimeLogger(logger, logging.INFO, prefix="CC Main")
     t_s1_total = tlog.reset()
 
     def init() -> List:
@@ -110,22 +111,29 @@ def cross_correlate(
                 f"Some stations were filtered due to missing catalog information (lat/lon/elen). "
                 f"Using {len(all_channels)}/{all_channel_count}"
             )
+        tlog.reset()
         station_pairs = list(create_pairs(pair_filter, all_channels, fft_params.acorr_only).keys())
         # Check for stations that are already done, do this in parallel
-        station_pair_dones = _get_results(
-            [executor.submit(cc_store.contains, ts, pair[0], pair[1]) for pair in station_pairs]
-        )
+        logger.info(f"Checking for stations already done: {len(station_pairs)} pairs")
+        station_pair_dones = list(map(lambda p: cc_store.contains(ts, p[0], p[1]), station_pairs))
+
         missing_pairs = [pair for pair, done in zip(station_pairs, station_pair_dones) if not done]
         # get a set of unique stations from the list of pairs
         missing_stations = set([station for pair in missing_pairs for station in pair])
-        tlog.log(f"Check for stations already done: {len(missing_stations)}/{len(all_stations)}")
         # Filter the channels to only the missing stations
         missing_channels = list(filter(lambda c: c.station in missing_stations, all_channels))
+        tlog.log("check for stations already done")
 
         logger.info(
-            f"{len(missing_channels)}/{len(all_channels)} channels from {len(missing_stations)} "
-            f"stations need to be processed for {ts}"
+            f"Still need to process: {len(missing_stations)}/{len(all_stations)} stations, "
+            f"{len(missing_channels)}/{len(all_channels)} channels, "
+            f"{len(missing_pairs)}/{len(station_pairs)} pairs "
+            f"for {ts}"
         )
+        if len(missing_channels) == 0:
+            logger.warning(f"{ts} already completed")
+            continue
+
         ch_data_tuples = _read_channels(
             executor, ts, raw_store, missing_channels, fft_params.samp_freq, fft_params.single_freq
         )
@@ -151,7 +159,7 @@ def cross_correlate(
         tlog.reset()
 
         fft_refs = [executor.submit(compute_fft, fft_params, chd[1]) for chd in ch_data_tuples]
-        fft_datas = _get_results(fft_refs)
+        fft_datas = _get_results(fft_refs, "Compute ffts")
         for ix_ch, fft_data in enumerate(fft_datas):
             if fft_data.fft.size > 0:
                 ffts[ix_ch] = fft_data
@@ -173,7 +181,6 @@ def cross_correlate(
 
         # sort by number of pairs to process so we start the longest ones first
         work_items = list(station_pairs.items())
-        work_items = sorted(work_items, key=lambda x: -len(x[1]))
         logger.info(f"Starting CC with {len(work_items)} station pairs")
         for station_pair, ch_pairs in work_items:
             t = executor.submit(
@@ -190,7 +197,7 @@ def cross_correlate(
             )
             tasks.append(t)
 
-        _get_results(tasks)
+        _get_results(tasks, "Cross correlation")
         tlog.log(f"Correlate and write to store: {len(tasks)} station pairs")
 
         ffts.clear()
@@ -298,7 +305,7 @@ def preprocess_all(
     ts: DateTimeRange,
 ) -> List[Tuple[Channel, ChannelData]]:
     stream_refs = [executor.submit(preprocess, raw_store, t[0], t[1], fft_params, ts) for t in ch_data]
-    new_streams = _get_results(stream_refs)
+    new_streams = _get_results(stream_refs, "Pre-process")
     # Log if any streams were removed during pre-processing
     for ch, st in zip(ch_data, new_streams):
         if len(st) == 0:
@@ -403,7 +410,13 @@ def _read_channels(
     single_freq: bool = True,
 ) -> List[Tuple[Channel, ChannelData]]:
     ch_data_refs = [executor.submit(store.read_data, ts, ch) for ch in channels]
-    ch_data = _get_results(ch_data_refs)
+    # Log memory usage as we read the data in
+    for i in range(0, len(ch_data_refs), int(len(ch_data_refs) / 10)):
+        ch_data_refs[i].add_done_callback(
+            lambda f: logger.info(f"Reading data - Memory: {psutil.virtual_memory()[2]}%")
+        )
+
+    ch_data = _get_results(ch_data_refs, "Read channel data")
     tuples = list(zip(channels, ch_data))
     return _filter_channel_data(tuples, samp_freq, single_freq)
 

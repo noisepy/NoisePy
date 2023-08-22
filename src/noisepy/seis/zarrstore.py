@@ -34,14 +34,21 @@ class ZarrStoreHelper:
 
     def __init__(self, root_dir: str, mode: str, storage_options={}) -> None:
         super().__init__()
-        logger.info(f"store creating at {root_dir}, mode={mode}, storage_options={storage_options}")
-        self.store = zarr.storage.FSStore(root_dir, storage_options=storage_options)
-        self.cache = zarr.LRUStoreCache(self.store, max_size=2**28)
-        self.root = zarr.open_group(self.cache, mode=mode, storage_options=storage_options)
+        # We don't want to cache the data, but we do want to use the keys() cache
+        CACHE_SIZE = 0
+        logger.info(
+            f"store creating at {root_dir}, mode={mode}, storage_options={storage_options}, cache_size={CACHE_SIZE}"
+        )
+        store = zarr.storage.FSStore(root_dir, **storage_options)
+        cache = zarr.LRUStoreCache(store, max_size=CACHE_SIZE)
+        self.root = zarr.open_group(cache, mode=mode)
+        self.keys_cache = set(cache.keys())
         logger.info(f"store created at {root_dir}")
 
     def contains(self, path: str) -> bool:
-        return path in self.root
+        # The keys have the full path to the .zarray/.zattrs/.zgroup files so we do a prefix check
+        # since the path is just the directory name
+        return any(map(lambda k: k.startswith(path), self.keys_cache))
 
     def append(
         self,

@@ -13,6 +13,8 @@ import dateutil.parser
 import obspy
 from datetimerange import DateTimeRange
 
+from noisepy.seis import __version__
+
 from .asdfstore import ASDFCCStore, ASDFRawDataStore, ASDFStackStore
 from .channelcatalog import CSVChannelCatalog, XMLStationChannelCatalog
 from .constants import CONFIG_FILE, STATION_FILE
@@ -117,13 +119,16 @@ def initialize_params(args, data_dir: str) -> ConfigParameters:
     return cpy
 
 
-def get_channel_filter(net_list: List[str], sta_list: List[str]) -> Callable[[Channel], bool]:
+def get_channel_filter(net_list: List[str], sta_list: List[str], chan_list: List[str]) -> Callable[[Channel], bool]:
     stations = set(sta_list)
     networks = set(net_list)
+    channels = set(chan_list)
 
     def filter(ch: Channel) -> bool:
-        return (WILD_CARD in stations or ch.station.name in stations) and (
-            WILD_CARD in networks or ch.station.network in networks
+        return (
+            (WILD_CARD in stations or ch.station.name in stations)
+            and (WILD_CARD in networks or ch.station.network in networks)
+            and (WILD_CARD in channels or ch.type.name in channels)
         )
 
     return filter
@@ -157,7 +162,11 @@ def create_raw_store(args, params: ConfigParameters):
 
         date_range = get_date_range(args)
         return SCEDCS3DataStore(
-            raw_dir, catalog, get_channel_filter(params.net_list, params.stations), date_range, params.storage_options
+            raw_dir,
+            catalog,
+            get_channel_filter(params.net_list, params.stations, params.channels),
+            date_range,
+            params.storage_options,
         )
 
 
@@ -188,11 +197,16 @@ def main(args: typing.Any):
         fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(module)s.%(funcName)s(): %(message)s"))
         logging.getLogger("").addHandler(fh)
 
+    logger.info(f"NoisePy version: {__version__}")
+    # _enable_s3fs_debug_logs()
+
     def run_download():
-        params = initialize_params(args, None)
-        download(args.raw_data_path, params)
-        params.save_yaml(fs_join(args.raw_data_path, CONFIG_FILE))
-        save_log(args.raw_data_path, args.logfile, params.storage_options)
+        try:
+            params = initialize_params(args, None)
+            download(args.raw_data_path, params)
+            params.save_yaml(fs_join(args.raw_data_path, CONFIG_FILE))
+        finally:
+            save_log(args.raw_data_path, args.logfile, params.storage_options)
 
     def get_cc_store(args, params: ConfigParameters, mode="a"):
         return (
@@ -213,23 +227,27 @@ def main(args: typing.Any):
         )
 
     def run_cross_correlation():
-        ccf_dir = args.ccf_path
-        params = initialize_params(args, args.raw_data_path)
-        cc_store = get_cc_store(args, params)
-        raw_store = create_raw_store(args, params)
-        scheduler = get_scheduler(args)
-        cross_correlate(raw_store, params, cc_store, scheduler)
-        params.save_yaml(fs_join(ccf_dir, CONFIG_FILE))
-        save_log(args.ccf_path, args.logfile, params.storage_options)
+        try:
+            ccf_dir = args.ccf_path
+            params = initialize_params(args, args.raw_data_path)
+            cc_store = get_cc_store(args, params)
+            raw_store = create_raw_store(args, params)
+            scheduler = get_scheduler(args)
+            cross_correlate(raw_store, params, cc_store, scheduler)
+            params.save_yaml(fs_join(ccf_dir, CONFIG_FILE))
+        finally:
+            save_log(args.ccf_path, args.logfile, params.storage_options)
 
     def run_stack():
-        params = initialize_params(args, args.ccf_path)
-        cc_store = get_cc_store(args, params, mode="r")
-        stack_store = get_stack_store(args, params)
-        scheduler = get_scheduler(args)
-        stack(cc_store, stack_store, params, scheduler)
-        params.save_yaml(fs_join(args.stack_path, CONFIG_FILE))
-        save_log(args.stack_path, args.logfile, params.storage_options)
+        try:
+            params = initialize_params(args, args.ccf_path)
+            cc_store = get_cc_store(args, params, mode="r")
+            stack_store = get_stack_store(args, params)
+            scheduler = get_scheduler(args)
+            stack(cc_store, stack_store, params, scheduler)
+            params.save_yaml(fs_join(args.stack_path, CONFIG_FILE))
+        finally:
+            save_log(args.stack_path, args.logfile, params.storage_options)
 
     if args.cmd == Command.DOWNLOAD:
         run_download()
@@ -309,5 +327,24 @@ def parse_args(arguments: Iterable[str]) -> argparse.Namespace:
     return args
 
 
+def _enable_s3fs_debug_logs():
+    os.environ["S3FS_LOGGING_LEVEL"] = "DEBUG"
+    for pkg in ["urllib3", "s3fs", "zarr"]:
+        logger.info("Enable debug log for %s", pkg)
+        lgr = logging.getLogger(pkg)
+        lgr.setLevel(logging.DEBUG)
+        lgr.propagate = True
+
+
 if __name__ == "__main__":
-    main_cli()
+    try:
+        main_cli()
+    except Exception as e:
+        print(f"An error occcurred: {e}")
+        logger.exception(e)
+        raise e
+    finally:
+        print("Shutting down logging")
+        logging.shutdown()
+        sys.stdout.flush()
+        sys.stderr.flush()
