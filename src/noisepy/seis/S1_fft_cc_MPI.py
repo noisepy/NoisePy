@@ -83,6 +83,7 @@ def cross_correlate(
     executor = ThreadPoolExecutor()
     tlog = TimeLogger(logger, logging.INFO, prefix="CC Main")
     t_s1_total = tlog.reset()
+    logger.info(f"Starting Cross-Correlation with {os.cpu_count()} cores")
 
     def init() -> List:
         # set variables to broadcast
@@ -179,7 +180,6 @@ def cross_correlate(
         station_pairs = create_pairs(pair_filter, channels, fft_params.acorr_only, ffts)
         tlog.reset()
 
-        # sort by number of pairs to process so we start the longest ones first
         work_items = list(station_pairs.items())
         logger.info(f"Starting CC with {len(work_items)} station pairs")
         for station_pair, ch_pairs in work_items:
