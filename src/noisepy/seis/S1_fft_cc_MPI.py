@@ -4,7 +4,8 @@ import os
 import sys
 from collections import OrderedDict, defaultdict
 from concurrent.futures import Executor, ThreadPoolExecutor
-from typing import Callable, Dict, List, Tuple
+from math import ceil
+from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 import obspy
@@ -213,7 +214,7 @@ def create_pairs(
     pair_filter: Callable[[Channel, Channel], bool],
     channels: List[Channel],
     acorr_only: bool,
-    ffts: Dict[int, NoiseFFT] | None = None,
+    ffts: Optional[Dict[int, NoiseFFT]] = None,
 ) -> Dict[Tuple[Station, Station], List[Tuple[int, int]]]:
     station_pairs = defaultdict(list)
     nchannels = len(channels)
@@ -411,7 +412,7 @@ def _read_channels(
 ) -> List[Tuple[Channel, ChannelData]]:
     ch_data_refs = [executor.submit(store.read_data, ts, ch) for ch in channels]
     # Log memory usage as we read the data in
-    for i in range(0, len(ch_data_refs), int(len(ch_data_refs) / 10)):
+    for i in range(0, len(ch_data_refs), ceil(len(ch_data_refs) / 10)):
         ch_data_refs[i].add_done_callback(
             lambda f: logger.info(f"Reading data - Memory: {psutil.virtual_memory()[2]}%")
         )
