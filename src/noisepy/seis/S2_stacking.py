@@ -283,6 +283,7 @@ def validate_pairs(ncomp: int, sta_pair: str, fauto: int, ts: DateTimeRange, n_p
 
 
 def calc_segments(fft_params: ConfigParameters, num_chunk: int) -> Tuple[int, int]:
+    num_segmts = 1
     if fft_params.substack:  # things are difference when do substack
         if fft_params.substack_len == fft_params.cc_len:
             num_segmts = int(np.floor((fft_params.inc_hours * 3600 - fft_params.cc_len) / fft_params.step))

@@ -45,11 +45,13 @@ jobs:
         method: [linear,robust, nroot, selective, auto_covariance, pws]
         freq_norm: [rma]
         format: [asdf]
+        substack: [false]
         include:
         - method: linear
           python_version: '3.10'
           freq_norm: no
           format: zarr
+          substack: true
         - method: robust
           python_version: '3.9'
           freq_norm: phase_only

@@ -156,13 +156,12 @@ class ConfigParameters(BaseModel):
     # if substack=True, substack_len=2*cc_len, then you pre-stack every 2 correlation windows.
     # For instance: substack=True, substack_len=cc_len means that you keep ALL of the correlations"
     substack: bool = Field(
-        default=True, description="True:  smaller stacks within the time chunk. False: it will stack over inc_hours"
+        default=False, description="True:  smaller stacks within the time chunk. False: it will stack over inc_hours"
     )
     substack_len: int = Field(
         default=1800, description="how long to stack over (for monitoring purpose): need to be multiples of cc_len"
     )
     maxlag: int = Field(default=200, description="lags of cross-correlation to save (sec)")
-    substack: bool = Field(default=True)
     inc_hours: int = Field(default=24, description="Time increment size in hours")
     # criteria for data selection
     max_over_std: int = Field(

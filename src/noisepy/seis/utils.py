@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 
 import fsspec
 import numpy as np
+import psutil
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
@@ -102,11 +103,15 @@ def _get_results(futures: Iterable[Future], task_name: str = "", logger: logging
     # if running in AWS, use -1 for the position so it's logged properly
     position = -1 if AWS_EXECUTION_ENV in os.environ else None
 
+    def pbar_update(_: Future):
+        pbar.update(1)
+        pbar.set_description(f"{task_name}. Memory: {psutil.virtual_memory()[2]}%")
+
     # Show a progress bar when processing futures
     with logging_redirect_tqdm():
         with tqdm(total=len(futures), desc=task_name, position=position) as pbar:
             for f in futures:
-                f.add_done_callback(lambda _: pbar.update(1))
+                f.add_done_callback(pbar_update)
             return [f.result() for f in futures]
 
 

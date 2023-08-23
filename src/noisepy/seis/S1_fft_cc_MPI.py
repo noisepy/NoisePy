@@ -4,12 +4,10 @@ import os
 import sys
 from collections import OrderedDict, defaultdict
 from concurrent.futures import Executor, ThreadPoolExecutor
-from math import ceil
 from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 import obspy
-import psutil
 from datetimerange import DateTimeRange
 from scipy.fftpack.helper import next_fast_len
 
@@ -255,7 +253,7 @@ def stations_cross_correlation(
     try:
         if cc_store.contains(ts, src, rec):
             logger.info(f"Skipping {src}_{rec} for {ts} since it's already done")
-            return
+            return 0
 
         # TODO: Are there any potential gains to parallelliing this? It could make a difference if
         # num station pairs < num cores since we are already parallelizing at the station pair level
@@ -269,6 +267,7 @@ def stations_cross_correlation(
         return len(datas)
     except Exception as e:
         logger.error(f"Error processing {src} and {rec} for {ts}: {e}")
+        return 0
 
 
 def cross_correlation(
@@ -413,12 +412,6 @@ def _read_channels(
     single_freq: bool = True,
 ) -> List[Tuple[Channel, ChannelData]]:
     ch_data_refs = [executor.submit(store.read_data, ts, ch) for ch in channels]
-    # Log memory usage as we read the data in
-    for i in range(0, len(ch_data_refs), ceil(len(ch_data_refs) / 10)):
-        ch_data_refs[i].add_done_callback(
-            lambda f: logger.info(f"Reading data - Memory: {psutil.virtual_memory()[2]}%")
-        )
-
     ch_data = _get_results(ch_data_refs, "Read channel data")
     tuples = list(zip(channels, ch_data))
     return _filter_channel_data(tuples, samp_freq, single_freq)
