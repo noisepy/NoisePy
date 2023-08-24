@@ -4,7 +4,7 @@ import os
 import sys
 from collections import OrderedDict, defaultdict
 from concurrent.futures import Executor, ThreadPoolExecutor
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 import obspy
@@ -22,7 +22,7 @@ from .datatypes import (
 )
 from .scheduler import Scheduler, SingleNodeScheduler
 from .stores import CrossCorrelationDataStore, RawDataStore
-from .utils import TimeLogger, _get_results, error_if
+from .utils import TimeLogger, _get_results
 
 logger = logging.getLogger(__name__)
 # ignore warnings
@@ -80,8 +80,9 @@ def cross_correlate(
     """
 
     executor = ThreadPoolExecutor()
-    tlog = TimeLogger(logger, logging.INFO)
+    tlog = TimeLogger(logger, logging.INFO, prefix="CC Main")
     t_s1_total = tlog.reset()
+    logger.info(f"Starting Cross-Correlation with {os.cpu_count()} cores")
 
     def init() -> List:
         # set variables to broadcast
@@ -94,10 +95,6 @@ def cross_correlate(
 
     for its in scheduler.get_indices(timespans):
         ts = timespans[its]
-        if cc_store.is_done(ts):
-            logger.info(f"{ts} already processed, skipped")
-            continue
-
         """
         LOADING NOISE DATA AND DO FFT
         """
@@ -105,14 +102,40 @@ def cross_correlate(
 
         t_chunk = tlog.reset()  # for tracking overall chunk processing time
         all_channels = raw_store.get_channels(ts)
-        error_if(
-            not all(map(lambda c: c.station.valid(), all_channels)),
-            "The stations don't have their lat/lon/elev properties populated. Problem with the ChannelCatalog used?",
-        )
+        all_channel_count = len(all_channels)
+        tlog.log(f"get {all_channel_count} channels")
+        all_channels = list(filter(lambda c: c.station.valid(), all_channels))
+        all_stations = set([c.station for c in all_channels])
+        if all_channel_count > len(all_channels):
+            logger.warning(
+                f"Some stations were filtered due to missing catalog information (lat/lon/elen). "
+                f"Using {len(all_channels)}/{all_channel_count}"
+            )
+        tlog.reset()
+        station_pairs = list(create_pairs(pair_filter, all_channels, fft_params.acorr_only).keys())
+        # Check for stations that are already done, do this in parallel
+        logger.info(f"Checking for stations already done: {len(station_pairs)} pairs")
+        station_pair_dones = list(map(lambda p: cc_store.contains(ts, p[0], p[1]), station_pairs))
 
-        tlog.log("get channels")
+        missing_pairs = [pair for pair, done in zip(station_pairs, station_pair_dones) if not done]
+        # get a set of unique stations from the list of pairs
+        missing_stations = set([station for pair in missing_pairs for station in pair])
+        # Filter the channels to only the missing stations
+        missing_channels = list(filter(lambda c: c.station in missing_stations, all_channels))
+        tlog.log("check for stations already done")
+
+        logger.info(
+            f"Still need to process: {len(missing_stations)}/{len(all_stations)} stations, "
+            f"{len(missing_channels)}/{len(all_channels)} channels, "
+            f"{len(missing_pairs)}/{len(station_pairs)} pairs "
+            f"for {ts}"
+        )
+        if len(missing_channels) == 0:
+            logger.warning(f"{ts} already completed")
+            continue
+
         ch_data_tuples = _read_channels(
-            executor, ts, raw_store, all_channels, fft_params.samp_freq, fft_params.single_freq
+            executor, ts, raw_store, missing_channels, fft_params.samp_freq, fft_params.single_freq
         )
         # only the channels we are using
 
@@ -121,10 +144,10 @@ def cross_correlate(
             continue
 
         channels = list(zip(*ch_data_tuples))[0]
-        tlog.log("read channel data")
+        tlog.log(f"Read channel data: {len(channels)} channels")
 
         ch_data_tuples = preprocess_all(executor, ch_data_tuples, raw_store, fft_params, ts)
-        tlog.log("preprocess")
+        tlog.log(f"Preprocess: {len(ch_data_tuples)} channels")
 
         nchannels = len(ch_data_tuples)
         nseg_chunk = check_memory(fft_params, nchannels)
@@ -136,13 +159,17 @@ def cross_correlate(
         tlog.reset()
 
         fft_refs = [executor.submit(compute_fft, fft_params, chd[1]) for chd in ch_data_tuples]
-        fft_datas = _get_results(fft_refs)
+        fft_datas = _get_results(fft_refs, "Compute ffts")
+        # Done with the raw data, clear it out
+        ch_data_tuples.clear()
+        del ch_data_tuples
+        gc.collect()
         for ix_ch, fft_data in enumerate(fft_datas):
             if fft_data.fft.size > 0:
                 ffts[ix_ch] = fft_data
             else:
                 logger.warning(f"No data available for channel '{channels[ix_ch]}', skipped")
-        tlog.log("Compute FFTs")
+        tlog.log(f"Compute FFTs: {len(ffts)} channels")
         Nfft = max(map(lambda d: d.length, fft_datas))
         if Nfft == 0:
             logger.error(f"No FFT data available for any channel in {ts}, skipping")
@@ -153,28 +180,12 @@ def cross_correlate(
 
         tasks = []
 
+        station_pairs = create_pairs(pair_filter, channels, fft_params.acorr_only, ffts)
         tlog.reset()
-        station_pairs = defaultdict(list)
-        # # ###########PERFORM CROSS-CORRELATION##################
-        for iiS in range(nchannels):
-            for iiR in range(iiS, nchannels):
-                src_chan = channels[iiS]
-                rec_chan = channels[iiR]
-                if not pair_filter(src_chan, rec_chan):
-                    continue
-                if fft_params.acorr_only:
-                    if src_chan.station != rec_chan.station:
-                        continue
-                if iiS not in ffts:
-                    logger.warning(f"No FFT data available for channel '{src_chan}', skipped")
-                    continue
-                if iiR not in ffts:
-                    logger.warning(f"No FFT data available for channel '{rec_chan}', skipped")
-                    continue
 
-                station_pairs[(src_chan.station, rec_chan.station)].append((iiS, iiR))
-
-        for station_pair, ch_pairs in station_pairs.items():
+        work_items = list(station_pairs.items())
+        logger.info(f"Starting CC with {len(work_items)} station pairs")
+        for station_pair, ch_pairs in work_items:
             t = executor.submit(
                 stations_cross_correlation,
                 ts,
@@ -189,17 +200,45 @@ def cross_correlate(
             )
             tasks.append(t)
 
-        _get_results(tasks)
-        tlog.log(f"Correlate and write to store: {len(tasks)} station pairs")
+        computed = _get_results(tasks, "Cross correlation")
+        total_computed = sum(computed)
+        tlog.log(f"Correlate and write to store: {total_computed} channel pairs")
 
         ffts.clear()
         gc.collect()
 
         tlog.log(f"Process the chunk of {ts}", t_chunk)
-        cc_store.mark_done(ts)
 
     tlog.log(f"Step 1 in total with {os.cpu_count()} cores", t_s1_total)
     executor.shutdown()
+
+
+def create_pairs(
+    pair_filter: Callable[[Channel, Channel], bool],
+    channels: List[Channel],
+    acorr_only: bool,
+    ffts: Optional[Dict[int, NoiseFFT]] = None,
+) -> Dict[Tuple[Station, Station], List[Tuple[int, int]]]:
+    station_pairs = defaultdict(list)
+    nchannels = len(channels)
+    for iiS in range(nchannels):
+        for iiR in range(iiS, nchannels):
+            src_chan = channels[iiS]
+            rec_chan = channels[iiR]
+            if not pair_filter(src_chan, rec_chan):
+                continue
+            if acorr_only:
+                if src_chan.station != rec_chan.station:
+                    continue
+            if ffts and iiS not in ffts:
+                logger.warning(f"No FFT data available for channel '{src_chan}', skipped")
+                continue
+            if ffts and iiR not in ffts:
+                logger.warning(f"No FFT data available for channel '{rec_chan}', skipped")
+                continue
+
+            station_pairs[(src_chan.station, rec_chan.station)].append((iiS, iiR))
+    return station_pairs
 
 
 def stations_cross_correlation(
@@ -212,17 +251,27 @@ def stations_cross_correlation(
     ffts: Dict[int, NoiseFFT],
     Nfft: int,
     cc_store: CrossCorrelationDataStore,
-):
-    logger.info(f"Cross-correlating {len(channel_pairs)} pairs for {src} and {rec} for {ts}")
+) -> int:
+    tlog = TimeLogger(logger, logging.DEBUG)
     datas = []
-    # TODO: Are there any potential gains to parallelliing this? It could make a difference if
-    # num station pairs < num cores since we are already parallelizing at the station pair level
-    for src_chan, rec_chan in channel_pairs:
-        result = cross_correlation(fft_params, src_chan, rec_chan, channels, ffts, Nfft)
-        if result is not None:
-            data = CrossCorrelation(result[0].type, result[1].type, result[2], result[3])
-            datas.append(data)
-    cc_store.append(ts, src, rec, datas)
+    try:
+        if cc_store.contains(ts, src, rec):
+            logger.info(f"Skipping {src}_{rec} for {ts} since it's already done")
+            return 0
+
+        # TODO: Are there any potential gains to parallelliing this? It could make a difference if
+        # num station pairs < num cores since we are already parallelizing at the station pair level
+        for src_chan, rec_chan in channel_pairs:
+            result = cross_correlation(fft_params, src_chan, rec_chan, channels, ffts, Nfft)
+            if result is not None:
+                data = CrossCorrelation(result[0].type, result[1].type, result[2], result[3])
+                datas.append(data)
+        tlog.log(f"Cross-correlated {len(datas)} pairs for {src} and {rec} for {ts}")
+        cc_store.append(ts, src, rec, datas)
+        return len(datas)
+    except Exception as e:
+        logger.error(f"Error processing {src} and {rec} for {ts}: {e}")
+        return 0
 
 
 def cross_correlation(
@@ -262,7 +311,7 @@ def preprocess_all(
     ts: DateTimeRange,
 ) -> List[Tuple[Channel, ChannelData]]:
     stream_refs = [executor.submit(preprocess, raw_store, t[0], t[1], fft_params, ts) for t in ch_data]
-    new_streams = _get_results(stream_refs)
+    new_streams = _get_results(stream_refs, "Pre-process")
     # Log if any streams were removed during pre-processing
     for ch, st in zip(ch_data, new_streams):
         if len(st) == 0:
@@ -286,7 +335,6 @@ def cross_corr(
     rec_fft: NoiseFFT,
     Nfft: int,
 ) -> Tuple[Channel, Channel, dict, np.ndarray]:
-    logger.debug(f"receiver: {rec_chan}")
     # read the receiver data
     sfft2 = rec_fft.fft.reshape(rec_fft.window_count, rec_fft.length // 2)
     rec_std = rec_fft.std
@@ -349,7 +397,6 @@ def compute_fft(fft_params: ConfigParameters, ch_data: ChannelData) -> NoiseFFT:
     source_white = noise_module.noise_processing(fft_params, dataS)
     Nfft = source_white.shape[1]
     Nfft2 = Nfft // 2
-    logger.debug(f"N and Nfft are {N}, {Nfft}")
 
     # load fft data in memory for cross-correlations
     data = source_white[:, :Nfft2]
@@ -369,7 +416,7 @@ def _read_channels(
     single_freq: bool = True,
 ) -> List[Tuple[Channel, ChannelData]]:
     ch_data_refs = [executor.submit(store.read_data, ts, ch) for ch in channels]
-    ch_data = _get_results(ch_data_refs)
+    ch_data = _get_results(ch_data_refs, "Read channel data")
     tuples = list(zip(channels, ch_data))
     return _filter_channel_data(tuples, samp_freq, single_freq)
 
@@ -398,8 +445,9 @@ def _filter_channel_data(
 
 
 def check_memory(params: ConfigParameters, nsta: int) -> int:
-    # maximum memory allowed per core in GB
-    MAX_MEM = 4.0
+    # maximum memory allowed
+    # TODO: Is this needed? Should it be configurable?
+    MAX_MEM = 96.0
     # crude estimation on memory needs (assume float32)
     nsec_chunk = params.inc_hours / 24 * 86400
     nseg_chunk = int(np.floor((nsec_chunk - params.cc_len) / params.step))
@@ -410,4 +458,5 @@ def check_memory(params: ConfigParameters, nsta: int) -> int:
             "Require %5.3fG memory but only %5.3fG provided)! Reduce inc_hours to avoid this issue!"
             % (memory_size, MAX_MEM)
         )
+    logger.info(f"Require {memory_size:5.2f}gb memory for cross correlations")
     return nseg_chunk

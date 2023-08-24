@@ -125,13 +125,11 @@ class ASDFCCStore(CrossCorrelationDataStore):
         self.datasets = ASDFDirectory(directory, mode, _filename_from_timespan, parse_timespan)
 
     # CrossCorrelationDataStore implementation
-    def contains(self, timespan: DateTimeRange, src_chan: Channel, rec_chan: Channel) -> bool:
-        station_pair = self._get_station_pair(src_chan.station, rec_chan.station)
-        channel_pair = self._get_channel_pair(src_chan.type, rec_chan.type)
-        logger.debug(f"station pair {station_pair} channel pair {channel_pair}")
-        contains = self.datasets.contains(timespan, station_pair, channel_pair)
+    def contains(self, timespan: DateTimeRange, src: Station, rec: Station) -> bool:
+        station_pair = self._get_station_pair(src, rec)
+        contains = self.datasets.contains(timespan, station_pair)
         if contains:
-            logger.info(f"Cross-correlation {station_pair} and {channel_pair} already exists")
+            logger.info(f"Cross-correlation {station_pair} already exists")
         return contains
 
     def append(
@@ -147,12 +145,6 @@ class ASDFCCStore(CrossCorrelationDataStore):
             # channels, e.g. bhn_bhn
             channels = self._get_channel_pair(cc.src, cc.rec)
             self.datasets.add_aux_data(timespan, cc.parameters, station_pair, channels, cc.data)
-
-    def mark_done(self, timespan: DateTimeRange):
-        self.datasets.mark_done(timespan)
-
-    def is_done(self, timespan: DateTimeRange):
-        return self.datasets.is_done(timespan)
 
     def get_timespans(self) -> List[DateTimeRange]:
         return self.datasets.get_keys()

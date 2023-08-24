@@ -9,14 +9,7 @@ from datetimerange import DateTimeRange
 
 from noisepy.seis.constants import DATE_FORMAT
 
-from .datatypes import (
-    Channel,
-    ChannelData,
-    ChannelType,
-    ConfigParameters,
-    CrossCorrelation,
-    Station,
-)
+from .datatypes import Channel, ChannelData, ChannelType, CrossCorrelation, Station
 
 
 class DataStore(ABC):
@@ -50,9 +43,7 @@ class RawDataStore(DataStore):
 
 class CrossCorrelationDataStore:
     @abstractmethod
-    def contains(
-        self, timespan: DateTimeRange, src_chan: Channel, rec_chan: Channel, parameters: ConfigParameters
-    ) -> bool:
+    def contains(self, timespan: DateTimeRange, src: Station, rec: Station) -> bool:
         pass
 
     @abstractmethod
@@ -63,14 +54,6 @@ class CrossCorrelationDataStore:
         rec: Station,
         ccs: List[CrossCorrelation],
     ):
-        pass
-
-    @abstractmethod
-    def is_done(self, timespan: DateTimeRange):
-        pass
-
-    @abstractmethod
-    def mark_done(self, timespan: DateTimeRange):
         pass
 
     @abstractmethod

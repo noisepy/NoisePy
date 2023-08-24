@@ -743,7 +743,8 @@ def correlate(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
     t = np.arange(-Nfft2 + 1, Nfft2) * dt
     ind = np.where(np.abs(t) <= maxlag)[0]
     if s_corr.ndim == 1:
-        s_corr = s_corr[ind]
+        # Expand dims to ensure we always return a 2D array
+        s_corr = np.expand_dims(s_corr[ind], axis=0)
     elif s_corr.ndim == 2:
         s_corr = s_corr[:, ind]
     return s_corr, t_corr, n_corr

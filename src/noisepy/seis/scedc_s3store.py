@@ -134,7 +134,8 @@ class SCEDCS3DataStore(RawDataStore):
 
         with self.fs.open(filename) as f:
             stream = obspy.read(f)
-        return ChannelData(stream)
+        data = ChannelData(stream)
+        return data
 
     def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
         return self.channel_catalog.get_inventory(timespan, station)

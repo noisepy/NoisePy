@@ -1,4 +1,5 @@
 import logging
+import threading
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -34,12 +35,32 @@ class ZarrStoreHelper:
 
     def __init__(self, root_dir: str, mode: str, storage_options={}) -> None:
         super().__init__()
-        logger.info(f"store creating at {root_dir}, mode={mode}, storage_options={storage_options}")
-        self.root = zarr.open_group(root_dir, mode=mode, storage_options=storage_options)
+        # We don't want to cache the data, but we do want to use the keys() cache
+        CACHE_SIZE = 1
+        logger.info(
+            f"store creating at {root_dir}, mode={mode}, storage_options={storage_options}, cache_size={CACHE_SIZE}"
+        )
+        store = zarr.storage.FSStore(root_dir, **storage_options)
+        self.cache = zarr.LRUStoreCache(store, max_size=CACHE_SIZE)
+        self.root = zarr.open_group(self.cache, mode=mode)
+        self._lock = threading.Lock()
+        self.keys_cache = set(self.cache.keys())
         logger.info(f"store created at {root_dir}")
 
+    def __getstate__(self) -> object:
+        state = self.__dict__.copy()
+        del state["_lock"]
+        return state
+
+    def __setstate__(self, state: object) -> None:
+        self.__dict__.update(state)
+        self._lock = threading.Lock()
+
     def contains(self, path: str) -> bool:
-        return path in self.root
+        with self._lock:
+            # The keys have the full path to the .zarray/.zattrs/.zgroup files so we do a prefix check
+            # since the path is just the directory name
+            return any(map(lambda k: k.startswith(path), self.keys_cache))
 
     def append(
         self,
@@ -55,6 +76,8 @@ class ZarrStoreHelper:
             dtype=data.dtype,
         )
         array.attrs.update(params)
+        with self._lock:
+            self.keys_cache.add(path)
 
     def is_done(self, key: str):
         if DONE_PATH not in self.root.array_keys():
@@ -92,13 +115,9 @@ class ZarrCCStore(CrossCorrelationDataStore):
         super().__init__()
         self.helper = ZarrStoreHelper(root_dir, mode, storage_options=storage_options)
 
-    def contains(self, timespan: DateTimeRange, src_chan: Channel, rec_chan: Channel) -> bool:
-        path = self._get_station_path(timespan, src_chan.station, rec_chan.station)
-        array = self.helper.read(path)
-        if not array:
-            return False
-        tuples = [(src, rec) for src, rec, _ in self._read_cc_metadata(array)]
-        return (src_chan.type, rec_chan.type) in tuples
+    def contains(self, timespan: DateTimeRange, src: Station, rec: Station) -> bool:
+        path = self._get_station_path(timespan, src, rec)
+        return self.helper.contains(path)
 
     def append(
         self,
@@ -125,12 +144,6 @@ class ZarrCCStore(CrossCorrelationDataStore):
         tlog = TimeLogger(logger, logging.DEBUG)
         self.helper.append(path, {CHANNELS_ATTR: json_params, VERSION_ATTR: 1.0}, all_ccs)
         tlog.log(f"writing {len(ccs)} CCs to {path}")
-
-    def is_done(self, timespan: DateTimeRange):
-        return self.helper.is_done(timespan_str(timespan))
-
-    def mark_done(self, timespan: DateTimeRange):
-        self.helper.mark_done(timespan_str(timespan))
 
     def get_timespans(self) -> List[DateTimeRange]:
         pairs = [k for k in self.helper.root.group_keys() if k != DONE_PATH]

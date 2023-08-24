@@ -8,6 +8,11 @@ from urllib.parse import urlparse
 
 import fsspec
 import numpy as np
+import psutil
+from tqdm import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
+
+from noisepy.seis.constants import AWS_EXECUTION_ENV
 
 S3_SCHEME = "s3"
 utils_logger = logging.getLogger(__name__)
@@ -55,12 +60,13 @@ class TimeLogger:
 
     enabled: bool = True
 
-    def __init__(self, logger: logging.Logger = utils_logger, level: int = logging.DEBUG):
+    def __init__(self, logger: logging.Logger = utils_logger, level: int = logging.DEBUG, prefix: str = None):
         """
         Create an instance that will use the given logger and logging level to log the times
         """
         self.logger = logger
         self.level = level
+        self.prefix = "" if prefix is None else f" {prefix}"
         self.reset()
 
     def reset(self) -> float:
@@ -76,7 +82,7 @@ class TimeLogger:
 
     def log_raw(self, message: str, dt: float):
         if self.enabled:
-            self.logger.log(self.level, f"TIMING: {dt:6.4f} for {message}")
+            self.logger.log(self.level, f"TIMING{self.prefix}: {dt:6.4f} secs. for {message}")
         return self.time
 
 
@@ -93,8 +99,21 @@ def error_if(condition: bool, msg: str, error_type: type = RuntimeError):
         raise error_type(msg)
 
 
-def _get_results(futures: Iterable[Future]) -> Iterable[Future]:
-    return [f.result() for f in futures]
+def _get_results(futures: Iterable[Future], task_name: str = "", logger: logging.Logger = None) -> Iterable[Future]:
+    # if running in AWS, use -1 for the position so it's logged properly
+    position = -1 if AWS_EXECUTION_ENV in os.environ else None
+
+    def pbar_update(_: Future):
+        mem_mb = psutil.Process().memory_info().rss / (1024 * 1024)
+        pbar.update(1)
+        pbar.set_description(f"{task_name}. Memory: {mem_mb:5.0f} MB")
+
+    # Show a progress bar when processing futures
+    with logging_redirect_tqdm():
+        with tqdm(total=len(futures), desc=task_name, position=position) as pbar:
+            for f in futures:
+                f.add_done_callback(pbar_update)
+            return [f.result() for f in futures]
 
 
 def unstack(stack: np.ndarray, axis=0) -> List[np.ndarray]:
