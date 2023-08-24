@@ -36,7 +36,7 @@ class ZarrStoreHelper:
     def __init__(self, root_dir: str, mode: str, storage_options={}) -> None:
         super().__init__()
         # We don't want to cache the data, but we do want to use the keys() cache
-        CACHE_SIZE = 0
+        CACHE_SIZE = 1
         logger.info(
             f"store creating at {root_dir}, mode={mode}, storage_options={storage_options}, cache_size={CACHE_SIZE}"
         )

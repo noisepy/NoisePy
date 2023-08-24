@@ -104,8 +104,9 @@ def _get_results(futures: Iterable[Future], task_name: str = "", logger: logging
     position = -1 if AWS_EXECUTION_ENV in os.environ else None
 
     def pbar_update(_: Future):
+        mem_mb = psutil.Process().memory_info().rss / (1024 * 1024)
         pbar.update(1)
-        pbar.set_description(f"{task_name}. Memory: {psutil.virtual_memory()[2]}%")
+        pbar.set_description(f"{task_name}. Memory: {mem_mb:5.0f} MB")
 
     # Show a progress bar when processing futures
     with logging_redirect_tqdm():

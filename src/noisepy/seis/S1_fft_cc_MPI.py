@@ -160,6 +160,10 @@ def cross_correlate(
 
         fft_refs = [executor.submit(compute_fft, fft_params, chd[1]) for chd in ch_data_tuples]
         fft_datas = _get_results(fft_refs, "Compute ffts")
+        # Done with the raw data, clear it out
+        ch_data_tuples.clear()
+        del ch_data_tuples
+        gc.collect()
         for ix_ch, fft_data in enumerate(fft_datas):
             if fft_data.fft.size > 0:
                 ffts[ix_ch] = fft_data
@@ -454,4 +458,5 @@ def check_memory(params: ConfigParameters, nsta: int) -> int:
             "Require %5.3fG memory but only %5.3fG provided)! Reduce inc_hours to avoid this issue!"
             % (memory_size, MAX_MEM)
         )
+    logger.info(f"Require {memory_size:5.2f}gb memory for cross correlations")
     return nseg_chunk
