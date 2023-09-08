@@ -227,7 +227,7 @@ def main(args: typing.Any):
                 args.stack_path, mode="a", storage_options=params.get_storage_options(args.stack_path)
             )
         else:
-            ASDFStackStore(args.stack_path, "a")
+            return ASDFStackStore(args.stack_path, "a")
 
     def run_cross_correlation():
         try:
