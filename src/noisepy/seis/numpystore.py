@@ -8,8 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 from datetimerange import DateTimeRange
 
-from noisepy.seis.constants import DONE_PATH
-from noisepy.seis.datatypes import Station
+from noisepy.seis.datatypes import Station, to_json_types
 from noisepy.seis.hierarchicalstores import (
     ArrayStore,
     HierarchicalCCStoreBase,
@@ -41,6 +40,7 @@ class NumpyArrayStore(ArrayStore):
     def append(self, path: str, params: Dict[str, Any], data: np.ndarray):
         logger.debug(f"Appending to {path}: {data.shape}")
 
+        params = to_json_types(params)
         js = json.dumps(params)
 
         def add_file_bytes(tar, name, f):
@@ -49,7 +49,8 @@ class NumpyArrayStore(ArrayStore):
             ti.size = f.getbuffer().nbytes
             tar.addfile(ti, fileobj=f)
 
-        self.fs.makedirs(fs_join(self.root_path, path), exist_ok=True)
+        dir = fs_join(self.root_path, str(Path(path).parent))
+        self.fs.makedirs(dir, exist_ok=True)
         with self.fs.open(fs_join(self.root_path, path + TAR_GZ_EXTENSION), "wb") as f:
             with tarfile.open(fileobj=f, mode="w:gz") as tar:
                 with io.BytesIO() as npyf:
@@ -61,14 +62,12 @@ class NumpyArrayStore(ArrayStore):
                         add_file_bytes(tar, FILE_PARAMS_JSON, jsf)
 
     def is_done(self, key: str):
-        if DONE_PATH not in self.root.array_keys():
-            return False
-        done_array = self.root[DONE_PATH]
-        return key in done_array.attrs.keys()
+        # TODO:
+        return False
 
     def mark_done(self, key: str):
-        done_array = self.root.require_dataset(DONE_PATH, shape=(1, 1))
-        done_array.attrs[key] = True
+        # TODO:
+        pass
 
     def read(self, path: str) -> Optional[Tuple[np.ndarray, Dict[str, Any]]]:
         file = fs_join(self.root_path, path + TAR_GZ_EXTENSION)

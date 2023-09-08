@@ -13,12 +13,12 @@ import dateutil.parser
 import obspy
 from datetimerange import DateTimeRange
 
-from noisepy.seis import __version__
-
+from . import __version__
 from .asdfstore import ASDFCCStore, ASDFRawDataStore, ASDFStackStore
 from .channelcatalog import CSVChannelCatalog, XMLStationChannelCatalog
 from .constants import CONFIG_FILE, STATION_FILE
 from .datatypes import Channel, ConfigParameters
+from .numpystore import NumpyCCStore, NumpyStackStore
 from .S0A_download_ASDF_MPI import download
 from .S1_fft_cc_MPI import cross_correlate
 from .S2_stacking import stack
@@ -49,6 +49,7 @@ class Command(Enum):
 class DataFormat(Enum):
     ZARR = "zarr"
     ASDF = "asdf"
+    NUMPY = "numpy"
 
 
 def valid_date(d: str) -> str:
@@ -209,22 +210,24 @@ def main(args: typing.Any):
             save_log(args.raw_data_path, args.logfile, params.storage_options)
 
     def get_cc_store(args, params: ConfigParameters, mode="a"):
-        return (
-            ZarrCCStore(
-                args.ccf_path,
-                mode=mode,
-                storage_options=params.get_storage_options(args.ccf_path),
-            )
-            if args.format == DataFormat.ZARR.value
-            else ASDFCCStore(args.ccf_path, mode=mode)
-        )
+        if args.format == DataFormat.ZARR.value:
+            return ZarrCCStore(args.ccf_path, mode=mode, storage_options=params.get_storage_options(args.ccf_path))
+        elif args.format == DataFormat.NUMPY.value:
+            return NumpyCCStore(args.ccf_path, mode=mode, storage_options=params.get_storage_options(args.ccf_path))
+        else:
+            return ASDFCCStore(args.ccf_path, mode=mode)
 
     def get_stack_store(args, params: ConfigParameters):
-        return (
-            ZarrStackStore(args.stack_path, mode="a", storage_options=params.get_storage_options(args.stack_path))
-            if args.format == DataFormat.ZARR.value
-            else ASDFStackStore(args.stack_path, "a")
-        )
+        if args.format == DataFormat.ZARR.value:
+            return ZarrStackStore(
+                args.stack_path, mode="a", storage_options=params.get_storage_options(args.stack_path)
+            )
+        elif args.format == DataFormat.NUMPY.value:
+            return NumpyStackStore(
+                args.stack_path, mode="a", storage_options=params.get_storage_options(args.stack_path)
+            )
+        else:
+            ASDFStackStore(args.stack_path, "a")
 
     def run_cross_correlation():
         try:

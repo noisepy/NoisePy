@@ -22,7 +22,7 @@ from .datatypes import (
 )
 from .scheduler import Scheduler, SingleNodeScheduler
 from .stores import CrossCorrelationDataStore, RawDataStore
-from .utils import TimeLogger, _get_results
+from .utils import TimeLogger, get_results
 
 logger = logging.getLogger(__name__)
 # ignore warnings
@@ -159,7 +159,7 @@ def cross_correlate(
         tlog.reset()
 
         fft_refs = [executor.submit(compute_fft, fft_params, chd[1]) for chd in ch_data_tuples]
-        fft_datas = _get_results(fft_refs, "Compute ffts")
+        fft_datas = get_results(fft_refs, "Compute ffts")
         # Done with the raw data, clear it out
         ch_data_tuples.clear()
         del ch_data_tuples
@@ -182,8 +182,6 @@ def cross_correlate(
 
         station_pairs = create_pairs(pair_filter, channels, fft_params.acorr_only, ffts)
         tlog.reset()
-        # pairs = list(map(lambda t: cc_store._get_station_path(ts, t[0], t[1]), station_pairs.keys()))
-        # cc_store.helper.set_paths(pairs)
 
         save_exec = ThreadPoolExecutor()
         work_items = list(station_pairs.items())
@@ -204,7 +202,7 @@ def cross_correlate(
                 save_exec,
             )
             tasks.append(t)
-        computed = _get_results(tasks, "Cross correlation")
+        computed = get_results(tasks, "Cross correlation")
         save_exec.shutdown(wait=True)
         total_computed = sum(computed)
         tlog.log(f"Correlate and write to store: {total_computed} channel pairs")
@@ -328,7 +326,7 @@ def preprocess_all(
     ts: DateTimeRange,
 ) -> List[Tuple[Channel, ChannelData]]:
     stream_refs = [executor.submit(preprocess, raw_store, t[0], t[1], fft_params, ts) for t in ch_data]
-    new_streams = _get_results(stream_refs, "Pre-process")
+    new_streams = get_results(stream_refs, "Pre-process")
     # Log if any streams were removed during pre-processing
     for ch, st in zip(ch_data, new_streams):
         if len(st) == 0:
@@ -433,7 +431,7 @@ def _read_channels(
     single_freq: bool = True,
 ) -> List[Tuple[Channel, ChannelData]]:
     ch_data_refs = [executor.submit(store.read_data, ts, ch) for ch in channels]
-    ch_data = _get_results(ch_data_refs, "Read channel data")
+    ch_data = get_results(ch_data_refs, "Read channel data")
     tuples = list(zip(channels, ch_data))
     return _filter_channel_data(tuples, samp_freq, single_freq)
 

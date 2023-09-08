@@ -99,7 +99,7 @@ def error_if(condition: bool, msg: str, error_type: type = RuntimeError):
         raise error_type(msg)
 
 
-def _get_results(futures: Iterable[Future], task_name: str = "", logger: logging.Logger = None) -> Iterable[Future]:
+def get_results(futures: Iterable[Future], task_name: str = "", logger: logging.Logger = None) -> Iterable[Future]:
     # if running in AWS, use -1 for the position so it's logged properly
     position = -1 if AWS_EXECUTION_ENV in os.environ else None
 

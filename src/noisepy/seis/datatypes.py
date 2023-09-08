@@ -290,7 +290,11 @@ class CrossCorrelation:
         self.src = src
         self.rec = rec
         self.data = data
-        self.parameters = {k: _to_json_type(v) for k, v in params.items()}
+        self.parameters = to_json_types(params)
+
+
+def to_json_types(params: Dict[str, Any]) -> Dict[str, Any]:
+    return {k: _to_json_type(v) for k, v in params.items()}
 
 
 def _to_json_type(value: Any) -> Any:
@@ -299,4 +303,6 @@ def _to_json_type(value: Any) -> Any:
         return list(map(_to_json_type, value))
     elif type(value) == np.float64 or type(value) == np.float32:
         return float(value)
+    elif type(value) == np.int64 or type(value) == np.int32:
+        return int(value)
     return value
