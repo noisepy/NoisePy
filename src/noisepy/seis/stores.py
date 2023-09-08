@@ -1,7 +1,8 @@
 import datetime
 import os
+import re
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import obspy
@@ -107,6 +108,7 @@ class StackStore:
     def get_components(self, src: Station, rec: Station, name: str) -> List[str]:
         pass
 
+    # TODO: Flip the order of the return values to be consistent with ArrayStore.read
     @abstractmethod
     def read(self, src: Station, rec: Station, component: str, name: str) -> Tuple[Dict[str, Any], np.ndarray]:
         pass
@@ -116,16 +118,26 @@ def timespan_str(timespan: DateTimeRange) -> str:
     return f"{timespan.start_datetime.strftime(DATE_FORMAT)}T{timespan.end_datetime.strftime(DATE_FORMAT)}"
 
 
-def parse_station_pair(pair: str) -> Tuple[Station, Station]:
+def parse_station_pair(pair: str) -> Optional[Tuple[Station, Station]]:
     # Parse from: CI.ARV_CI.BAK
-    def station(sta: str) -> Station:
-        net, name = sta.split(".")
-        return Station(net, name)
+    def station(sta: str) -> Optional[Station]:
+        parts = sta.split(".")
+        if len(parts) != 2:
+            return None
+        return Station(parts[0], parts[1])
 
-    return tuple(map(station, pair.split("_")))
+    if re.match(r"([A-Z0-9]+)\.([A-Z0-9]+)_([A-Z0-9]+)\.([A-Z0-9]+)", pair, re.IGNORECASE) is None:
+        return None
+
+    tup = tuple(map(station, pair.split("_")))
+    if None in tup:
+        return None
+    return tup
 
 
-def parse_timespan(filename: str) -> DateTimeRange:
+def parse_timespan(filename: str) -> Optional[DateTimeRange]:
     parts = os.path.splitext(os.path.basename(filename))[0].split("T")
+    if parts is None or len(parts) != 2:
+        return None
     dates = [obspy.UTCDateTime(p).datetime.replace(tzinfo=datetime.timezone.utc) for p in parts]
     return DateTimeRange(dates[0], dates[1])

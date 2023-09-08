@@ -182,8 +182,12 @@ def cross_correlate(
 
         station_pairs = create_pairs(pair_filter, channels, fft_params.acorr_only, ffts)
         tlog.reset()
+        # pairs = list(map(lambda t: cc_store._get_station_path(ts, t[0], t[1]), station_pairs.keys()))
+        # cc_store.helper.set_paths(pairs)
 
+        save_exec = ThreadPoolExecutor()
         work_items = list(station_pairs.items())
+        work_items = sorted(work_items, key=lambda t: t[0][0].name + t[0][1].name)
         logger.info(f"Starting CC with {len(work_items)} station pairs")
         for station_pair, ch_pairs in work_items:
             t = executor.submit(
@@ -197,10 +201,11 @@ def cross_correlate(
                 ffts,
                 Nfft,
                 cc_store,
+                save_exec,
             )
             tasks.append(t)
-
         computed = _get_results(tasks, "Cross correlation")
+        save_exec.shutdown(wait=True)
         total_computed = sum(computed)
         tlog.log(f"Correlate and write to store: {total_computed} channel pairs")
 
@@ -251,6 +256,7 @@ def stations_cross_correlation(
     ffts: Dict[int, NoiseFFT],
     Nfft: int,
     cc_store: CrossCorrelationDataStore,
+    executor: Executor,
 ) -> int:
     tlog = TimeLogger(logger, logging.DEBUG)
     datas = []
@@ -267,10 +273,21 @@ def stations_cross_correlation(
                 data = CrossCorrelation(result[0].type, result[1].type, result[2], result[3])
                 datas.append(data)
         tlog.log(f"Cross-correlated {len(datas)} pairs for {src} and {rec} for {ts}")
-        cc_store.append(ts, src, rec, datas)
+        executor.submit(save, cc_store, ts, src, rec, datas)
         return len(datas)
     except Exception as e:
         logger.error(f"Error processing {src} and {rec} for {ts}: {e}")
+        return 0
+
+
+def save(
+    store: CrossCorrelationDataStore, ts: DateTimeRange, src: Station, rec: Station, datas: List[CrossCorrelation]
+):
+    try:
+        store.append(ts, src, rec, datas)
+        return len(datas)
+    except Exception as e:
+        logger.error(f"Error saving {src} and {rec} for {ts}: {e}")
         return 0
 
 

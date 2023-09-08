@@ -194,7 +194,7 @@ def main(args: typing.Any):
         fh = logging.FileHandler(
             args.logfile,
         )
-        fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(module)s.%(funcName)s(): %(message)s"))
+        fh.setFormatter(logging.Formatter("%(asctime)s\t%(levelname)s\t%(module)s.%(funcName)s():\t%(message)s"))
         logging.getLogger("").addHandler(fh)
 
     logger.info(f"NoisePy version: {__version__}")
@@ -309,8 +309,16 @@ def add_mpi(parser: Any):
 
 
 def main_cli():
-    args = parse_args(sys.argv[1:])
-    main(args)
+    try:
+        args = parse_args(sys.argv[1:])
+        main(args)
+    except Exception as e:
+        logger.exception(e)
+        raise e
+    finally:
+        logging.shutdown()
+        sys.stdout.flush()
+        sys.stderr.flush()
 
 
 def parse_args(arguments: Iterable[str]) -> argparse.Namespace:
@@ -337,14 +345,4 @@ def _enable_s3fs_debug_logs():
 
 
 if __name__ == "__main__":
-    try:
-        main_cli()
-    except Exception as e:
-        print(f"An error occcurred: {e}")
-        logger.exception(e)
-        raise e
-    finally:
-        print("Shutting down logging")
-        logging.shutdown()
-        sys.stdout.flush()
-        sys.stderr.flush()
+    main_cli()

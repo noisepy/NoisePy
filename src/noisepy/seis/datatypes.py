@@ -296,5 +296,7 @@ class CrossCorrelation:
 def _to_json_type(value: Any) -> Any:
     # special case since numpy arrays are not json serializable
     if type(value) == np.ndarray:
-        return value.tolist()
+        return list(map(_to_json_type, value))
+    elif type(value) == np.float64 or type(value) == np.float32:
+        return float(value)
     return value

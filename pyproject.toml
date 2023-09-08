@@ -43,7 +43,7 @@ dependencies = [
     "diskcache>=5.6.1,<6.0.0",
     "fsspec>=2023.4.0,<2024.0.0",
     "s3fs==2023.4.0,<2024.0.0",
-    "zarr>=2.14.2,<3.0.0",
+    "zarr==2.14.2",
     "aiobotocore==2.5.2", # "2.5.3 is broken"
     "pydantic==2.0.0",
     "PyYAML==6.0",
