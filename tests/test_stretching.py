@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from obspy.signal.invsim import cosine_taper
 
-from noisepy.seis.noise_module import stretching, stretching_vect
+from noisepy.seis.application_modules.dvv_utils import stretching, stretching_vect
 
 # This short script is intended as a test for the stretching routine
 # it takes a generic sine curve with known stretching factor and ensures
