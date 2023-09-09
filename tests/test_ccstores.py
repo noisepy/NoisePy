@@ -7,6 +7,7 @@ from datetimerange import DateTimeRange
 
 from noisepy.seis.asdfstore import ASDFCCStore
 from noisepy.seis.datatypes import Channel, ChannelType, CrossCorrelation, Station
+from noisepy.seis.numpystore import NumpyCCStore
 from noisepy.seis.stores import CrossCorrelationDataStore
 from noisepy.seis.zarrstore import ZarrCCStore
 
@@ -21,6 +22,11 @@ def asdfstore(tmp_path: Path) -> ASDFCCStore:
 @pytest.fixture
 def zarrstore(tmp_path: Path) -> ZarrCCStore:
     return ZarrCCStore(str(tmp_path))
+
+
+@pytest.fixture
+def numpystore(tmp_path: Path) -> NumpyCCStore:
+    return NumpyCCStore(str(tmp_path))
 
 
 def _ccstore_test_helper(ccstore: CrossCorrelationDataStore):
@@ -71,3 +77,7 @@ def test_asdfccstore(asdfstore: ASDFCCStore):
 
 def test_zarrccstore(zarrstore: ZarrCCStore):
     _ccstore_test_helper(zarrstore)
+
+
+def test_numpyccstore(numpystore: NumpyCCStore):
+    _ccstore_test_helper(numpystore)

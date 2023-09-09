@@ -22,7 +22,7 @@ from .datatypes import (
 )
 from .scheduler import Scheduler, SingleNodeScheduler
 from .stores import CrossCorrelationDataStore, RawDataStore
-from .utils import TimeLogger, _get_results
+from .utils import TimeLogger, get_results
 
 logger = logging.getLogger(__name__)
 # ignore warnings
@@ -159,7 +159,7 @@ def cross_correlate(
         tlog.reset()
 
         fft_refs = [executor.submit(compute_fft, fft_params, chd[1]) for chd in ch_data_tuples]
-        fft_datas = _get_results(fft_refs, "Compute ffts")
+        fft_datas = get_results(fft_refs, "Compute ffts")
         # Done with the raw data, clear it out
         ch_data_tuples.clear()
         del ch_data_tuples
@@ -183,7 +183,9 @@ def cross_correlate(
         station_pairs = create_pairs(pair_filter, channels, fft_params.acorr_only, ffts)
         tlog.reset()
 
+        save_exec = ThreadPoolExecutor()
         work_items = list(station_pairs.items())
+        work_items = sorted(work_items, key=lambda t: t[0][0].name + t[0][1].name)
         logger.info(f"Starting CC with {len(work_items)} station pairs")
         for station_pair, ch_pairs in work_items:
             t = executor.submit(
@@ -197,10 +199,11 @@ def cross_correlate(
                 ffts,
                 Nfft,
                 cc_store,
+                save_exec,
             )
             tasks.append(t)
-
-        computed = _get_results(tasks, "Cross correlation")
+        computed = get_results(tasks, "Cross correlation")
+        save_exec.shutdown(wait=True)
         total_computed = sum(computed)
         tlog.log(f"Correlate and write to store: {total_computed} channel pairs")
 
@@ -251,6 +254,7 @@ def stations_cross_correlation(
     ffts: Dict[int, NoiseFFT],
     Nfft: int,
     cc_store: CrossCorrelationDataStore,
+    executor: Executor,
 ) -> int:
     tlog = TimeLogger(logger, logging.DEBUG)
     datas = []
@@ -267,10 +271,21 @@ def stations_cross_correlation(
                 data = CrossCorrelation(result[0].type, result[1].type, result[2], result[3])
                 datas.append(data)
         tlog.log(f"Cross-correlated {len(datas)} pairs for {src} and {rec} for {ts}")
-        cc_store.append(ts, src, rec, datas)
+        executor.submit(save, cc_store, ts, src, rec, datas)
         return len(datas)
     except Exception as e:
         logger.error(f"Error processing {src} and {rec} for {ts}: {e}")
+        return 0
+
+
+def save(
+    store: CrossCorrelationDataStore, ts: DateTimeRange, src: Station, rec: Station, datas: List[CrossCorrelation]
+):
+    try:
+        store.append(ts, src, rec, datas)
+        return len(datas)
+    except Exception as e:
+        logger.error(f"Error saving {src} and {rec} for {ts}: {e}")
         return 0
 
 
@@ -311,7 +326,7 @@ def preprocess_all(
     ts: DateTimeRange,
 ) -> List[Tuple[Channel, ChannelData]]:
     stream_refs = [executor.submit(preprocess, raw_store, t[0], t[1], fft_params, ts) for t in ch_data]
-    new_streams = _get_results(stream_refs, "Pre-process")
+    new_streams = get_results(stream_refs, "Pre-process")
     # Log if any streams were removed during pre-processing
     for ch, st in zip(ch_data, new_streams):
         if len(st) == 0:
@@ -416,7 +431,7 @@ def _read_channels(
     single_freq: bool = True,
 ) -> List[Tuple[Channel, ChannelData]]:
     ch_data_refs = [executor.submit(store.read_data, ts, ch) for ch in channels]
-    ch_data = _get_results(ch_data_refs, "Read channel data")
+    ch_data = get_results(ch_data_refs, "Read channel data")
     tuples = list(zip(channels, ch_data))
     return _filter_channel_data(tuples, samp_freq, single_freq)
 

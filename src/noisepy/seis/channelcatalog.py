@@ -84,6 +84,7 @@ class XMLStationChannelCatalog(ChannelCatalog):
             logger.warning(f"Could not find StationXML file {xmlfile}. Returning empty Inventory()")
             return obspy.Inventory()
         with self.fs.open(xmlfile) as f:
+            logger.info(f"Reading StationXML file {xmlfile}")
             return read_inventory(f)
 
 

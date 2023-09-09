@@ -2,6 +2,7 @@ import logging
 import os
 import re
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from typing import Callable, List
 
@@ -12,7 +13,7 @@ from noisepy.seis.channelcatalog import ChannelCatalog
 from noisepy.seis.stores import RawDataStore
 
 from .datatypes import Channel, ChannelData, ChannelType, Station
-from .utils import fs_join, get_filesystem
+from .utils import TimeLogger, fs_join, get_filesystem
 
 logger = logging.getLogger(__name__)
 
@@ -75,8 +76,9 @@ class SCEDCS3DataStore(RawDataStore):
             self._load_channels(self.path, ch_filter)
 
     def _load_channels(self, full_path: str, ch_filter: Callable[[Channel], bool]):
+        tlog = TimeLogger(logger=logger, level=logging.INFO)
         msfiles = [f for f in self.fs.glob(fs_join(full_path, "*.ms")) if self.file_re.match(f) is not None]
-        logger.info(f"Loading {len(msfiles)} files from {full_path}")
+        tlog.log(f"Loading {len(msfiles)} files from {full_path}")
         for f in msfiles:
             timespan = SCEDCS3DataStore._parse_timespan(f)
             self.paths[timespan.start_datetime] = full_path
@@ -85,9 +87,7 @@ class SCEDCS3DataStore(RawDataStore):
                 continue
             key = str(timespan)  # DataTimeFrame is not hashable
             self.channels[key].append(channel)
-        logger.info(
-            f"Init: {len(self.channels)} timespans and {sum(len(ch) for ch in  self.channels.values())} channels"
-        )
+        tlog.log(f"Init: {len(self.channels)} timespans and {sum(len(ch) for ch in  self.channels.values())} channels")
 
     def _ensure_channels_loaded(self, date_range: DateTimeRange):
         key = str(date_range)
@@ -104,7 +104,11 @@ class SCEDCS3DataStore(RawDataStore):
     def get_channels(self, date_range: DateTimeRange) -> List[Channel]:
         self._ensure_channels_loaded(date_range)
         tmp_channels = self.channels.get(str(date_range), [])
-        return list(map(lambda c: self.channel_catalog.get_full_channel(date_range, c), tmp_channels))
+        executor = ThreadPoolExecutor()
+        stations = set(map(lambda c: c.station, tmp_channels))
+        _ = list(executor.map(lambda s: self.channel_catalog.get_inventory(date_range, s), stations))
+        logger.info(f"Getting {len(tmp_channels)} channels for {date_range}: {tmp_channels}")
+        return list(executor.map(lambda c: self.channel_catalog.get_full_channel(date_range, c), tmp_channels))
 
     def get_timespans(self) -> List[DateTimeRange]:
         if self.date_range is not None:
