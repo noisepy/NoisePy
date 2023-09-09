@@ -644,7 +644,7 @@ def plot_all_moveout(
     PARAMETERS:
     ---------------------
     store: StackStore to read stacked data
-    stack_name: datatype either 'Allstack0pws' or 'Allstack0linear'
+    stack_name: datatype either 'Allstack0pws' or 'Allstack_linear'
     freqmin: min frequency to be filtered
     freqmax: max frequency to be filtered
     ccomp:   cross component
@@ -675,6 +675,7 @@ def plot_all_moveout(
 
     dt, maxlag = (params[p] for p in ["dt", "maxlag"])
     stack_method = stack_name.split("0")[-1]
+    print(stack_name, stack_method)
 
     # lags for display
     if not disp_lag:
@@ -728,7 +729,7 @@ def plot_all_moveout(
         extent=[-disp_lag, disp_lag, ndist[-1], ndist[0]],
         aspect="auto",
     )
-    ax.set_title("allstack %s @%5.3f-%5.2f Hz" % (stack_method, freqmin, freqmax))
+    ax.set_title("stacked %s @%5.3f-%5.2f Hz" % (stack_method, freqmin, freqmax))
     ax.set_xlabel("time [s]")
     ax.set_ylabel("distance [km]")
     ax.set_xticks(t)
@@ -737,7 +738,7 @@ def plot_all_moveout(
 
     # save figure or show
     if savefig:
-        outfname = sdir + "/moveout_allstack_" + str(stack_method) + "_" + str(dist_inc) + "kmbin.pdf"
+        outfname = sdir + "/moveout_stack_" + str(stack_method) + "_" + str(dist_inc) + "kmbin.pdf"
         fig.savefig(outfname, format="pdf", dpi=400)
         plt.close()
     else:
