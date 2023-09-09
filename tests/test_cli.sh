@@ -3,7 +3,7 @@
 FORMAT=$1
 LOG_LEVEL=info
 
-if [[ "$FORMAT" != "zarr" && "$FORMAT" != "asdf" ]]; then
+if [[ "$FORMAT" != "zarr" && "$FORMAT" != "asdf" && "$FORMAT" != "numpy" ]]; then
        echo "Missing or incorrect FORMAT argument. Needs to be zarr or asdf, not ${FORMAT}}"
        exit 1
 fi
