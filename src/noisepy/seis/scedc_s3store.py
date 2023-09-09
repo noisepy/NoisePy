@@ -26,7 +26,10 @@ def channel_filter(stations: List[str], ch_prefixes: str) -> Callable[[Channel],
     sta_set = set(stations)
 
     def filter(ch: Channel) -> bool:
-        return ch.station.name in sta_set and ch.type.name.lower().startswith(tuple(ch_prefixes.lower().split(",")))
+        if sta_set == {"*"}:
+            return ch.type.name.lower().startswith(tuple(ch_prefixes.lower().split(",")))
+        else:
+            return ch.station.name in sta_set and ch.type.name.lower().startswith(tuple(ch_prefixes.lower().split(",")))
 
     return filter
 
