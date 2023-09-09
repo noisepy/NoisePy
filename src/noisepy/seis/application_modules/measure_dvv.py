@@ -7,7 +7,7 @@ import pyasdf
 from obspy.signal.filter import bandpass
 from pandas.plotting import register_matplotlib_converters
 
-from . import noise_module
+from . import dvv_utils
 
 # register datetime converter
 
@@ -250,16 +250,16 @@ with pyasdf.ASDFDataSet(sfile, mode="r") as ds:
                     dvv_stretch[ii, 1],
                     cc,
                     cdp,
-                ) = noise_module.stretching(pref, pcur, epsilon, nbtrial, para)
+                ) = dvv_utils.stretching(pref, pcur, epsilon, nbtrial, para)
                 (
                     dvv_stretch[ii, 2],
                     dvv_stretch[ii, 3],
                     cc,
                     cdp,
-                ) = noise_module.stretching(nref, ncur, epsilon, nbtrial, para)
+                ) = dvv_utils.stretching(nref, ncur, epsilon, nbtrial, para)
             if do_dtw:
-                dvv_dtw[ii, 0], dvv_dtw[ii, 1], dist = noise_module.dtw_dvv(pref, pcur, para, mlag, b, direct)
-                dvv_dtw[ii, 2], dvv_dtw[ii, 3], dist = noise_module.dtw_dvv(nref, ncur, para, mlag, b, direct)
+                dvv_dtw[ii, 0], dvv_dtw[ii, 1], dist = dvv_utils.dtw_dvv(pref, pcur, para, mlag, b, direct)
+                dvv_dtw[ii, 2], dvv_dtw[ii, 3], dist = dvv_utils.dtw_dvv(nref, ncur, para, mlag, b, direct)
 
             # check parameters for mwcs
             if move_win_sec > 0.5 * (np.max(twin) - np.min(twin)):
@@ -267,23 +267,23 @@ with pyasdf.ASDFDataSet(sfile, mode="r") as ds:
 
             # functions with moving window
             if do_mwcs:
-                dvv_mwcs[ii, 0], dvv_mwcs[ii, 1] = noise_module.mwcs_dvv(pref, pcur, move_win_sec, step_sec, para)
-                dvv_mwcs[ii, 2], dvv_mwcs[ii, 3] = noise_module.mwcs_dvv(nref, ncur, move_win_sec, step_sec, para)
+                dvv_mwcs[ii, 0], dvv_mwcs[ii, 1] = dvv_utils.mwcs_dvv(pref, pcur, move_win_sec, step_sec, para)
+                dvv_mwcs[ii, 2], dvv_mwcs[ii, 3] = dvv_utils.mwcs_dvv(nref, ncur, move_win_sec, step_sec, para)
             if do_mwcc:
-                dvv_wcc[ii, 0], dvv_wcc[ii, 1] = noise_module.WCC_dvv(pref, pcur, move_win_sec, step_sec, para)
-                dvv_wcc[ii, 2], dvv_wcc[ii, 3] = noise_module.WCC_dvv(pref, pcur, move_win_sec, step_sec, para)
+                dvv_wcc[ii, 0], dvv_wcc[ii, 1] = dvv_utils.WCC_dvv(pref, pcur, move_win_sec, step_sec, para)
+                dvv_wcc[ii, 2], dvv_wcc[ii, 3] = dvv_utils.WCC_dvv(pref, pcur, move_win_sec, step_sec, para)
 
             allfreq = False  # average dv/v over the frequency band for wts and wxs
             if do_wts:
-                dvv_wts[ii, 0], dvv_wts[ii, 1] = noise_module.wts_allfreq(
+                dvv_wts[ii, 0], dvv_wts[ii, 1] = dvv_utils.wts_allfreq(
                     pref, pcur, allfreq, para, epsilon, nbtrial, dj, s0, J, wvn
                 )
-                dvv_wts[ii, 2], dvv_wts[ii, 3] = noise_module.wts_allfreq(
+                dvv_wts[ii, 2], dvv_wts[ii, 3] = dvv_utils.wts_allfreq(
                     nref, ncur, allfreq, para, epsilon, nbtrial, dj, s0, J, wvn
                 )
             if do_wxs:
-                dvv_wxs[ii, 0], dvv_wxs[ii, 1] = noise_module.wxs_allfreq(pref, pcur, allfreq, para, dj, s0, J)
-                dvv_wxs[ii, 2], dvv_wxs[ii, 3] = noise_module.wxs_allfreq(nref, ncur, allfreq, para, dj, s0, J)
+                dvv_wxs[ii, 0], dvv_wxs[ii, 1] = dvv_utils.wxs_allfreq(pref, pcur, allfreq, para, dj, s0, J)
+                dvv_wxs[ii, 2], dvv_wxs[ii, 3] = dvv_utils.wxs_allfreq(nref, ncur, allfreq, para, dj, s0, J)
 
             """
             allfreq = True     # look at all frequency range
