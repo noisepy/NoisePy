@@ -47,6 +47,89 @@ quick index of dv/v methods:
 """
 
 
+def wtdtw_allfreq(
+    ref,
+    cur,
+    allfreq,
+    para,
+    maxLag,
+    b,
+    direction,
+    dj=1 / 12,
+    s0=-1,
+    J=-1,
+    wvn="morlet",
+    normalize=True,
+):
+    """
+    Apply dynamic time warping method to continuous wavelet transformation (CWT) of signals
+    for all frequecies in an interest range
+
+    Parameters
+    --------------
+    ref: The "Reference" timeseries (numpy.ndarray)
+    cur: The "Current" timeseries (numpy.ndarray)
+    allfreq: a boolen variable to make measurements on all frequency range or not
+    maxLag: max number of points to search forward and backward.
+    b: b-value to limit strain, which is to limit the maximum velocity perturbation.
+    See equation 11 in (Mikesell et al. 2015)
+    direction: direction to accumulate errors (1=forward, -1=backward)
+    dj, s0, J, sig, wvn: common parameters used in 'wavelet.wct'
+    normalize: normalize the wavelet spectrum or not. Default is True
+
+    RETURNS:
+    ------------------
+    dvv: estimated dv/v
+    err: error of dv/v estimation
+
+    Written by Congcong Yuan (30 Jun, 2019)
+    """
+    # common variables
+    freq = para["freq"]
+    dt = para["dt"]
+    fmin = np.min(freq)
+    fmax = np.max(freq)
+
+    # apply cwt on two traces
+    cwt1, sj, freq, coi, _, _ = pycwt.cwt(cur, dt, dj, s0, J, wvn)
+    cwt2, sj, freq, coi, _, _ = pycwt.cwt(ref, dt, dj, s0, J, wvn)
+
+    # extract real values of cwt
+    rcwt1, rcwt2 = np.real(cwt1), np.real(cwt2)
+
+    # zero out cone of influence and data outside frequency band
+    if (fmax > np.max(freq)) | (fmax <= fmin):
+        raise ValueError("Abort: input frequency out of limits!")
+    else:
+        freq_indin = np.where((freq >= fmin) & (freq <= fmax))[0]
+
+        # Use DTW method to extract dvv
+        nfreq = len(freq_indin)
+        dvv, err = np.zeros(nfreq, dtype=np.float32), np.zeros(nfreq, dtype=np.float32)
+
+        for ii, ifreq in enumerate(freq_indin):
+            # prepare windowed data
+            wcwt1, wcwt2 = rcwt1[ifreq], rcwt2[ifreq]
+            # Normalizes both signals, if appropriate.
+            if normalize:
+                ncwt1 = (wcwt1 - wcwt1.mean()) / wcwt1.std()
+                ncwt2 = (wcwt2 - wcwt2.mean()) / wcwt2.std()
+            else:
+                ncwt1 = wcwt1
+                ncwt2 = wcwt2
+
+            # run dtw
+            dv, error, dist = dtw_dvv(ncwt2, ncwt1, para, maxLag, b, direction)
+            dvv[ii], err[ii] = dv, error
+
+    del cwt1, cwt2, rcwt1, rcwt2, ncwt1, ncwt2, wcwt1, wcwt2, coi, sj, dist
+
+    if not allfreq:
+        return np.mean(dvv), np.mean(err)
+    else:
+        return freq[freq_indin], dvv, err
+
+
 def stretching(ref, cur, dv_range, nbtrial, para):
     """
     This function compares the Reference waveform to stretched/compressed current waveforms to get the
