@@ -117,12 +117,22 @@ def test_mwcs_dvv():
 if __name__ == "__main__":
     print("Running stretching...")
     t = time.time()
-    for i in range(300):
+    for i in range(100):
         test_stretching()
     print("Done stretching, no errors, %4.2fs." % (time.time() - t))
 
     print("Running stretching using numpy...")
     t = time.time()
-    for i in range(300):
+    for i in range(100):
         test_stretching_vect()
+    print("Done stretching, no errors, %4.2fs." % (time.time() - t))
+
+    t = time.time()
+    for i in range(100):
+        test_mwcs_dvv()
+    print("Done stretching, no errors, %4.2fs." % (time.time() - t))
+
+    t = time.time()
+    for i in range(100):
+        test_WCC_dvv()
     print("Done stretching, no errors, %4.2fs." % (time.time() - t))
