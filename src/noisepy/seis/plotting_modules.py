@@ -723,8 +723,8 @@ def plot_all_moveout(
 
     # plotting figures
     fig, ax = plt.subplots(figsize=(10, 6))
-    ax.imshow(ndata, cmap="RdBu", extent=[-disp_lag, disp_lag, ndist[-1], ndist[0]], aspect="auto", origin="lower")
-    ax.set_title("stacked %s @%5.3f-%5.2f Hz" % (stack_method, freqmin, freqmax))
+    ax.imshow(ndata, cmap="RdBu", extent=[-disp_lag, disp_lag, ndist[0], ndist[-1]], aspect="auto", origin="lower")
+    ax.set_title("stacked %s (%5.3f-%5.2f Hz)" % (stack_method, freqmin, freqmax))
     ax.set_xlabel("time [s]")
     ax.set_ylabel("distance [km]")
     ax.set_xticks(t)

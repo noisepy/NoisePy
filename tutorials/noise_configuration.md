@@ -1,0 +1,49 @@
+# Tutorials to Configure Noisepy Job
+
+
+The ``config.yml``
+
+```
+start_date: 2019-02-01 00:00:00     # start date
+end_date: 2019-02-02 00:00:00
+samp_freq: 20
+cc_len: 3600.0
+lamin: 31
+lamax: 42
+lomin: -124
+lomax: -115
+step: 1800.0
+freqmin: 0.05
+freqmax: 2.0
+freq_norm: rma
+time_norm: 'no'
+cc_method: xcorr
+smooth_N: 10
+smoothspect_N: 10
+substack: true
+substack_len: 3600.0
+maxlag: 200
+inc_hours: 12
+max_over_std: 10
+ncomp: 3
+stationxml: false
+rm_resp: inv
+rm_resp_out: VEL
+respdir: null
+acorr_only: false
+xcorr_only: true
+stack_method: linear
+keep_substack: false
+rotation: true
+correction: false
+correction_csv: null
+down_list: false
+net_list:
+- '*'
+stations:
+- A*
+channels:
+- BHE
+- BHN
+- BHZ
+```
