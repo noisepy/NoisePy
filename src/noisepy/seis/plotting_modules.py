@@ -722,13 +722,8 @@ def plot_all_moveout(
         ndata[ii] /= np.max(np.abs(ndata[ii]))
 
     # plotting figures
-    fig, ax = plt.subplots()
-    ax.matshow(
-        ndata,
-        cmap="seismic",
-        extent=[-disp_lag, disp_lag, ndist[-1], ndist[0]],
-        aspect="auto",
-    )
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.imshow(ndata, cmap="RdBu", extent=[-disp_lag, disp_lag, ndist[-1], ndist[0]], aspect="auto", origin="lower")
     ax.set_title("stacked %s @%5.3f-%5.2f Hz" % (stack_method, freqmin, freqmax))
     ax.set_xlabel("time [s]")
     ax.set_ylabel("distance [km]")
