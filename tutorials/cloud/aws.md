@@ -64,23 +64,39 @@ This tutorial focuses on small, toy problems to be ran on notebooks or simple CL
 Inside your EC2 instance SSH session, run:
 
 ```
+sudo yum install git
 wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 chmod +x Miniconda3-latest-Linux-x86_64.sh
 ./Miniconda3-latest-Linux-x86_64.sh -b -p $HOME/miniconda
 ./miniconda/bin/conda init bash
 bash
+source .bashrc
 conda create -n noisepy python==3.10
 conda activate noisepy
-python -m ipykernel install --user --name noisepy
-pip install noisepy-seis
+git clone https://github.com/mdenolle/NoisePy
+cd NoisePy
+pip install ipykernel jupyter
+pip install noisepy-seis .
 ```
 
 You may save your environment using AWS AMI. Then subsequent launcing of instances can re-use your environment.
+
+Using docker
+```
+sudo yum install -y git docker
+sudo systemctl start docker
+sudo docker pull ghcr.io/mdenolle/noisepy:latest
+```
+
+```
+sudo docker run -v ~/tmp:/tmp cross_correlate --path /tmp
+```
 
 ## Cross-correlation - Toy Problem
 
 ### Exploration using notebooks
 We recommend starting off with a notebook to explore simple jobs and the desirable configuration (e.g., noise pre-processing).  Refer to the [SCOPED HPS Book](https://seisscoped.org/HPS/softhardware/AWS_101.html) to open a Jupyter notebook.
+
 
 ### Exploration using CLI
 You may edit the ``config.yml`` file with appropriate parameters. Refer to the NoiseConfig page to set up.
