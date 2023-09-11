@@ -125,11 +125,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Build and push Docker image
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v4.1.1
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           push: ${{ github.event_name != 'pull_request' }}
-          build-args: VERSION=${{needs.test-built-dist.outputs.package-version}}
+          build-args: VERSION=0.9.73
+          #${{needs.test-built-dist.outputs.package-version}}
