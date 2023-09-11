@@ -21,9 +21,9 @@ jobs:
     - name: pytest
       run: PYTHONPATH=src pytest --cov tests/.
     - name: Upload coverage reports to Codecov
-       uses: codecov/codecov-action@v3
-       env:
-         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      uses: codecov/codecov-action@v3
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
   s0_download:
     runs-on: ubuntu-22.04
     steps:
