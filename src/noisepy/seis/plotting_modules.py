@@ -694,14 +694,15 @@ def plot_all_moveout(
 
     # load cc and parameter matrix
     for ii, (src, rec) in enumerate(sta_pairs):
+        print(stack_name)
         params, all_data = store.read(src, rec, ccomp, stack_name)
         if len(params) == 0 or all_data.size == 0:
             logger.warning(f"No data available for {src}_{rec}/{stack_name}/{ccomp}")
             continue
         dist[ii] = params["dist"]
         ngood[ii] = params["ngood"]
-
-        data[ii] = bandpass(all_data[indx1:indx2], freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
+        crap = bandpass(all_data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
+        data[ii] = crap[indx1:indx2]
 
     # average cc
     ntrace = int(np.round(np.max(dist) + 0.51) / dist_inc)
@@ -718,18 +719,29 @@ def plot_all_moveout(
     ndata = ndata[indx]
     ndist = ndist[indx]
     for ii in range(ndata.shape[0]):
-        print(ii, np.max(np.abs(ndata[ii])))
         ndata[ii] /= np.max(np.abs(ndata[ii]))
 
-    # plotting figures
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.imshow(ndata, cmap="RdBu", extent=[-disp_lag, disp_lag, ndist[0], ndist[-1]], aspect="auto", origin="lower")
-    ax.set_title("stacked %s (%5.3f-%5.2f Hz)" % (stack_method, freqmin, freqmax))
-    ax.set_xlabel("time [s]")
-    ax.set_ylabel("distance [km]")
-    ax.set_xticks(t)
-    ax.xaxis.set_ticks_position("bottom")
-    # ax.text(np.ones(len(ndist))*(disp_lag-5),dist[ndist],ngood[ndist],fontsize=8)
+    if ndata.shape[0] >= 10:
+        # plotting figures
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.imshow(ndata, cmap="RdBu", extent=[-disp_lag, disp_lag, ndist[0], ndist[-1]], aspect="auto", origin="lower")
+        ax.set_title("stacked %s (%5.3f-%5.2f Hz)" % (stack_method, freqmin, freqmax))
+        ax.set_xlabel("time [s]")
+        ax.set_ylabel("distance [km]")
+        ax.set_xticks(t)
+        ax.xaxis.set_ticks_position("bottom")
+        # ax.text(np.ones(len(ndist))*(disp_lag-5),dist[ndist],ngood[ndist],fontsize=8)
+    else:
+        fig, ax = plt.subplots(figsize=(10, 6))
+        print(disp_lag, data.shape[1])
+        tt = 2 * np.linspace(0, disp_lag, data.shape[1]) - disp_lag
+        for ii in range(len(data)):
+            ax.plot(tt, data[ii] / np.max(np.abs(data[ii])) * 10 + dist[ii], "k")
+            ax.set_title("stacked %s (%5.3f-%5.2f Hz)" % (stack_method, freqmin, freqmax))
+            ax.set_xlabel("time [s]")
+            ax.set_ylabel("distance [km]")
+            ax.set_xticks(t)
+            ax.xaxis.set_ticks_position("bottom")
 
     # save figure or show
     if savefig:
