@@ -115,7 +115,7 @@ noisepy cross_correlate --format zarr --raw_data_path s3://scedc-pds/continuous_
 
 This is a toy problem that uses a small set of stations, reads from a cloud store, and output data in zarr.
 
-In terminal, type the following commend.
+In terminal, type the following command.
 
 
 
