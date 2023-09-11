@@ -20,10 +20,6 @@ runs:
       run: |
         python3 -m ensurepip
         pip3 install --upgrade pip
-    - name: Setup pytest-cov
-      shell: sh
-      run: |
-        pip3 install pytest-cov
     - name: Setup MPI
       if: ${{ inputs.mpi == 'true' }}
       uses: mpi4py/setup-mpi@v1

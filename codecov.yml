@@ -1,7 +1,7 @@
 # config for codecov
 
 codecov: 
-  token: 5b43bc70-96b0-4bbc-abe3-e3c3584db624
+  token: df828ddb-54c2-4c3b-9959-0571877a1ea2
 
 coverage:
   status:
