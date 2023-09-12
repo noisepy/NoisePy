@@ -87,7 +87,7 @@ just created:
 		}
 ```
 
-
+Note that the job role ARN will be in the format of `arn:aws:iam::<YOUR_ACCOUNT_ID>:role/<JOB_ROLE_NAME>`. The bucket ARN will be in the format of `arn:aws:s3:::<YOUR_S3_BUCKET>`.
 ## Create a Compute Environment
 
 You'll need two pieces of information to create the compute environment. The list of subnets in your VPC and the default security group ID. You can use the following commands to retrieve them:
