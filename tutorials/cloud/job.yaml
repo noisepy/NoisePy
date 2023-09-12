@@ -1,0 +1,16 @@
+jobName: ''
+jobQueue: ''
+jobDefinition: '' # [REQUIRED] The job definition used by this job.
+containerOverrides: # An object with various properties that override the defaults for the job definition that specify the name of a container in the specified job definition and the overrides it should receive.
+  command: # The command to send to the container that overrides the default command from the Docker image or the job definition.
+  - cross_correlate
+  - --format=numpy
+  - --raw_data_path=s3://scedc-pds/continuous_waveforms/
+  - --xml_path=s3://scedc-pds/FDSNstationXML/CI/
+  - --ccf_path=s3://your-bucket/CCF_job
+  - --net_list=CI
+  - --stations=*
+  - --start=2022-02-02
+  - --end=2022-02-03
+  - --loglevel=debug
+  - --logfile=log.txt

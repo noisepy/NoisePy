@@ -1,0 +1,34 @@
+jobDefinitionName: ''  # [REQUIRED] The name of the job definition to register.
+type: container
+platformCapabilities:
+- FARGATE
+containerProperties:
+  image: 'ghcr.io/mdenolle/noisepy'
+  command:
+  - 'cross_correlate'
+  - --format=numpy
+  - --raw_data_path=s3://scedc-pds/continuous_waveforms/
+  - --xml_path=s3://scedc-pds/FDSNstationXML/CI/
+  - --ccf_path=s3://your-bucket/CCF_job
+  - --net_list=CI
+  - --stations=*
+  - --start=2022-02-02
+  - --end=2022-02-03
+  - --loglevel=debug
+  - --logfile=log.txt
+  jobRoleArn: ''
+  executionRoleArn: ''
+  resourceRequirements: # The type and amount of resources to assign to a container.
+  - value: '16'
+    type: VCPU
+  - value: '65536'
+    type: MEMORY
+  networkConfiguration: # The network configuration for jobs that are running on Fargate resources.
+    assignPublicIp: ENABLED  # Indicates whether the job has a public IP address. Valid values are: ENABLED, DISABLED.
+  ephemeralStorage: # The amount of ephemeral storage to allocate for the task.
+    sizeInGiB: 21  # [REQUIRED] The total amount, in GiB, of ephemeral storage to set for the task.
+retryStrategy: # The retry strategy to use for failed jobs that are submitted with this job definition.
+  attempts: 2  # The number of times to move a job to the RUNNABLE status.
+propagateTags: true # Specifies whether to propagate the tags from the job or job definition to the corresponding Amazon ECS task.
+timeout: # The timeout configuration for jobs that are submitted with this job definition, after which Batch terminates your jobs if they have not finished.
+  attemptDurationSeconds: 10000  # The job timeout time (in seconds) that's measured from the job attempt's startedAt timestamp.
