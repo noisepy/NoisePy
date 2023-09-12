@@ -13,7 +13,7 @@ jobs:
   build-artifact:
     name: Build noisepy-seis package
     runs-on: ubuntu-20.04
-    if: false # github.repository == 'mdenolle/NoisePy'
+    if: github.repository == 'mdenolle/NoisePy'
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -104,7 +104,7 @@ jobs:
         password: ${{ secrets.PYPI_API_TOKEN }}
   push_to_registry:
     name: Push Docker image to Docker Hub
-    # needs: [publish-pypi, test-built-dist]
+    needs: [publish-pypi, test-built-dist]
     runs-on: ubuntu-latest
     steps:
       - name: Delay for PyPI
@@ -131,7 +131,5 @@ jobs:
           platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          push: true
-          # push: ${{ github.event_name != 'pull_request' }}
-          build-args: VERSION=0.9.73
-          #${{needs.test-built-dist.outputs.package-version}}
+          push: ${{ github.event_name != 'pull_request' }}
+          build-args: VERSION=${{needs.test-built-dist.outputs.package-version}}
