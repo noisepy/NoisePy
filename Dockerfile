@@ -1,10 +1,12 @@
+FROM --platform=$TARGETPLATFORM ubuntu:22.04
 ARG PYTHON_VERSION=3.10.12
-FROM --platform=$TARGETPLATFORM python:${PYTHON_VERSION}
-# FROM --platform=$TARGETPLATFORM continuumio/miniconda3
 
-# RUN conda create -y --name noisepy python=${PYTHON_VERSION} numcodecs && conda activate noisepy
-# RUN conda install -c conda-forge obspy
-# RUN conda init bash && . /root/.bashrc && conda activate noisepy
+# Avoid timezone prompts during python installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update
+RUN apt-get install -y python3.10 && \
+    apt-get install -y python3-pip
 
 ARG VERSION
 RUN pip3 install noisepy-seis==${VERSION}
