@@ -111,8 +111,9 @@ Make a note of the compute environment ARN to use in the next step.
 
 Add the compute environment and a name to `job_queue.yaml` and then run:
 
+```
 aws batch create-job-queue --no-cli-pager --cli-input-yaml file://job_queue.yaml
-
+```
 
 ## Create a Job Definition
 
