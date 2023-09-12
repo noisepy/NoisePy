@@ -14,3 +14,13 @@ containerOverrides: # An object with various properties that override the defaul
   - --end=2022-02-03
   - --loglevel=debug
   - --logfile=log.txt
+# Uncomment to run a job across multiple nodes.
+# Cross-correlation:
+#    The array size needs to be set to the number of days in the time range.
+#    Each day will run on a separate node.
+#    E.g. [2022-02-02 to 2022-02-9) -> size: 8
+# Stacking:
+#   The array size needs to be set to the number of station pairs to stack.
+#   Each station pair will run on a separate node.
+# arrayProperties:
+#   size: 0  # The size of the array job.

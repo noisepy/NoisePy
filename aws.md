@@ -129,3 +129,7 @@ Update `job.yaml` with a name and the names of your job queue and job definition
 ```
 aws batch submit-job --no-cli-pager --cli-input-yaml file://job.yaml --job-name "job_name_override"
 ```
+
+## Multi-node (array) jobs
+
+See comment above `arrayProperties` in `job.yaml` for instructions on how to process in parallel across multiple nodes.
