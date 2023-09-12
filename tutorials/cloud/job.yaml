@@ -7,7 +7,7 @@ containerOverrides: # An object with various properties that override the defaul
   - --format=numpy
   - --raw_data_path=s3://scedc-pds/continuous_waveforms/
   - --xml_path=s3://scedc-pds/FDSNstationXML/CI/
-  - --ccf_path=s3://your-bucket/CCF_job
+  - --ccf_path=s3://<YOUR_S3_BUCKET>/<CC_PATH>
   - --net_list=CI
   - --stations=*
   - --start=2022-02-02
