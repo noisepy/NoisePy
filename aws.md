@@ -116,7 +116,7 @@ aws batch create-job-queue --no-cli-pager --cli-input-yaml file://job_queue.yaml
 
 ## Create a Job Definition
 
-Update the `jobRoleArn` and `executionRoleArn` fields in the `job_definition.yaml` file with the ARN of the role created in the first step. Add a name for the `jobDefinition` and update the `command` argument as needed. This command will become the default command but can still be overriden in individual jobs. You can adjust the timeout as appropriate too. Finally, run:
+Update the `jobRoleArn` and `executionRoleArn` fields in the `job_definition.yaml` file with the ARN of the role created in the first step. Add a name for the `jobDefinition` and update the `command` argument as needed (e.g., update the `ccf_path` argument). This command will become the default command but can still be overriden in individual jobs. You can adjust the timeout as appropriate too. Finally, run:
 
 ```
 aws batch register-job-definition --no-cli-pager --cli-input-yaml file://job_definition.yaml
