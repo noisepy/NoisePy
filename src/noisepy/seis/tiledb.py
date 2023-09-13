@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 import numpy as np
 import tiledb
@@ -38,16 +38,13 @@ class _TileDBHelper:
     def contains(self, path: str) -> bool:
         return False
 
-    def set_paths(self, paths: List[str]):
-        self.paths = {p: i for i, p in enumerate(paths)}
-
     def append(
         self,
         path: str,
         params: Dict[str, Any],
         data: np.ndarray,
     ):
-        index = self.paths[path]
+        index = int(path)
         logger.debug(f"Appending to {path}: {data.shape}, index = {index}")
         if data.shape[0] < 9:
             data = np.pad(data, ((0, 9 - data.shape[0]), (0, 0), (0, 0)), mode="constant", constant_values=np.nan)
