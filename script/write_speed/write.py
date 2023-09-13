@@ -31,6 +31,9 @@ class Writer(ABC):
         with open("params.json", "r") as f:
             self.params = json.load(f)
 
+    def initialize(self):
+        pass
+
     def write(self, id: int) -> int:
         t = time.time()
         self.write_override(id)
@@ -80,11 +83,11 @@ class ZarrMultiArrayWriter(Writer):
 
     def __init__(self, path: str) -> None:
         super().__init__(path)
+
+    def initialize(self):
         mode = "a"
-        storage_options = {}
-        storage_options["client_kwargs"] = {"region_name": "us-west-2"}
-        logger.info(f"store creating at {self.path}, mode={mode}, storage_options={storage_options}")
-        store = zarr.storage.FSStore(self.path, **storage_options)
+        logger.info(f"store creating at {self.path}, mode={mode}, storage_options={self.storage_options}")
+        store = zarr.storage.FSStore(self.path, **self.storage_options)
         self.root = zarr.open_group(store, mode=mode)
         logger.info(f"store created at {self.path}: {type(store)}. Zarr version {zarr.__version__}")
 
@@ -105,11 +108,11 @@ class ZarrSingleArrayWriter(Writer):
 
     def __init__(self, path: str) -> None:
         super().__init__(path)
+
+    def initialize(self):
         mode = "a"
-        storage_options = {}
-        storage_options["client_kwargs"] = {"region_name": "us-west-2"}
-        logger.info(f"store creating at {self.path}, mode={mode}, storage_options={storage_options}")
-        store = zarr.storage.FSStore(self.path, **storage_options)
+        logger.info(f"store creating at {self.path}, mode={mode}, storage_options={self.storage_options}")
+        store = zarr.storage.FSStore(self.path, **self.storage_options)
         self.root = zarr.open_array(
             store, mode=mode, shape=(10000, 9, 1, 8001), chunks=(1000, 9, 1, 8001), dtype=self.data.dtype
         )
@@ -122,14 +125,14 @@ class ZarrSingleArrayWriter(Writer):
 
 class TileDBWriter(Writer):
     """
-    Writes a single tiledb array with all cross-correlations (chunk size 1000 CCs)
+    Writes a single tiledb array with all cross-correlations (tile size: 1000 CCs)
     """
 
     def __init__(self, path: str) -> None:
         super().__init__(path)
-        storage_options = {}
-        storage_options["client_kwargs"] = {"region_name": "us-west-2"}
-        self.helper = _TileDBHelper(path, "w", storage_options=self.storage_options)
+
+    def initialize(self):
+        self.helper = _TileDBHelper(self.path, "w", 1000, storage_options=self.storage_options)
 
     def write_override(self, id: int):
         self.helper.append(
@@ -139,12 +142,25 @@ class TileDBWriter(Writer):
         )
 
 
+class TileDBOneWriter(TileDBWriter):
+    """
+    Writes a single tiledb array with all cross-correlations (tile size: 1 CC)
+    """
+
+    def __init__(self, path: str) -> None:
+        super().__init__(path)
+
+    def initialize(self):
+        self.helper = _TileDBHelper(self.path, "w", 1, storage_options=self.storage_options)
+
+
 def test(nwrites: int, writer: Writer):
     # warmup
     WARMUP = 10
     if writer.fs.exists(writer.path):
         writer.fs.rm(writer.path, recursive=True)
     writer.fs.makedirs(writer.path, exist_ok=True)
+    writer.initialize()
     writer.write(0)
     executor = ThreadPoolExecutor()
     times = list(executor.map(writer.write, range(1, WARMUP)))
@@ -160,7 +176,7 @@ def test(nwrites: int, writer: Writer):
         f.write("\n".join([str(t) for t in times]))
 
 
-writer_types = [NumpyWriter, ZarrMultiArrayWriter, ZarrSingleArrayWriter, TileDBWriter]
+writer_types = [TileDBOneWriter, NumpyWriter, ZarrMultiArrayWriter, ZarrSingleArrayWriter, TileDBWriter]
 if __name__ == "__main__":
     writes = int(sys.argv[1])
     path = s3_path + str(writes)
