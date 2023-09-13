@@ -1,0 +1,7 @@
+jobName: 'test_writes'
+jobQueue: '' # [REQUIRED] The job queue into which the job is submitted. You can specify either the name or the Amazon Resource Name (ARN) of the queue.
+jobDefinition: 'test-writes-jd' # [REQUIRED] The job definition used by this job.
+containerOverrides: # An object with various properties that override the defaults for the job definition that specify the name of a container in the specified job definition and the overrides it should receive.
+  command: # The command to send to the container that overrides the default command from the Docker image or the job definition.
+  - write.py
+  - '5000'
