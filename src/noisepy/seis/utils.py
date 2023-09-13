@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 import fsspec
 import numpy as np
 import psutil
-from tqdm import tqdm
+from tqdm.autonotebook import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
 from noisepy.seis.constants import AWS_EXECUTION_ENV
