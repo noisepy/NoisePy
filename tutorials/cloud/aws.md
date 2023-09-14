@@ -76,7 +76,7 @@ conda activate noisepy
 git clone https://github.com/mdenolle/NoisePy
 cd NoisePy
 pip install ipykernel jupyter
-pip install noisepy-seis .
+pip install noisepy-seis
 ```
 
 You may save your environment using AWS AMI. Then subsequent launcing of instances can re-use your environment.
