@@ -694,7 +694,6 @@ def plot_all_moveout(
 
     # load cc and parameter matrix
     for ii, (src, rec) in enumerate(sta_pairs):
-        print(stack_name)
         params, all_data = store.read(src, rec, ccomp, stack_name)
         if len(params) == 0 or all_data.size == 0:
             logger.warning(f"No data available for {src}_{rec}/{stack_name}/{ccomp}")

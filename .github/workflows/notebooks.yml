@@ -42,7 +42,7 @@ jobs:
         run: |
           cd tutorials
           pip install -r requirements.txt
-          jb build .
+          jb build . -W
           cd ..
       - name: Publish as artifact
         uses: actions/upload-artifact@v3
