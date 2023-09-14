@@ -29,7 +29,7 @@ Stacking script of NoisePy to:
     4) rotate from a E-N-Z to R-T-Z system if needed.
 
 Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
-         Marine Denolle (mdenolle@fas.harvard.edu)
+         Marine Denolle (mdenolle@uw.edu)
 
 NOTE:
     0. MOST occasions you just need to change parameters followed with detailed explanations to run the script.
@@ -37,10 +37,6 @@ NOTE:
     2. auto-correlation is not kept in the stacking due to the fact that it has only 6 cross-component.
     this tends to mess up the orders of matrix that stores the CCFs data
 """
-
-
-# maximum memory allowed per core in GB
-MAX_MEM = 4.0
 
 
 def stack(
@@ -308,9 +304,5 @@ def calc_segments(fft_params: ConfigParameters, num_chunk: int) -> Tuple[int, in
     npts_segmt = int(2 * fft_params.maxlag * fft_params.samp_freq) + 1
     memory_size = num_chunk * num_segmts * npts_segmt * 4 / 1024**3
 
-    if memory_size > MAX_MEM:
-        raise ValueError(
-            "Require %5.3fG memory but only %5.3fG provided)! Cannot load cc data all once!" % (memory_size, MAX_MEM)
-        )
-    logger.debug("Good on memory (need %5.2f G and %s G provided)!" % (memory_size, MAX_MEM))
+    logger.debug("Good on memory (need %5.2f G )!" % (memory_size))
     return num_segmts, npts_segmt
