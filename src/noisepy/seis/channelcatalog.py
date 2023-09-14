@@ -78,7 +78,7 @@ class XMLStationChannelCatalog(ChannelCatalog):
         xmlfile = fs_join(self.xmlpath, file_name)
         return self._get_inventory_from_file(xmlfile)
 
-    @lru_cache
+    @lru_cache(maxsize=None)
     def _get_inventory_from_file(self, xmlfile):
         if not self.fs.exists(xmlfile):
             logger.warning(f"Could not find StationXML file {xmlfile}. Returning empty Inventory()")
