@@ -56,7 +56,7 @@ def test_timespan_channels(store: SCEDCS3DataStore):
     assert len(timespans) == 1
     assert timespans[0] == timespan1
     channels = store.get_channels(timespan1)
-    assert len(channels) == 3
+    assert len(channels) == len(read_channels)
     channels = store.get_channels(timespan2)
     assert len(channels) == 0
 

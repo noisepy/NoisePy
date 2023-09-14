@@ -467,7 +467,7 @@ def mwcs_dvv(ref, cur, moving_window_length, slide_step, para, smoothing_half_wi
     return -m0 * 100, em0 * 100
 
 
-def WCC_dvv(ref, cur, moving_window_length, slide_step, para):
+def wcc_dvv(ref, cur, moving_window_length, slide_step, para):
     """
     Windowed cross correlation (WCC) for dt or dv/v mesurement (Snieder et al. 2012)
 
@@ -1291,7 +1291,7 @@ def wct_modified(
         s0 = 2 * dt / wavelet.flambda()
     if J == -1:
         # Number of scales
-        J = np.int(np.round(np.log2(y1.size * dt / s0) / dj))
+        J = int(np.round(np.log2(y1.size * dt / s0) / dj))
 
     # Makes sure input signals are numpy arrays.
     y1 = np.asarray(y1)
@@ -1340,3 +1340,116 @@ def wct_modified(
         sig = np.asarray([0])
 
     return WCT, aWCT, coi, freq, sig
+
+
+def wtdtw_dvv(
+    ref,
+    cur,
+    allfreq,
+    para,
+    maxLag,
+    b,
+    direction,
+    dj=1 / 12,
+    s0=-1,
+    J=-1,
+    wvn="morlet",
+    normalize=True,
+):
+    """
+    Apply dynamic time warping method to continuous wavelet transformation (CWT) of signals
+    for all frequecies in an interest range
+
+    Parameters
+    --------------
+    ref: The "Reference" timeseries (numpy.ndarray)
+    cur: The "Current" timeseries (numpy.ndarray)
+    allfreq: a boolen variable to make measurements on all frequency range or not
+    maxLag: max number of points to search forward and backward.
+    b: b-value to limit strain, which is to limit the maximum velocity perturbation.
+    See equation 11 in (Mikesell et al. 2015)
+    direction: direction to accumulate errors (1=forward, -1=backward)
+    dj, s0, J, sig, wvn: common parameters used in 'wavelet.wct'
+    normalize: normalize the wavelet spectrum or not. Default is True
+
+    RETURNS:
+    ------------------
+    dvv: estimated dv/v
+    err: error of dv/v estimation
+
+    Written by Congcong Yuan (30 Jun, 2019)
+    """
+    # common variables
+    t = para["t"]
+    twin = para["twin"]
+    freq = para["freq"]
+    dt = para["dt"]
+    tmin = np.min(twin)
+    tmax = np.max(twin)
+    fmin = np.min(freq)
+    fmax = np.max(freq)
+    itvec = np.arange(int((tmin - t.min()) / dt) + 1, int((tmax - t.min()) / dt) + 1)
+
+    # apply cwt on two traces
+    cwt1, sj, freq, coi, _, _ = pycwt.cwt(cur, dt, dj, s0, J, wvn)
+    cwt2, sj, freq, coi, _, _ = pycwt.cwt(ref, dt, dj, s0, J, wvn)
+
+    # extract real values of cwt
+    rcwt1, rcwt2 = np.real(cwt1), np.real(cwt2)
+
+    # zero out cone of influence and data outside frequency band
+    if (fmax > np.max(freq)) | (fmax <= fmin):
+        raise ValueError("Abort: input frequency out of limits!")
+    else:
+        freq_indin = np.where((freq >= fmin) & (freq <= fmax))[0]
+
+    # convert wavelet domain back to time domain (~filtering)
+    if not allfreq:
+        # inverse cwt to time domain
+        icwt1 = pycwt.icwt(cwt1[freq_indin], sj[freq_indin], dt, dj, wvn)
+        icwt2 = pycwt.icwt(cwt2[freq_indin], sj[freq_indin], dt, dj, wvn)
+
+        # assume all time window is used
+        wcwt1, wcwt2 = np.real(icwt1), np.real(icwt2)
+
+        # Normalizes both signals, if appropriate.
+        if normalize:
+            ncwt1 = (wcwt1 - wcwt1.mean()) / wcwt1.std()
+            ncwt2 = (wcwt2 - wcwt2.mean()) / wcwt2.std()
+        else:
+            ncwt1 = wcwt1
+            ncwt2 = wcwt2
+
+        # run dtw
+        dv, error, dist = dtw_dvv(ncwt2[itvec], ncwt1[itvec], para, maxLag, b, direction)
+        dvv, err = dv, error
+
+        return dvv, err
+
+    # directly take advantage of the real-valued parts of wavelet transforms
+    else:
+        # initialize variable
+        nfreq = len(freq_indin)
+        dvv, err = (
+            np.zeros(nfreq, dtype=np.float32),
+            np.zeros(nfreq, dtype=np.float32),
+        )
+
+        # loop through each freq
+        for ii, ifreq in enumerate(freq_indin):
+            # prepare windowed data
+            wcwt1, wcwt2 = rcwt1[ifreq], rcwt2[ifreq]
+
+            # Normalizes both signals, if appropriate.
+            if normalize:
+                ncwt1 = (wcwt1 - wcwt1.mean()) / wcwt1.std()
+                ncwt2 = (wcwt2 - wcwt2.mean()) / wcwt2.std()
+            else:
+                ncwt1 = wcwt1
+                ncwt2 = wcwt2
+
+            # run dtw
+            dv, error, dist = dtw_dvv(ncwt2[itvec], ncwt1[itvec], para, maxLag, b, direction)
+            dvv[ii], err[ii] = dv, error
+
+        return freq[freq_indin], dvv, err
