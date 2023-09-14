@@ -2,7 +2,8 @@ from datetime import datetime
 
 import pytest
 
-from noisepy.seis.asdfstore import ASDFRawDataStore
+from noisepy.seis.asdfstore import ASDFRawDataStore, _parse_channel_path
+from noisepy.seis.datatypes import ChannelType
 
 
 @pytest.fixture
@@ -34,3 +35,16 @@ def test_get_data(store: ASDFRawDataStore):
     assert chdata.data.size == 72001
     assert chdata.sampling_rate == 20.0
     assert chdata.start_timestamp == ts.start_datetime.timestamp()
+
+
+@pytest.mark.parametrize(
+    "path,ch1, ch2",
+    [
+        ("bhn_bhn", ChannelType("bhn"), ChannelType("bhn")),
+        ("bhn_00_bhn_01", ChannelType("bhn", "00"), ChannelType("bhn", "01")),
+        ("bhn_bhn_01", ChannelType("bhn"), ChannelType("bhn", "01")),
+        ("bhn_00_bhn", ChannelType("bhn", "00"), ChannelType("bhn")),
+    ],
+)
+def test_parse_channel_path(path, ch1, ch2):
+    assert _parse_channel_path(path) == (ch1, ch2)

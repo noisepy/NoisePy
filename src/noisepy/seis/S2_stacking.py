@@ -1,6 +1,5 @@
 import logging
 import sys
-import time
 from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import get_context
 from typing import Any, Dict, List, Tuple
@@ -9,12 +8,11 @@ import numpy as np
 import pandas as pd
 from datetimerange import DateTimeRange
 
-from noisepy.seis.datatypes import ConfigParameters, StackMethod, Station
-from noisepy.seis.scheduler import Scheduler, SingleNodeScheduler
-from noisepy.seis.stores import CrossCorrelationDataStore, StackStore
-from noisepy.seis.utils import TimeLogger, get_results
-
 from . import noise_module
+from .datatypes import ConfigParameters, Stack, StackMethod, Station
+from .scheduler import Scheduler, SingleNodeScheduler
+from .stores import CrossCorrelationDataStore, StackStore
+from .utils import TimeLogger, get_results
 
 logger = logging.getLogger(__name__)
 if not sys.warnoptions:
@@ -70,13 +68,24 @@ def stack(
     # Get the pairs that need to be processed by this node
     pairs_node = [pairs_all[i] for i in scheduler.get_indices(pairs_all)]
 
-    tasks = [executor.submit(stack_pair, p[0], p[1], timespans, cc_store, stack_store, fft_params) for p in pairs_node]
+    done_pairs = set(stack_store.get_station_pairs())
+    missing_pairs = []
+    for p in pairs_node:
+        if (p[0], p[1]) in done_pairs:
+            logger.info(f"Stack already exists for {p[0]}-{p[1]}")
+            continue
+        missing_pairs.append(p)
+    tasks = [
+        executor.submit(stack_store_pair, p[0], p[1], timespans, cc_store, stack_store, fft_params)
+        for p in missing_pairs
+    ]
     _ = get_results(tasks, "Stacking Pairs")
+
     scheduler.synchronize()
     tlog.log("step 2 in total", t_tot)
 
 
-def stack_pair(
+def stack_store_pair(
     src_sta: Station,
     rec_sta: Station,
     timespans: List[DateTimeRange],
@@ -84,11 +93,21 @@ def stack_pair(
     stack_store: StackStore,
     fft_params: ConfigParameters,
 ):
-    if stack_store.is_done(src_sta, rec_sta):
-        return
-
     tlog = TimeLogger(logger=logger, level=logging.INFO)
-    t_append = 0.0
+    stacks = stack_pair(src_sta, rec_sta, timespans, cc_store, fft_params)
+    tlog.log(f"computing stack pair {(src_sta, rec_sta)}")
+    stack_store.append(src_sta, rec_sta, stacks)
+    tlog.log(f"writing stack pair {(src_sta, rec_sta)}")
+
+
+def stack_pair(
+    src_sta: Station,
+    rec_sta: Station,
+    timespans: List[DateTimeRange],
+    cc_store: CrossCorrelationDataStore,
+    fft_params: ConfigParameters,
+) -> List[Stack]:
+    tlog = TimeLogger(logger=logger, level=logging.INFO)
     # check if it is auto-correlation
     if src_sta == rec_sta:
         fauto = 1
@@ -167,16 +186,15 @@ def stack_pair(
     # matrix used for rotation
     if fft_params.rotation:
         bigstack = np.zeros(shape=(9, npts_segmt), dtype=np.float32)
-    if fft_params.stack_method == "all":
+    if fft_params.stack_method == StackMethod.ALL:
         bigstack1 = np.zeros(shape=(9, npts_segmt), dtype=np.float32)
         bigstack2 = np.zeros(shape=(9, npts_segmt), dtype=np.float32)
 
-    def write_stacks(comp: str, tparameters: Dict[str, Any], stacks: List[Tuple[StackMethod, np.ndarray]]):
-        nonlocal t_append
-        t_start = time.time()
-        for method, data in stacks:
-            stack_store.append(src_sta, rec_sta, comp, f"Allstack_{method.value}", tparameters, data)
-        t_append += time.time() - t_start
+    stack_results: List[Stack] = []
+
+    def append_stacks(comp: str, tparameters: Dict[str, Any], stack_data: List[Tuple[StackMethod, np.ndarray]]):
+        for method, data in stack_data:
+            stack_results.append(Stack(comp, f"Allstack_{method.value}", tparameters, data))
 
     # loop through cross-component for stacking
     iflag = 1
@@ -206,13 +224,13 @@ def stack_pair(
             continue
         if fft_params.rotation:
             bigstack[icomp] = allstacks1
-            if fft_params.stack_method == "all":
+            if fft_params.stack_method == StackMethod.ALL:
                 bigstack1[icomp] = allstacks2
                 bigstack2[icomp] = allstacks3
 
             tparameters["time"] = stamps_final[0]
             tparameters["ngood"] = nstacks
-            if fft_params.stack_method != "all":
+            if fft_params.stack_method != StackMethod.ALL:
                 to_write = [(fft_params.stack_method, allstacks1)]
             else:
                 to_write = [
@@ -220,7 +238,7 @@ def stack_pair(
                     (StackMethod.PWS, allstacks2),
                     (StackMethod.ROBUST, allstacks3),
                 ]
-            write_stacks(comp, tparameters, to_write)
+            append_stacks(comp, tparameters, to_write)
 
         # keep a track of all sub-stacked data from S1
         if fft_params.keep_substack:
@@ -228,15 +246,15 @@ def stack_pair(
                 tparameters["time"] = stamps_final[ii]
                 tparameters["ngood"] = ngood_final[ii]
                 stack_name = "T" + str(int(stamps_final[ii]))
-                write_stacks(comp, tparameters, [(stack_name, cc_final[ii])])
+                append_stacks(comp, tparameters, [(stack_name, cc_final[ii])])
 
     # do rotation if needed
     if fft_params.rotation and iflag:
         if np.all(bigstack == 0):
-            return
+            return stack_results
         tparameters["station_source"] = src_sta.name
         tparameters["station_receiver"] = rec_sta.name
-        if fft_params.stack_method != "all":
+        if fft_params.stack_method != StackMethod.ALL:
             bigstack_rotated = noise_module.rotation(bigstack, tparameters, locs)
 
             # write to file
@@ -244,7 +262,7 @@ def stack_pair(
                 comp = rtz_components[icomp]
                 tparameters["time"] = stamps_final[0]
                 tparameters["ngood"] = nstacks
-                write_stacks(comp, tparameters, [(fft_params.stack_method, bigstack_rotated[icomp])])
+                append_stacks(comp, tparameters, [(fft_params.stack_method, bigstack_rotated[icomp])])
         else:
             bigstack_rotated = noise_module.rotation(bigstack, tparameters, locs)
             bigstack_rotated1 = noise_module.rotation(bigstack1, tparameters, locs)
@@ -260,11 +278,9 @@ def stack_pair(
                     (StackMethod.PWS, bigstack_rotated1[icomp]),
                     (StackMethod.ROBUST, bigstack_rotated2[icomp]),
                 ]
-                write_stacks(comp, tparameters, stacks)
+                append_stacks(comp, tparameters, stacks)
     tlog.log(f"stack/rotate all station pairs {(src_sta,rec_sta)}", t_load)
-    # tlog.log_raw("store.append", t_append)
-
-    stack_store.mark_done(src_sta, rec_sta)
+    return stack_results
 
 
 def validate_pairs(ncomp: int, sta_pair: str, fauto: int, ts: DateTimeRange, n_pairs: int) -> bool:

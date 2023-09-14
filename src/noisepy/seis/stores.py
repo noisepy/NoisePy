@@ -10,7 +10,14 @@ from datetimerange import DateTimeRange
 
 from noisepy.seis.constants import DATE_FORMAT
 
-from .datatypes import Channel, ChannelData, ChannelType, CrossCorrelation, Station
+from .datatypes import (
+    Channel,
+    ChannelData,
+    ChannelType,
+    CrossCorrelation,
+    Stack,
+    Station,
+)
 
 
 class DataStore(ABC):
@@ -83,14 +90,6 @@ class StackStore:
     """
 
     @abstractmethod
-    def mark_done(self, src: Station, rec: Station):
-        pass
-
-    @abstractmethod
-    def is_done(self, src: Station, rec: Station):
-        pass
-
-    @abstractmethod
     def append(
         self, src: Station, rec: Station, components: str, name: str, stack_params: Dict[str, Any], data: np.ndarray
     ):
@@ -101,16 +100,7 @@ class StackStore:
         pass
 
     @abstractmethod
-    def get_stack_names(self, src: Station, rec: Station) -> List[str]:
-        pass
-
-    @abstractmethod
-    def get_components(self, src: Station, rec: Station, name: str) -> List[str]:
-        pass
-
-    # TODO: Flip the order of the return values to be consistent with ArrayStore.read
-    @abstractmethod
-    def read(self, src: Station, rec: Station, component: str, name: str) -> Tuple[Dict[str, Any], np.ndarray]:
+    def read_stacks(self, src: Station, rec: Station) -> List[Stack]:
         pass
 
 
