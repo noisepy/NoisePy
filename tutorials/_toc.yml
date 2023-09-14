@@ -6,4 +6,3 @@ root: noise_configuration
 chapters:
 - file: noisepy_scedc_tutorial
 - file: noisepy_datastore
-- file: noisepy_pnwstore_tutorial
