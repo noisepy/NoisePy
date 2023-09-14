@@ -28,7 +28,7 @@ containerProperties:
   ephemeralStorage: # The amount of ephemeral storage to allocate for the task.
     sizeInGiB: 21  # [REQUIRED] The total amount, in GiB, of ephemeral storage to set for the task.
 retryStrategy: # The retry strategy to use for failed jobs that are submitted with this job definition.
-  attempts: 2  # The number of times to move a job to the RUNNABLE status.
+  attempts: 1  # The number of times to move a job to the RUNNABLE status.
 propagateTags: true # Specifies whether to propagate the tags from the job or job definition to the corresponding Amazon ECS task.
 timeout: # The timeout configuration for jobs that are submitted with this job definition, after which Batch terminates your jobs if they have not finished.
   attemptDurationSeconds: 10000  # The job timeout time (in seconds) that's measured from the job attempt's startedAt timestamp.
