@@ -15,6 +15,7 @@ from datetimerange import DateTimeRange
 
 from . import __version__
 from .asdfstore import ASDFCCStore, ASDFRawDataStore, ASDFStackStore
+from .channel_filter_store import LocationChannelFilterStore
 from .channelcatalog import CSVChannelCatalog, XMLStationChannelCatalog
 from .constants import CONFIG_FILE, STATION_FILE
 from .datatypes import Channel, ConfigParameters
@@ -162,13 +163,15 @@ def create_raw_store(args, params: ConfigParameters):
             raise ValueError(f"Either an --xml_path argument or a {STATION_FILE} must be provided")
 
         date_range = get_date_range(args)
-        return SCEDCS3DataStore(
+        store = SCEDCS3DataStore(
             raw_dir,
             catalog,
             get_channel_filter(params.net_list, params.stations, params.channels),
             date_range,
             params.storage_options,
         )
+        # Some SCEDC channels have duplicates differing only by location, so filter them out
+        return LocationChannelFilterStore(store)
 
 
 def save_log(data_dir: str, log_file: Optional[str], storage_options: dict = {}):
