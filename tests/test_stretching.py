@@ -4,11 +4,11 @@ import numpy as np
 import pytest
 from obspy.signal.invsim import cosine_taper
 
-from noisepy.seis.application_modules.dvv_utils import (
-    WCC_dvv,
+from noisepy.seis.application_modules.monitoring_utils import (
     mwcs_dvv,
     stretching,
     stretching_vect,
+    wcc_dvv,
 )
 
 # This short script is intended as a test for the stretching routine
@@ -57,7 +57,7 @@ def test_stretching_vect():
     assert dvv + 0.5 < para["dt"]  # assert result is -0.5%
 
 
-def test_WCC_dvv():
+def test_wcc_dvv():
     t = np.linspace(0.0, 9.95, 2500)  # 0.5 % perturbation
     original_signal = np.sin(t * 10.0) * cosine_taper(2500, p=0.75)
 
@@ -72,7 +72,7 @@ def test_WCC_dvv():
     mwl = 2.0  # moving window length in sec
     ss = 1.0  # sliding step in seconds
     # ref, cur, moving_window_length, slide_step, para
-    dvv, error = WCC_dvv(ref=original_signal, cur=stretched_signal, moving_window_length=mwl, slide_step=ss, para=para)
+    dvv, error = wcc_dvv(ref=original_signal, cur=stretched_signal, moving_window_length=mwl, slide_step=ss, para=para)
 
     assert abs(dvv + 0.5) < 20 * para["dt"]  # assert result is -0.5%
     # WCC is extremely low accuracy
@@ -134,5 +134,5 @@ if __name__ == "__main__":
 
     t = time.time()
     for i in range(100):
-        test_WCC_dvv()
+        test_wcc_dvv()
     print("Done stretching, no errors, %4.2fs." % (time.time() - t))
