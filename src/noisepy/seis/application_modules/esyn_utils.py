@@ -1,4 +1,5 @@
 import math
+from typing import Tuple
 
 import numpy as np
 import pyasdf
@@ -12,7 +13,7 @@ import pyasdf
 
 
 ### -----
-def read_pyasdf(sfile: str, ccomp: str) -> Tuple(float, float, np.ndarray, np.ndarray):
+def read_pyasdf(sfile: str, ccomp: str) -> Tuple[float, float, np.ndarray, np.ndarray]:
     # useful parameters from each asdf file
     with pyasdf.ASDFDataSet(sfile, mode="r") as ds:
         alist = ds.auxiliary_data.list()
@@ -35,13 +36,10 @@ def read_pyasdf(sfile: str, ccomp: str) -> Tuple(float, float, np.ndarray, np.nd
 
 ### -----
 # Function that Calculate Mean Square
-def msValue(arr, n):
-    square = 0
+def msValue(arr: np.ndarray, n: int) -> Tuple[np.ndarray]:
+    square = 0.0
     mean = 0.0
-
-    # Calculate square
-    for i in range(0, n):
-        square += arr[i] ** 2
+    square = np.sum(np.square(arr))
 
     # Calculate Mean
     mean = square / (float)(n)
@@ -51,12 +49,12 @@ def msValue(arr, n):
 
 ### -----
 # Dirac delta function
-def impulse(x):
+def impulse(x: float) -> Tuple[float]:
     return 1 * (x == 0)
 
 
 # Heaviside function (step function)
-def step(x):
+def step(x: float) -> Tuple[float]:
     return 1 * (x > 0)
 
 
@@ -72,7 +70,7 @@ def step(x):
 """
 
 
-def ESYN_RadiaTrans_onesta(mean_free, tm, r, c):
+def ESYN_RadiaTrans_onesta(mean_free: float, tm: float, r: float, c: float) -> Tuple[float]:
     s0 = c**2 * tm**2 - r**2
     if s0 > 0:
         # second term
@@ -98,7 +96,7 @@ def ESYN_RadiaTrans_onesta(mean_free, tm, r, c):
 """
 
 
-def ESYN_RadiaTrans_intersta(mean_free, tm, r, c):
+def ESYN_RadiaTrans_intersta(mean_free: float, tm: float, r: float, c: float) -> Tuple[float]:
     s0 = c**2 * tm**2 - r**2
     if s0 > 0:
         # first term
@@ -118,12 +116,9 @@ def ESYN_RadiaTrans_intersta(mean_free, tm, r, c):
 
 
 ### -----
-def convertTuple(tup):
+def convertTuple(tup: str) -> Tuple[str]:
     # initialize an empty string
     str = ""
     for item in tup:
         str = str + item
     return str
-
-
-from .noise_module import mad
