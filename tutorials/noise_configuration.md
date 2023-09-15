@@ -13,7 +13,7 @@ Welcome to NoisePy!
 * Yang X, Bryan J, Okubo K, Jiang C, Clements T, Denolle MA. Optimal stacking of noise cross-correlation functions. Geophysical Journal International. 2023 Mar;232(3):1600-18. https://doi.org/10.1093/gji/ggac410
 
 
-We gratefully acknowledge support from the [Packard Fundation](www.packard.org)
+We gratefully acknowledge support from the [Packard Fundation](https://www.packard.org)
 
 
 ## NoisePy Workflow
