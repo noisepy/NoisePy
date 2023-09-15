@@ -118,7 +118,5 @@ def ESYN_RadiaTrans_intersta(mean_free: float, tm: float, r: float, c: float) ->
 ### -----
 def convertTuple(tup: str) -> Tuple[str]:
     # initialize an empty string
-    str = ""
-    for item in tup:
-        str = str + item
+    str = "".join(tup)
     return str
