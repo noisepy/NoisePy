@@ -53,7 +53,9 @@ def stack(
     def initializer():
         timespans = cc_store.get_timespans()
         pairs_all = cc_store.get_station_pairs()
-        logger.info(f"Station pairs: {pairs_all}, timespans:{timespans}")
+        logger.info(
+            f"Station pairs: {len(pairs_all)}, timespans:{len(timespans)}. From: {timespans[0]} to {timespans[-1]}"
+        )
 
         if len(timespans) == 0 or len(pairs_all) == 0:
             raise IOError("Abort! no available CCF data for stacking")
@@ -89,11 +91,13 @@ def stack_store_pair(
     stack_store: StackStore,
     fft_params: ConfigParameters,
 ):
-    tlog = TimeLogger(logger=logger, level=logging.INFO)
-    stacks = stack_pair(src_sta, rec_sta, timespans, cc_store, fft_params)
-    tlog.log(f"computing stack pair {(src_sta, rec_sta)}")
-    stack_store.append(src_sta, rec_sta, stacks)
-    tlog.log(f"writing stack pair {(src_sta, rec_sta)}")
+    try:
+        stacks = stack_pair(src_sta, rec_sta, timespans, cc_store, fft_params)
+        tlog = TimeLogger(logger=logger, level=logging.INFO)
+        stack_store.append(src_sta, rec_sta, stacks)
+        tlog.log(f"writing stack pair {(src_sta, rec_sta)}")
+    except Exception as e:
+        logger.error(f"Error stacking pair {(src_sta, rec_sta)}: {e}")
 
 
 def stack_pair(
@@ -176,8 +180,6 @@ def stack_pair(
     # continue when there is no data or for auto-correlation
     if iseg <= 1 and fauto == 1:
         return
-    outfn = f"{src_sta}_{rec_sta}.h5"
-    logger.debug("ready to output to %s" % (outfn))
 
     # matrix used for rotation
     if fft_params.rotation:
@@ -195,7 +197,6 @@ def stack_pair(
     # loop through cross-component for stacking
     iflag = 1
     for icomp in range(nccomp):
-        tlog.reset()
         comp = enz_system[icomp]
         indx = np.where(cc_comp.lower() == comp.lower())[0]
         logger.debug(f"index to find the comp: {indx}")

@@ -2,7 +2,7 @@ import glob
 import logging
 import os
 from pathlib import Path
-from typing import Any, Callable, Dict, Generic, List, Optional, Tuple, TypeVar
+from typing import Callable, Dict, Generic, List, Optional, Tuple, TypeVar
 
 import numpy as np
 import obspy
@@ -182,14 +182,6 @@ class ASDFStackStore(StackStore):
 
     def get_station_pairs(self) -> List[Tuple[Station, Station]]:
         return self.datasets.get_keys()
-
-    def read(self, src: Station, rec: Station, component: str, name: str) -> Tuple[Dict[str, Any], np.ndarray]:
-        with self.datasets[(src, rec)] as ds:
-            if name not in ds.auxiliary_data or component not in ds.auxiliary_data[name]:
-                logger.warning(f"Not data available for {src}_{rec}/{name}/{component}")
-                return ({}, np.empty(0))
-            stream = ds.auxiliary_data[name][component]
-            return (stream.parameters, stream.data[:])
 
     def read_stacks(self, src: Station, rec: Station) -> List[Stack]:
         stacks = []
