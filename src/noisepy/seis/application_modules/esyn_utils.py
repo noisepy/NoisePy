@@ -12,7 +12,7 @@ import pyasdf
 
 
 ### -----
-def read_pyasdf(sfile, ccomp):
+def read_pyasdf(sfile: str, ccomp: str) -> Tuple(float, float, np.ndarray, np.ndarray):
     # useful parameters from each asdf file
     with pyasdf.ASDFDataSet(sfile, mode="r") as ds:
         alist = ds.auxiliary_data.list()
