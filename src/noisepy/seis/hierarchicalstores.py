@@ -6,11 +6,12 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 from datetimerange import DateTimeRange
 
-from noisepy.seis.datatypes import ChannelType, CrossCorrelation, Station
-from noisepy.seis.stores import CrossCorrelationDataStore, timespan_str
-from noisepy.seis.utils import TimeLogger, remove_nan_rows, unstack
+from .datatypes import AnnotatedData, ChannelType, CrossCorrelation, Stack, Station
+from .stores import CrossCorrelationDataStore, timespan_str
+from .utils import TimeLogger, remove_nan_rows, remove_nans, unstack
 
 CHANNELS_ATTR = "channels"
+STACKS_ATTR = "stacks"
 VERSION_ATTR = "version"
 
 logger = logging.getLogger(__name__)
@@ -77,22 +78,9 @@ class HierarchicalCCStoreBase(CrossCorrelationDataStore):
         ccs: List[CrossCorrelation],
     ):
         path = self._get_path(timespan, src, rec)
-        # Some channels may have different lengths, so pad them with NaNs for stacking
-        max_rows = max(d.data.shape[0] for d in ccs)
-        max_cols = max(d.data.shape[1] for d in ccs)
-        padded = [
-            np.pad(
-                d.data,
-                ((0, max_rows - d.data.shape[0]), (0, max_cols - d.data.shape[1])),
-                mode="constant",
-                constant_values=np.nan,
-            )
-            for d in ccs
-        ]
-        all_ccs = np.stack(padded, axis=0)
-        json_params = [(p.src.name, p.src.location, p.rec.name, p.rec.location, p.parameters) for p in ccs]
+        all_ccs, metadata = AnnotatedData.pack(ccs)
         tlog = TimeLogger(logger, logging.DEBUG)
-        self.helper.append(path, {CHANNELS_ATTR: json_params, VERSION_ATTR: 1.0}, all_ccs)
+        self.helper.append(path, {CHANNELS_ATTR: metadata, VERSION_ATTR: 1.0}, all_ccs)
         tlog.log(f"writing {len(ccs)} CCs to {path}")
 
         with self._lock:
@@ -151,45 +139,27 @@ class HierarchicalStackStoreBase:
         super().__init__()
         self.helper = store
 
-    def mark_done(self, src: Station, rec: Station):
+    def append(self, src: Station, rec: Station, stacks: List[Stack]):
         path = self._get_station_path(src, rec)
-        return self.helper.mark_done(path)
-
-    def is_done(self, src: Station, rec: Station):
-        path = self._get_station_path(src, rec)
-        return self.helper.is_done(path)
-
-    def append(
-        self, src: Station, rec: Station, component: str, name: str, stack_params: Dict[str, Any], data: np.ndarray
-    ):
-        path = self._get_path(src, rec, component, name)
-        self.helper.append(path, stack_params, data)
+        all_stacks, metadata = AnnotatedData.pack(stacks)
+        tlog = TimeLogger(logger, logging.DEBUG)
+        self.helper.append(path, {STACKS_ATTR: metadata, VERSION_ATTR: 1.0}, all_stacks)
+        tlog.log(f"writing {len(stacks)} stacks to {path}")
 
     def get_station_pairs(self) -> List[Tuple[Station, Station]]:
         return self.helper.get_station_pairs()
 
-    def get_stack_names(self, src: Station, rec: Station) -> List[str]:
+    def read_stacks(self, src: Station, rec: Station) -> List[Stack]:
         path = self._get_station_path(src, rec)
-        return self._get_children(path)
-
-    def get_components(self, src: Station, rec: Station, name: str) -> List[str]:
-        path = self._get_station_path(src, rec) + "/" + name
-        return self._get_children(path)
-
-    def read(self, src: Station, rec: Station, component: str, name: str) -> Tuple[Dict[str, Any], np.ndarray]:
-        path = self._get_path(src, rec, component, name)
         tuple = self.helper.read(path)
         if not tuple:
-            return {}, np.zeros((0,))
-        return tuple[1], tuple[0]
-
-    def _get_children(self, path: str) -> List[str]:
-        if path not in self.helper.root:
             return []
-        return list(self.helper.root[path].array_keys()) + list(self.helper.root[path].group_keys())
+        arrays, metadata = tuple
+        stacks = unstack(arrays)
+        stacks_params = metadata[STACKS_ATTR]
+        return [
+            Stack(comp, name, params, remove_nans(data)) for (comp, name, params), data in zip(stacks_params, stacks)
+        ]
 
     def _get_station_path(self, src: Station, rec: Station) -> str:
         return f"{src}_{rec}"
-
-    def _get_path(self, src: Station, rec: Station, component: str, name: str) -> str:
-        return f"{self._get_station_path(src,rec)}/{name}/{component}"

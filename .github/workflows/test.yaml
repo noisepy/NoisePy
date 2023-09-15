@@ -56,10 +56,10 @@ jobs:
           freq_norm: no
           format: zarr
           substack: true
-        - method: robust
+        - method: all
           python_version: '3.9'
           freq_norm: phase_only
-          format: zarr
+          format: numpy
     runs-on: ubuntu-22.04
     needs: s0_download
     steps:

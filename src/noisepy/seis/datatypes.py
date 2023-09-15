@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import sys
 import typing
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, DefaultDict, Dict, List, Optional
+from typing import Any, DefaultDict, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
 import numpy as np
@@ -280,17 +281,80 @@ class NoiseFFT:
     length: int
 
 
-class CrossCorrelation:
-    src: ChannelType
-    rec: ChannelType
+class AnnotatedData(ABC):
+    """
+    A base class for grouping data+metdata
+    """
+
     parameters: Dict[str, Any]
     data: np.ndarray
 
-    def __init__(self, src: ChannelType, rec: ChannelType, params: Dict[str, Any], data: np.ndarray):
-        self.src = src
-        self.rec = rec
+    def __init__(self, params: Dict[str, Any], data: np.ndarray):
         self.data = data
         self.parameters = to_json_types(params)
+
+    @abstractmethod
+    def get_metadata(self) -> Tuple:
+        pass
+
+    def pack(datas: List[AnnotatedData]) -> AnnotatedData:
+        if len(datas) == 0:
+            raise ValueError("Cannot pack empty list of data")
+        # Some arrays may have different lengths, so pad them with NaNs for stacking
+        max_rows = max(d.data.shape[0] for d in datas)
+        if len(datas[0].data.shape) == 1:
+            padded = [
+                np.pad(
+                    d.data,
+                    (0, max_rows - d.data.shape[0]),
+                    mode="constant",
+                    constant_values=np.nan,
+                )
+                for d in datas
+            ]
+        elif len(datas[0].data.shape) == 2:
+            max_cols = max(d.data.shape[1] for d in datas)
+            padded = [
+                np.pad(
+                    d.data,
+                    ((0, max_rows - d.data.shape[0]), (0, max_cols - d.data.shape[1])),
+                    mode="constant",
+                    constant_values=np.nan,
+                )
+                for d in datas
+            ]
+        else:
+            raise ValueError(f"Cannot pack data with shape {datas[0].data.shape}")
+
+        data_stack = np.stack(padded, axis=0)
+        json_params = [p.get_metadata() for p in datas]
+        return data_stack, json_params
+
+
+class CrossCorrelation(AnnotatedData):
+    src: ChannelType
+    rec: ChannelType
+
+    def __init__(self, src: ChannelType, rec: ChannelType, params: Dict[str, Any], data: np.ndarray):
+        super().__init__(params, data)
+        self.src = src
+        self.rec = rec
+
+    def get_metadata(self) -> Tuple:
+        return (self.src.name, self.src.location, self.rec.name, self.rec.location, self.parameters)
+
+
+class Stack(AnnotatedData):
+    component: str  # e.g. "EE", "EN", ...
+    name: str  # e.g. "Allstack_linear"
+
+    def __init__(self, component: str, name: str, params: Dict[str, Any], data: np.ndarray):
+        super().__init__(params, data)
+        self.component = component
+        self.name = name
+
+    def get_metadata(self) -> Tuple:
+        return (self.component, self.name, self.parameters)
 
 
 def to_json_types(params: Dict[str, Any]) -> Dict[str, Any]:

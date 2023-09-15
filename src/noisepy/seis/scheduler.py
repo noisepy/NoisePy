@@ -42,7 +42,7 @@ class SingleNodeScheduler(Scheduler):
 
     def get_indices(self, items: list) -> List[int]:
         indices = list(range(len(items)))
-        logger.debug(f"RANK -, INDICES: {indices}")
+        logger.debug(f"RANK -, INDICES: {len(indices)}")
         return indices
 
     def synchronize(self):
@@ -63,7 +63,7 @@ class AWSBatchArrayScheduler(SingleNodeScheduler):
             raise EnvironmentError("AWS_BATCH_JOB_ARRAY_INDEX environment variable not set")
         logger.info(f"Running in AWS Batch array job, index: {aws_array_index}")
         indices = [int(aws_array_index)]
-        logger.debug(f"RANK -, INDICES: {indices}")
+        logger.debug(f"RANK -, INDICES: {len(indices)}")
         return indices
 
 
@@ -105,7 +105,7 @@ class MPIScheduler(Scheduler):
 
         rng = range(rank, len(items), size)
         indices = list(rng)
-        logger.debug(f"RANK {rank}, INDICES: {indices}")
+        logger.debug(f"RANK {rank}, INDICES: {len(indices)}")
         return indices
 
     def synchronize(self):

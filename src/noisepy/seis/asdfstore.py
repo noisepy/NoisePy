@@ -2,7 +2,7 @@ import glob
 import logging
 import os
 from pathlib import Path
-from typing import Any, Callable, Dict, Generic, List, Optional, Tuple, TypeVar
+from typing import Callable, Dict, Generic, List, Optional, Tuple, TypeVar
 
 import numpy as np
 import obspy
@@ -10,8 +10,15 @@ import pyasdf
 from datetimerange import DateTimeRange
 
 from . import noise_module
-from .constants import DONE_PATH, PROGRESS_DATATYPE
-from .datatypes import Channel, ChannelData, ChannelType, CrossCorrelation, Station
+from .constants import PROGRESS_DATATYPE
+from .datatypes import (
+    Channel,
+    ChannelData,
+    ChannelType,
+    CrossCorrelation,
+    Stack,
+    Station,
+)
 from .stores import (
     CrossCorrelationDataStore,
     RawDataStore,
@@ -51,15 +58,6 @@ class ASDFDirectory(Generic[T]):
     def get_keys(self) -> List[T]:
         h5files = sorted(glob.glob(os.path.join(self.directory, "**/*.h5"), recursive=True))
         return list(map(self.parse_filename, h5files))
-
-    def mark_done(self, key: T):
-        self.add_aux_data(key, {}, PROGRESS_DATATYPE, DONE_PATH, np.zeros(0))
-
-    def is_done(self, key: T):
-        done = self.contains(key, PROGRESS_DATATYPE, DONE_PATH)
-        if done:
-            logger.info(f"{key} already computed")
-        return done
 
     def contains(self, key: T, data_type: str, path: str = None):
         with self[key] as ccf_ds:
@@ -178,38 +176,21 @@ class ASDFStackStore(StackStore):
         super().__init__()
         self.datasets = ASDFDirectory(directory, mode, _filename_from_stations, _parse_station_pair_h5file)
 
-    def mark_done(self, src: Station, rec: Station):
-        self.datasets.mark_done((src, rec))
-
-    def is_done(self, src: Station, rec: Station):
-        return self.datasets.is_done((src, rec))
-
-    def append(
-        self, src: Station, rec: Station, components: str, name: str, stack_params: Dict[str, Any], data: np.ndarray
-    ):
-        self.datasets.add_aux_data((src, rec), stack_params, name, components, data)
+    def append(self, src: Station, rec: Station, stacks: List[Stack]):
+        for stack in stacks:
+            self.datasets.add_aux_data((src, rec), stack.parameters, stack.name, stack.component, stack.data)
 
     def get_station_pairs(self) -> List[Tuple[Station, Station]]:
         return self.datasets.get_keys()
 
-    def get_stack_names(self, src: Station, rec: Station) -> List[str]:
+    def read_stacks(self, src: Station, rec: Station) -> List[Stack]:
+        stacks = []
         with self.datasets[(src, rec)] as ds:
-            return [name for name in ds.auxiliary_data.list() if name != PROGRESS_DATATYPE]
-
-    def get_components(self, src: Station, rec: Station, name: str) -> List[str]:
-        with self.datasets[(src, rec)] as ds:
-            if name not in ds.auxiliary_data:
-                logger.warning(f"Not data available for {src}_{rec}/{name}")
-                return []
-            return ds.auxiliary_data[name].list()
-
-    def read(self, src: Station, rec: Station, component: str, name: str) -> Tuple[Dict[str, Any], np.ndarray]:
-        with self.datasets[(src, rec)] as ds:
-            if name not in ds.auxiliary_data or component not in ds.auxiliary_data[name]:
-                logger.warning(f"Not data available for {src}_{rec}/{name}/{component}")
-                return ({}, np.empty(0))
-            stream = ds.auxiliary_data[name][component]
-            return (stream.parameters, stream.data[:])
+            for name in ds.auxiliary_data.list():
+                for component in ds.auxiliary_data[name].list():
+                    stream = ds.auxiliary_data[name][component]
+                    stacks.append(Stack(component, name, stream.parameters, stream.data[:]))
+        return stacks
 
 
 def _get_dataset(filename: str, mode: str) -> pyasdf.ASDFDataSet:
@@ -238,9 +219,14 @@ def _parse_station_pair_h5file(path: str) -> Tuple[Station, Station]:
 
 def _parse_channel_path(path: str) -> Tuple[ChannelType, ChannelType]:
     parts = path.split("_")
-    if len(parts) == 2:
+    if len(parts) == 2:  # e.g. bhn_bhn
         return tuple(map(ChannelType, parts))
-    elif len(parts) == 4:  # when we have location codes
+    elif len(parts) == 3:  # when we have one location code
+        if parts[1].isdigit():  # e.g. bhn_00_bhn
+            return tuple(map(ChannelType, ["_".join(parts[0:2]), parts[2]]))
+        else:  # e.g. bhn_bhn_00
+            return tuple(map(ChannelType, [parts[0], "_".join(parts[1:3])]))
+    elif len(parts) == 4:  # when we have two location codes: e.g. bhn_00_bhn_00
         return tuple(map(ChannelType, ["_".join(parts[0:2]), "_".join(parts[2:4])]))
     else:
         raise ValueError(f"Invalid channel path {path}")

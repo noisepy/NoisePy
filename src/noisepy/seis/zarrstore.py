@@ -55,20 +55,6 @@ class ZarrStoreHelper(ArrayStore):
         )
         array.attrs.update(params)
 
-    def is_done(self, key: str):
-        if DONE_PATH not in self.root.array_keys():
-            return False
-        done_array = self.root[DONE_PATH]
-        return key in done_array.attrs.keys()
-
-    def mark_done(self, key: str):
-        done_array = self.root.require_dataset(DONE_PATH, shape=(1, 1))
-        done_array.attrs[key] = True
-
-    def get_station_pairs(self) -> List[Tuple[Station, Station]]:
-        pairs = [parse_station_pair(k) for k in self.root.group_keys() if k != DONE_PATH]
-        return pairs
-
     def read(self, path: str) -> Optional[Tuple[np.ndarray, Dict[str, Any]]]:
         if path not in self.root:
             return None
@@ -91,10 +77,13 @@ class ZarrCCStore(HierarchicalCCStoreBase):
         return list(parse_timespan(t) for t in sorted(set(timespans)))
 
     def get_station_pairs(self) -> List[Tuple[Station, Station]]:
-        return self.helper.get_station_pairs()
+        return [parse_station_pair(k) for k in self.helper.root.group_keys() if k != DONE_PATH]
 
 
 class ZarrStackStore(HierarchicalStackStoreBase):
     def __init__(self, root_dir: str, mode: str = "a", storage_options={}) -> None:
         helper = ZarrStoreHelper(root_dir, mode, storage_options=storage_options)
         super().__init__(helper)
+
+    def get_station_pairs(self) -> List[Tuple[Station, Station]]:
+        return [parse_station_pair(k) for k in self.helper.root.array_keys() if k != DONE_PATH]

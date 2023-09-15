@@ -123,6 +123,13 @@ def unstack(stack: np.ndarray, axis=0) -> List[np.ndarray]:
     return [np.squeeze(a, axis=axis) for a in np.split(stack, stack.shape[axis], axis=axis)]
 
 
+def remove_nans(a: np.ndarray) -> np.ndarray:
+    """
+    Remove NaN values from a 1D array
+    """
+    return a[~np.isnan(a)]
+
+
 def remove_nan_rows(a: np.ndarray) -> np.ndarray:
     """
     Remove rows from a 2D array that contain NaN values

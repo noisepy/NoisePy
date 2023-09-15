@@ -61,14 +61,6 @@ class NumpyArrayStore(ArrayStore):
                         add_file_bytes(tar, FILE_ARRAY_NPY, npyf)
                         add_file_bytes(tar, FILE_PARAMS_JSON, jsf)
 
-    def is_done(self, key: str):
-        # TODO:
-        return False
-
-    def mark_done(self, key: str):
-        # TODO:
-        pass
-
     def read(self, path: str) -> Optional[Tuple[np.ndarray, Dict[str, Any]]]:
         file = fs_join(self.root_path, path + TAR_GZ_EXTENSION)
         if not self.fs.exists(file):
@@ -100,6 +92,7 @@ class NumpyCCStore(HierarchicalCCStoreBase):
 
     def get_station_pairs(self) -> List[Tuple[Station, Station]]:
         paths = self.helper.load_paths()
+        # the pairs are the parent directories
         paths = set(Path(p).parts[-2] for p in paths)
 
         pairs = [parse_station_pair(k) for k in paths]
@@ -109,3 +102,11 @@ class NumpyCCStore(HierarchicalCCStoreBase):
 class NumpyStackStore(HierarchicalStackStoreBase):
     def __init__(self, root_dir: str, mode: str = "a", storage_options={}) -> None:
         super().__init__(NumpyArrayStore(root_dir, mode, storage_options=storage_options))
+
+    def get_station_pairs(self) -> List[Tuple[Station, Station]]:
+        paths = self.helper.load_paths()
+        # the pairs are the files
+        paths = set(Path(p).name.removesuffix(TAR_GZ_EXTENSION) for p in paths)
+
+        pairs = [parse_station_pair(k) for k in paths]
+        return [p for p in pairs if p]

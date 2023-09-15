@@ -4,7 +4,8 @@ import numpy as np
 import pytest
 
 from noisepy.seis.asdfstore import ASDFStackStore
-from noisepy.seis.datatypes import Station
+from noisepy.seis.datatypes import Stack, Station
+from noisepy.seis.numpystore import NumpyStackStore
 from noisepy.seis.stores import StackStore
 from noisepy.seis.zarrstore import ZarrStackStore
 
@@ -21,37 +22,33 @@ def zarrstore(tmp_path: Path) -> ZarrStackStore:
     return ZarrStackStore(str(tmp_path))
 
 
+@pytest.fixture
+def numpystore(tmp_path: Path) -> NumpyStackStore:
+    return NumpyStackStore(str(tmp_path))
+
+
 def _stackstore_test_helper(store: StackStore):
-    data = np.random.random(10)
     src = Station("nw", "sta1")
     rec = Station("nw", "sta2")
-    comp = "BH"
-    name = "Allstack_linear"
-    params = {"key": "value"}
 
-    # assert empty state
-    assert not store.is_done(src, rec)
-
-    # add CC (src->rec) for ts1
-    store.append(src, rec, comp, "Allstack_linear", params, data)
-    assert not store.is_done(src, rec)
-    # now mark ts1 done and assert it
-    store.mark_done(src, rec)
-    assert store.is_done(src, rec)
+    stack1 = Stack("EE", "Allstack_linear", {"key1": "value1"}, np.random.random(10))
+    stack2 = Stack("NZ", "Allstack_robust", {"key2": "value2"}, np.random.random(7))
+    stacks = [stack1, stack2]
+    store.append(src, rec, stacks)
 
     sta_pairs = store.get_station_pairs()
     assert sta_pairs == [(src, rec)]
-    stacks = store.get_stack_names(src, rec)
-    assert stacks == [name]
-    components = store.get_components(src, rec, name)
-    assert components == [comp]
-    read_params, read_data = store.read(src, rec, comp, name)
-    assert params == read_params
-    assert np.all(data == read_data)
+    read_stacks = store.read_stacks(src, rec)
+    assert len(read_stacks) == len(stacks)
+    for s1, s2 in zip(read_stacks, stacks):
+        assert s1.name == s2.name
+        assert s1.component == s2.component
+        assert s1.parameters == s2.parameters
+        assert s1.data.shape == s2.data.shape
+        assert np.all(s1.data == s2.data)
 
-    read_params, read_data = store.read(src, rec, comp, name + "_wrong")
-    assert len(read_params) == 0
-    assert read_data.shape == (0,)
+    bad_read = store.read_stacks(Station("nw", "sta3"), rec)
+    assert len(bad_read) == 0
 
 
 def test_asdfstore(asdfstore: ASDFStackStore):
@@ -60,3 +57,7 @@ def test_asdfstore(asdfstore: ASDFStackStore):
 
 def test_zarrstore(zarrstore: ZarrStackStore):
     _stackstore_test_helper(zarrstore)
+
+
+def test_numpystore(numpystore: NumpyStackStore):
+    _stackstore_test_helper(numpystore)
