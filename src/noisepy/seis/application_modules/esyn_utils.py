@@ -4,7 +4,7 @@ import numpy as np
 import pyasdf
 
 ### -----
-# This scripts are aim to perform the 2-D radiative transfer equation
+# These scripts are aim to perform the 2-D radiative transfer equation
 # for scalar waves (Shang and Gao 1988; Sato 1993),
 # assuming of isotropic scattering and source radiation in infinite medium
 # to calculate synthesized energy densities Esyn.
