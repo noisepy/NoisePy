@@ -1,4 +1,4 @@
-""" S0A_download_ASDF_MPI.py
+""" download.py
     Step 0: Download module
 
    isort:skip_file
