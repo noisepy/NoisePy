@@ -2,9 +2,9 @@
 import logging
 
 from ._version import __version__  # noqa: F401
-from .S0A_download_ASDF_MPI import download  # noqa: F401
-from .S1_fft_cc_MPI import cross_correlate  # noqa: F401
-from .S2_stacking import stack  # noqa: F401
+from .download import download  # noqa: F401
+from .correlate import cross_correlate  # noqa: F401
+from .stack import stack  # noqa: F401
 
 """
 NoisePy is a Python package designed for fast and easy computation of ambient noise cross-correlation functions.

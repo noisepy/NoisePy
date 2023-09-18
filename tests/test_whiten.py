@@ -4,7 +4,7 @@ import scipy
 from scipy.fftpack import next_fast_len
 
 from noisepy.seis.noise_module import moving_ave, whiten
-from noisepy.seis.S1_fft_cc_MPI import ConfigParameters
+from noisepy.seis.correlate import ConfigParameters
 
 
 def whiten_original(data, fft_para: ConfigParameters):

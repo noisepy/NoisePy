@@ -7,7 +7,7 @@ Tutorial
 
 S0A. Downloading seismic noise data
 -----------------------------------
-The script of *S0A_download_ASDF_MPI.py* (located in *src* directory) and its existing parameters allows to download all available broadband CI stations *(BH?)* located in a certain region
+The script of *download.py* (located in *src* directory) and its existing parameters allows to download all available broadband CI stations *(BH?)* located in a certain region
 and operated during 1/Jul/2016-2/Jul/2016 through the SCEC data center.
 In the script, short summary is provided for all input parameters that can be changed according to the user's needs. In the current form of the script, we set *inc_hours=24* to download
 day-long continous noise data as well as the meta info and store them into a single ASDF file. To increase the signal-to-noise (SNR) of the final cross-correlation functions
@@ -17,13 +17,13 @@ environment before run following command. (NOTE that things may go completely di
 
 .. code-block:: bash
 
-    $ python S0A_download_ASDF_MPI.py
+    $ python download.py
 
 If you want to use multiple cores (e.g, 4), run the script with the following command using `mpi4py <https://mpi4py.readthedocs.io/en/stable/>`_.
 
 .. code-block:: bash
 
-    $ mpirun -n 4 python S0A_download_ASDF_MPI.py
+    $ mpirun -n 4 python download.py
 
 The outputted files from S0A include ASDF files containing daily-long (24h) continous noise data, a parameter file recording all used parameters in the script of S0A and a CSV file of
 all station information (more details on reading the ASDF files with downloaded data can be found in docs/src/ASDF.md). The continous waveforms data stored in the ASDF file can be displayed
@@ -54,7 +54,7 @@ pieces and of messy time info such as overlapping time. REMEMBER to set *messyda
 
 S1. Perform cross correlations
 ------------------------------
-`S1_fft_cc_MPI.py` is the core script of NoisePy, which performs `Fourier transform <https://en.wikipedia.org/wiki/Fourier_transform>`_ to all noise data first and loads them into the
+`correlate.py` is the core script of NoisePy, which performs `Fourier transform <https://en.wikipedia.org/wiki/Fourier_transform>`_ to all noise data first and loads them into the
 memory before they are further cross-correlated. This means that we are performing `cross-correlation <https://en.wikipedia.org/wiki/Cross-correlation>`_ in the frequency domain.
 In the script, we provide several options to calculate the cross correlation, including *raw*, *coherency* and *deconv* (see our paper for detailed definition). We choose *coherency*
 as an example here. After running the script, it will create a new folder named *CCF*, in which new ASDF files containing all cross-correlation functions between different station pairs
@@ -76,7 +76,7 @@ temporal variation between all station-pair by calling *plot_substack_cc* functi
 
 S2. Do stacking
 ---------------
-The script of `S2_stacking.py` is used to assemble and/or stack all cross-correlation functions computed for the staion pairs in S1 and save them into ASDF files for future analysis
+The script of `stack.py` is used to assemble and/or stack all cross-correlation functions computed for the staion pairs in S1 and save them into ASDF files for future analysis
 (e.g., temporal variation and/or dispersion extraction). In particular, there are two options for the stacking process, including linear and phase weighted stacking (pws). In general,
 the pws produces waveforms with high SNR, and the snapshot below shows the waveform comparison from the two stacking methods. We use the folloing commend lines to make the move-out plot.
 

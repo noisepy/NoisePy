@@ -31,9 +31,9 @@ To assert that your installation is working properly, execute
 
 .. code-block:: bash
 
-    $ python S0A_download_ASDF_MPI.py
-    $ python S1_fft_cc_MPI.py
-    $ python S2_stacking.py
+    $ python download.py
+    $ python correlate.py
+    $ python stack.py
 
 and make sure the scripts all pass successfully. Otherwise please report issues on the github page or contact the developers.
 
