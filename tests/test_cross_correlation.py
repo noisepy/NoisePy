@@ -1,5 +1,5 @@
+from noisepy.seis.correlate import _filter_channel_data
 from noisepy.seis.datatypes import Channel, ChannelData, Station
-from noisepy.seis.S1_fft_cc_MPI import _filter_channel_data
 
 
 def test_read_channels():
