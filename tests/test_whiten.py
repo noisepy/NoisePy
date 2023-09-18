@@ -3,8 +3,8 @@ import numpy as np
 import scipy
 from scipy.fftpack import next_fast_len
 
-from noisepy.seis.noise_module import moving_ave, whiten
 from noisepy.seis.correlate import ConfigParameters
+from noisepy.seis.noise_module import moving_ave, whiten
 
 
 def whiten_original(data, fft_para: ConfigParameters):

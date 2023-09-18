@@ -2,8 +2,8 @@
 import logging
 
 from ._version import __version__  # noqa: F401
-from .download import download  # noqa: F401
 from .correlate import cross_correlate  # noqa: F401
+from .download import download  # noqa: F401
 from .stack import stack  # noqa: F401
 
 """
