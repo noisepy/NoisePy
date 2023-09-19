@@ -45,6 +45,9 @@ class ASDFDirectory(Generic[T]):
     def __init__(
         self, directory: str, mode: str, get_filename: Callable[[T], str], parse_filename: Callable[[str], T]
     ) -> None:
+        if mode not in ["a", "r"]:
+            raise ValueError(f"Invalid mode {mode}. Must be 'a' or 'r'")
+
         self.directory = directory
         self.mode = mode
         self.get_filename = get_filename
@@ -60,9 +63,11 @@ class ASDFDirectory(Generic[T]):
         return list(map(self.parse_filename, h5files))
 
     def contains(self, key: T, data_type: str, path: str = None):
-        with self[key] as ccf_ds:
-            if not ccf_ds:
-                return False
+        ccf_ds = self[key]
+
+        if not ccf_ds:
+            return False
+        with ccf_ds:
             # source-receiver pair
             exists = data_type in ccf_ds.auxiliary_data
             if path is not None and exists:

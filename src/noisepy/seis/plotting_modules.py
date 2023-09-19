@@ -655,7 +655,7 @@ def plot_all_moveout(
 
     USAGE:
     ----------------------
-    plot_substack_moveout('temp.h5','Allstack_pws',0.1,0.2,1,'ZZ',200,True,'./temp')
+    plot_substack_moveout(store,'Allstack_pws',0.1,0.2,1,'ZZ',200,True,'./temp')
     """
     # open data for read
     if savefig:
@@ -668,7 +668,9 @@ def plot_all_moveout(
         return
 
     # Read some common arguments from the first available data set:
-    params, dtmp = store.read(sta_pairs[0][0], sta_pairs[0][1], ccomp, stack_name)
+    stacks = store.read_stacks(sta_pairs[0][0], sta_pairs[0][1])
+    dtmp = stacks[0].data
+    params = stacks[0].parameters
     if len(params) == 0 or dtmp.size == 0:
         logger.error(f"No data available for plotting {stack_name}/{ccomp}")
         return
@@ -694,10 +696,12 @@ def plot_all_moveout(
 
     # load cc and parameter matrix
     for ii, (src, rec) in enumerate(sta_pairs):
-        params, all_data = store.read(src, rec, ccomp, stack_name)
-        if len(params) == 0 or all_data.size == 0:
+        stacks = store.read_stacks(src, rec)
+        stacks = list(filter(lambda x: x.name == stack_name and x.component == ccomp, stacks))
+        if len(stacks) == 0:
             logger.warning(f"No data available for {src}_{rec}/{stack_name}/{ccomp}")
             continue
+        params, all_data = stacks[0].parameters, stacks[0].data
         dist[ii] = params["dist"]
         ngood[ii] = params["ngood"]
         crap = bandpass(all_data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
