@@ -21,7 +21,7 @@ from obspy.signal.regression import linear_regression
 # from scipy.signal import hilbert
 
 # from noisepy.seis.datatypes import ChannelData, StackMethod
-# from noisepy.seis.S1_fft_cc_MPI import ConfigParameters
+# from noisepy.seis.correlate import ConfigParameters
 
 # import os
 

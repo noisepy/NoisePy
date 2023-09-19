@@ -25,8 +25,7 @@ from obspy.signal.util import _npts2nfft
 from scipy.fftpack import next_fast_len
 from scipy.signal import hilbert
 
-from noisepy.seis.datatypes import ChannelData, StackMethod
-from noisepy.seis.S1_fft_cc_MPI import ConfigParameters
+from .datatypes import ChannelData, ConfigParameters, StackMethod
 
 logger = logging.getLogger(__name__)
 """
