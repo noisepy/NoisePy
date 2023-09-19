@@ -25,7 +25,7 @@ from obspy.signal.util import _npts2nfft
 from scipy.fftpack import next_fast_len
 from scipy.signal import hilbert
 
-from .datatypes import ChannelData, StackMethod, ConfigParameters
+from .datatypes import ChannelData, ConfigParameters, StackMethod
 
 logger = logging.getLogger(__name__)
 """
