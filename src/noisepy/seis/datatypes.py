@@ -123,7 +123,7 @@ class ConfigParameters(BaseModel):
         "If False, it will use all data sample at >=samp_freq",
     )
 
-    cc_len: float = Field(default=1800.0, description="basic unit of data length for fft (sec)")
+    cc_len: int = Field(default=1800, description="basic unit of data length for fft (sec)")
     # download params.
     # Targeted region/station information: only needed when down_list is False
     lamin: float = Field(default=31.0, description="Download: minimum latitude")
@@ -181,7 +181,7 @@ class ConfigParameters(BaseModel):
     acorr_only: bool = Field(default=False, description="only perform auto-correlation")
     xcorr_only: bool = Field(default=True, description="only perform cross-correlation or not")
     # Stacking parameters:
-    stack_method: StackMethod = Field(default=StackMethod.LINEAR)
+    stack_method: StackMethod = Field(default=StackMethod.LINEAR.value)
     keep_substack: bool = Field(default=False, description="keep all sub-stacks in final ASDF file")
     # new rotation para
     rotation: bool = Field(default=True, description="rotation from E-N-Z to R-T-Z")

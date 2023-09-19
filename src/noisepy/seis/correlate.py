@@ -3,7 +3,7 @@ import logging
 import os
 import sys
 from collections import OrderedDict, defaultdict
-from concurrent.futures import Executor, ThreadPoolExecutor
+from concurrent.futures import Executor, Future, ThreadPoolExecutor
 from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -78,6 +78,8 @@ def cross_correlate(
 
             cross_correlate(..., pair_filter=filter_by_lat)
     """
+    # Force config validation
+    fft_params = ConfigParameters.model_validate(dict(fft_params), strict=True)
 
     executor = ThreadPoolExecutor()
     tlog = TimeLogger(logger, logging.INFO, prefix="CC Main")
@@ -92,6 +94,7 @@ def cross_correlate(
         return [timespans]
 
     [timespans] = scheduler.initialize(init, 1)
+    errors = False
 
     for its in scheduler.get_indices(timespans):
         ts = timespans[its]
@@ -202,10 +205,14 @@ def cross_correlate(
                 save_exec,
             )
             tasks.append(t)
-        computed = get_results(tasks, "Cross correlation")
-        save_exec.shutdown(wait=True)
-        total_computed = sum(computed)
-        tlog.log(f"Correlate and write to store: {total_computed} channel pairs")
+        compute_results = get_results(tasks, "Cross correlation")
+        successes, save_tasks = zip(*compute_results)
+        errors = errors or not all(successes)
+        save_tasks = [t for t in save_tasks if t]
+        save_results = get_results(save_tasks, "Save correlations")
+        errors = errors or not all(save_results)
+        save_exec.shutdown()
+        tlog.log("Correlate and write to store")
 
         ffts.clear()
         gc.collect()
@@ -214,6 +221,8 @@ def cross_correlate(
 
     tlog.log(f"Step 1 in total with {os.cpu_count()} cores", t_s1_total)
     executor.shutdown()
+    if errors:
+        raise RuntimeError("Errors occurred during cross-correlation. Check logs for details")
 
 
 def create_pairs(
@@ -255,13 +264,13 @@ def stations_cross_correlation(
     Nfft: int,
     cc_store: CrossCorrelationDataStore,
     executor: Executor,
-) -> int:
+) -> Tuple[bool, Future]:
     tlog = TimeLogger(logger, logging.DEBUG)
     datas = []
     try:
         if cc_store.contains(ts, src, rec):
             logger.info(f"Skipping {src}_{rec} for {ts} since it's already done")
-            return 0
+            return True, None
 
         # TODO: Are there any potential gains to parallelliing this? It could make a difference if
         # num station pairs < num cores since we are already parallelizing at the station pair level
@@ -271,22 +280,22 @@ def stations_cross_correlation(
                 data = CrossCorrelation(result[0].type, result[1].type, result[2], result[3])
                 datas.append(data)
         tlog.log(f"Cross-correlated {len(datas)} pairs for {src} and {rec} for {ts}")
-        executor.submit(save, cc_store, ts, src, rec, datas)
-        return len(datas)
+        save_future = executor.submit(save, cc_store, ts, src, rec, datas)
+        return True, save_future
     except Exception as e:
         logger.error(f"Error processing {src} and {rec} for {ts}: {e}")
-        return 0
+        return False, None
 
 
 def save(
     store: CrossCorrelationDataStore, ts: DateTimeRange, src: Station, rec: Station, datas: List[CrossCorrelation]
-):
+) -> bool:
     try:
         store.append(ts, src, rec, datas)
-        return len(datas)
+        return True
     except Exception as e:
         logger.error(f"Error saving {src} and {rec} for {ts}: {e}")
-        return 0
+        return False
 
 
 def cross_correlation(
@@ -304,6 +313,7 @@ def cross_correlation(
     # this finds the windows of "good" noise
     sou_ind = np.where((src_std < fft_params.max_over_std) & (src_std > 0) & (np.isnan(src_std) == 0))[0]
     if len(sou_ind) == 0:
+        logger.warning(f"no good data for source: {src_chan}")
         return None
 
     # in the case of pure deconvolution, we recommend smoothing anyway.

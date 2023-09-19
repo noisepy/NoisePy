@@ -178,6 +178,7 @@ def save_log(data_dir: str, log_file: Optional[str], storage_options: dict = {})
     if log_file is None:
         return
     fs = get_filesystem(data_dir, storage_options=storage_options)
+    fs.makedirs(data_dir, exist_ok=True)
     fs.put(log_file, fs_join(data_dir, os.path.basename(log_file)))
 
 
@@ -221,6 +222,8 @@ def main(args: typing.Any):
             return ASDFCCStore(args.ccf_path, mode=mode)
 
     def get_stack_store(args, params: ConfigParameters):
+        fs = get_filesystem(args.stack_path, storage_options=params.storage_options)
+        fs.makedirs(args.stack_path, exist_ok=True)
         if args.format == DataFormat.ZARR.value:
             return ZarrStackStore(
                 args.stack_path, mode="a", storage_options=params.get_storage_options(args.stack_path)
