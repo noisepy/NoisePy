@@ -55,7 +55,7 @@ cc_method: xcorr
 smooth_N: 10
 smoothspect_N: 10
 substack: true
-substack_len: 3600.0
+substack_len: 3600
 maxlag: 200
 inc_hours: 12
 max_over_std: 10
