@@ -155,6 +155,15 @@ On the next page, search for and add:
 - AmazonECSTaskExecutionRolePolicy
 - AmazonS3FullAccess
 
+Once the role is created, one more permission is needed:
+- Go to: Permissions tab --> Add Permissions --> Create inline policy
+- Search for "batch"
+- Click on **Batch**
+- Select Read / Describe Jobs
+- Click Next
+- Add a poolicy name, e.g. "Describe_Batch_Jobs"
+- Click Create Policy
+
 Finally, go to the S3 bucket where you'll be writing the results of the jobs.
 Open the Permissions tab and add a statement to the bucket policy granting full access to the role you
 just created:
@@ -172,6 +181,8 @@ just created:
 ```
 
 Note that the job role ARN will be in the format of `arn:aws:iam::<YOUR_ACCOUNT_ID>:role/<JOB_ROLE_NAME>`. The bucket ARN will be in the format of `arn:aws:s3:::<YOUR_S3_BUCKET>`.
+
+
 ## Create a Compute Environment
 
 You'll need two pieces of information to create the compute environment. The list of subnets in your VPC and the default security group ID. You can use the following commands to retrieve them:
