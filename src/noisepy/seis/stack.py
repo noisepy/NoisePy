@@ -45,6 +45,9 @@ def stack(
     fft_params: ConfigParameters,
     scheduler: Scheduler = SingleNodeScheduler(),
 ):
+    # Force config validation
+    fft_params = ConfigParameters.model_validate(dict(fft_params), strict=True)
+
     # Use 'spawn' to avoid issues with multiprocessing on linux and 'fork'
     executor = ProcessPoolExecutor(mp_context=get_context("spawn"))
     tlog = TimeLogger(logger=logger, level=logging.INFO)
@@ -53,12 +56,13 @@ def stack(
     def initializer():
         timespans = cc_store.get_timespans()
         pairs_all = cc_store.get_station_pairs()
+        if len(timespans) == 0 or len(pairs_all) == 0:
+            raise IOError("Abort! no available CCF data for stacking")
+
         logger.info(
             f"Station pairs: {len(pairs_all)}, timespans:{len(timespans)}. From: {timespans[0]} to {timespans[-1]}"
         )
 
-        if len(timespans) == 0 or len(pairs_all) == 0:
-            raise IOError("Abort! no available CCF data for stacking")
         return timespans, pairs_all
 
     timespans, pairs_all = scheduler.initialize(initializer, 2)
@@ -77,10 +81,12 @@ def stack(
         executor.submit(stack_store_pair, p[0], p[1], timespans, cc_store, stack_store, fft_params)
         for p in missing_pairs
     ]
-    _ = get_results(tasks, "Stacking Pairs")
+    results = get_results(tasks, "Stacking Pairs")
 
     scheduler.synchronize()
     tlog.log("step 2 in total", t_tot)
+    if not all(results):
+        raise RuntimeError("Error stacking one or more pairs. Check the logs for more information.")
 
 
 def stack_store_pair(
@@ -90,14 +96,16 @@ def stack_store_pair(
     cc_store: CrossCorrelationDataStore,
     stack_store: StackStore,
     fft_params: ConfigParameters,
-):
+) -> bool:
     try:
         stacks = stack_pair(src_sta, rec_sta, timespans, cc_store, fft_params)
         tlog = TimeLogger(logger=logger, level=logging.INFO)
         stack_store.append(src_sta, rec_sta, stacks)
         tlog.log(f"writing stack pair {(src_sta, rec_sta)}")
+        return True
     except Exception as e:
         logger.error(f"Error stacking pair {(src_sta, rec_sta)}: {e}")
+        return False
 
 
 def stack_pair(

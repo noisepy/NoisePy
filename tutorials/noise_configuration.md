@@ -41,7 +41,7 @@ The ``config.yml`` file contains all parameters to configure NoisePy.
 start_date: 2019-02-01 00:00:00 # start date of period of interest
 end_date: 2019-02-02 00:00:00   # end date of the total period of interest.
 samp_freq: 20                   # (Hz) desired sampling rate to process data
-cc_len: 3600.0                  # (sec) window length of the cross-correlation
+cc_len: 3600                  # (sec) window length of the cross-correlation
 step: 1800.0                    #  (sec) step window to run through continuous data
 lamin: 31                       # minimum latitude if a search is required
 lamax: 42                       # maximum latitude if a search is required
@@ -55,7 +55,7 @@ cc_method: xcorr
 smooth_N: 10
 smoothspect_N: 10
 substack: true
-substack_len: 3600.0
+substack_len: 3600
 maxlag: 200
 inc_hours: 12
 max_over_std: 10

@@ -15,8 +15,8 @@ import numpy as np
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from noisepy.seis.datatypes import ConfigParameters
-from noisepy.seis.utils import TimeLogger
+from .datatypes import ConfigParameters
+from .utils import TimeLogger
 from . import noise_module
 from obspy.clients.fdsn import Client
 from obspy.clients.fdsn.header import FDSNNoDataException
@@ -73,7 +73,10 @@ MAX_MEM = 5.0  # maximum memory allowed per core in GB
 # we expect no parameters need to be changed below
 
 
-def download(direc: str, prepro_para: ConfigParameters):
+def download(direc: str, prepro_para: ConfigParameters) -> None:
+    # Force config validation
+    prepro_para = ConfigParameters.model_validate(dict(prepro_para), strict=True)
+
     # client/data center. see https://docs.obspy.org/packages/obspy.clients.fdsn.html for a list
     client = Client(prepro_para.client_url_key)
     chan_list = prepro_para.channels
@@ -186,7 +189,7 @@ def download(direc: str, prepro_para: ConfigParameters):
 
     # output station list
     if not prepro_para.down_list:
-        dict = {
+        locs_dict = {
             "network": net,
             "station": sta,
             "channel": chan,
@@ -194,7 +197,7 @@ def download(direc: str, prepro_para: ConfigParameters):
             "longitude": lon,
             "elevation": elev,
         }
-        locs = pd.DataFrame(dict)
+        locs = pd.DataFrame(locs_dict)
         locs.to_csv(os.path.join(direc, "station.csv"), index=False)
 
     # get MPI variables ready

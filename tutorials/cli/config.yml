@@ -1,7 +1,7 @@
 start_date: 2019-02-01 00:00:00
 end_date: 2019-02-02 00:00:00
 samp_freq: 20
-cc_len: 3600.0
+cc_len: 3600
 lamin: 31
 lamax: 42
 lomin: -124
@@ -15,7 +15,7 @@ cc_method: xcorr
 smooth_N: 10
 smoothspect_N: 10
 substack: true
-substack_len: 3600.0
+substack_len: 3600
 maxlag: 200
 inc_hours: 12
 max_over_std: 10
