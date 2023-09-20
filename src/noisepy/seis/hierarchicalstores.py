@@ -66,9 +66,7 @@ class HierarchicalCCStoreBase(CrossCorrelationDataStore):
     def contains(self, timespan: DateTimeRange, src: Station, rec: Station) -> bool:
         path = self._get_path(timespan, src, rec)
         with self._lock:
-            # The keys have the full path to the files so we do a prefix check
-            # since the path is just the directory name
-            return any(map(lambda k: path in k, self.path_cache))
+            return path in self.path_cache
 
     def append(
         self,

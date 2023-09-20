@@ -1,6 +1,7 @@
 import io
 import json
 import logging
+import re
 import tarfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -14,8 +15,9 @@ from noisepy.seis.hierarchicalstores import (
     HierarchicalCCStoreBase,
     HierarchicalStackStoreBase,
 )
-from noisepy.seis.stores import parse_station_pair, parse_timespan
-from noisepy.seis.utils import fs_join, get_filesystem
+
+from .stores import parse_station_pair, parse_timespan
+from .utils import fs_join, get_filesystem, get_fs_sep
 
 logger = logging.getLogger(__name__)
 
@@ -32,10 +34,19 @@ class NumpyArrayStore(ArrayStore):
         self.root_path = root_dir
         self.storage_options = storage_options
         self.fs = get_filesystem(root_dir, storage_options=storage_options)
+        path = Path(root_dir)
+        prefix = get_fs_sep(root_dir).join(path.parts[1:])
+        self.prefix_regex = re.compile(f".*{prefix}/")
         logger.info(f"Numpy store created at {root_dir}")
+        self.raw_paths = None
 
     def load_paths(self) -> List[str]:
-        return self.fs.find(self.root_path)
+        paths = self.fs.find(self.root_path)
+        return [self._clean(p) for p in paths if p.endswith(TAR_GZ_EXTENSION)]
+
+    def _clean(self, path: str) -> str:
+        # go from full file paths to just the STA_STA/TIMESTAMP
+        return self.prefix_regex.sub("", path).removesuffix(TAR_GZ_EXTENSION)
 
     def append(self, path: str, params: Dict[str, Any], data: np.ndarray):
         logger.debug(f"Appending to {path}: {data.shape}")
@@ -85,8 +96,8 @@ class NumpyCCStore(HierarchicalCCStoreBase):
         super().__init__(NumpyArrayStore(root_dir, mode, storage_options=storage_options))
 
     def get_timespans(self) -> List[DateTimeRange]:
-        paths = list(filter(lambda x: x.endswith(TAR_GZ_EXTENSION), self.helper.load_paths()))
-        timespans = set(Path(p).name.removesuffix(TAR_GZ_EXTENSION) for p in paths)
+        paths = self.helper.load_paths()
+        timespans = set(Path(p).name for p in paths)
         timespans.discard(None)
         return list(map(parse_timespan, sorted(timespans)))
 
