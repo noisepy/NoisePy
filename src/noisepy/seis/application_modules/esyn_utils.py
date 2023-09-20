@@ -36,7 +36,7 @@ def read_pyasdf(sfile: str, ccomp: str) -> Tuple[float, float, np.ndarray, np.nd
 
 ### -----
 # Function that Calculate Mean Square
-def msValue(arr: np.ndarray, n: int) -> Tuple[np.ndarray]:
+def msValue(arr: np.ndarray, n: int) -> np.ndarray:
     square = 0.0
     mean = 0.0
     square = np.sum(np.square(arr))
