@@ -30,7 +30,7 @@ def read_pyasdf(sfile: str, ccomp: str) -> Tuple[float, float, np.ndarray, np.nd
             return dist, dt, tvec, sdata
 
         except Exception:
-            print("continue! no %s component exist" % ccomp)
+            logger.warning(f"continue! no {ccomp} component exist")
             return None
 
 
