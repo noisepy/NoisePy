@@ -20,7 +20,7 @@ def read_pyasdf(sfile: str, ccomp: str) -> Tuple[float, float, np.ndarray, np.nd
         try:
             dt = ds.auxiliary_data[alist[0]][ccomp].parameters["dt"]
             dist = ds.auxiliary_data[alist[0]][ccomp].parameters["dist"]
-            print("working on %s (comp: %s) that is %5.2fkm apart. dt: %.3f " % (sfile, ccomp, dist, dt))
+            logger.info("working on %s (comp: %s) that is %5.2fkm apart. dt: %.3f " % (sfile, ccomp, dist, dt))
             # read stacked data
             sdata = ds.auxiliary_data[alist[0]][ccomp].data[:]
 
