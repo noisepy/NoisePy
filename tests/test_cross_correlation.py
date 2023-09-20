@@ -1,5 +1,11 @@
-from noisepy.seis.correlate import _filter_channel_data
-from noisepy.seis.datatypes import Channel, ChannelData, Station
+import os
+from unittest.mock import Mock
+
+from test_channelcatalog import MockCatalog
+
+from noisepy.seis.correlate import _filter_channel_data, cross_correlate
+from noisepy.seis.datatypes import Channel, ChannelData, ConfigParameters, Station
+from noisepy.seis.scedc_s3store import SCEDCS3DataStore
 
 
 def test_read_channels():
@@ -23,3 +29,24 @@ def test_read_channels():
     filtered = _filter_channel_data(tuples, samp_freq, single_freq=False)
     assert N * 2 == len(filtered)
     assert all([t[1].sampling_rate >= samp_freq for t in filtered])
+
+
+def test_correlation():
+    config = ConfigParameters()
+    config.samp_freq = 1.0
+    path = os.path.join(os.path.dirname(__file__), "./data/cc")
+    raw_store = SCEDCS3DataStore(path, MockCatalog())
+    ts = raw_store.get_timespans()
+    assert len(ts) == 1
+    channels = raw_store.get_channels(ts[0])
+    # fake the location so we don't have to download the inventory
+    for c in channels:
+        c.station.lat = 45
+        c.station.lon = 45
+        c.station.elevation = 45
+    nsta = len(set([c.station.name for c in channels]))
+    cc_store = Mock()
+    cc_store.contains.return_value = False
+    cross_correlate(raw_store, config, cc_store)
+    expected_writes = nsta * (nsta + 1) / 2
+    assert expected_writes == cc_store.append.call_count
