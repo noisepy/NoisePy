@@ -98,7 +98,7 @@ def ESYN_RadiaTrans_onesta(mean_free: float, tm: float, r: float, c: float) -> f
         Esyn = second
 
         return Esyn
-    if s0 <= 0:
+    else:
         raise ValueError(
             f"Considering the single-station measurement, there is no chance of c**2 * tm**2 - r**2  == {s0} <=0."
         )
