@@ -87,21 +87,20 @@ def ESYN_RadiaTrans_onesta(mean_free: float, tm: float, r: float, c: float) -> f
         Esyn:   The synthetic energy density
     ----------------------------------------------
     """
-    r = r + 0.00000001  # to avoid the a2bot becomes zero
     s0 = c**2 * tm**2 - r**2
-    if s0 > 0:
-        # second term
-        ind2 = mean_free ** (-1) * (math.sqrt(s0) - c * tm)
-        a2up = math.exp(ind2)
-        a2bot = 2 * math.pi * mean_free * math.sqrt(s0)
-        second = (a2up / a2bot) * step(tm - r / c)
-        Esyn = second
+    check_s0(s0)
 
-        return Esyn
-    else:
-        raise ValueError(
-            f"Considering the single-station measurement, there is no chance of c**2 * tm**2 - r**2  == {s0} <=0."
-        )
+    const = 0.00000001
+    r = r + const  # to avoid the a2bot becomes zero
+
+    # second term
+    ind2 = mean_free ** (-1) * (math.sqrt(s0) - c * tm)
+    a2up = math.exp(ind2)
+    a2bot = 2 * math.pi * mean_free * math.sqrt(s0)
+    second = (a2up / a2bot) * step(tm - r / c)
+    Esyn = second
+
+    return Esyn
 
 
 # --- for inter-station
@@ -123,26 +122,22 @@ def ESYN_RadiaTrans_intersta(mean_free: float, tm: float, r: float, c: float) ->
     ----------------------------------------------
     """
     s0 = c**2 * tm**2 - r**2
-    if s0 > 0:
-        # first term
-        a1up = math.exp(-1 * c * tm * (mean_free ** (-1)))
-        a1bot = 2 * math.pi * c * r
-        first = (a1up / a1bot) * impulse(tm - r / c)
+    check_s0(s0)
 
-        # second term
-        ind2 = mean_free ** (-1) * (math.sqrt(s0) - c * tm)
-        a2up = math.exp(ind2)
-        a2bot = 2 * math.pi * mean_free * math.sqrt(s0)
-        second = (a2up / a2bot) * step(tm - r / c)
+    # first term
+    a1up = math.exp(-1 * c * tm * (mean_free ** (-1)))
+    a1bot = 2 * math.pi * c * r
+    first = (a1up / a1bot) * impulse(tm - r / c)
 
-        Esyn = first + second
+    # second term
+    ind2 = mean_free ** (-1) * (math.sqrt(s0) - c * tm)
+    a2up = math.exp(ind2)
+    a2bot = 2 * math.pi * mean_free * math.sqrt(s0)
+    second = (a2up / a2bot) * step(tm - r / c)
 
-        return Esyn
-   else:
-        raise ValueError(
-            f"Considering the inter-station measurement, \
-                it is not sensible for the case of c**2 * tm**2 - r**2  == {s0} <=0."
-        )
+    Esyn = first + second
+
+    return Esyn
 
 
 ### -----
@@ -150,6 +145,15 @@ def convertTuple(tup: str) -> str:
     # initialize an empty string
     str = "".join(tup)
     return str
+
+
+### -----
+def check_s0(x: float) -> None:
+    if not (x > 0):
+        raise ValueError(
+            f"Invalid x: {x}. Considering the 2-D radiative transfer equation, \
+                it is not sensible for the case of c**2 * tm**2 - r**2  == {x} <=0. "
+        )
 
 
 ### -----
