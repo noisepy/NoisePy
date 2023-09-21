@@ -166,6 +166,9 @@ def cc_timespan(
 
     ch_data_tuples = preprocess_all(executor, ch_data_tuples, raw_store, fft_params, ts)
     tlog.log(f"Preprocess: {len(ch_data_tuples)} channels")
+    if len(ch_data_tuples) == 0:
+        logger.warning(f"No data available for {ts} after preprocessing")
+        return False
 
     nchannels = len(ch_data_tuples)
     nseg_chunk = check_memory(fft_params, nchannels)
@@ -452,10 +455,19 @@ def _read_channels(
     samp_freq: int,
     single_freq: bool = True,
 ) -> List[Tuple[Channel, ChannelData]]:
-    ch_data_refs = [executor.submit(store.read_data, ts, ch) for ch in channels]
+    ch_data_refs = [executor.submit(_safe_read_data, store, ts, ch) for ch in channels]
     ch_data = get_results(ch_data_refs, "Read channel data")
-    tuples = list(zip(channels, ch_data))
+    tuples = list(filter(lambda tup: tup[1].data.size > 0, zip(channels, ch_data)))
+
     return _filter_channel_data(tuples, samp_freq, single_freq)
+
+
+def _safe_read_data(store: RawDataStore, ts: DateTimeRange, ch: Channel) -> ChannelData:
+    try:
+        return store.read_data(ts, ch)
+    except Exception as e:
+        logger.error(f"Error reading data for {ch} in {ts}: {e}")
+        return ChannelData.empty()
 
 
 def _filter_channel_data(
