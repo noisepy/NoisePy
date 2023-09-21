@@ -138,7 +138,7 @@ def ESYN_RadiaTrans_intersta(mean_free: float, tm: float, r: float, c: float) ->
         Esyn = first + second
 
         return Esyn
-    if s0 <= 0:
+   else:
         raise ValueError(
             f"Considering the inter-station measurement, \
                 it is not sensible for the case of c**2 * tm**2 - r**2  == {s0} <=0."
