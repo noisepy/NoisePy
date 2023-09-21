@@ -81,7 +81,6 @@ def cross_correlate(
     # Force config validation
     fft_params = ConfigParameters.model_validate(dict(fft_params), strict=True)
 
-    executor = ThreadPoolExecutor()
     tlog = TimeLogger(logger, logging.INFO, prefix="CC Main")
     t_s1_total = tlog.reset()
     logger.info(f"Starting Cross-Correlation with {os.cpu_count()} cores")
@@ -95,134 +94,147 @@ def cross_correlate(
 
     [timespans] = scheduler.initialize(init, 1)
     errors = False
-
     for its in scheduler.get_indices(timespans):
         ts = timespans[its]
-        """
-        LOADING NOISE DATA AND DO FFT
-        """
-        nnfft = int(next_fast_len(int(fft_params.cc_len * fft_params.samp_freq)))  # samp_freq should be sampling_rate
-
-        t_chunk = tlog.reset()  # for tracking overall chunk processing time
-        all_channels = raw_store.get_channels(ts)
-        all_channel_count = len(all_channels)
-        tlog.log(f"get {all_channel_count} channels")
-        all_channels = list(filter(lambda c: c.station.valid(), all_channels))
-        all_stations = set([c.station for c in all_channels])
-        if all_channel_count > len(all_channels):
-            logger.warning(
-                f"Some stations were filtered due to missing catalog information (lat/lon/elen). "
-                f"Using {len(all_channels)}/{all_channel_count}"
-            )
-        tlog.reset()
-        station_pairs = list(create_pairs(pair_filter, all_channels, fft_params.acorr_only).keys())
-        # Check for stations that are already done, do this in parallel
-        logger.info(f"Checking for stations already done: {len(station_pairs)} pairs")
-        station_pair_dones = list(map(lambda p: cc_store.contains(ts, p[0], p[1]), station_pairs))
-
-        missing_pairs = [pair for pair, done in zip(station_pairs, station_pair_dones) if not done]
-        # get a set of unique stations from the list of pairs
-        missing_stations = set([station for pair in missing_pairs for station in pair])
-        # Filter the channels to only the missing stations
-        missing_channels = list(filter(lambda c: c.station in missing_stations, all_channels))
-        tlog.log("check for stations already done")
-
-        logger.info(
-            f"Still need to process: {len(missing_stations)}/{len(all_stations)} stations, "
-            f"{len(missing_channels)}/{len(all_channels)} channels, "
-            f"{len(missing_pairs)}/{len(station_pairs)} pairs "
-            f"for {ts}"
-        )
-        if len(missing_channels) == 0:
-            logger.warning(f"{ts} already completed")
-            continue
-
-        ch_data_tuples = _read_channels(
-            executor, ts, raw_store, missing_channels, fft_params.samp_freq, fft_params.single_freq
-        )
-        # only the channels we are using
-
-        if len(ch_data_tuples) == 0:
-            logger.warning(f"No data available for {ts}")
-            continue
-
-        channels = list(zip(*ch_data_tuples))[0]
-        tlog.log(f"Read channel data: {len(channels)} channels")
-
-        ch_data_tuples = preprocess_all(executor, ch_data_tuples, raw_store, fft_params, ts)
-        tlog.log(f"Preprocess: {len(ch_data_tuples)} channels")
-
-        nchannels = len(ch_data_tuples)
-        nseg_chunk = check_memory(fft_params, nchannels)
-        # Dictionary to store all the FFTs, keyed by channel index
-        ffts: Dict[int, NoiseFFT] = OrderedDict()
-
-        logger.debug(f"nseg_chunk: {nseg_chunk}, nnfft: {nnfft}")
-        # loop through all channels
-        tlog.reset()
-
-        fft_refs = [executor.submit(compute_fft, fft_params, chd[1]) for chd in ch_data_tuples]
-        fft_datas = get_results(fft_refs, "Compute ffts")
-        # Done with the raw data, clear it out
-        ch_data_tuples.clear()
-        del ch_data_tuples
-        gc.collect()
-        for ix_ch, fft_data in enumerate(fft_datas):
-            if fft_data.fft.size > 0:
-                ffts[ix_ch] = fft_data
-            else:
-                logger.warning(f"No data available for channel '{channels[ix_ch]}', skipped")
-        tlog.log(f"Compute FFTs: {len(ffts)} channels")
-        Nfft = max(map(lambda d: d.length, fft_datas))
-        if Nfft == 0:
-            logger.error(f"No FFT data available for any channel in {ts}, skipping")
-            continue
-
-        if len(ffts) != nchannels:
-            logger.warning("it seems some stations miss data in download step, but it is OKAY!")
-
-        tasks = []
-
-        station_pairs = create_pairs(pair_filter, channels, fft_params.acorr_only, ffts)
-        tlog.reset()
-
-        save_exec = ThreadPoolExecutor()
-        work_items = list(station_pairs.items())
-        work_items = sorted(work_items, key=lambda t: t[0][0].name + t[0][1].name)
-        logger.info(f"Starting CC with {len(work_items)} station pairs")
-        for station_pair, ch_pairs in work_items:
-            t = executor.submit(
-                stations_cross_correlation,
-                ts,
-                fft_params,
-                station_pair[0],
-                station_pair[1],
-                channels,
-                ch_pairs,
-                ffts,
-                Nfft,
-                cc_store,
-                save_exec,
-            )
-            tasks.append(t)
-        compute_results = get_results(tasks, "Cross correlation")
-        successes, save_tasks = zip(*compute_results)
-        errors = errors or not all(successes)
-        save_tasks = [t for t in save_tasks if t]
-        save_results = get_results(save_tasks, "Save correlations")
-        errors = errors or not all(save_results)
-        save_exec.shutdown()
-        tlog.log("Correlate and write to store")
-
-        ffts.clear()
-        gc.collect()
-
-        tlog.log(f"Process the chunk of {ts}", t_chunk)
+        errors = errors or cc_timespan(raw_store, fft_params, cc_store, ts, pair_filter)
 
     tlog.log(f"Step 1 in total with {os.cpu_count()} cores", t_s1_total)
-    executor.shutdown()
     if errors:
         raise RuntimeError("Errors occurred during cross-correlation. Check logs for details")
+
+
+def cc_timespan(
+    raw_store: RawDataStore,
+    fft_params: ConfigParameters,
+    cc_store: CrossCorrelationDataStore,
+    ts: DateTimeRange,
+    pair_filter: Callable[[Channel, Channel], bool] = lambda src, rec: True,
+) -> bool:
+    errors = False
+    executor = ThreadPoolExecutor(max_workers=12)
+    tlog = TimeLogger(logger, logging.INFO, prefix="CC Main")
+    """
+    LOADING NOISE DATA AND DO FFT
+    """
+    nnfft = int(next_fast_len(int(fft_params.cc_len * fft_params.samp_freq)))  # samp_freq should be sampling_rate
+
+    t_chunk = tlog.reset()  # for tracking overall chunk processing time
+    all_channels = raw_store.get_channels(ts)
+    all_channel_count = len(all_channels)
+    tlog.log(f"get {all_channel_count} channels")
+    all_channels = list(filter(lambda c: c.station.valid(), all_channels))
+    all_stations = set([c.station for c in all_channels])
+    if all_channel_count > len(all_channels):
+        logger.warning(
+            f"Some stations were filtered due to missing catalog information (lat/lon/elen). "
+            f"Using {len(all_channels)}/{all_channel_count}"
+        )
+    tlog.reset()
+    station_pairs = list(create_pairs(pair_filter, all_channels, fft_params.acorr_only).keys())
+    # Check for stations that are already done, do this in parallel
+    logger.info(f"Checking for stations already done: {len(station_pairs)} pairs")
+    station_pair_dones = list(map(lambda p: cc_store.contains(ts, p[0], p[1]), station_pairs))
+
+    missing_pairs = [pair for pair, done in zip(station_pairs, station_pair_dones) if not done]
+    # get a set of unique stations from the list of pairs
+    missing_stations = set([station for pair in missing_pairs for station in pair])
+    # Filter the channels to only the missing stations
+    missing_channels = list(filter(lambda c: c.station in missing_stations, all_channels))
+    tlog.log("check for stations already done")
+
+    logger.info(
+        f"Still need to process: {len(missing_stations)}/{len(all_stations)} stations, "
+        f"{len(missing_channels)}/{len(all_channels)} channels, "
+        f"{len(missing_pairs)}/{len(station_pairs)} pairs "
+        f"for {ts}"
+    )
+    if len(missing_channels) == 0:
+        logger.warning(f"{ts} already completed")
+        return False
+
+    ch_data_tuples = _read_channels(
+        executor, ts, raw_store, missing_channels, fft_params.samp_freq, fft_params.single_freq
+    )
+    # only the channels we are using
+
+    if len(ch_data_tuples) == 0:
+        logger.warning(f"No data available for {ts}")
+        return False
+
+    channels = list(zip(*ch_data_tuples))[0]
+    tlog.log(f"Read channel data: {len(channels)} channels")
+
+    ch_data_tuples = preprocess_all(executor, ch_data_tuples, raw_store, fft_params, ts)
+    tlog.log(f"Preprocess: {len(ch_data_tuples)} channels")
+
+    nchannels = len(ch_data_tuples)
+    nseg_chunk = check_memory(fft_params, nchannels)
+    # Dictionary to store all the FFTs, keyed by channel index
+    ffts: Dict[int, NoiseFFT] = OrderedDict()
+
+    logger.debug(f"nseg_chunk: {nseg_chunk}, nnfft: {nnfft}")
+    # loop through all channels
+    tlog.reset()
+
+    fft_refs = [executor.submit(compute_fft, fft_params, chd[1]) for chd in ch_data_tuples]
+    fft_datas = get_results(fft_refs, "Compute ffts")
+    # Done with the raw data, clear it out
+    ch_data_tuples.clear()
+    del ch_data_tuples
+    gc.collect()
+    for ix_ch, fft_data in enumerate(fft_datas):
+        if fft_data.fft.size > 0:
+            ffts[ix_ch] = fft_data
+        else:
+            logger.warning(f"No data available for channel '{channels[ix_ch]}', skipped")
+    tlog.log(f"Compute FFTs: {len(ffts)} channels")
+    Nfft = max(map(lambda d: d.length, fft_datas))
+    if Nfft == 0:
+        logger.error(f"No FFT data available for any channel in {ts}, skipping")
+        return True
+
+    if len(ffts) != nchannels:
+        logger.warning("it seems some stations miss data in download step, but it is OKAY!")
+
+    tasks = []
+
+    station_pairs = create_pairs(pair_filter, channels, fft_params.acorr_only, ffts)
+    tlog.reset()
+
+    save_exec = ThreadPoolExecutor()
+    work_items = list(station_pairs.items())
+    work_items = sorted(work_items, key=lambda t: t[0][0].name + t[0][1].name)
+    logger.info(f"Starting CC with {len(work_items)} station pairs")
+    for station_pair, ch_pairs in work_items:
+        t = executor.submit(
+            stations_cross_correlation,
+            ts,
+            fft_params,
+            station_pair[0],
+            station_pair[1],
+            channels,
+            ch_pairs,
+            ffts,
+            Nfft,
+            cc_store,
+            save_exec,
+        )
+        tasks.append(t)
+    compute_results = get_results(tasks, "Cross correlation")
+    successes, save_tasks = zip(*compute_results)
+    errors = errors or not all(successes)
+    save_tasks = [t for t in save_tasks if t]
+    save_results = get_results(save_tasks, "Save correlations")
+    errors = errors or not all(save_results)
+    save_exec.shutdown()
+    tlog.log("Correlate and write to store")
+
+    ffts.clear()
+    gc.collect()
+
+    tlog.log(f"Process the chunk of {ts}", t_chunk)
+    executor.shutdown()
+    return errors
 
 
 def create_pairs(

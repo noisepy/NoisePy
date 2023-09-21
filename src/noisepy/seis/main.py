@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import random
 import sys
 import typing
 from datetime import datetime
@@ -179,7 +180,10 @@ def save_log(data_dir: str, log_file: Optional[str], storage_options: dict = {})
         return
     fs = get_filesystem(data_dir, storage_options=storage_options)
     fs.makedirs(data_dir, exist_ok=True)
-    fs.put(log_file, fs_join(data_dir, os.path.basename(log_file)))
+    # Add a random suffix to make sure we don't override logs from previous runs
+    # or from other nodes (in array jobs)
+    unique_suffix = f".{random.randint(0, 10000000):06d}"
+    fs.put(log_file, fs_join(data_dir, os.path.basename(log_file) + unique_suffix))
 
 
 def get_scheduler(args) -> Scheduler:
@@ -210,6 +214,10 @@ def main(args: typing.Any):
             params = initialize_params(args, None)
             download(args.raw_data_path, params)
             params.save_yaml(fs_join(args.raw_data_path, CONFIG_FILE))
+        except Exception as e:
+            logger.exception(e)
+            logging.shutdown()
+            raise e
         finally:
             save_log(args.raw_data_path, args.logfile, params.storage_options)
 
@@ -244,6 +252,10 @@ def main(args: typing.Any):
             scheduler = get_scheduler(args)
             cross_correlate(raw_store, params, cc_store, scheduler)
             params.save_yaml(fs_join(ccf_dir, CONFIG_FILE))
+        except Exception as e:
+            logger.exception(e)
+            logging.shutdown()
+            raise e
         finally:
             save_log(args.ccf_path, args.logfile, params.storage_options)
 
@@ -255,6 +267,10 @@ def main(args: typing.Any):
             scheduler = get_scheduler(args)
             stack(cc_store, stack_store, params, scheduler)
             params.save_yaml(fs_join(args.stack_path, CONFIG_FILE))
+        except Exception as e:
+            logger.exception(e)
+            logging.shutdown()
+            raise e
         finally:
             save_log(args.stack_path, args.logfile, params.storage_options)
 
@@ -321,11 +337,7 @@ def main_cli():
     try:
         args = parse_args(sys.argv[1:])
         main(args)
-    except Exception as e:
-        logger.exception(e)
-        raise e
     finally:
-        logging.shutdown()
         sys.stdout.flush()
         sys.stderr.flush()
 

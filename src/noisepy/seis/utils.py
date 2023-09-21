@@ -35,6 +35,15 @@ def fs_join(path1: str, path2: str) -> str:
         return os.path.join(path1, path2)
 
 
+def get_fs_sep(path1: str) -> str:
+    """Helper for getting a path separator that can handle both S3 URLs and local file system paths"""
+    url = urlparse(path1)
+    if url.scheme == S3_SCHEME:
+        return posixpath.sep
+    else:
+        return os.sep
+
+
 class TimeLogger:
     """
     A utility class to measure and log the time spent in code fragments. The basic usage is to call::

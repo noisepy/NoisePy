@@ -1,4 +1,5 @@
 import logging
+import re
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -40,10 +41,12 @@ class ZarrStoreHelper(ArrayStore):
         store = zarr.storage.FSStore(root_dir, **storage_options)
         self.cache = zarr.LRUStoreCache(store, max_size=CACHE_SIZE)
         self.root = zarr.open_group(self.cache, mode=mode)
+        self.clean_regex = re.compile("/.z.*")
         logger.info(f"store created at {root_dir}: {type(store)}. Zarr version {zarr.__version__}")
 
     def load_paths(self) -> List[str]:
-        return self.cache.keys()
+        # the keys() returned contains the full file paths, so we remove suffixes like /.zgroup, /.zarray
+        return [self.clean_regex.sub("", key) for key in self.cache.keys()]
 
     def append(self, path: str, params: Dict[str, Any], data: np.ndarray):
         logger.debug(f"Appending to {path}: {data.shape}")

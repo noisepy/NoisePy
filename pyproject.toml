@@ -86,6 +86,9 @@ sql = [
 mpi = [
     "mpi4py>=3.1.4,<4.0.0",
 ]
+aws = [
+    "boto3>=1.26.0,<2.0.0",
+]
 
 [project.scripts]
 noisepy = "noisepy.seis:main.main_cli"
