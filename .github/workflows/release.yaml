@@ -82,7 +82,7 @@ jobs:
         echo "=== Testing source tar file ==="
         # Install tar gz and check import
         python -m pip uninstall --yes noisepy-seis
-        python -m pip install --extra-index-url https://test.pypi.org/simple --upgrade --pre --no-binary=:all: noisepy-seis==$latest_version
+        python -m pip install --extra-index-url https://test.pypi.org/simple --upgrade --pre --no-binary=noisepy-seis noisepy-seis==$latest_version
         python -c "import noisepy.seis; print(noisepy.seis.__version__)"
         noisepy --help
         echo "=== Done testing source tar file ==="
