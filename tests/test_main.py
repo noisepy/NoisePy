@@ -1,6 +1,11 @@
 from datetime import datetime, timezone
+from typing import List
 
-from noisepy.seis.main import Command, initialize_params, parse_args
+import obspy
+import pytest
+
+from noisepy.seis.constants import NO_CCF_DATA_MSG, NO_DATA_MSG
+from noisepy.seis.main import Command, initialize_params, main, parse_args
 
 
 def test_parse_args():
@@ -24,3 +29,42 @@ def test_parse_args():
     assert cfg.cc_method == "foobar"
     assert cfg.substack is True
     assert cfg.correction is False
+
+
+def empty(path: str, tmp_path: str) -> str:
+    return f"--{path}_path={str(tmp_path)}"
+
+
+def run_cmd_with_empty_dirs(cmd: Command, args: List[str]):
+    args = parse_args([cmd.name.lower()] + args)
+    main(args)
+
+
+def test_main_cc(tmp_path):
+    tmp = str(tmp_path)
+    with pytest.raises(IOError) as excinfo:
+        run_cmd_with_empty_dirs(Command.CROSS_CORRELATE, [empty("raw_data", tmp), empty("xml", tmp)])
+    assert NO_DATA_MSG in str(excinfo.value)
+
+
+def test_main_stack(tmp_path):
+    tmp = str(tmp_path)
+    with pytest.raises(IOError) as excinfo:
+        run_cmd_with_empty_dirs(Command.STACK, [empty("ccf", tmp), "--format=asdf"])
+    assert NO_CCF_DATA_MSG in str(excinfo.value)
+
+
+def test_main_download(tmp_path):
+    tmp = str(tmp_path)
+    with pytest.raises(obspy.clients.fdsn.header.FDSNNoDataException):
+        run_cmd_with_empty_dirs(
+            Command.DOWNLOAD,
+            [
+                empty("raw_data", tmp),
+                "--start_date=2020-01-01",
+                "--end_date=2020-01-01",
+                "--stations=''",
+                "--net_list=''",
+                "--channels=''",
+            ],
+        )

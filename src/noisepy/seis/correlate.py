@@ -12,6 +12,7 @@ from datetimerange import DateTimeRange
 from scipy.fftpack.helper import next_fast_len
 
 from . import noise_module
+from .constants import NO_DATA_MSG
 from .datatypes import (
     Channel,
     ChannelData,
@@ -89,7 +90,7 @@ def cross_correlate(
         # set variables to broadcast
         timespans = raw_store.get_timespans()
         if len(timespans) == 0:
-            raise IOError("Abort! no available seismic files for FFT")
+            raise IOError(NO_DATA_MSG)
         return [timespans]
 
     [timespans] = scheduler.initialize(init, 1)

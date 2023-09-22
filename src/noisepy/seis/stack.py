@@ -8,6 +8,8 @@ import numpy as np
 import pandas as pd
 from datetimerange import DateTimeRange
 
+from noisepy.seis.constants import NO_CCF_DATA_MSG
+
 from . import noise_module
 from .datatypes import ConfigParameters, Stack, StackMethod, Station
 from .scheduler import Scheduler, SingleNodeScheduler
@@ -57,7 +59,7 @@ def stack(
         timespans = cc_store.get_timespans()
         pairs_all = cc_store.get_station_pairs()
         if len(timespans) == 0 or len(pairs_all) == 0:
-            raise IOError("Abort! no available CCF data for stacking")
+            raise IOError(NO_CCF_DATA_MSG)
 
         logger.info(
             f"Station pairs: {len(pairs_all)}, timespans:{len(timespans)}. From: {timespans[0]} to {timespans[-1]}"
