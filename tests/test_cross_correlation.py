@@ -3,7 +3,11 @@ from unittest.mock import Mock
 
 from test_channelcatalog import MockCatalog
 
-from noisepy.seis.correlate import _filter_channel_data, cross_correlate
+from noisepy.seis.correlate import (
+    _filter_channel_data,
+    _safe_read_data,
+    cross_correlate,
+)
 from noisepy.seis.datatypes import Channel, ChannelData, ConfigParameters, Station
 from noisepy.seis.scedc_s3store import SCEDCS3DataStore
 
@@ -29,6 +33,13 @@ def test_read_channels():
     filtered = _filter_channel_data(tuples, samp_freq, single_freq=False)
     assert N * 2 == len(filtered)
     assert all([t[1].sampling_rate >= samp_freq for t in filtered])
+
+
+def test_safe_read_channels():
+    store = Mock()
+    store.read_data = Mock(side_effect=Exception("foo"))
+    ch_data = _safe_read_data(store, "foo", "bar")
+    assert ch_data.data.size == 0
 
 
 def test_correlation():

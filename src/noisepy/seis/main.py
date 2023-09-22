@@ -195,6 +195,11 @@ def get_scheduler(args) -> Scheduler:
         return SingleNodeScheduler()
 
 
+def makedir(dir: str, storage_options: dict = {}):
+    fs = get_filesystem(dir, storage_options=storage_options)
+    fs.makedirs(dir, exist_ok=True)
+
+
 def main(args: typing.Any):
     logger = logging.getLogger(__package__)
     logger.setLevel(args.loglevel.upper())
@@ -212,6 +217,7 @@ def main(args: typing.Any):
     def run_download():
         try:
             params = initialize_params(args, None)
+            makedir(args.raw_data_path, params.storage_options)
             download(args.raw_data_path, params)
             params.save_yaml(fs_join(args.raw_data_path, CONFIG_FILE))
         except Exception as e:
@@ -230,8 +236,6 @@ def main(args: typing.Any):
             return ASDFCCStore(args.ccf_path, mode=mode)
 
     def get_stack_store(args, params: ConfigParameters):
-        fs = get_filesystem(args.stack_path, storage_options=params.storage_options)
-        fs.makedirs(args.stack_path, exist_ok=True)
         if args.format == DataFormat.ZARR.value:
             return ZarrStackStore(
                 args.stack_path, mode="a", storage_options=params.get_storage_options(args.stack_path)
@@ -247,6 +251,7 @@ def main(args: typing.Any):
         try:
             ccf_dir = args.ccf_path
             params = initialize_params(args, args.raw_data_path)
+            makedir(args.ccf_path, params.storage_options)
             cc_store = get_cc_store(args, params)
             raw_store = create_raw_store(args, params)
             scheduler = get_scheduler(args)
@@ -262,6 +267,7 @@ def main(args: typing.Any):
     def run_stack():
         try:
             params = initialize_params(args, args.ccf_path)
+            makedir(args.stack_path, params.storage_options)
             cc_store = get_cc_store(args, params, mode="r")
             stack_store = get_stack_store(args, params)
             scheduler = get_scheduler(args)

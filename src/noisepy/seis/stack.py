@@ -8,6 +8,8 @@ import numpy as np
 import pandas as pd
 from datetimerange import DateTimeRange
 
+from noisepy.seis.constants import NO_CCF_DATA_MSG
+
 from . import noise_module
 from .datatypes import ConfigParameters, Stack, StackMethod, Station
 from .scheduler import Scheduler, SingleNodeScheduler
@@ -57,7 +59,7 @@ def stack(
         timespans = cc_store.get_timespans()
         pairs_all = cc_store.get_station_pairs()
         if len(timespans) == 0 or len(pairs_all) == 0:
-            raise IOError("Abort! no available CCF data for stacking")
+            raise IOError(NO_CCF_DATA_MSG)
 
         logger.info(
             f"Station pairs: {len(pairs_all)}, timespans:{len(timespans)}. From: {timespans[0]} to {timespans[-1]}"
@@ -291,11 +293,17 @@ def stack_pair(
 def validate_pairs(ncomp: int, sta_pair: str, fauto: int, ts: DateTimeRange, n_pairs: int) -> bool:
     if fauto == 1:
         if ncomp == 3 and n_pairs < 6:
-            logger.warning("continue! not enough cross components for auto-correlation %s in %s" % (sta_pair, ts))
+            logger.warning(
+                f"continue! not enough cross components for auto-correlation {sta_pair} in {ts}. "
+                f"ncomp={ncomp}, n_pairs={n_pairs}"
+            )
             return False
     else:
         if ncomp == 3 and n_pairs < 9:
-            logger.warning("continue! not enough cross components for cross-correlation %s in %s" % (sta_pair, ts))
+            logger.warning(
+                f"continue! not enough cross components for cross-correlation {sta_pair} in {ts}. "
+                f"ncomp={ncomp}, n_pairs={n_pairs}"
+            )
             return False
 
     if n_pairs > 9:
