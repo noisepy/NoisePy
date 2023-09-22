@@ -73,7 +73,7 @@ bash
 source .bashrc
 conda create -n noisepy python==3.10
 conda activate noisepy
-git clone https://github.com/mdenolle/NoisePy
+git clone https://github.com/noisepy/NoisePy
 cd NoisePy
 pip install ipykernel jupyter
 pip install noisepy-seis
@@ -85,7 +85,7 @@ Using docker
 ```
 sudo yum install -y git docker
 sudo systemctl start docker
-sudo docker pull ghcr.io/mdenolle/noisepy:latest
+sudo docker pull ghcr.io/noisepy/noisepy:latest
 ```
 
 ```

@@ -6,10 +6,10 @@ Disclaimer: this code should not be used "as-is" and not run like a blackbox. Th
 Detailed documentation can be found at https://noisepy.readthedocs.io/en/latest/
 
 [![Documentation Status](https://readthedocs.org/projects/noisepy/badge/?version=latest)](https://noisepy.readthedocs.io/en/latest/?badge=latest)
-[![Build Status](https://travis-ci.com/chengxinjiang/NoisePy.svg?branch=master)](https://travis-ci.com/github/chengxinjiang/NoisePy)
-[![Codecov](https://codecov.io/gh/noisepy/NoisePy/branch/master/graph/badge.svg)](https://codecov.io/gh/noisepy/NoisePy)
+[![Build Status](https://github.com/noisepy/NoisePy/actions/workflows/test.yaml/badge.svg)](https://github.com/noisepy/NoisePy/actions/workflows/test.yaml)
+[![Codecov](https://codecov.io/gh/noisepy/NoisePy/branch/main/graph/badge.svg)](https://codecov.io/gh/noisepy/NoisePy)
 
-<img src="https://raw.githubusercontent.com/mdenolle/NoisePy/master/docs/figures/logo.png" width="800" height="400">
+<img src="https://raw.githubusercontent.com/noisepy/NoisePy/main/docs/figures/logo.png" width="800" height="400">
 
 ## Major updates coming
 NoisePy is going through a major refactoring to make this package easier to develop and deploy. Submit an issue, fork the repository and create pull requests to [contribute](CONTRIBUTING.md).
@@ -75,13 +75,13 @@ To run the code on a single core, open the terminal and activate the noisepy env
 ## Deploy using Docker
 We use I/O on disk, so users need root access to the file system. To install rootless docker, see instructions [here](https://docs.docker.com/engine/security/rootless/#install).
 ```bash
-docker pull  ghcr.io/mdenolle/noisepy:latest
+docker pull  ghcr.io/noisepy/noisepy:latest
 docker run -v ~/tmp:/tmp cross_correlate --path /tmp
 ```
 
 # Tutorials
-A short tutorial on how to use NoisePy-seis can be is available as a [web page](https://mdenolle.github.io/NoisePy/get_started.html) or [Jupyter notebook](https://github.com/mdenolle/NoisePy/blob/master/tutorials/get_started.ipynb) and can be
-[run directly in Colab](https://colab.research.google.com/github/mdenolle/NoisePy/blob/master/tutorials/get_started.ipynb).
+A short tutorial on how to use NoisePy-seis can be is available as a [web page](https://noisepy.github.io/NoisePy/get_started.html) or [Jupyter notebook](https://github.com/noisepy/NoisePy/blob/main/tutorials/get_started.ipynb) and can be
+[run directly in Colab](https://colab.research.google.com/github/noisepy/NoisePy/blob/main/tutorials/get_started.ipynb).
 
 
 This tutorial presents one simple example of how NoisePy might work! We strongly encourage you to download the NoisePy package and play it on your own! If you have any  comments and/or suggestions during running the codes, please do not hesitate to contact us through email or open an issue in this github page!
@@ -110,7 +110,7 @@ Taxonomy of the NoisePy variables.
 
 Thanks to our contributors so far!
 
-[![Contributors](https://contrib.rocks/image?repo=mdenolle/NoisePy)](https://github.com/mdenolle/NoisePy/graphs/contributors)
+[![Contributors](https://contrib.rocks/image?repo=noisepy/NoisePy)](https://github.com/noisepy/NoisePy/graphs/contributors)
 
 ## Use this reference when publishing on your work with noisepy
 

@@ -9,7 +9,7 @@ Welcome to NoisePy
 This is the documentation for the Python package of **NoisePy**, which is a new high-performance python tool for seismic ambient noise seismology. For further information and contact information please
 see below website:
 
-* Github repository of *NoisePy*: https://github.com/mdenolle/NoisePy
+* Github repository of *NoisePy*: https://github.com/noisepy/NoisePy
 
 If you use NoisePy for your research and prepare publications, please consider citing **NoisePy**:
 
