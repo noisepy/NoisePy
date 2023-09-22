@@ -2,7 +2,7 @@ name: pre-commit checks
 
 on:
   pull_request:
-  push: { branches: [master] }
+  push: { branches: [main] }
   workflow_dispatch:
 
 jobs:

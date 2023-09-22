@@ -54,7 +54,7 @@ dependencies = [
 
 
 [project.urls]
-Homepage = "https://github.com/mdenolle/NoisePy"
+Homepage = "https://github.com/noisepy/NoisePy"
 
 [tool.hatch.version]
 source = "vcs"

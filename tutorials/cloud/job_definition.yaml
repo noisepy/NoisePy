@@ -3,7 +3,7 @@ type: container
 platformCapabilities:
 - FARGATE
 containerProperties:
-  image: 'ghcr.io/mdenolle/noisepy'
+  image: 'ghcr.io/noisepy/noisepy'
   command:
   - 'cross_correlate'
   - --format=numpy

@@ -13,7 +13,7 @@ jobs:
   build-artifact:
     name: Build noisepy-seis package
     runs-on: ubuntu-20.04
-    if: github.repository == 'mdenolle/NoisePy'
+    if: github.repository == 'noisepy/NoisePy'
     steps:
     - name: Checkout
       uses: actions/checkout@v3
