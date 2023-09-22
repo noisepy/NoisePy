@@ -7,7 +7,7 @@ Detailed documentation can be found at https://noisepy.readthedocs.io/en/latest/
 
 [![Documentation Status](https://readthedocs.org/projects/noisepy/badge/?version=latest)](https://noisepy.readthedocs.io/en/latest/?badge=latest)
 [![Build Status](https://travis-ci.com/chengxinjiang/NoisePy.svg?branch=master)](https://travis-ci.com/github/chengxinjiang/NoisePy)
-[![Codecov](https://codecov.io/gh/mdenolle/NoisePy/branch/master/graph/badge.svg)](https://codecov.io/gh/mdenolle/NoisePy)
+[![Codecov](https://codecov.io/gh/noisepy/NoisePy/branch/master/graph/badge.svg)](https://codecov.io/gh/noisepy/NoisePy)
 
 <img src="https://raw.githubusercontent.com/mdenolle/NoisePy/master/docs/figures/logo.png" width="800" height="400">
 
