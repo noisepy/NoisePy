@@ -466,7 +466,7 @@ def _safe_read_data(store: RawDataStore, ts: DateTimeRange, ch: Channel) -> Chan
     try:
         return store.read_data(ts, ch)
     except Exception as e:
-        logger.error(f"Error reading data for {ch} in {ts}: {e}")
+        logger.warning(f"Error reading data for {ch} in {ts}: {e}")
         return ChannelData.empty()
 
 
