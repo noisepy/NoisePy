@@ -150,7 +150,7 @@ class SCEDCS3DataStore(RawDataStore):
     def _parse_timespan(filename: str) -> DateTimeRange:
         # The SCEDC S3 bucket stores files in the form: CIGMR__LHN___2022002.ms
         year = int(filename[-10:-6])
-        day = int(filename[-5:-3])
+        day = int(filename[-6:-3])
         jan1 = datetime(year, 1, 1, tzinfo=timezone.utc)
         return DateTimeRange(jan1 + timedelta(days=day - 1), jan1 + timedelta(days=day))
 
