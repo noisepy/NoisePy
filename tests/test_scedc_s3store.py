@@ -10,9 +10,11 @@ from noisepy.seis.scedc_s3store import SCEDCS3DataStore, channel_filter
 
 timespan1 = DateTimeRange(datetime(2022, 1, 2, tzinfo=timezone.utc), datetime(2022, 1, 3, tzinfo=timezone.utc))
 timespan2 = DateTimeRange(datetime(2021, 2, 3, tzinfo=timezone.utc), datetime(2021, 2, 4, tzinfo=timezone.utc))
+timespan3 = DateTimeRange(datetime(2023, 6, 1, tzinfo=timezone.utc), datetime(2023, 6, 2, tzinfo=timezone.utc))
 files_dates = [
     ("CIGMR__LHN___2022002.ms", timespan1),
     ("CIGMR__LHN___2021034.ms", timespan2),
+    ("AZCRY__BHE___2023152.ms", timespan3),
 ]
 
 
