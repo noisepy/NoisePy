@@ -43,12 +43,10 @@
       "module": "noisepy.seis.main",
       "args": [
         "stack",
-        "--ccf_path",
-        "${userHome}/test_temp/CCF",
-        "--stack_path",
-        "${userHome}/test_temp/STACK",
-        "--stack_method",
-        "linear"
+        "--ccf_path=${userHome}/test_temp_numpy/CCF",
+        "--stack_path=${userHome}/test_temp_numpy/STACK_linear",
+        "--stack_method=all",
+        "--format=numpy"
       ],
       "console": "integratedTerminal",
       "justMyCode": true
@@ -79,16 +77,12 @@
       "module": "noisepy.seis.main",
       "args": [
         "cross_correlate",
-        "--freq_norm",
-        "rma",
-        "--raw_data_path",
-        "${userHome}/s3tmp/scedc/2022/002",
-        "--ccf_path",
-        "${userHome}/test_temp_zarr/CCF",
-        "--stations",
-        "SBC,RIO,DEV,HEC,RLR,SVD,RPV,BAK,CBC,CCA,CCC",
-        "--xml_path",
-        "${userHome}/s3tmp/FDSNstationXML"
+        "--freq_norm=rma",
+        "--raw_data_path=${userHome}/s3tmp/scedc/2022/002",
+        "--ccf_path=${userHome}/test_temp_zarr/CCF",
+        "--stations=SBC,RIO,DEV,HEC,RLR,SVD,RPV,BAK,CBC,CCA,CCC",
+        "--xml_path=${userHome}/s3tmp/FDSNstationXML",
+        "--format=numpy"
       ],
       "console": "integratedTerminal",
       "justMyCode": true
@@ -102,16 +96,17 @@
         "cross_correlate",
         "--raw_data_path",
         "s3://scedc-pds/continuous_waveforms/",
-        "--ccf_path",
-        "${userHome}/ccfs3tmp/",
-        "--stations=SBC,RIO,DEV,BAK",
+        "--ccf_path=s3://carlosgjs-noisepy/test_batch/CCF_scratch",
+        "--stations=SBC,RIO,DEV,CHN,RUN",
         "--xml_path=~/s3tmp/FDSNstationXML/",
-        "--start=2022-02-02",
-        "--end=2022-02-03",
-        "--logfile=l.txt"
+        "--start=2022-02-01",
+        "--end=2022-02-02",
+        "--logfile=l.txt",
+        "--loglevel=DEBUG",
+        "--format=numpy"
       ],
       "console": "integratedTerminal",
-      "justMyCode": true
+      "justMyCode": false
     },
     {
       "name": "Python: download",

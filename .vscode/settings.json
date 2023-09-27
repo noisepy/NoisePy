@@ -9,5 +9,6 @@
   "isort.args": [
     "--profile",
     "black"
-  ]
+  ],
+  "esbonio.sphinx.confDir": ""
 }
