@@ -82,6 +82,7 @@ jobs:
       working-directory: ./src
       run: |
         noisepy cross_correlate \
+        --config configs/s3_anon.yaml \
         --raw_data_path s3://scedc-pds/continuous_waveforms/ \
         --ccf_path $RUNNER_TEMP/CCF \
         --net_list=CI \
@@ -127,6 +128,7 @@ jobs:
       run: |
         # noisepy cross_correlate --raw_data_path s3://scedc-pds/continuous_waveforms/ --ccf_path /Users/carlosg/test_temp_ccf --xml_path=s3://scedc-pds/FDSNstationXML/CI/ --net_list=CI --format=numpy --start=2023-01-01 --end=2023-01-03 --stations=ARV,BAK
         mpiexec -n 2 noisepy cross_correlate \
+        --config configs/s3_anon.yaml \
         --mpi \
         --raw_data_path s3://scedc-pds/continuous_waveforms/ \
         --ccf_path $RUNNER_TEMP/CCF \
