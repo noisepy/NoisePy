@@ -1,4 +1,4 @@
-from unittest.mock import Mock
+from unittest.mock import MagicMock
 
 import pytest
 from datetimerange import DateTimeRange
@@ -19,9 +19,9 @@ def test_validate_pairs():
 
 
 # since stacking using the ProcessPoolExecutor the stores need to be serializable
-class SerializableMock(Mock):
+class SerializableMock(MagicMock):
     def __reduce__(self):
-        return (Mock, ())
+        return (MagicMock, ())
 
 
 def test_stack_error():
