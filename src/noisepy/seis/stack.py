@@ -196,7 +196,6 @@ def stack_pair(
 
     t_load = tlog.log("loading CCF data")
     stack_results: List[Stack] = []
-    return stack_results
 
     # continue when there is no data or for auto-correlation
     if iseg <= 1 and fauto == 1:
