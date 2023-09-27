@@ -87,7 +87,7 @@ jobs:
         --net_list=CI \
         --start=2023-01-01 \
         --end=2023-01-03 \
-        --stations=ARV,BAK
+        --stations=ARV,BAK \
         --xml_path=s3://scedc-pds/FDSNstationXML/CI/ \
         --freq_norm ${{matrix.freq_norm}} \
         --format ${{matrix.format}}
@@ -133,7 +133,7 @@ jobs:
         --net_list=CI \
         --start=2023-01-01 \
         --end=2023-01-03 \
-        --stations=ARV,BAK
+        --stations=ARV,BAK \
         --xml_path=s3://scedc-pds/FDSNstationXML/CI/  \
         --freq_norm ${{matrix.freq_norm}} \
         --format ${{matrix.format}}
