@@ -100,7 +100,7 @@ jobs:
         --format numpy
     - name: Test Stacking (S2)
       run: |
-        mpiexec -n 3 noisepy stack --mpi --ccf_path $RUNNER_TEMP/CCF --stack_path $RUNNER_TEMP/STACK --stack_method ${{matrix.method}}
+        mpiexec -n 3 noisepy stack --mpi --ccf_path $RUNNER_TEMP/CCF --stack_path $RUNNER_TEMP/STACK --stack_method ${{matrix.method}} --format numpy
   s3_dates:
     strategy:
       fail-fast: true
