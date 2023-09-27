@@ -134,7 +134,7 @@ def cc_timespan(
     station_pairs = list(create_pairs(pair_filter, all_channels, fft_params.acorr_only).keys())
     # Check for stations that are already done, do this in parallel
     logger.info(f"Checking for stations already done: {len(station_pairs)} pairs")
-    station_pair_dones = list(map(lambda p: cc_store.contains(ts, p[0], p[1]), station_pairs))
+    station_pair_dones = list(executor.map(lambda p: cc_store.contains(ts, p[0], p[1]), station_pairs))
 
     missing_pairs = [pair for pair, done in zip(station_pairs, station_pair_dones) if not done]
     # get a set of unique stations from the list of pairs
@@ -165,13 +165,14 @@ def cc_timespan(
     channels = list(zip(*ch_data_tuples))[0]
     tlog.log(f"Read channel data: {len(channels)} channels")
 
-    ch_data_tuples = preprocess_all(executor, ch_data_tuples, raw_store, fft_params, ts)
-    tlog.log(f"Preprocess: {len(ch_data_tuples)} channels")
-    if len(ch_data_tuples) == 0:
+    ch_data_tuples_pre = preprocess_all(executor, ch_data_tuples, raw_store, fft_params, ts)
+    del ch_data_tuples
+    tlog.log(f"Preprocess: {len(ch_data_tuples_pre)} channels")
+    if len(ch_data_tuples_pre) == 0:
         logger.warning(f"No data available for {ts} after preprocessing")
         return False
 
-    nchannels = len(ch_data_tuples)
+    nchannels = len(ch_data_tuples_pre)
     nseg_chunk = check_memory(fft_params, nchannels)
     # Dictionary to store all the FFTs, keyed by channel index
     ffts: Dict[int, NoiseFFT] = OrderedDict()
@@ -180,12 +181,12 @@ def cc_timespan(
     # loop through all channels
     tlog.reset()
 
-    fft_refs = [executor.submit(compute_fft, fft_params, chd[1]) for chd in ch_data_tuples]
-    fft_datas = get_results(fft_refs, "Compute ffts")
+    fft_refs = [executor.submit(compute_fft, fft_params, chd[1]) for chd in ch_data_tuples_pre]
     # Done with the raw data, clear it out
-    ch_data_tuples.clear()
-    del ch_data_tuples
+    ch_data_tuples_pre.clear()
+    del ch_data_tuples_pre
     gc.collect()
+    fft_datas = get_results(fft_refs, "Compute ffts")
     for ix_ch, fft_data in enumerate(fft_datas):
         if fft_data.fft.size > 0:
             ffts[ix_ch] = fft_data
@@ -351,18 +352,16 @@ def preprocess_all(
     fft_params: ConfigParameters,
     ts: DateTimeRange,
 ) -> List[Tuple[Channel, ChannelData]]:
+    channels = list(zip(*ch_data))[0]
     stream_refs = [executor.submit(preprocess, raw_store, t[0], t[1], fft_params, ts) for t in ch_data]
+    del ch_data
     new_streams = get_results(stream_refs, "Pre-process")
     # Log if any streams were removed during pre-processing
-    for ch, st in zip(ch_data, new_streams):
+    for ch, st in zip(channels, new_streams):
         if len(st) == 0:
-            logging.warning(
-                f"Empty stream for {ts}/{ch[0]} after pre-processing. "
-                f"Before pre-processing data.shape: {ch[1].data.shape}, len(stream): {len(ch[1].stream)}"
-            )
+            logging.warning(f"Empty stream for {ts}/{ch} after pre-processing. ")
 
     # Filter to only non-empty streams
-    channels = list(zip(*ch_data))[0]
     non_empty = filter(lambda tup: len(tup[1]) > 0, zip(channels, new_streams))
     return [(ch, ChannelData(st)) for ch, st in non_empty]
 

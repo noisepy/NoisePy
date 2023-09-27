@@ -56,8 +56,9 @@ def stack(
     t_tot = tlog.reset()
 
     def initializer():
-        timespans = cc_store.get_timespans()
-        pairs_all = cc_store.get_station_pairs()
+        timespans = sorted(cc_store.get_timespans(), key=lambda x: str(x))
+        # Important to have them sorted when we distribute work across nodes
+        pairs_all = sorted(cc_store.get_station_pairs(), key=lambda x: str(x))
         if len(timespans) == 0 or len(pairs_all) == 0:
             raise IOError(NO_CCF_DATA_MSG)
 
@@ -88,7 +89,12 @@ def stack(
     scheduler.synchronize()
     tlog.log("step 2 in total", t_tot)
     if not all(results):
-        raise RuntimeError("Error stacking one or more pairs. Check the logs for more information.")
+        failed = [p for p, r in zip(missing_pairs, results) if not r]
+        failed_str = "\n".join(map(str, failed))
+        raise RuntimeError(
+            f"Error stacking {len(failed)}/{len(results)} pairs. Check the logs for more information. "
+            f"Failed pairs: \n{failed_str}"
+        )
 
 
 def stack_store_pair(
@@ -101,6 +107,9 @@ def stack_store_pair(
 ) -> bool:
     try:
         stacks = stack_pair(src_sta, rec_sta, timespans, cc_store, fft_params)
+        if len(stacks) == 0:
+            logger.warning(f"No stacks for {src_sta}_{rec_sta}")
+            return False
         tlog = TimeLogger(logger=logger, level=logging.INFO)
         stack_store.append(src_sta, rec_sta, stacks)
         tlog.log(f"writing stack pair {(src_sta, rec_sta)}")
@@ -186,10 +195,12 @@ def stack_pair(
                 iseg += 1
 
     t_load = tlog.log("loading CCF data")
+    stack_results: List[Stack] = []
+    return stack_results
 
     # continue when there is no data or for auto-correlation
     if iseg <= 1 and fauto == 1:
-        return
+        return stack_results
 
     # matrix used for rotation
     if fft_params.rotation:
@@ -197,8 +208,6 @@ def stack_pair(
     if fft_params.stack_method == StackMethod.ALL:
         bigstack1 = np.zeros(shape=(9, npts_segmt), dtype=np.float32)
         bigstack2 = np.zeros(shape=(9, npts_segmt), dtype=np.float32)
-
-    stack_results: List[Stack] = []
 
     def append_stacks(comp: str, tparameters: Dict[str, Any], stack_data: List[Tuple[StackMethod, np.ndarray]]):
         for method, data in stack_data:
