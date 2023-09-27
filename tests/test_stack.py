@@ -43,7 +43,7 @@ def test_stack_error():
     stack_store.contains.return_value = False
     with pytest.raises(RuntimeError) as e:
         stack(cc_store, stack_store, config)
-        assert "CI.BAK" in str(e)
+    assert "CI.BAK" in str(e)
 
 
 def test_stack_pair():
