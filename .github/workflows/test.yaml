@@ -69,15 +69,15 @@ jobs:
       uses: ./.github/actions/setup
       with:
         python-version: ${{matrix.python_version}}
-    - name: Cache data
-      id: cache
-      uses: actions/cache/restore@v3
-      with:
-        key: download_data-${{ github.sha }}
-        path: ${{runner.temp}}
-    - name: Check cache hit
-      if: steps.cache.outputs.cache-hit != 'true'
-      run: exit 1
+    # - name: Cache data
+    #   id: cache
+    #   uses: actions/cache/restore@v3
+    #   with:
+    #     key: download_data-${{ github.sha }}
+    #     path: ${{runner.temp}}
+    # - name: Check cache hit
+    #   if: steps.cache.outputs.cache-hit != 'true'
+    #   run: exit 1
     - name: Test Cross-Correlation (S1)
       working-directory: ./src
       run: |
@@ -113,15 +113,15 @@ jobs:
       with:
         python-version: ${{matrix.python_version}}
         mpi: 'true'
-    - name: Cache data
-      id: cache
-      uses: actions/cache/restore@v3
-      with:
-        key: download_data-${{ github.sha }}
-        path: ${{runner.temp}}
-    - name: Check cache hit
-      if: steps.cache.outputs.cache-hit != 'true'
-      run: exit 1
+    # - name: Cache data
+    #   id: cache
+    #   uses: actions/cache/restore@v3
+    #   with:
+    #     key: download_data-${{ github.sha }}
+    #     path: ${{runner.temp}}
+    # - name: Check cache hit
+    #   if: steps.cache.outputs.cache-hit != 'true'
+    #   run: exit 1
     - name: Test Cross-Correlation (S1)
       working-directory: ./src
       run: |
