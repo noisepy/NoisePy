@@ -2,9 +2,8 @@ import datetime
 import os
 import re
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
-import numpy as np
 import obspy
 from datetimerange import DateTimeRange
 
@@ -65,7 +64,7 @@ class CrossCorrelationDataStore:
         pass
 
     @abstractmethod
-    def get_timespans(self) -> List[DateTimeRange]:
+    def get_timespans(self, src_sta: Station, rec_sta: Station) -> List[DateTimeRange]:
         pass
 
     @abstractmethod
@@ -78,7 +77,7 @@ class CrossCorrelationDataStore:
 
     # private helpers
     def _get_station_pair(self, src_sta: Station, rec_sta: Station) -> str:
-        return f"{src_sta}_{rec_sta}"
+        return f"{src_sta}/{src_sta}_{rec_sta}"
 
     def _get_channel_pair(self, src_chan: ChannelType, rec_chan: ChannelType) -> str:
         return f"{src_chan}_{rec_chan}"
@@ -90,9 +89,7 @@ class StackStore:
     """
 
     @abstractmethod
-    def append(
-        self, src: Station, rec: Station, components: str, name: str, stack_params: Dict[str, Any], data: np.ndarray
-    ):
+    def append(self, src: Station, rec: Station, timespan: DateTimeRange, stacks: List[Stack]):
         pass
 
     @abstractmethod
@@ -100,7 +97,11 @@ class StackStore:
         pass
 
     @abstractmethod
-    def read_stacks(self, src: Station, rec: Station) -> List[Stack]:
+    def get_timespans(self, src: Station, rec: Station) -> List[DateTimeRange]:
+        pass
+
+    @abstractmethod
+    def read_stacks(self, timespan: DateTimeRange, src: Station, rec: Station) -> List[Stack]:
         pass
 
 
