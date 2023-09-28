@@ -33,12 +33,12 @@ When making changes, please run the following two tests:
 
 Unit tests:
 ```
-pytest ./tests
+pytest ./tests ./integration_tests
 ```
 
 CLI Integration tests:
 ```
-tests/test_cli.sh zarr
+tests/test_cli.sh numpy
 tests/test_cli.sh asdf
 ```
 
