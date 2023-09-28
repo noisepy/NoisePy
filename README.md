@@ -80,8 +80,8 @@ docker run -v ~/tmp:/tmp cross_correlate --path /tmp
 ```
 
 # Tutorials
-A short tutorial on how to use NoisePy-seis can be is available as a [web page](https://noisepy.github.io/NoisePy/get_started.html) or [Jupyter notebook](https://github.com/noisepy/NoisePy/blob/main/tutorials/get_started.ipynb) and can be
-[run directly in Colab](https://colab.research.google.com/github/noisepy/NoisePy/blob/main/tutorials/get_started.ipynb).
+A short tutorial on how to use NoisePy-seis can be is available as a [web page](https://noisepy.github.io/NoisePy/noisepy_scedc_tutorial.html) or [Jupyter notebook](https://github.com/noisepy/NoisePy/blob/main/tutorials/noisepy_scedc_tutorial.ipynb) and can be
+[run directly in Colab](https://colab.research.google.com/github/noisepy/NoisePy/blob/main/tutorials/noisepy_scedc_tutorial.ipynb).
 
 
 This tutorial presents one simple example of how NoisePy might work! We strongly encourage you to download the NoisePy package and play it on your own! If you have any  comments and/or suggestions during running the codes, please do not hesitate to contact us through email or open an issue in this github page!
