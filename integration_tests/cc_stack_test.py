@@ -1,9 +1,9 @@
 import os
 from datetime import datetime
 
+import pytest
 from datetimerange import DateTimeRange
 
-# %%
 from noisepy.seis import cross_correlate, stack  # noisepy core functions
 from noisepy.seis.channelcatalog import (
     XMLStationChannelCatalog,  # Required stationXML handling object
@@ -23,7 +23,8 @@ S3_DATA = "s3://scedc-pds/continuous_waveforms/"
 S3_STATION_XML = "s3://scedc-pds/FDSNstationXML/CI/"  # S3 storage of stationXML
 
 
-def test_cc_stack(tmp_path):
+@pytest.mark.parametrize("stack_method,substack", [(StackMethod.ALL, False), (StackMethod.LINEAR, True)])
+def test_cc_stack(tmp_path, stack_method, substack):
     path = str(tmp_path)
 
     cc_data_path = os.path.join(path, "CCF")
@@ -34,8 +35,11 @@ def test_cc_stack(tmp_path):
     timerange = DateTimeRange(start, end)
 
     config = ConfigParameters()  # default config parameters which can be customized
+    config.stack_method = stack_method
+    config.substack = substack
+    config.keep_substack = substack
 
-    stations = "RPV,SVDß".split(",")
+    stations = "RPV,SVD".split(",")
     catalog = XMLStationChannelCatalog(S3_STATION_XML, storage_options=S3_STORAGE_OPTIONS)  # Station catalog
     raw_store = SCEDCS3DataStore(
         S3_DATA, catalog, channel_filter(stations, "BH"), timerange, storage_options=S3_STORAGE_OPTIONS
@@ -46,6 +50,4 @@ def test_cc_stack(tmp_path):
 
     cc_store = NumpyCCStore(cc_data_path, mode="r")
     stack_store = NumpyStackStore(stack_data_path)
-    config.stack_method = StackMethod.LINEAR
-
     stack(cc_store, stack_store, config)

@@ -85,7 +85,7 @@ def stack(
         for p in missing_pairs
     ]
     results = get_results(tasks, "Stacking Pairs")
-
+    executor.shutdown()
     scheduler.synchronize()
     tlog.log("step 2 in total", t_tot)
     if not all(results):
@@ -105,6 +105,7 @@ def stack_store_pair(
     stack_store: StackStore,
     fft_params: ConfigParameters,
 ) -> bool:
+    logger.info(f"Stacking {src_sta}_{rec_sta}")
     try:
         stacks = stack_pair(src_sta, rec_sta, timespans, cc_store, fft_params)
         if len(stacks) == 0:
@@ -208,9 +209,10 @@ def stack_pair(
         bigstack1 = np.zeros(shape=(9, npts_segmt), dtype=np.float32)
         bigstack2 = np.zeros(shape=(9, npts_segmt), dtype=np.float32)
 
-    def append_stacks(comp: str, tparameters: Dict[str, Any], stack_data: List[Tuple[StackMethod, np.ndarray]]):
+    def append_stacks(comp: str, tparameters: Dict[str, Any], stack_data: List[Tuple[Any, np.ndarray]]):
         for method, data in stack_data:
-            stack_results.append(Stack(comp, f"Allstack_{method.value}", tparameters, data))
+            name = f"Allstack_{method.value}" if type(method) == StackMethod else str(method)
+            stack_results.append(Stack(comp, name, tparameters, data))
 
     # loop through cross-component for stacking
     iflag = 1

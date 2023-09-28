@@ -367,6 +367,6 @@ def _to_json_type(value: Any) -> Any:
         return list(map(_to_json_type, value))
     elif type(value) == np.float64 or type(value) == np.float32:
         return float(value)
-    elif type(value) == np.int64 or type(value) == np.int32:
+    elif type(value) == np.int64 or type(value) == np.int32 or type(value) == np.int16 or type(value) == np.int8:
         return int(value)
     return value
