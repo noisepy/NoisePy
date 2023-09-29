@@ -7,7 +7,7 @@ from noisepy.seis.channel_filter_store import LocationChannelFilterStore
 from noisepy.seis.scedc_s3store import SCEDCS3DataStore
 
 
-def test_locaiton_filtering():
+def test_location_filtering():
     # This folder has 4 channel .ms files, 2 of which are the same channel, different location
     path = os.path.join(os.path.dirname(__file__), "./data/s3scedc")
     store = SCEDCS3DataStore(path, MockCatalog())
