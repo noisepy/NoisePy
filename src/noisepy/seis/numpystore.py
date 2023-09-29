@@ -36,7 +36,7 @@ class NumpyArrayStore(ArrayStore):
         self.fs = get_filesystem(root_dir, storage_options=storage_options)
         path = Path(root_dir)
         prefix = get_fs_sep(root_dir).join(path.parts[1:])
-        self.prefix_regex = re.compile(f".*{prefix}/")
+        self.prefix_regex = re.compile(f".*{re.escape(prefix)}/")
         logger.info(f"Numpy store created at {root_dir}")
         self.raw_paths = None
 
