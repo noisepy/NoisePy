@@ -38,7 +38,6 @@ jobs:
         set PYTHONPATH=src
         pytest tests/. integration_tests/.
   s1_s2:
-    if: false
     strategy:
       fail-fast: true
       matrix:
@@ -83,7 +82,6 @@ jobs:
       run: |
         noisepy stack --ccf_path $RUNNER_TEMP/CCF --stack_path $RUNNER_TEMP/STACK --stack_method ${{matrix.method}} --format ${{matrix.format}}
   s1_s2_mpi:
-    if: false
     strategy:
       fail-fast: true
       matrix:
@@ -117,7 +115,6 @@ jobs:
       run: |
         mpiexec -n 3 noisepy stack --mpi --ccf_path $RUNNER_TEMP/CCF --stack_path $RUNNER_TEMP/STACK --stack_method ${{matrix.method}} --format numpy
   s3_dates:
-    if: false
     strategy:
       fail-fast: true
       matrix:
@@ -138,7 +135,6 @@ jobs:
         --stations "SBC,RIO" --start_date 2022-02-02 --end_date 2022-02-04 \
         --config configs/s3_anon.yaml
   s3_singlepath:
-    if: false
     strategy:
       fail-fast: true
       matrix:
