@@ -34,7 +34,9 @@ jobs:
       with:
         python-version: ${{env.python_version}}
     - name: pytest
-      run: PYTHONPATH=src pytest tests/. integration_tests/.
+      run: |
+        set PYTHONPATH=src
+        pytest tests/. integration_tests/.
   s1_s2:
     strategy:
       fail-fast: true
