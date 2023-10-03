@@ -155,7 +155,7 @@ def plot_substack_cc(
         logger.error("No data available for plotting")
         return
 
-    ccs = cc_store.read_correlations(ts, sta_pairs[0][0], sta_pairs[0][1])
+    ccs = cc_store.read(ts, sta_pairs[0][0], sta_pairs[0][1])
     if len(ccs) == 0:
         logger.error(f"No data available for plotting in {ts}/{sta_pairs[0]}")
         return
@@ -663,12 +663,14 @@ def plot_all_moveout(
             raise ValueError("sdir argument must be provided if savefig=True")
 
     sta_pairs = store.get_station_pairs()
+    ts = store.get_timespans(sta_pairs[0][0], sta_pairs[0][1])
+    ts = ts[0] if len(ts) else None
     if len(sta_pairs) == 0:
         logger.error("No data available for plotting")
         return
 
     # Read some common arguments from the first available data set:
-    stacks = store.read_stacks(sta_pairs[0][0], sta_pairs[0][1])
+    stacks = store.read(ts, sta_pairs[0][0], sta_pairs[0][1])
     dtmp = stacks[0].data
     params = stacks[0].parameters
     if len(params) == 0 or dtmp.size == 0:
@@ -696,7 +698,9 @@ def plot_all_moveout(
 
     # load cc and parameter matrix
     for ii, (src, rec) in enumerate(sta_pairs):
-        stacks = store.read_stacks(src, rec)
+        stacks = store.read(ts, src, rec)
+        ts = store.get_timespans(src, rec)
+        ts = ts[0] if len(ts) else None
         stacks = list(filter(lambda x: x.name == stack_name and x.component == ccomp, stacks))
         if len(stacks) == 0:
             logger.warning(f"No data available for {src}_{rec}/{stack_name}/{ccomp}")

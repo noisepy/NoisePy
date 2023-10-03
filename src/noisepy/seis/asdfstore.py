@@ -2,7 +2,7 @@ import glob
 import logging
 import os
 from pathlib import Path
-from typing import Callable, Dict, Generic, List, Optional, Tuple, TypeVar
+from typing import Callable, Dict, Generic, List, Optional, Set, Tuple, TypeVar
 
 import numpy as np
 import obspy
@@ -54,16 +54,20 @@ class ASDFDirectory(Generic[T]):
         self.parse_filename = parse_filename
 
     def __getitem__(self, key: T) -> pyasdf.ASDFDataSet:
+        return self._get_dataset(key, self.mode)
+
+    def _get_dataset(self, key: T, mode: str) -> pyasdf.ASDFDataSet:
         file_name = self.get_filename(key)
         file_path = os.path.join(self.directory, file_name)
-        return _get_dataset(file_path, self.mode)
+        return _get_dataset(file_path, mode)
 
     def get_keys(self) -> List[T]:
         h5files = sorted(glob.glob(os.path.join(self.directory, "**/*.h5"), recursive=True))
         return list(map(self.parse_filename, h5files))
 
     def contains(self, key: T, data_type: str, path: str = None):
-        ccf_ds = self[key]
+        # contains is always a read
+        ccf_ds = self._get_dataset(key, "r")
 
         if not ccf_ds:
             return False
@@ -128,7 +132,7 @@ class ASDFCCStore(CrossCorrelationDataStore):
         self.datasets = ASDFDirectory(directory, mode, _filename_from_timespan, parse_timespan)
 
     # CrossCorrelationDataStore implementation
-    def contains(self, timespan: DateTimeRange, src: Station, rec: Station) -> bool:
+    def contains(self, src: Station, rec: Station, timespan: DateTimeRange) -> bool:
         station_pair = self._get_station_pair(src, rec)
         contains = self.datasets.contains(timespan, station_pair)
         if contains:
@@ -149,19 +153,23 @@ class ASDFCCStore(CrossCorrelationDataStore):
             channels = self._get_channel_pair(cc.src, cc.rec)
             self.datasets.add_aux_data(timespan, cc.parameters, station_pair, channels, cc.data)
 
-    def get_timespans(self) -> List[DateTimeRange]:
-        return self.datasets.get_keys()
+    def get_timespans(self, src: Station, rec: Station) -> List[DateTimeRange]:
+        timespans = {}
+        pair_key = self._get_station_pair(src, rec)
+
+        def visit(pairs, ts):
+            if pair_key in pairs:
+                timespans[str(ts)] = ts
+
+        self._visit_pairs(visit)
+        return sorted(timespans.values(), key=lambda t: str(t))
 
     def get_station_pairs(self) -> List[Tuple[Station, Station]]:
-        timespans = self.get_timespans()
         pairs_all = set()
-        for timespan in timespans:
-            with self.datasets[timespan] as ccf_ds:
-                data = ccf_ds.auxiliary_data.list()
-                pairs_all.update(parse_station_pair(p) for p in data if p != PROGRESS_DATATYPE)
+        self._visit_pairs(lambda pairs, _: pairs_all.update((parse_station_pair(p) for p in pairs)))
         return list(pairs_all)
 
-    def read_correlations(self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station) -> List[CrossCorrelation]:
+    def read(self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station) -> List[CrossCorrelation]:
         with self.datasets[timespan] as ccf_ds:
             dtype = self._get_station_pair(src_sta, rec_sta)
             if dtype not in ccf_ds.auxiliary_data:
@@ -175,20 +183,39 @@ class ASDFCCStore(CrossCorrelationDataStore):
                 ccs.append(CrossCorrelation(src_ch, rec_ch, stream.parameters, stream.data[:]))
             return ccs
 
+    def _visit_pairs(self, visitor: Callable[[Set[Tuple[str, str]], DateTimeRange], None]):
+        all_timespans = self.datasets.get_keys()
+        for timespan in all_timespans:
+            with self.datasets[timespan] as ccf_ds:
+                data = ccf_ds.auxiliary_data.list()
+                pairs = {p for p in data if p != PROGRESS_DATATYPE}
+                visitor(pairs, timespan)
+
+    def _get_channel_pair(self, src_chan: ChannelType, rec_chan: ChannelType) -> str:
+        return f"{src_chan}_{rec_chan}"
+
+    def _get_station_pair(self, src_sta: Station, rec_sta: Station) -> str:
+        return f"{src_sta}_{rec_sta}"
+
 
 class ASDFStackStore(StackStore):
     def __init__(self, directory: str, mode: str = "a"):
         super().__init__()
         self.datasets = ASDFDirectory(directory, mode, _filename_from_stations, _parse_station_pair_h5file)
 
-    def append(self, src: Station, rec: Station, stacks: List[Stack]):
+    # TODO: Do we want to support storing stacks from different timespans in the same store?
+    def append(self, timespan: DateTimeRange, src: Station, rec: Station, stacks: List[Stack]):
         for stack in stacks:
             self.datasets.add_aux_data((src, rec), stack.parameters, stack.name, stack.component, stack.data)
 
     def get_station_pairs(self) -> List[Tuple[Station, Station]]:
         return self.datasets.get_keys()
 
-    def read_stacks(self, src: Station, rec: Station) -> List[Stack]:
+    def get_timespans(self, src: Station, rec: Station) -> List[DateTimeRange]:
+        # TODO: Do we want to support storing stacks from different timespans in the same store?
+        return []
+
+    def read(self, timespan: DateTimeRange, src: Station, rec: Station) -> List[Stack]:
         stacks = []
         with self.datasets[(src, rec)] as ds:
             for name in ds.auxiliary_data.list():

@@ -56,19 +56,16 @@ def stack(
     t_tot = tlog.reset()
 
     def initializer():
-        timespans = sorted(cc_store.get_timespans(), key=lambda x: str(x))
         # Important to have them sorted when we distribute work across nodes
         pairs_all = sorted(cc_store.get_station_pairs(), key=lambda x: str(x))
-        if len(timespans) == 0 or len(pairs_all) == 0:
+        if len(pairs_all) == 0:
             raise IOError(NO_CCF_DATA_MSG)
 
-        logger.info(
-            f"Station pairs: {len(pairs_all)}, timespans:{len(timespans)}. From: {timespans[0]} to {timespans[-1]}"
-        )
+        logger.info(f"Station pairs: {len(pairs_all)}")
 
-        return timespans, pairs_all
+        return pairs_all
 
-    timespans, pairs_all = scheduler.initialize(initializer, 2)
+    pairs_all = scheduler.initialize(initializer, 1)
 
     # Get the pairs that need to be processed by this node
     pairs_node = [pairs_all[i] for i in scheduler.get_indices(pairs_all)]
@@ -80,10 +77,7 @@ def stack(
             logger.info(f"Stack already exists for {p[0]}-{p[1]}")
             continue
         missing_pairs.append(p)
-    tasks = [
-        executor.submit(stack_store_pair, p[0], p[1], timespans, cc_store, stack_store, fft_params)
-        for p in missing_pairs
-    ]
+    tasks = [executor.submit(stack_store_pair, p[0], p[1], cc_store, stack_store, fft_params) for p in missing_pairs]
     results = get_results(tasks, "Stacking Pairs")
     executor.shutdown()
     scheduler.synchronize()
@@ -100,19 +94,20 @@ def stack(
 def stack_store_pair(
     src_sta: Station,
     rec_sta: Station,
-    timespans: List[DateTimeRange],
     cc_store: CrossCorrelationDataStore,
     stack_store: StackStore,
     fft_params: ConfigParameters,
 ) -> bool:
     logger.info(f"Stacking {src_sta}_{rec_sta}")
     try:
+        timespans = cc_store.get_timespans(src_sta, rec_sta)
         stacks = stack_pair(src_sta, rec_sta, timespans, cc_store, fft_params)
         if len(stacks) == 0:
             logger.warning(f"No stacks for {src_sta}_{rec_sta}")
             return False
         tlog = TimeLogger(logger=logger, level=logging.INFO)
-        stack_store.append(src_sta, rec_sta, stacks)
+        ts = DateTimeRange(timespans[0].start_datetime, timespans[-1].end_datetime)
+        stack_store.append(ts, src_sta, rec_sta, stacks)
         tlog.log(f"writing stack pair {(src_sta, rec_sta)}")
         return True
     except Exception as e:
@@ -164,7 +159,7 @@ def stack_pair(
     iseg = 0
     for ts in timespans:
         # load the data from daily compilation
-        cross_correlations = cc_store.read_correlations(ts, src_sta, rec_sta)
+        cross_correlations = cc_store.read(ts, src_sta, rec_sta)
 
         logger.debug(f"path_list for {src_sta}-{rec_sta}: {cross_correlations}")
         # seperate auto and cross-correlation

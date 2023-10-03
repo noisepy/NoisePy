@@ -42,32 +42,32 @@ def _ccstore_test_helper(ccstore: CrossCorrelationDataStore):
     params = {"key": "Value"}
 
     # assert empty state
-    assert not ccstore.contains(ts1, src.station, rec.station)
-    assert not ccstore.contains(ts2, src.station, rec.station)
+    assert not ccstore.contains(src.station, rec.station, ts1)
+    assert not ccstore.contains(src.station, rec.station, ts2)
 
     # add CC (src->rec) for ts1
     ccstore.append(ts1, src.station, rec.station, [CrossCorrelation(src.type, rec.type, params, data)])
     # assert ts1 is there, but not ts2
-    assert ccstore.contains(ts1, src.station, rec.station)
-    assert not ccstore.contains(ts2, src.station, rec.station)
+    assert ccstore.contains(src.station, rec.station, ts1)
+    assert not ccstore.contains(src.station, rec.station, ts2)
     # also rec->src should not be there for ts1
-    assert not ccstore.contains(ts1, rec.station, src.station)
+    assert not ccstore.contains(rec.station, src.station, ts1)
 
     # now add CC for ts2
     ccstore.append(ts2, src.station, rec.station, [CrossCorrelation(src.type, rec.type, {}, data)])
-    assert ccstore.contains(ts2, src.station, rec.station)
+    assert ccstore.contains(src.station, rec.station, ts2)
 
-    timespans = ccstore.get_timespans()
+    timespans = ccstore.get_timespans(src.station, rec.station)
     assert timespans == [ts1, ts2]
     sta_pairs = ccstore.get_station_pairs()
     assert sta_pairs == [(src.station, rec.station)]
-    ccs = ccstore.read_correlations(ts1, sta_pairs[0][0], sta_pairs[0][1])
+    ccs = ccstore.read(ts1, sta_pairs[0][0], sta_pairs[0][1])
     cha_pairs = [(c.src, c.rec) for c in ccs]
     assert cha_pairs == [(src.type, rec.type)]
     assert params == ccs[0].parameters
     assert np.all(data == ccs[0].data)
 
-    wrong_ccs = ccstore.read_correlations(ts1, src.station, Station("nw", "wrong"))
+    wrong_ccs = ccstore.read(ts1, src.station, Station("nw", "wrong"))
     assert len(wrong_ccs) == 0
 
 

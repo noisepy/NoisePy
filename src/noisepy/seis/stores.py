@@ -2,7 +2,7 @@ import datetime
 import os
 import re
 from abc import ABC, abstractmethod
-from typing import List, Optional, Tuple
+from typing import Generic, List, Optional, Tuple, TypeVar
 
 import obspy
 from datetimerange import DateTimeRange
@@ -10,9 +10,9 @@ from datetimerange import DateTimeRange
 from noisepy.seis.constants import DATE_FORMAT
 
 from .datatypes import (
+    AnnotatedData,
     Channel,
     ChannelData,
-    ChannelType,
     CrossCorrelation,
     Stack,
     Station,
@@ -48,9 +48,16 @@ class RawDataStore(DataStore):
         pass
 
 
-class CrossCorrelationDataStore:
+T = TypeVar("T", bound=AnnotatedData)
+
+
+class ComputedDataStore(Generic[T]):
+    """
+    A class for reading and writing cross-correlation data
+    """
+
     @abstractmethod
-    def contains(self, timespan: DateTimeRange, src: Station, rec: Station) -> bool:
+    def contains(self, src: Station, rec: Station, timespan: DateTimeRange) -> bool:
         pass
 
     @abstractmethod
@@ -59,7 +66,7 @@ class CrossCorrelationDataStore:
         timespan: DateTimeRange,
         src: Station,
         rec: Station,
-        ccs: List[CrossCorrelation],
+        ccs: List[T],
     ):
         pass
 
@@ -72,37 +79,20 @@ class CrossCorrelationDataStore:
         pass
 
     @abstractmethod
-    def read_correlations(self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station) -> List[CrossCorrelation]:
+    def read(self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station) -> List[T]:
         pass
 
-    # private helpers
-    def _get_station_pair(self, src_sta: Station, rec_sta: Station) -> str:
-        return f"{src_sta}/{src_sta}_{rec_sta}"
 
-    def _get_channel_pair(self, src_chan: ChannelType, rec_chan: ChannelType) -> str:
-        return f"{src_chan}_{rec_chan}"
+class CrossCorrelationDataStore(ComputedDataStore[CrossCorrelation]):
+    pass
 
 
-class StackStore:
+class StackStore(ComputedDataStore[Stack]):
     """
     A class for reading and writing stack data
     """
 
-    @abstractmethod
-    def append(self, src: Station, rec: Station, timespan: DateTimeRange, stacks: List[Stack]):
-        pass
-
-    @abstractmethod
-    def get_station_pairs(self) -> List[Tuple[Station, Station]]:
-        pass
-
-    @abstractmethod
-    def get_timespans(self, src: Station, rec: Station) -> List[DateTimeRange]:
-        pass
-
-    @abstractmethod
-    def read_stacks(self, timespan: DateTimeRange, src: Station, rec: Station) -> List[Stack]:
-        pass
+    pass
 
 
 def timespan_str(timespan: DateTimeRange) -> str:
@@ -110,17 +100,10 @@ def timespan_str(timespan: DateTimeRange) -> str:
 
 
 def parse_station_pair(pair: str) -> Optional[Tuple[Station, Station]]:
-    # Parse from: CI.ARV_CI.BAK
-    def station(sta: str) -> Optional[Station]:
-        parts = sta.split(".")
-        if len(parts) != 2:
-            return None
-        return Station(parts[0], parts[1])
-
     if re.match(r"([A-Z0-9]+)\.([A-Z0-9]+)_([A-Z0-9]+)\.([A-Z0-9]+)", pair, re.IGNORECASE) is None:
         return None
 
-    tup = tuple(map(station, pair.split("_")))
+    tup = tuple(map(Station.parse, pair.split("_")))
     if None in tup:
         return None
     return tup

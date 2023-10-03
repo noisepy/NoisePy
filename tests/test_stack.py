@@ -62,6 +62,6 @@ def test_stack_pair():
 
     ccs = [CrossCorrelation(p[0], p[1], params, data) for p in pairs]
 
-    cc_store.read_correlations.return_value = ccs
+    cc_store.read.return_value = ccs
     stacks = stack_pair(sta, sta, [ts, ts], cc_store, config)
     assert len(stacks) == 6

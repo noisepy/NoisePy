@@ -134,7 +134,7 @@ def cc_timespan(
     station_pairs = list(create_pairs(pair_filter, all_channels, fft_params.acorr_only).keys())
     # Check for stations that are already done, do this in parallel
     logger.info(f"Checking for stations already done: {len(station_pairs)} pairs")
-    station_pair_dones = list(executor.map(lambda p: cc_store.contains(ts, p[0], p[1]), station_pairs))
+    station_pair_dones = list(executor.map(lambda p: cc_store.contains(p[0], p[1], ts), station_pairs))
 
     missing_pairs = [pair for pair, done in zip(station_pairs, station_pair_dones) if not done]
     # get a set of unique stations from the list of pairs
@@ -285,7 +285,7 @@ def stations_cross_correlation(
     tlog = TimeLogger(logger, logging.DEBUG)
     datas = []
     try:
-        if cc_store.contains(ts, src, rec):
+        if cc_store.contains(src, rec, ts):
             logger.info(f"Skipping {src}_{rec} for {ts} since it's already done")
             return True, None
 
