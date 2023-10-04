@@ -58,6 +58,7 @@ numpy_paths = [
     ("some/path/CI.BAK/CI.BAK_CI.ARV/2021_07_01_00_00_00.tar.gz", None),
     ("some/path/CI.BAK/CI.BAK_CI.ARV/2021_07_01_00_00_00.tar.gz", None),
     ("path/2021_07_01_00_00_00.tar.gz", None),
+    ("2021_07_01_00_00_00.tar.gz", None),
     ("some/path/CI.BAK/CI.BAK_CI.ARV/2021_07_01_00_00_00T2021_07_02_00_00_00.TXT", None),
 ]
 
