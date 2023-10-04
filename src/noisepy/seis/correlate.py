@@ -112,7 +112,7 @@ def cc_timespan(
     pair_filter: Callable[[Channel, Channel], bool] = lambda src, rec: True,
 ) -> bool:
     errors = False
-    executor = ThreadPoolExecutor(max_workers=12)
+    executor = ThreadPoolExecutor()
     tlog = TimeLogger(logger, logging.INFO, prefix="CC Main")
     """
     LOADING NOISE DATA AND DO FFT
@@ -260,10 +260,10 @@ def create_pairs(
                 if src_chan.station != rec_chan.station:
                     continue
             if ffts and iiS not in ffts:
-                logger.warning(f"No FFT data available for channel '{src_chan}', skipped")
+                logger.warning(f"No FFT data available for src channel '{src_chan}', skipped")
                 continue
             if ffts and iiR not in ffts:
-                logger.warning(f"No FFT data available for channel '{rec_chan}', skipped")
+                logger.warning(f"No FFT data available for rec channel '{rec_chan}', skipped")
                 continue
 
             station_pairs[(src_chan.station, rec_chan.station)].append((iiS, iiR))
