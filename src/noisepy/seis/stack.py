@@ -63,9 +63,9 @@ def stack(
 
         logger.info(f"Station pairs: {len(pairs_all)}")
 
-        return pairs_all
+        return [pairs_all]
 
-    pairs_all = scheduler.initialize(initializer, 1)
+    [pairs_all] = scheduler.initialize(initializer, 1)
 
     # Get the pairs that need to be processed by this node
     pairs_node = [pairs_all[i] for i in scheduler.get_indices(pairs_all)]
