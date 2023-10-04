@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import pytest
 from fsspec.implementations.local import LocalFileSystem
@@ -5,9 +7,10 @@ from s3fs import S3FileSystem
 
 from noisepy.seis.utils import fs_join, get_filesystem, remove_nan_rows, unstack
 
+SEP = os.path.sep
 paths = [
-    ("/dir/", "file.csv", "/dir/file.csv"),
-    ("../relative", "file.json", "../relative/file.json"),
+    (f"{SEP}dir{SEP}", "file.csv", SEP.join(["", "dir", "file.csv"])),
+    (f"..{SEP}relative", "file.json", SEP.join(["..", "relative", "file.json"])),
     ("s3://bucket/path", "file.xml", "s3://bucket/path/file.xml"),
 ]
 

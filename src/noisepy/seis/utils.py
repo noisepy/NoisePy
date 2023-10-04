@@ -23,7 +23,10 @@ def get_filesystem(path: str, storage_options: dict = {}) -> fsspec.AbstractFile
     url = urlparse(path)
     # The storage_options coming from the ConfigParameters is keyed by protocol
     storage_options = storage_options.get(url.scheme, storage_options)
-    return fsspec.filesystem(url.scheme, **storage_options)
+    if url.scheme == S3_SCHEME:
+        return fsspec.filesystem(url.scheme, **storage_options)
+    else:
+        return fsspec.filesystem("file", **storage_options)
 
 
 def fs_join(path1: str, path2: str) -> str:
