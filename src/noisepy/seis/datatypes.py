@@ -16,7 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from pydantic.functional_validators import model_validator
 from pydantic_yaml import parse_yaml_raw_as, to_yaml_str
 
-from noisepy.seis.utils import get_filesystem
+from noisepy.seis.utils import get_filesystem, remove_nan_rows, remove_nans
 
 INVALID_COORD = -sys.float_info.max
 
@@ -81,6 +81,13 @@ class Station:
         self.lon = lon
         self.elevation = elevation
         self.location = location
+
+    def parse(sta: str) -> Optional[Station]:
+        # Parse from: CI.ARV_CI.BAK
+        parts = sta.split(".")
+        if len(parts) != 2:
+            return None
+        return Station(parts[0], parts[1])
 
     def valid(self) -> bool:
         return min(self.lat, self.lon, self.elevation) > INVALID_COORD
@@ -297,7 +304,7 @@ class AnnotatedData(ABC):
     def get_metadata(self) -> Tuple:
         pass
 
-    def pack(datas: List[AnnotatedData]) -> AnnotatedData:
+    def pack(datas: List[AnnotatedData]) -> Tuple[np.ndarray, List[Dict[str, Any]]]:
         if len(datas) == 0:
             raise ValueError("Cannot pack empty list of data")
         # Some arrays may have different lengths, so pad them with NaNs for stacking
@@ -343,6 +350,12 @@ class CrossCorrelation(AnnotatedData):
     def get_metadata(self) -> Tuple:
         return (self.src.name, self.src.location, self.rec.name, self.rec.location, self.parameters)
 
+    def load_instances(tuples: List[Tuple[np.ndarray, Dict[str, Any]]]) -> List[CrossCorrelation]:
+        return [
+            CrossCorrelation(ChannelType(src, src_loc), ChannelType(rec, rec_loc), params, remove_nan_rows(data))
+            for data, (src, src_loc, rec, rec_loc, params) in tuples
+        ]
+
 
 class Stack(AnnotatedData):
     component: str  # e.g. "EE", "EN", ...
@@ -355,6 +368,9 @@ class Stack(AnnotatedData):
 
     def get_metadata(self) -> Tuple:
         return (self.component, self.name, self.parameters)
+
+    def load_instances(tuples: List[Tuple[np.ndarray, Dict[str, Any]]]) -> List[Stack]:
+        return [Stack(comp, name, params, remove_nans(data)) for data, (comp, name, params) in tuples]
 
 
 def to_json_types(params: Dict[str, Any]) -> Dict[str, Any]:

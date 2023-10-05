@@ -1,20 +1,14 @@
 import logging
-import re
-from typing import Any, Dict, List, Optional, Tuple
+from pathlib import Path
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 import zarr
 from datetimerange import DateTimeRange
 
-from noisepy.seis.constants import DONE_PATH
-from noisepy.seis.datatypes import Station
-from noisepy.seis.hierarchicalstores import (
-    ArrayStore,
-    HierarchicalCCStoreBase,
-    HierarchicalStackStoreBase,
-)
-
-from .stores import parse_station_pair, parse_timespan
+from .datatypes import CrossCorrelation, Stack
+from .hierarchicalstores import ArrayStore, HierarchicalStoreBase
+from .stores import parse_timespan
 
 logger = logging.getLogger(__name__)
 
@@ -30,23 +24,13 @@ class ZarrStoreHelper(ArrayStore):
     """
 
     def __init__(self, root_dir: str, mode: str, storage_options={}) -> None:
-        super().__init__()
-        # We don't want to cache the data, but we do want to use the keys() cache
-        CACHE_SIZE = 1
-        logger.info(
-            f"store creating at {root_dir}, mode={mode}, storage_options={storage_options}, cache_size={CACHE_SIZE}"
-        )
+        super().__init__(root_dir, storage_options)
+        logger.info(f"store creating at {root_dir}, mode={mode}, storage_options={storage_options}")
         # TODO:
         storage_options["client_kwargs"] = {"region_name": "us-west-2"}
         store = zarr.storage.FSStore(root_dir, **storage_options)
-        self.cache = zarr.LRUStoreCache(store, max_size=CACHE_SIZE)
-        self.root = zarr.open_group(self.cache, mode=mode)
-        self.clean_regex = re.compile("/.z.*")
+        self.root = zarr.open_group(store, mode=mode)
         logger.info(f"store created at {root_dir}: {type(store)}. Zarr version {zarr.__version__}")
-
-    def load_paths(self) -> List[str]:
-        # the keys() returned contains the full file paths, so we remove suffixes like /.zgroup, /.zarray
-        return [self.clean_regex.sub("", key) for key in self.cache.keys()]
 
     def append(self, path: str, params: Dict[str, Any], data: np.ndarray):
         logger.debug(f"Appending to {path}: {data.shape}")
@@ -66,27 +50,25 @@ class ZarrStoreHelper(ArrayStore):
         metadata.update(array.attrs)
         return (array[:], metadata)
 
+    def parse_path(self, path: str) -> Optional[Tuple[str, DateTimeRange]]:
+        if not path.endswith("0.0"):
+            return None
+        parts = Path(path).parts
+        if len(parts) < 3:
+            return None
+        ts = parse_timespan(parts[-2])
+        if ts is None:
+            return None
+        return (parts[-3], ts)
 
-class ZarrCCStore(HierarchicalCCStoreBase):
+
+class ZarrCCStore(HierarchicalStoreBase):
     def __init__(self, root_dir: str, mode: str = "a", storage_options={}) -> None:
         helper = ZarrStoreHelper(root_dir, mode, storage_options=storage_options)
-        super().__init__(helper)
-
-    def get_timespans(self) -> List[DateTimeRange]:
-        pairs = [k for k in self.helper.root.group_keys() if k != DONE_PATH]
-        timespans = []
-        for p in pairs:
-            timespans.extend(k for k in self.helper.root[p].array_keys())
-        return list(parse_timespan(t) for t in sorted(set(timespans)))
-
-    def get_station_pairs(self) -> List[Tuple[Station, Station]]:
-        return [parse_station_pair(k) for k in self.helper.root.group_keys() if k != DONE_PATH]
+        super().__init__(helper, CrossCorrelation.load_instances)
 
 
-class ZarrStackStore(HierarchicalStackStoreBase):
+class ZarrStackStore(HierarchicalStoreBase):
     def __init__(self, root_dir: str, mode: str = "a", storage_options={}) -> None:
         helper = ZarrStoreHelper(root_dir, mode, storage_options=storage_options)
-        super().__init__(helper)
-
-    def get_station_pairs(self) -> List[Tuple[Station, Station]]:
-        return [parse_station_pair(k) for k in self.helper.root.array_keys() if k != DONE_PATH]
+        super().__init__(helper, Stack.load_instances)

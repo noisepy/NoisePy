@@ -10,9 +10,10 @@ fi
 echo "FORMAT is _${FORMAT}_"
 RUNNER_TEMP=~/test_temp_${FORMAT}
 
+# RUNNER_TEMP=s3://carlosgjs-noisepy/test_new
+# aws s3 rm --recursive $RUNNER_TEMP
+rm -rf $RUNNER_TEMP
 CCF=$RUNNER_TEMP/CCF
-# CCF=s3://carlosgjs-noisepy/test_batch/CCF_scratch
-# aws s3 rm --recursive $CCF
 STACK=$RUNNER_TEMP/STACK
 RAW=~/s3tmp/scedc/
 XML=~/s3tmp/FDSNstationXML
@@ -52,3 +53,6 @@ noisepy stack --ccf_path $CCF \
 --format=${FORMAT} \
 --logfile=$LOGFILE \
 --loglevel=${LOG_LEVEL}
+
+du -ch $RUNNER_TEMP
+tree $RUNNER_TEMP

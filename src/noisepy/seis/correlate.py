@@ -112,7 +112,7 @@ def cc_timespan(
     pair_filter: Callable[[Channel, Channel], bool] = lambda src, rec: True,
 ) -> bool:
     errors = False
-    executor = ThreadPoolExecutor(max_workers=12)
+    executor = ThreadPoolExecutor()
     tlog = TimeLogger(logger, logging.INFO, prefix="CC Main")
     """
     LOADING NOISE DATA AND DO FFT
@@ -134,7 +134,7 @@ def cc_timespan(
     station_pairs = list(create_pairs(pair_filter, all_channels, fft_params.acorr_only).keys())
     # Check for stations that are already done, do this in parallel
     logger.info(f"Checking for stations already done: {len(station_pairs)} pairs")
-    station_pair_dones = list(executor.map(lambda p: cc_store.contains(ts, p[0], p[1]), station_pairs))
+    station_pair_dones = list(executor.map(lambda p: cc_store.contains(p[0], p[1], ts), station_pairs))
 
     missing_pairs = [pair for pair, done in zip(station_pairs, station_pair_dones) if not done]
     # get a set of unique stations from the list of pairs
@@ -260,10 +260,10 @@ def create_pairs(
                 if src_chan.station != rec_chan.station:
                     continue
             if ffts and iiS not in ffts:
-                logger.warning(f"No FFT data available for channel '{src_chan}', skipped")
+                logger.warning(f"No FFT data available for src channel '{src_chan}', skipped")
                 continue
             if ffts and iiR not in ffts:
-                logger.warning(f"No FFT data available for channel '{rec_chan}', skipped")
+                logger.warning(f"No FFT data available for rec channel '{rec_chan}', skipped")
                 continue
 
             station_pairs[(src_chan.station, rec_chan.station)].append((iiS, iiR))
@@ -285,7 +285,7 @@ def stations_cross_correlation(
     tlog = TimeLogger(logger, logging.DEBUG)
     datas = []
     try:
-        if cc_store.contains(ts, src, rec):
+        if cc_store.contains(src, rec, ts):
             logger.info(f"Skipping {src}_{rec} for {ts} since it's already done")
             return True, None
 
