@@ -14,7 +14,7 @@ import pandas as pd
 
 # import pycwt
 import scipy
-from numba import jit
+from numba import jit,float32
 from obspy.core.inventory import Channel, Inventory, Network, Site, Station
 from obspy.core.util.base import _get_function_from_entry_point
 from obspy.signal.filter import bandpass
@@ -1257,7 +1257,7 @@ def portion_gaps(stream, starttime: obspy.UTCDateTime, endtime: obspy.UTCDateTim
     return pgaps
 
 
-@jit("float32[:](float32[:],float32)")
+@jit("float32[:](float32[:],float32)",nopython=True)
 def segment_interpolate(sig1, nfric):
     """
     this function interpolates the data to ensure all points located on interger times of the
