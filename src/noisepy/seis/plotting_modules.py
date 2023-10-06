@@ -1,5 +1,7 @@
 import logging
 import os
+import random
+from concurrent.futures import ThreadPoolExecutor
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,6 +13,7 @@ from obspy.signal.filter import bandpass
 from scipy.fftpack import next_fast_len
 
 from noisepy.seis.stores import CrossCorrelationDataStore, StackStore
+from noisepy.seis.utils import TimeLogger, get_results
 
 logging.getLogger("matplotlib.font_manager").disabled = True
 logger = logging.getLogger(__name__)
@@ -634,6 +637,7 @@ def plot_all_moveout(
     freqmax,
     ccomp,
     dist_inc,
+    sample_pairs=1.0,
     disp_lag=None,
     savefig=False,
     sdir=None,
@@ -690,6 +694,9 @@ def plot_all_moveout(
     indx1 = int((maxlag - disp_lag) / dt)
     indx2 = indx1 + 2 * int(disp_lag / dt) + 1
 
+    if sample_pairs < 1.0:
+        sta_pairs = random.sample(sta_pairs, int(len(sta_pairs) * sample_pairs))
+        logger.info(f"Plotting {len(sta_pairs)} sampled pairs")
     # cc matrix
     nwin = len(sta_pairs)
     data = np.zeros(shape=(nwin, indx2 - indx1), dtype=np.float32)
@@ -697,19 +704,24 @@ def plot_all_moveout(
     ngood = np.zeros(nwin, dtype=np.int16)
 
     # load cc and parameter matrix
-    for ii, (src, rec) in enumerate(sta_pairs):
+    def load(ii):
+        (src, rec) = sta_pairs[ii]
         stacks = store.read(ts, src, rec)
-        ts = store.get_timespans(src, rec)
-        ts = ts[0] if len(ts) else None
         stacks = list(filter(lambda x: x.name == stack_name and x.component == ccomp, stacks))
         if len(stacks) == 0:
             logger.warning(f"No data available for {src}_{rec}/{stack_name}/{ccomp}")
-            continue
+            return
         params, all_data = stacks[0].parameters, stacks[0].data
         dist[ii] = params["dist"]
         ngood[ii] = params["ngood"]
         crap = bandpass(all_data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
         data[ii] = crap[indx1:indx2]
+
+    tlog = TimeLogger(level=logging.INFO)
+    with ThreadPoolExecutor() as exec:
+        futures = [exec.submit(load, ii) for ii in range(nwin)]
+        _ = get_results(futures)
+    tlog.log(f"loading {nwin} stacks")
 
     # average cc
     ntrace = int(np.round(np.max(dist) + 0.51) / dist_inc)
