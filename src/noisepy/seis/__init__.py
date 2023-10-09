@@ -7,7 +7,7 @@ import logging
 from ._version import __version__  # noqa: F401
 from .download import download  # noqa: F401
 from .correlate import cross_correlate  # noqa: F401
-from .stack import stack  # noqa: F401
+from .stack import stack_cross_correlations  # noqa: F401
 
 """
 NoisePy is a Python package designed for fast and easy computation of ambient noise cross-correlation functions.
@@ -19,8 +19,9 @@ The main functions exported by the package are:
                     https://docs.obspy.org/packages/autogen/obspy.clients.fdsn.client.Client.get_waveforms.html
 - cross_correlate:  This is the core function of NoisePy, which performs Fourier transform to all noise data first
                     and loads them into the memory before they are further cross-correlated
-- stack:            Used to assemble and/or stack all cross-correlation functions computed for the staion pairs in
-                    the cross_correlate step
+- stack_cross_correlations:
+                    Used to assemble and/or stack all cross-correlation functions computed for the staion
+                    pairs in the cross_correlate step
 - noise_module:     Collection of functions used in the cross_correlate and stacking steps
 - plotting_modules: Utility functions for plotting the data
 """

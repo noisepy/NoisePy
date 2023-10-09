@@ -1,8 +1,10 @@
-from unittest.mock import MagicMock
+from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
 from datetimerange import DateTimeRange
+from utils import date_range
 
 from noisepy.seis.datatypes import (
     ChannelType,
@@ -10,7 +12,7 @@ from noisepy.seis.datatypes import (
     CrossCorrelation,
     Station,
 )
-from noisepy.seis.stack import stack, stack_pair, validate_pairs
+from noisepy.seis.stack import stack_cross_correlations, stack_pair, validate_pairs
 
 
 def test_validate_pairs():
@@ -31,25 +33,33 @@ class SerializableMock(MagicMock):
 
 
 def test_stack_error():
+    ts = date_range(1, 1, 2)
     config = ConfigParameters()
+    config.start_date = ts.start_datetime
+    config.end_date = ts.end_datetime
     sta = Station("CI", "BAK")
     cc_store = SerializableMock()
-    cc_store.get_timespans.return_value = [DateTimeRange("2021-01-01", "2021-01-02")]
+    cc_store.get_timespans.return_value = [ts]
     cc_store.get_station_pairs.return_value = [(sta, sta)]
     cc_store.read_correlations.return_value = []
 
     stack_store = SerializableMock()
     stack_store.get_station_pairs.return_value = []
     stack_store.contains.return_value = False
-    with pytest.raises(RuntimeError) as e:
-        stack(cc_store, stack_store, config)
+    # , new_callable=lambda: ThreadPoolExecutor(1)
+    with patch("noisepy.seis.stack.ProcessPoolExecutor") as mock_executor:
+        mock_executor.return_value = ThreadPoolExecutor(1)
+        with pytest.raises(RuntimeError) as e:
+            stack_cross_correlations(cc_store, stack_store, config)
     assert "CI.BAK" in str(e)
 
 
 def test_stack_pair():
     config = ConfigParameters()
     sta = Station("CI", "BAK")
-    ts = DateTimeRange("2021-01-01", "2021-01-02")
+    ts = date_range(1, 1, 2)
+    config.start_date = ts.start_datetime
+    config.end_date = ts.end_datetime
     params = {
         "ngood": 4,
         "time": 1548979200.0,

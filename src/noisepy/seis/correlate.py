@@ -134,6 +134,10 @@ def cc_timespan(
     station_pairs = list(create_pairs(pair_filter, all_channels, fft_params.acorr_only).keys())
     # Check for stations that are already done, do this in parallel
     logger.info(f"Checking for stations already done: {len(station_pairs)} pairs")
+
+    stations = set([station for pair in station_pairs for station in pair])
+    _ = list(executor.map(lambda s: cc_store.contains(s, s, ts), stations))
+    tlog.log(f"check for {len(stations)} stations already done (warm up cache)")
     station_pair_dones = list(executor.map(lambda p: cc_store.contains(p[0], p[1], ts), station_pairs))
 
     missing_pairs = [pair for pair, done in zip(station_pairs, station_pair_dones) if not done]

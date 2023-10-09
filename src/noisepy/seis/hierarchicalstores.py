@@ -116,13 +116,14 @@ class PairDirectoryCache:
             if not self.items.get(src_idx, {}).get(rec_idx, None):
                 self.items[src_idx][rec_idx] = []
             return
+        grouped_timespans = defaultdict(list)
+        for t in timespans:
+            grouped_timespans[int(t.timedelta.total_seconds())].append(int(t.start_datetime.timestamp()))
+        for delta, starts in grouped_timespans.items():
+            self._add(src_idx, rec_idx, delta, starts)
 
-        delta = int(timespans[0].timedelta.total_seconds())
-        if not all(int(t.timedelta.total_seconds()) == delta for t in timespans):
-            all_deltas = set(int(t.timedelta.total_seconds()) for t in timespans)
-            raise ValueError(f"All timespans must have the same time delta ({all_deltas})")
-
-        starts = np.array(sorted([int(t.start_datetime.timestamp()) for t in timespans]), dtype=np.uint32)
+    def _add(self, src_idx: int, rec_idx: int, delta: int, start_ts: List[DateTimeRange]):
+        starts = np.array(sorted(start_ts), dtype=np.uint32)
         with self._lock:
             time_tuples = self.items[src_idx][rec_idx]
             for t in time_tuples:

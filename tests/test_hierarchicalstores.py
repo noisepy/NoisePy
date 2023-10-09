@@ -2,7 +2,7 @@ from typing import Tuple
 
 import pytest
 from datetimerange import DateTimeRange
-from utils import range
+from utils import date_range
 
 from noisepy.seis.hierarchicalstores import PairDirectoryCache
 from noisepy.seis.numpystore import NumpyArrayStore
@@ -12,9 +12,9 @@ from noisepy.seis.zarrstore import ZarrStoreHelper
 def test_dircache():
     cache = PairDirectoryCache()
 
-    ts1 = range(4, 1, 2)
-    ts2 = range(4, 2, 3)
-    ts3 = range(2, 1, 2)
+    ts1 = date_range(4, 1, 2)
+    ts2 = date_range(4, 2, 3)
+    ts3 = date_range(2, 1, 2)
 
     assert not cache.contains("src", "rec", ts1)
     assert cache.get_pairs() == []
@@ -39,21 +39,23 @@ def test_dircache():
     assert cache.get_timespans("src", "rec") == [ts3, ts1, ts2]
     assert cache.get_timespans("src2", "rec2") == []
 
-    tsh1 = range(4, 1, 1, 0, 1)
+    tsh1 = date_range(4, 1, 1, 0, 1)
     assert not cache.contains("src", "rec", tsh1)
     cache.add("src", "rec", [tsh1])
     assert cache.contains("src", "rec", tsh1)
     check_1day()
     assert cache.get_timespans("src", "rec") == [ts3, ts1, ts2, tsh1]
 
-    with pytest.raises(ValueError):
-        cache.add("src", "rec", [ts1, tsh1])
+    # add timespans with different lentghs
+    cache.add("src", "rec", [ts1, tsh1])
+    check_1day()
+    assert cache.contains("src", "rec", tsh1)
 
 
 numpy_paths = [
     (
         "some/path/CI.BAK/CI.ARV/2021_07_01_00_00_00T2021_07_02_00_00_00.tar.gz",
-        ("CI.ARV", range(7, 1, 2)),
+        ("CI.ARV", date_range(7, 1, 2)),
     ),
     ("some/path/CI.BAK/CI.BAK_CI.ARV/2021_07_01_00_00_00.tar.gz", None),
     ("some/path/CI.BAK/CI.BAK_CI.ARV/2021_07_01_00_00_00.tar.gz", None),
@@ -72,7 +74,7 @@ def test_numpy_parse_path(path: str, expected: Tuple[str, DateTimeRange]):
 zarr_paths = [
     (
         "some/path/CI.BAK/CI.ARV/2021_07_01_00_00_00T2021_07_02_00_00_00/0.0.0",
-        ("CI.ARV", range(7, 1, 2)),
+        ("CI.ARV", date_range(7, 1, 2)),
     ),
     ("some/path/CI.BAK/CI.BAK_CI.ARV/2021_07_01_00_00_00/0.0.0", None),
     ("some/path/CI.BAK/CI.BAK/2021_07_01_00_00_00/.zgroup", None),

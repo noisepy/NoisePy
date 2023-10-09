@@ -4,9 +4,7 @@ import os
 import random
 import sys
 import typing
-from datetime import datetime
-
-# from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Callable, Iterable, List, Optional
 
@@ -30,14 +28,14 @@ from .scheduler import (
     Scheduler,
     SingleNodeScheduler,
 )
-from .stack import stack
+from .stack import stack_cross_correlations
 from .utils import fs_join, get_filesystem
 from .zarrstore import ZarrCCStore, ZarrStackStore
 
 logger = logging.getLogger(__name__)
 # Utility running the different steps from the command line. Defines the arguments for each step
 
-default_data_path = "Documents/SCAL"
+default_data_path = "noisepy_data"
 WILD_CARD = "*"
 
 
@@ -52,11 +50,6 @@ class DataFormat(Enum):
     ZARR = "zarr"
     ASDF = "asdf"
     NUMPY = "numpy"
-
-
-def valid_date(d: str) -> str:
-    _ = obspy.UTCDateTime(d)
-    return d
 
 
 def list_str(values: str) -> List[str]:
@@ -81,10 +74,17 @@ def get_arg_type(arg_type):
     if arg_type == List[str]:
         return list_str
     if arg_type == datetime:
-        return dateutil.parser.isoparse
+        return parse_utc
     if arg_type == bool:
         return parse_bool
     return arg_type
+
+
+def parse_utc(dstr: str) -> datetime:
+    d = dateutil.parser.isoparse(dstr)
+    if d.timetz().tzinfo is None:
+        return d.replace(tzinfo=timezone.utc)
+    return d
 
 
 def add_model(parser: argparse.ArgumentParser, model: ConfigParameters):
@@ -112,7 +112,8 @@ def initialize_params(args, data_dir: str) -> ConfigParameters:
     config_path = args.config
     if config_path is None and data_dir is not None:
         config_path = fs_join(data_dir, CONFIG_FILE)
-    if config_path is not None and os.path.isfile(config_path):
+    fs = get_filesystem(config_path, storage_options={})
+    if config_path is not None and fs.exists(config_path):
         logger.info(f"Loading parameters from {config_path}")
         params = ConfigParameters.load_yaml(config_path)
     else:
@@ -218,6 +219,7 @@ def main(args: typing.Any):
         try:
             params = initialize_params(args, None)
             makedir(args.raw_data_path, params.storage_options)
+            logger.info(f"Running {args.cmd}. Start: {params.start_date}. End: {params.end_date}")
             download(args.raw_data_path, params)
             params.save_yaml(fs_join(args.raw_data_path, CONFIG_FILE))
         except Exception as e:
@@ -255,6 +257,7 @@ def main(args: typing.Any):
             cc_store = get_cc_store(args, params)
             raw_store = create_raw_store(args, params)
             scheduler = get_scheduler(args)
+            logger.info(f"Command: {args.cmd}. Start: {params.start_date}. End: {params.end_date}")
             cross_correlate(raw_store, params, cc_store, scheduler)
             params.save_yaml(fs_join(ccf_dir, CONFIG_FILE))
         except Exception as e:
@@ -271,7 +274,8 @@ def main(args: typing.Any):
             cc_store = get_cc_store(args, params, mode="r")
             stack_store = get_stack_store(args, params)
             scheduler = get_scheduler(args)
-            stack(cc_store, stack_store, params, scheduler)
+            logger.info(f"Running {args.cmd.name}: {params.start_date} - {params.end_date}")
+            stack_cross_correlations(cc_store, stack_store, params, scheduler)
             params.save_yaml(fs_join(args.stack_path, CONFIG_FILE))
         except Exception as e:
             logger.exception(e)
@@ -328,7 +332,7 @@ def make_step_parser(subparsers: Any, cmd: Command, paths: List[str]) -> Any:
     if cmd != Command.DOWNLOAD:
         parser.add_argument(
             "--format",
-            default=DataFormat.ZARR.value,
+            default=DataFormat.NUMPY.value,
             choices=[f.value for f in DataFormat],
             help="Format of the raw data files",
         )
