@@ -12,7 +12,12 @@ from noisepy.seis.datatypes import (
     CrossCorrelation,
     Station,
 )
-from noisepy.seis.stack import stack_cross_correlations, stack_pair, validate_pairs
+from noisepy.seis.stack import (
+    stack_cross_correlations,
+    stack_pair,
+    stack_store_pair,
+    validate_pairs,
+)
 
 
 def test_validate_pairs():
@@ -34,9 +39,7 @@ class SerializableMock(MagicMock):
 
 def test_stack_error():
     ts = date_range(1, 1, 2)
-    config = ConfigParameters()
-    config.start_date = ts.start_datetime
-    config.end_date = ts.end_datetime
+    config = ConfigParameters(start_date=ts.start_datetime, end_date=ts.end_datetime)
     sta = Station("CI", "BAK")
     cc_store = SerializableMock()
     cc_store.get_timespans.return_value = [ts]
@@ -46,7 +49,6 @@ def test_stack_error():
     stack_store = SerializableMock()
     stack_store.get_station_pairs.return_value = []
     stack_store.contains.return_value = False
-    # , new_callable=lambda: ThreadPoolExecutor(1)
     with patch("noisepy.seis.stack.ProcessPoolExecutor") as mock_executor:
         mock_executor.return_value = ThreadPoolExecutor(1)
         with pytest.raises(RuntimeError) as e:
@@ -54,12 +56,23 @@ def test_stack_error():
     assert "CI.BAK" in str(e)
 
 
-def test_stack_pair():
-    config = ConfigParameters()
-    sta = Station("CI", "BAK")
+def test_stack_contains():
     ts = date_range(1, 1, 2)
-    config.start_date = ts.start_datetime
-    config.end_date = ts.end_datetime
+    config = ConfigParameters(start_date=ts.start_datetime, end_date=ts.end_datetime)
+    sta = Station("CI", "BAK")
+    cc_store = SerializableMock()
+    stack_store = SerializableMock()
+    stack_store.contains.return_value = True
+    # should not stack but succeed if stack_store contains the stack
+    result = stack_store_pair(sta, sta, cc_store, stack_store, config)
+    stack_store.append.assert_not_called()
+    assert result
+
+
+def test_stack_pair():
+    ts = date_range(1, 1, 2)
+    config = ConfigParameters(start_date=ts.start_datetime, end_date=ts.end_datetime)
+    sta = Station("CI", "BAK")
     params = {
         "ngood": 4,
         "time": 1548979200.0,
@@ -76,5 +89,5 @@ def test_stack_pair():
     stacks = stack_pair(sta, sta, [ts, ts], cc_store, config)
     assert len(stacks) == 6
     ts2 = date_range(1, 20, 22)
-    stacks = stacks = stack_pair(sta, sta, [ts2], cc_store, config)
+    stacks = stack_pair(sta, sta, [ts2], cc_store, config)
     assert len(stacks) == 0
