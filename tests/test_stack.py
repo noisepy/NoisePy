@@ -75,3 +75,6 @@ def test_stack_pair():
     cc_store.read.return_value = ccs
     stacks = stack_pair(sta, sta, [ts, ts], cc_store, config)
     assert len(stacks) == 6
+    ts2 = date_range(1, 20, 22)
+    stacks = stacks = stack_pair(sta, sta, [ts2], cc_store, config)
+    assert len(stacks) == 0
