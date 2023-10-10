@@ -1,9 +1,6 @@
 import os
-
-# import mock
 from unittest.mock import Mock, patch  # noqa: F401
 
-# import boto3
 import pytest
 from mock import MagicMock
 
