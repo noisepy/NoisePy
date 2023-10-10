@@ -77,7 +77,6 @@ class AWSBatchArrayScheduler(SingleNodeScheduler):
 
         parent_job_id = worker_job_id.split(":")[0]
         logger.info(f"AWS BATCH Parent job ID: {parent_job_id}")
-        print(parent_job_id)
         response = boto3.client("batch").describe_jobs(jobs=[parent_job_id])
         if "jobs" not in response or len(response["jobs"]) == 0:
             raise ValueError(f"Could not find parent job with ID {parent_job_id}")
