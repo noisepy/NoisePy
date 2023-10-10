@@ -1,7 +1,7 @@
 import os
 
 # import unittest
-from unittest.mock import patch  # noqa: F401
+from unittest.mock import mock, patch  # noqa: F401
 
 # import boto3
 import pytest
