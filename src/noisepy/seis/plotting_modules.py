@@ -1,6 +1,5 @@
 import logging
 import os
-import random
 from concurrent.futures import ThreadPoolExecutor
 
 import matplotlib.pyplot as plt
@@ -637,7 +636,6 @@ def plot_all_moveout(
     freqmax,
     ccomp,
     dist_inc,
-    sample_pairs=1.0,
     disp_lag=None,
     savefig=False,
     sdir=None,
@@ -694,9 +692,6 @@ def plot_all_moveout(
     indx1 = int((maxlag - disp_lag) / dt)
     indx2 = indx1 + 2 * int(disp_lag / dt) + 1
 
-    if sample_pairs < 1.0:
-        sta_pairs = random.sample(sta_pairs, int(len(sta_pairs) * sample_pairs))
-        logger.info(f"Plotting {len(sta_pairs)} sampled pairs")
     # cc matrix
     nwin = len(sta_pairs)
     data = np.zeros(shape=(nwin, indx2 - indx1), dtype=np.float32)
