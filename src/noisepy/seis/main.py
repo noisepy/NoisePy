@@ -57,7 +57,8 @@ def list_str(values: str) -> List[str]:
 
 
 def _valid_config_file(parser, f: str) -> str:
-    if os.path.isfile(f):
+    fs = get_filesystem(f, storage_options={})
+    if fs.exists(f):
         return f
     parser.error(f"'{f}' is not a valid config file")
 
@@ -109,16 +110,19 @@ def initialize_params(args, data_dir: str) -> ConfigParameters:
 
     Then overrides with values passed in the command line
     """
+    params = ConfigParameters()
     config_path = args.config
     if config_path is None and data_dir is not None:
         config_path = fs_join(data_dir, CONFIG_FILE)
-    fs = get_filesystem(config_path, storage_options={})
-    if config_path is not None and fs.exists(config_path):
-        logger.info(f"Loading parameters from {config_path}")
-        params = ConfigParameters.load_yaml(config_path)
+    if config_path is None:
+        logger.warning("No config file specified. Using default parameters.")
     else:
-        logger.warning(f"Config file {config_path if config_path else ''} not found. Using default parameters.")
-        params = ConfigParameters()
+        fs = get_filesystem(config_path, storage_options={})
+        if fs.exists(config_path):
+            logger.info(f"Loading parameters from {config_path}")
+            params = ConfigParameters.load_yaml(config_path)
+        else:
+            logger.warning(f"Config file '{config_path}' not found. Using default parameters.")
     cpy = params.model_copy(update={k: v for (k, v) in vars(args).items() if k in params.__fields__})
     return cpy
 
@@ -215,20 +219,6 @@ def main(args: typing.Any):
     logger.info(f"NoisePy version: {__version__}")
     # _enable_s3fs_debug_logs()
 
-    def run_download():
-        try:
-            params = initialize_params(args, None)
-            makedir(args.raw_data_path, params.storage_options)
-            logger.info(f"Running {args.cmd}. Start: {params.start_date}. End: {params.end_date}")
-            download(args.raw_data_path, params)
-            params.save_yaml(fs_join(args.raw_data_path, CONFIG_FILE))
-        except Exception as e:
-            logger.exception(e)
-            logging.shutdown()
-            raise e
-        finally:
-            save_log(args.raw_data_path, args.logfile, params.storage_options)
-
     def get_cc_store(args, params: ConfigParameters, mode="a"):
         if args.format == DataFormat.ZARR.value:
             return ZarrCCStore(args.ccf_path, mode=mode, storage_options=params.get_storage_options(args.ccf_path))
@@ -249,51 +239,47 @@ def main(args: typing.Any):
         else:
             return ASDFStackStore(args.stack_path, "a")
 
-    def run_cross_correlation():
+    def cmd_wrapper(cmd: Callable[[ConfigParameters], None], src_dir: str, tgt_dir: str):
+        storage_options = {}
         try:
-            ccf_dir = args.ccf_path
-            params = initialize_params(args, args.raw_data_path)
-            makedir(args.ccf_path, params.storage_options)
-            cc_store = get_cc_store(args, params)
-            raw_store = create_raw_store(args, params)
-            scheduler = get_scheduler(args)
-            logger.info(f"Command: {args.cmd}. Start: {params.start_date}. End: {params.end_date}")
-            cross_correlate(raw_store, params, cc_store, scheduler)
-            params.save_yaml(fs_join(ccf_dir, CONFIG_FILE))
+            params = initialize_params(args, src_dir)
+            storage_options = params.storage_options
+            makedir(tgt_dir, storage_options)
+            logger.info(f"Running {args.cmd.name}. Start: {params.start_date}. End: {params.end_date}")
+            params.save_yaml(fs_join(tgt_dir, CONFIG_FILE))
+            cmd(params)
         except Exception as e:
             logger.exception(e)
             logging.shutdown()
             raise e
         finally:
-            save_log(args.ccf_path, args.logfile, params.storage_options)
+            save_log(tgt_dir, args.logfile, storage_options)
 
-    def run_stack():
-        try:
-            params = initialize_params(args, args.ccf_path)
-            makedir(args.stack_path, params.storage_options)
-            cc_store = get_cc_store(args, params, mode="r")
-            stack_store = get_stack_store(args, params)
-            scheduler = get_scheduler(args)
-            logger.info(f"Running {args.cmd.name}: {params.start_date} - {params.end_date}")
-            stack_cross_correlations(cc_store, stack_store, params, scheduler)
-            params.save_yaml(fs_join(args.stack_path, CONFIG_FILE))
-        except Exception as e:
-            logger.exception(e)
-            logging.shutdown()
-            raise e
-        finally:
-            save_log(args.stack_path, args.logfile, params.storage_options)
+    def run_download(params: ConfigParameters):
+        download(args.raw_data_path, params)
+
+    def run_cross_correlation(params: ConfigParameters):
+        cc_store = get_cc_store(args, params)
+        raw_store = create_raw_store(args, params)
+        scheduler = get_scheduler(args)
+        cross_correlate(raw_store, params, cc_store, scheduler)
+
+    def run_stack(params: ConfigParameters):
+        cc_store = get_cc_store(args, params, mode="r")
+        stack_store = get_stack_store(args, params)
+        scheduler = get_scheduler(args)
+        stack_cross_correlations(cc_store, stack_store, params, scheduler)
 
     if args.cmd == Command.DOWNLOAD:
-        run_download()
+        cmd_wrapper(run_download, None, args.raw_data_path)
     if args.cmd == Command.CROSS_CORRELATE:
-        run_cross_correlation()
+        cmd_wrapper(run_cross_correlation, args.raw_data_path, args.ccf_path)
     if args.cmd == Command.STACK:
-        run_stack()
+        cmd_wrapper(run_stack, args.ccf_path, args.stack_path)
     if args.cmd == Command.ALL:
-        run_download()
-        run_cross_correlation()
-        run_stack()
+        cmd_wrapper(run_download, None, args.raw_data_path)
+        cmd_wrapper(run_cross_correlation, args.raw_data_path, args.ccf_path)
+        cmd_wrapper(run_stack, args.ccf_path, args.stack_path)
 
 
 def add_path(parser, prefix: str):
