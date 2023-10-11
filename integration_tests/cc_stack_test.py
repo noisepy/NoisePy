@@ -1,10 +1,13 @@
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 from datetimerange import DateTimeRange
 
-from noisepy.seis import cross_correlate, stack  # noisepy core functions
+from noisepy.seis import (  # noisepy core functions
+    cross_correlate,
+    stack_cross_correlations,
+)
 from noisepy.seis.channelcatalog import (
     XMLStationChannelCatalog,  # Required stationXML handling object
 )
@@ -29,15 +32,15 @@ def test_cc_stack(tmp_path, stack_method, substack):
 
     cc_data_path = os.path.join(path, "CCF")
     stack_data_path = os.path.join(path, "STACK")
-    # timeframe for analysis
-    start = datetime(2002, 1, 1)
-    end = datetime(2002, 1, 3)
-    timerange = DateTimeRange(start, end)
 
     config = ConfigParameters()  # default config parameters which can be customized
+    config.start_date = datetime(2002, 1, 1, tzinfo=timezone.utc)
+    config.end_date = datetime(2002, 1, 3, tzinfo=timezone.utc)
     config.stack_method = stack_method
     config.substack = substack
     config.keep_substack = substack
+    # timeframe for analysis
+    timerange = DateTimeRange(config.start_date, config.end_date)
 
     stations = "RPV,SVD".split(",")
     catalog = XMLStationChannelCatalog(S3_STATION_XML, storage_options=S3_STORAGE_OPTIONS)  # Station catalog
@@ -50,4 +53,4 @@ def test_cc_stack(tmp_path, stack_method, substack):
 
     cc_store = NumpyCCStore(cc_data_path, mode="r")
     stack_store = NumpyStackStore(stack_data_path)
-    stack(cc_store, stack_store, config)
+    stack_cross_correlations(cc_store, stack_store, config)

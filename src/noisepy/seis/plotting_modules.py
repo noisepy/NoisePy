@@ -1,5 +1,6 @@
 import logging
 import os
+from concurrent.futures import ThreadPoolExecutor
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,6 +12,7 @@ from obspy.signal.filter import bandpass
 from scipy.fftpack import next_fast_len
 
 from noisepy.seis.stores import CrossCorrelationDataStore, StackStore
+from noisepy.seis.utils import TimeLogger, get_results
 
 logging.getLogger("matplotlib.font_manager").disabled = True
 logger = logging.getLogger(__name__)
@@ -697,19 +699,24 @@ def plot_all_moveout(
     ngood = np.zeros(nwin, dtype=np.int16)
 
     # load cc and parameter matrix
-    for ii, (src, rec) in enumerate(sta_pairs):
+    def load(ii):
+        (src, rec) = sta_pairs[ii]
         stacks = store.read(ts, src, rec)
-        ts = store.get_timespans(src, rec)
-        ts = ts[0] if len(ts) else None
         stacks = list(filter(lambda x: x.name == stack_name and x.component == ccomp, stacks))
         if len(stacks) == 0:
             logger.warning(f"No data available for {src}_{rec}/{stack_name}/{ccomp}")
-            continue
+            return
         params, all_data = stacks[0].parameters, stacks[0].data
         dist[ii] = params["dist"]
         ngood[ii] = params["ngood"]
         crap = bandpass(all_data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
         data[ii] = crap[indx1:indx2]
+
+    tlog = TimeLogger(level=logging.INFO)
+    with ThreadPoolExecutor() as exec:
+        futures = [exec.submit(load, ii) for ii in range(nwin)]
+        _ = get_results(futures)
+    tlog.log(f"loading {nwin} stacks")
 
     # average cc
     ntrace = int(np.round(np.max(dist) + 0.51) / dist_inc)

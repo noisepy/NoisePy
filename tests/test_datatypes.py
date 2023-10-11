@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import dateutil
 import pytest
 
 from noisepy.seis.datatypes import ChannelType, ConfigParameters, StackMethod, Station
@@ -51,3 +52,17 @@ def test_storage_options():
     # scheme is '' for local files
     c.storage_options[""]["foo"] = "bar"
     assert c.get_storage_options("/local/file") == {"foo": "bar"}
+
+
+def test_config_dates():
+    c = ConfigParameters()
+    # defaults should be valid
+    c = ConfigParameters.model_validate(dict(c), strict=True)
+    c.start_date = dateutil.parser.isoparse("2021-01-01")  # no timezone
+    with pytest.raises(Exception):
+        c = ConfigParameters.model_validate(dict(c), strict=True)
+    c.start_date = dateutil.parser.isoparse("2021-01-01T09:00:00+09:00")  # not utc
+    with pytest.raises(Exception):
+        c = ConfigParameters.model_validate(dict(c), strict=True)
+    c.start_date = dateutil.parser.isoparse("2021-01-01T09:00:00+00:00")  # utc
+    c = ConfigParameters.model_validate(dict(c), strict=True)

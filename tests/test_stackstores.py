@@ -2,7 +2,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from utils import range
+from utils import date_range
 
 from noisepy.seis.asdfstore import ASDFStackStore
 from noisepy.seis.datatypes import Stack, Station
@@ -31,7 +31,7 @@ def numpystore(tmp_path: Path) -> NumpyStackStore:
 def _stackstore_test_helper(store: StackStore):
     src = Station("nw", "sta1")
     rec = Station("nw", "sta2")
-    ts = range(4, 1, 2)
+    ts = date_range(4, 1, 2)
 
     stack1 = Stack("EE", "Allstack_linear", {"key1": "value1"}, np.random.random(10))
     stack2 = Stack("NZ", "Allstack_robust", {"key2": "value2"}, np.random.random(7))
