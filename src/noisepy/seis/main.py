@@ -43,7 +43,6 @@ class Command(Enum):
     DOWNLOAD = 1
     CROSS_CORRELATE = 2
     STACK = 3
-    ALL = 4
 
 
 class DataFormat(Enum):
@@ -276,10 +275,6 @@ def main(args: typing.Any):
         cmd_wrapper(run_cross_correlation, args.raw_data_path, args.ccf_path)
     if args.cmd == Command.STACK:
         cmd_wrapper(run_stack, args.ccf_path, args.stack_path)
-    if args.cmd == Command.ALL:
-        cmd_wrapper(run_download, None, args.raw_data_path)
-        cmd_wrapper(run_cross_correlation, args.raw_data_path, args.ccf_path)
-        cmd_wrapper(run_stack, args.ccf_path, args.stack_path)
 
 
 def add_path(parser, prefix: str):
@@ -344,7 +339,6 @@ def parse_args(arguments: Iterable[str]) -> argparse.Namespace:
     make_step_parser(subparsers, Command.DOWNLOAD, ["raw_data"])
     add_mpi(make_step_parser(subparsers, Command.CROSS_CORRELATE, ["raw_data", "ccf", "xml"]))
     add_mpi(make_step_parser(subparsers, Command.STACK, ["raw_data", "stack", "ccf"]))
-    add_mpi(make_step_parser(subparsers, Command.ALL, ["raw_data", "ccf", "stack", "xml"]))
 
     args = parser.parse_args(arguments)
 
