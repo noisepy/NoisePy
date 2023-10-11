@@ -1,11 +1,17 @@
 from typing import Tuple
+from unittest import mock
 
 import pytest
+from botocore.exceptions import ClientError
 from datetimerange import DateTimeRange
 from utils import date_range
 
-from noisepy.seis.hierarchicalstores import PairDirectoryCache
-from noisepy.seis.numpystore import NumpyArrayStore
+from noisepy.seis.hierarchicalstores import (
+    ERR_SLOWDOWN,
+    FIND_RETRIES,
+    PairDirectoryCache,
+)
+from noisepy.seis.numpystore import NumpyArrayStore, NumpyCCStore
 from noisepy.seis.zarrstore import ZarrStoreHelper
 
 
@@ -87,3 +93,33 @@ zarr_paths = [
 def test_zarr_parse_path(tmp_path, path: str, expected: Tuple[str, DateTimeRange]):
     store = ZarrStoreHelper(str(tmp_path), "a")
     assert store.parse_path(path) == expected
+
+
+def test_find(tmp_path):
+    store = NumpyCCStore(str(tmp_path), "r")
+    find_mock = mock.Mock(side_effect=ClientError({"Error": {"Code": ERR_SLOWDOWN}}, "ListObjectsV2"))
+    store.helper.get_fs().find = find_mock
+    with pytest.raises(RuntimeError):
+        store._find("foo")
+    assert FIND_RETRIES == find_mock.call_count
+
+    # if it's not a SlowDown error then we shouldn't retry
+    find_mock = mock.Mock(side_effect=ClientError({"Error": {"Code": "other error"}}, "ListObjectsV2"))
+    store.helper.get_fs().find = find_mock
+    with pytest.raises(ClientError):
+        store._find("foo")
+    assert 1 == find_mock.call_count
+
+    # same with other type of ClientError
+    find_mock = mock.Mock(side_effect=ClientError({}, "operation"))
+    store.helper.get_fs().find = find_mock
+    with pytest.raises(ClientError):
+        store._find("foo")
+    assert 1 == find_mock.call_count
+
+    # same with other type of exceptoins
+    find_mock = mock.Mock(side_effect=Exception())
+    store.helper.get_fs().find = find_mock
+    with pytest.raises(Exception):
+        store._find("foo")
+    assert 1 == find_mock.call_count

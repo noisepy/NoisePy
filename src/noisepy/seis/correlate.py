@@ -166,9 +166,7 @@ def cc_timespan(
         logger.warning(f"No data available for {ts}")
         return False
 
-    channels = list(zip(*ch_data_tuples))[0]
-    tlog.log(f"Read channel data: {len(channels)} channels")
-
+    tlog.log(f"Read channel data: {len(ch_data_tuples)} channels")
     ch_data_tuples_pre = preprocess_all(executor, ch_data_tuples, raw_store, fft_params, ts)
     del ch_data_tuples
     tlog.log(f"Preprocess: {len(ch_data_tuples_pre)} channels")
@@ -186,6 +184,9 @@ def cc_timespan(
     tlog.reset()
 
     fft_refs = [executor.submit(compute_fft, fft_params, chd[1]) for chd in ch_data_tuples_pre]
+    # Important: get the list of channels at this point and not before because some
+    # tuples could have been removed during pre-processing
+    channels = list(zip(*ch_data_tuples_pre))[0]
     # Done with the raw data, clear it out
     ch_data_tuples_pre.clear()
     del ch_data_tuples_pre
@@ -296,6 +297,8 @@ def stations_cross_correlation(
         # TODO: Are there any potential gains to parallelliing this? It could make a difference if
         # num station pairs < num cores since we are already parallelizing at the station pair level
         for src_chan, rec_chan in channel_pairs:
+            assert channels[src_chan].station == src
+            assert channels[rec_chan].station == rec
             result = cross_correlation(fft_params, src_chan, rec_chan, channels, ffts, Nfft)
             if result is not None:
                 data = CrossCorrelation(result[0].type, result[1].type, result[2], result[3])

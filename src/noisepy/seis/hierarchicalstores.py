@@ -6,10 +6,12 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
+from time import sleep
 from typing import Any, Callable, Dict, Generic, List, Optional, Tuple, TypeVar
 
 import fsspec
 import numpy as np
+from botocore.exceptions import ClientError
 from datetimerange import DateTimeRange
 
 from .datatypes import AnnotatedData, Station
@@ -18,6 +20,9 @@ from .utils import TimeLogger, fs_join, get_filesystem, unstack
 
 META_ATTR = "metadata"
 VERSION_ATTR = "version"
+FIND_RETRIES = 5
+FIND_RETRY_SLEEP = 0.05  # (seconds)
+ERR_SLOWDOWN = "SlowDown"
 
 logger = logging.getLogger(__name__)
 
@@ -214,12 +219,32 @@ class HierarchicalStoreBase(Generic[T]):
     def _load_src(self, src: str):
         if self.dir_cache.is_src_loaded(src):
             return
-        paths = [self.helper.parse_path(p) for p in self.helper.get_fs().find(fs_join(self.helper.get_root_dir(), src))]
+        paths = self._find(src)
+
         grouped_paths = defaultdict(list)
         for rec_sta, timespan in [p for p in paths if p]:
             grouped_paths[rec_sta].append(timespan)
         for rec_sta, timespans in grouped_paths.items():
             self.dir_cache.add(src, rec_sta, sorted(timespans, key=lambda t: t.start_datetime.timestamp()))
+
+    def _find(self, src):
+        i = 0
+        while i < FIND_RETRIES:
+            try:
+                i += 1
+                paths = [
+                    self.helper.parse_path(p)
+                    for p in self.helper.get_fs().find(fs_join(self.helper.get_root_dir(), src))
+                ]
+                return paths
+            except ClientError as e:
+                # when using S3 we sometimes get a SlowDown client error so back off if that happens
+                if e.response.get("Error", {}).get("Code", None) != ERR_SLOWDOWN:
+                    logger.error(f"Got ClientError while listing {src}: {e}")
+                    raise
+                logger.warning(f"Got ClientError while listing {src}: {e}. Retry {i} of {FIND_RETRIES}")
+                sleep(FIND_RETRY_SLEEP * i)
+        raise RuntimeError(f"Could not get directory listing for {src} after {FIND_RETRIES} retries")
 
     def append(self, timespan: DateTimeRange, src: Station, rec: Station, data: List[T]):
         path = self._get_path(src, rec, timespan)
