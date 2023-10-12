@@ -59,9 +59,8 @@ class AWSBatchArrayScheduler(SingleNodeScheduler):
     def get_indices(self, items: list) -> List[int]:
         # read environment variable set by AWS Batch
         aws_array_index = os.environ.get(AWS_BATCH_JOB_ARRAY_INDEX)
-        # if aws_array_index is None:
-        if aws_array_index == "":
-            raise EnvironmentError("AWS_BATCH_JOB_ARRAY_INDEX environment variable not set")
+        if aws_array_index is None:
+            raise ValueError("AWS_BATCH_JOB_ARRAY_INDEX environment variable not set")
         logger.info(f"Running in AWS Batch array job, index: {aws_array_index}")
         array_size = AWSBatchArrayScheduler._get_array_size()
         indices = list(range(int(aws_array_index), len(items), array_size))
