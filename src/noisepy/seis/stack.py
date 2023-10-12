@@ -78,7 +78,7 @@ def stack_cross_correlations(
     if not all(results):
         failed = [p for p, r in zip(pairs_node, results) if not r]
         failed_str = "\n".join(map(str, failed))
-        raise RuntimeError(
+        logger.error(
             f"Error stacking {len(failed)}/{len(results)} pairs. Check the logs for more information. "
             f"Failed pairs: \n{failed_str}"
         )

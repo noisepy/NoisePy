@@ -304,7 +304,7 @@ def make_step_parser(subparsers: Any, cmd: Command, paths: List[str]) -> Any:
         default="info",
         choices=["notset", "debug", "info", "warning", "error", "critical"],
     )
-    parser.add_argument("--logfile", type=str, default=None, help="Log file")
+    parser.add_argument("--logfile", type=str, default="log.txt", help="Log file")
     parser.add_argument(
         "-c", "--config", type=lambda f: _valid_config_file(parser, f), required=False, help="Configuration YAML file"
     )
