@@ -6,6 +6,7 @@ jobDefinition: '' # [REQUIRED] The job definition used by this job.
 #   size: 16  # number of nodes
 nodeOverrides:
   resourceRequirements:
+  - value: '32768'
     type: MEMORY
 containerOverrides: # An object with various properties that override the defaults for the job definition that specify the name of a container in the specified job definition and the overrides it should receive.
   command: # The command to send to the container that overrides the default command from the Docker image or the job definition.
