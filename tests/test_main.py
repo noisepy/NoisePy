@@ -5,7 +5,7 @@ from unittest import mock
 import obspy
 import pytest
 
-from noisepy.seis.constants import NO_CCF_DATA_MSG, NO_DATA_MSG
+from noisepy.seis.constants import NO_CCF_DATA_MSG
 from noisepy.seis.main import (
     Command,
     _valid_config_file,
@@ -49,9 +49,7 @@ def run_cmd_with_empty_dirs(cmd: Command, args: List[str]):
 
 def test_main_cc(tmp_path):
     tmp = str(tmp_path)
-    with pytest.raises(IOError) as excinfo:
-        run_cmd_with_empty_dirs(Command.CROSS_CORRELATE, [empty("raw_data", tmp), empty("xml", tmp)])
-    assert NO_DATA_MSG in str(excinfo.value)
+    run_cmd_with_empty_dirs(Command.CROSS_CORRELATE, [empty("raw_data", tmp), empty("xml", tmp)])
 
 
 def test_main_stack(tmp_path):

@@ -1,8 +1,10 @@
 import os
 from unittest.mock import Mock
 
+import pytest
 from test_channelcatalog import MockCatalog
 
+from noisepy.seis.constants import NO_DATA_MSG
 from noisepy.seis.correlate import (
     _filter_channel_data,
     _safe_read_data,
@@ -40,6 +42,16 @@ def test_safe_read_channels():
     store.read_data = Mock(side_effect=Exception("foo"))
     ch_data = _safe_read_data(store, "foo", "bar")
     assert ch_data.data.size == 0
+
+
+def test_correlation_nodata():
+    config = ConfigParameters()
+    raw_store = Mock()
+    raw_store.get_timespans.return_value = []
+    cc_store = Mock()
+    with pytest.raises(IOError) as excinfo:
+        cross_correlate(raw_store, config, cc_store)
+    assert NO_DATA_MSG in str(excinfo.value)
 
 
 def test_correlation():
