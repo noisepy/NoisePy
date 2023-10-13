@@ -37,7 +37,7 @@ class SerializableMock(MagicMock):
         return (MagicMock, ())
 
 
-def test_stack_error():
+def test_stack_error(caplog):
     ts = date_range(1, 1, 2)
     config = ConfigParameters(start_date=ts.start_datetime, end_date=ts.end_datetime)
     sta = Station("CI", "BAK")
@@ -51,9 +51,8 @@ def test_stack_error():
     stack_store.contains.return_value = False
     with patch("noisepy.seis.stack.ProcessPoolExecutor") as mock_executor:
         mock_executor.return_value = ThreadPoolExecutor(1)
-        with pytest.raises(RuntimeError) as e:
-            stack_cross_correlations(cc_store, stack_store, config)
-    assert "CI.BAK" in str(e)
+        stack_cross_correlations(cc_store, stack_store, config)
+    assert any(str(sta) in rec.message for rec in caplog.records if rec.levelname == "ERROR")
 
 
 def test_stack_contains():

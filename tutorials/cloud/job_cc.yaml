@@ -1,0 +1,18 @@
+jobName: 'noisepy-cross-correlate'
+jobQueue: ''
+jobDefinition: '' # [REQUIRED] The job definition used by this job.
+# Uncomment to run a job across multiple nodes. The days in the time range will be split across the nodes.
+# arrayProperties:
+#   size: 16  # number of nodes
+containerOverrides: # An object with various properties that override the defaults for the job definition that specify the name of a container in the specified job definition and the overrides it should receive.
+  resourceRequirements:
+  - value: '90112' # CC requires more memory
+    type: MEMORY
+  command: # The command to send to the container that overrides the default command from the Docker image or the job definition.
+  - cross_correlate
+  - --raw_data_path=s3://scedc-pds/continuous_waveforms/
+  - --xml_path=s3://scedc-pds/FDSNstationXML/CI/
+  - --ccf_path=s3://<YOUR_S3_BUCKET>/<CC_PATH>
+  - --config=s3://<YOUR_S3_BUCKET>/<CONFIG_PATH>/config.yaml
+timeout:
+  attemptDurationSeconds: 36000  # 10 hrs

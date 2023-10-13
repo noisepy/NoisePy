@@ -5,23 +5,13 @@ platformCapabilities:
 containerProperties:
   image: 'ghcr.io/noisepy/noisepy'
   command:
-  - 'cross_correlate'
-  - --format=numpy
-  - --raw_data_path=s3://scedc-pds/continuous_waveforms/
-  - --xml_path=s3://scedc-pds/FDSNstationXML/CI/
-  - --ccf_path=s3://<YOUR_S3_BUCKET>/<CC_PATH>
-  - --net_list=CI
-  - --stations=*
-  - --start=2022-02-02
-  - --end=2022-02-03
-  - --loglevel=debug
-  - --logfile=log.txt
+  - '--help'
   jobRoleArn: ''
   executionRoleArn: ''
   resourceRequirements: # The type and amount of resources to assign to a container.
   - value: '16'
     type: VCPU
-  - value: '65536'
+  - value: '32768'
     type: MEMORY
   networkConfiguration: # The network configuration for jobs that are running on Fargate resources.
     assignPublicIp: ENABLED  # Indicates whether the job has a public IP address. Valid values are: ENABLED, DISABLED.
@@ -31,4 +21,4 @@ retryStrategy: # The retry strategy to use for failed jobs that are submitted wi
   attempts: 1  # The number of times to move a job to the RUNNABLE status.
 propagateTags: true # Specifies whether to propagate the tags from the job or job definition to the corresponding Amazon ECS task.
 timeout: # The timeout configuration for jobs that are submitted with this job definition, after which Batch terminates your jobs if they have not finished.
-  attemptDurationSeconds: 10000  # The job timeout time (in seconds) that's measured from the job attempt's startedAt timestamp.
+  attemptDurationSeconds: 36000  # The job timeout time (in seconds) that's measured from the job attempt's startedAt timestamp.

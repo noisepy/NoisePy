@@ -212,20 +212,31 @@ aws batch create-job-queue --no-cli-pager --cli-input-yaml file://job_queue.yaml
 
 ## Create a Job Definition
 
-Update the `jobRoleArn` and `executionRoleArn` fields in the `job_definition.yaml` file with the ARN of the role created in the first step. Add a name for the `jobDefinition` and update the `command` argument as needed (e.g., update the `ccf_path` argument). This command will become the default command but can still be overriden in individual jobs. You can adjust the timeout as appropriate too. Finally, run:
+Update the `jobRoleArn` and `executionRoleArn` fields in the `job_definition.yaml` file with the ARN of the role created in the first step. Add a name for the `jobDefinition`. Finally, run:
 
 ```
 aws batch register-job-definition --no-cli-pager --cli-input-yaml file://job_definition.yaml
 ```
 
-## Submit a job
+## Submit a Cross-Correlation job
 
-Update `job.yaml` with a name and the names of your job queue and job definitions created in the last steps. You can then submit a job with:
+Update `job_cc.yaml` with the names of your `jobQueue` and `jobDefinition` created in the last steps. Then update the S3 bucket paths
+to the locations you want to use for the output and your `config.yaml` file.
 
 ```
-aws batch submit-job --no-cli-pager --cli-input-yaml file://job.yaml --job-name "job_name_override"
+aws batch submit-job --no-cli-pager --cli-input-yaml file://job_cc.yaml --job-name "<your job name>"
+```
+
+## Submit a Stacking job
+
+Update `job_stack.yaml` with the names of your `jobQueue` and `jobDefinition` created in the last steps. Then update the S3 bucket paths
+to the locations you want to use for your input CCFs (e.g. the output of the previous CC run), and the stack output. By default, NoisePy will look for a config
+file in the `--ccf_path` location to use the same configuration for stacking that was used for cross-correlation.
+
+```
+aws batch submit-job --no-cli-pager --cli-input-yaml file://job_stack.yaml --job-name "<your job name>"
 ```
 
 ## Multi-node (array) jobs
 
-See comment above `arrayProperties` in `job.yaml` for instructions on how to process in parallel across multiple nodes.
+See comment above `arrayProperties` in `job_cc.yaml` and `job_stack.yaml` for instructions on how to process in parallel across multiple nodes.

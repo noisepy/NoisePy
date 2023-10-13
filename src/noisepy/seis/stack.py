@@ -8,9 +8,8 @@ import numpy as np
 import pandas as pd
 from datetimerange import DateTimeRange
 
-from noisepy.seis.constants import NO_CCF_DATA_MSG
-
 from . import noise_module
+from .constants import NO_CCF_DATA_MSG, WILD_CARD
 from .datatypes import ConfigParameters, Stack, StackMethod, Station
 from .scheduler import Scheduler, SingleNodeScheduler
 from .stores import CrossCorrelationDataStore, StackStore
@@ -55,9 +54,17 @@ def stack_cross_correlations(
     tlog = TimeLogger(logger=logger, level=logging.INFO)
     t_tot = tlog.reset()
 
+    stations = set(fft_params.stations)
+    networks = set(fft_params.net_list)
+
+    def sta_filter(sta: Station) -> bool:
+        return (WILD_CARD in stations or sta.name in stations) and (WILD_CARD in networks or sta.network in networks)
+
     def initializer():
         # Important to have them sorted when we distribute work across nodes
-        pairs_all = sorted(cc_store.get_station_pairs(), key=lambda x: str(x))
+        pairs_all = sorted(
+            filter(lambda p: sta_filter(p[0]) and sta_filter(p[1]), cc_store.get_station_pairs()), key=lambda x: str(x)
+        )
         if len(pairs_all) == 0:
             raise IOError(NO_CCF_DATA_MSG)
 
@@ -78,7 +85,7 @@ def stack_cross_correlations(
     if not all(results):
         failed = [p for p, r in zip(pairs_node, results) if not r]
         failed_str = "\n".join(map(str, failed))
-        raise RuntimeError(
+        logger.error(
             f"Error stacking {len(failed)}/{len(results)} pairs. Check the logs for more information. "
             f"Failed pairs: \n{failed_str}"
         )

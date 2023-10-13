@@ -9,14 +9,13 @@ from enum import Enum
 from typing import Any, Callable, Iterable, List, Optional
 
 import dateutil.parser
-import obspy
 from datetimerange import DateTimeRange
 
 from . import __version__
 from .asdfstore import ASDFCCStore, ASDFRawDataStore, ASDFStackStore
 from .channel_filter_store import LocationChannelFilterStore
 from .channelcatalog import CSVChannelCatalog, XMLStationChannelCatalog
-from .constants import CONFIG_FILE, STATION_FILE
+from .constants import CONFIG_FILE, STATION_FILE, WILD_CARD
 from .correlate import cross_correlate
 from .datatypes import Channel, ConfigParameters
 from .download import download
@@ -36,7 +35,6 @@ logger = logging.getLogger(__name__)
 # Utility running the different steps from the command line. Defines the arguments for each step
 
 default_data_path = "noisepy_data"
-WILD_CARD = "*"
 
 
 class Command(Enum):
@@ -141,12 +139,6 @@ def get_channel_filter(net_list: List[str], sta_list: List[str], chan_list: List
     return filter
 
 
-def get_date_range(args) -> DateTimeRange:
-    if "start_date" not in args or args.start_date is None or "end_date" not in args or args.end_date is None:
-        return None
-    return DateTimeRange(obspy.UTCDateTime(args.start_date).datetime, obspy.UTCDateTime(args.end_date).datetime)
-
-
 def create_raw_store(args, params: ConfigParameters):
     raw_dir = args.raw_data_path
 
@@ -167,12 +159,11 @@ def create_raw_store(args, params: ConfigParameters):
         else:
             raise ValueError(f"Either an --xml_path argument or a {STATION_FILE} must be provided")
 
-        date_range = get_date_range(args)
         store = SCEDCS3DataStore(
             raw_dir,
             catalog,
             get_channel_filter(params.net_list, params.stations, params.channels),
-            date_range,
+            DateTimeRange(params.start_date, params.end_date),
             params.storage_options,
         )
         # Some SCEDC channels have duplicates differing only by location, so filter them out
@@ -304,7 +295,7 @@ def make_step_parser(subparsers: Any, cmd: Command, paths: List[str]) -> Any:
         default="info",
         choices=["notset", "debug", "info", "warning", "error", "critical"],
     )
-    parser.add_argument("--logfile", type=str, default=None, help="Log file")
+    parser.add_argument("--logfile", type=str, default="log.txt", help="Log file")
     parser.add_argument(
         "-c", "--config", type=lambda f: _valid_config_file(parser, f), required=False, help="Configuration YAML file"
     )
