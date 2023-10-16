@@ -1,9 +1,10 @@
+import errno
 import logging
 import os
 import posixpath
 import time
 from concurrent.futures import Future
-from typing import Any, Iterable, List
+from typing import Any, Callable, Iterable, List
 from urllib.parse import urlparse
 
 import fsspec
@@ -15,6 +16,8 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 from noisepy.seis.constants import AWS_EXECUTION_ENV
 
 S3_SCHEME = "s3"
+FIND_RETRIES = 5
+FIND_RETRY_SLEEP = 0.1  # (100ms)
 utils_logger = logging.getLogger(__name__)
 
 
@@ -45,6 +48,23 @@ def get_fs_sep(path1: str) -> str:
         return posixpath.sep
     else:
         return os.sep
+
+
+def io_retry(func: Callable, *args, **kwargs) -> Any:
+    """
+    Retry the given function up to FIND_RETRIES times if an OSError(EBUSY) is raised, sleeping between retries.
+    If the function still fails, the exception is raised.
+    """
+    for i in range(1, FIND_RETRIES + 1):
+        try:
+            return func(*args, **kwargs)
+        except OSError as e:
+            # when using S3 we sometimes get a SlowDown client error which is turned into
+            # an OSError(EBUSY) so back off if that happens
+            if e.errno != errno.EBUSY or i >= FIND_RETRIES:
+                raise
+            utils_logger.warning(f"Retrying {func.__name__} after error: {e}. Retry {i} of {FIND_RETRIES}")
+            time.sleep(FIND_RETRY_SLEEP * i)
 
 
 class TimeLogger:
@@ -122,7 +142,8 @@ def get_results(futures: Iterable[Future], task_name: str = "", logger: logging.
 
     # Show a progress bar when processing futures
     with logging_redirect_tqdm():
-        with tqdm(total=len(futures), desc=task_name, position=position) as pbar:
+        size = len(futures)
+        with tqdm(total=size, desc=task_name, position=position, miniters=int(size / 100)) as pbar:
             for f in futures:
                 f.add_done_callback(pbar_update)
             return [f.result() for f in futures]
