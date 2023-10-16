@@ -1,18 +1,16 @@
+import errno
+from concurrent.futures import ThreadPoolExecutor
 from typing import Tuple
 from unittest import mock
 
 import pytest
-from botocore.exceptions import ClientError
 from datetimerange import DateTimeRange
 from fsspec.implementations.local import LocalFileSystem  # noqa F401
 from utils import date_range
 
-from noisepy.seis.hierarchicalstores import (
-    ERR_SLOWDOWN,
-    FIND_RETRIES,
-    PairDirectoryCache,
-)
+from noisepy.seis.hierarchicalstores import PairDirectoryCache
 from noisepy.seis.numpystore import NumpyArrayStore, NumpyCCStore
+from noisepy.seis.utils import FIND_RETRIES, io_retry
 from noisepy.seis.zarrstore import ZarrStoreHelper
 
 
@@ -59,6 +57,20 @@ def test_dircache():
     assert cache.contains("src", "rec", tsh1)
 
 
+def test_concurrent():
+    cache = PairDirectoryCache()
+    ts1 = date_range(4, 1, 2)
+
+    sta = [f"s{i}" for i in range(100)]
+    exec = ThreadPoolExecutor()
+    res = list(exec.map(lambda s: cache.add(s, "rec", [ts1]), sta))
+    assert len(res) == len(sta)
+    assert not any(res)
+    for s in sta:
+        assert cache.is_src_loaded(s)
+        assert cache.contains(s, "rec", ts1)
+
+
 numpy_paths = [
     (
         "some/path/CI.BAK/CI.ARV/2021_07_01_00_00_00T2021_07_02_00_00_00.tar.gz",
@@ -98,26 +110,23 @@ def test_zarr_parse_path(tmp_path, path: str, expected: Tuple[str, DateTimeRange
 
 @mock.patch("fsspec.implementations.local.LocalFileSystem.find")
 def test_find(find_mock, tmp_path):
+    def retry_find():
+        io_retry(store._fs_find, "foo")
+
     store = NumpyCCStore(str(tmp_path), "r")
-    find_mock.side_effect = ClientError({"Error": {"Code": ERR_SLOWDOWN}}, "ListObjectsV2")
-    with pytest.raises(RuntimeError):
-        store._find("foo")
+    find_mock.side_effect = OSError(errno.EBUSY, "busy")
+    with pytest.raises(OSError):
+        retry_find()
     assert FIND_RETRIES == find_mock.call_count
 
     # if it's not a SlowDown error then we shouldn't retry
-    find_mock.side_effect = ClientError({"Error": {"Code": "other error"}}, "ListObjectsV2")
-    with pytest.raises(ClientError):
-        store._find("foo")
+    find_mock.side_effect = OSError(errno.EFAULT, "auth")
+    with pytest.raises(OSError):
+        retry_find()
     assert FIND_RETRIES + 1 == find_mock.call_count
-
-    # same with other type of ClientError
-    find_mock.side_effect = ClientError({}, "operation")
-    with pytest.raises(ClientError):
-        store._find("foo")
-    assert FIND_RETRIES + 2 == find_mock.call_count
 
     # same with other type of exceptoins
     find_mock.side_effect = Exception()
     with pytest.raises(Exception):
-        store._find("foo")
-    assert FIND_RETRIES + 3 == find_mock.call_count
+        retry_find()
+    assert FIND_RETRIES + 2 == find_mock.call_count

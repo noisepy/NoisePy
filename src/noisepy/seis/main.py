@@ -28,7 +28,7 @@ from .scheduler import (
     SingleNodeScheduler,
 )
 from .stack import stack_cross_correlations
-from .utils import fs_join, get_filesystem
+from .utils import fs_join, get_filesystem, io_retry
 from .zarrstore import ZarrCCStore, ZarrStackStore
 
 logger = logging.getLogger(__name__)
@@ -236,7 +236,7 @@ def main(args: typing.Any):
             storage_options = params.storage_options
             makedir(tgt_dir, storage_options)
             logger.info(f"Running {args.cmd.name}. Start: {params.start_date}. End: {params.end_date}")
-            params.save_yaml(fs_join(tgt_dir, CONFIG_FILE))
+            io_retry(params.save_yaml, fs_join(tgt_dir, CONFIG_FILE))
             cmd(params)
         except Exception as e:
             logger.exception(e)
