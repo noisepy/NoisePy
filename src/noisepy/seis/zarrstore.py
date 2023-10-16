@@ -8,7 +8,7 @@ from datetimerange import DateTimeRange
 
 from .datatypes import CrossCorrelation, Stack
 from .hierarchicalstores import ArrayStore, HierarchicalStoreBase
-from .stores import parse_timespan
+from .stores import CrossCorrelationDataStore, StackStore, parse_timespan
 
 logger = logging.getLogger(__name__)
 
@@ -62,13 +62,13 @@ class ZarrStoreHelper(ArrayStore):
         return (parts[-3], ts)
 
 
-class ZarrCCStore(HierarchicalStoreBase):
+class ZarrCCStore(HierarchicalStoreBase, CrossCorrelationDataStore):
     def __init__(self, root_dir: str, mode: str = "a", storage_options={}) -> None:
         helper = ZarrStoreHelper(root_dir, mode, storage_options=storage_options)
         super().__init__(helper, CrossCorrelation.load_instances)
 
 
-class ZarrStackStore(HierarchicalStoreBase):
+class ZarrStackStore(HierarchicalStoreBase, StackStore):
     def __init__(self, root_dir: str, mode: str = "a", storage_options={}) -> None:
         helper = ZarrStoreHelper(root_dir, mode, storage_options=storage_options)
         super().__init__(helper, Stack.load_instances)

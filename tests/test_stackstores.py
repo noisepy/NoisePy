@@ -52,6 +52,11 @@ def _stackstore_test_helper(store: StackStore):
     bad_read = store.read(ts, Station("nw", "sta3"), rec)
     assert len(bad_read) == 0
 
+    sta_stacks = store.read_bulk(ts, [(src, rec)])
+    assert len(sta_stacks) == 1
+    assert sta_stacks[0][0] == (src, rec)
+    assert len(sta_stacks[0][1]) == len(stacks)
+
 
 def test_asdfstore(asdfstore: ASDFStackStore):
     _stackstore_test_helper(asdfstore)
