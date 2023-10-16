@@ -120,7 +120,7 @@ def test_find(find_mock, tmp_path):
     assert FIND_RETRIES == find_mock.call_count
 
     # if it's not a SlowDown error then we shouldn't retry
-    find_mock.side_effect = OSError(errno.EAUTH, "auth")
+    find_mock.side_effect = OSError(errno.EFAULT, "auth")
     with pytest.raises(OSError):
         retry_find()
     assert FIND_RETRIES + 1 == find_mock.call_count
