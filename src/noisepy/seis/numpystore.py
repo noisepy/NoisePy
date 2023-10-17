@@ -10,7 +10,7 @@ from datetimerange import DateTimeRange
 
 from .datatypes import CrossCorrelation, Stack, to_json_types
 from .hierarchicalstores import ArrayStore, HierarchicalStoreBase
-from .stores import parse_timespan
+from .stores import CrossCorrelationDataStore, StackStore, parse_timespan
 from .utils import fs_join
 
 logger = logging.getLogger(__name__)
@@ -89,12 +89,12 @@ class NumpyArrayStore(ArrayStore):
             return None
 
 
-class NumpyStackStore(HierarchicalStoreBase[Stack]):
+class NumpyStackStore(HierarchicalStoreBase[Stack], StackStore):
     def __init__(self, root_dir: str, mode: str = "a", storage_options={}):
         super().__init__(NumpyArrayStore(root_dir, mode, storage_options=storage_options), Stack.load_instances)
 
 
-class NumpyCCStore(HierarchicalStoreBase[CrossCorrelation]):
+class NumpyCCStore(HierarchicalStoreBase[CrossCorrelation], CrossCorrelationDataStore):
     def __init__(self, root_dir: str, mode: str = "a", storage_options={}):
         super().__init__(
             NumpyArrayStore(root_dir, mode, storage_options=storage_options), CrossCorrelation.load_instances

@@ -393,10 +393,15 @@ def to_json_types(params: Dict[str, Any]) -> Dict[str, Any]:
 
 def _to_json_type(value: Any) -> Any:
     # special case since numpy arrays are not json serializable
-    if type(value) == np.ndarray:
+    if isinstance(value, np.ndarray):
         return list(map(_to_json_type, value))
-    elif type(value) == np.float64 or type(value) == np.float32:
+    elif isinstance(value, np.float64) or isinstance(value, np.float32):
         return float(value)
-    elif type(value) == np.int64 or type(value) == np.int32 or type(value) == np.int16 or type(value) == np.int8:
+    elif (
+        isinstance(value, np.int64)
+        or isinstance(value, np.int32)
+        or isinstance(value, np.int16)
+        or isinstance(value, np.int8)
+    ):
         return int(value)
     return value

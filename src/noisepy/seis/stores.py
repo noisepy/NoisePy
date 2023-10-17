@@ -1,13 +1,16 @@
 import datetime
+import logging
 import os
 import re
 from abc import ABC, abstractmethod
+from concurrent.futures import Executor, ThreadPoolExecutor
 from typing import Generic, List, Optional, Tuple, TypeVar
 
 import obspy
 from datetimerange import DateTimeRange
 
 from noisepy.seis.constants import DATE_FORMAT
+from noisepy.seis.utils import TimeLogger, get_results
 
 from .datatypes import (
     AnnotatedData,
@@ -81,6 +84,18 @@ class ComputedDataStore(Generic[T]):
     @abstractmethod
     def read(self, timespan: DateTimeRange, src_sta: Station, rec_sta: Station) -> List[T]:
         pass
+
+    def read_bulk(
+        self, timespan: DateTimeRange, pairs: List[Tuple[Station, Station]], executor: Executor = ThreadPoolExecutor()
+    ) -> List[Tuple[Tuple[Station, Station], List[T]]]:
+        """
+        Reads the data for all the given station pairs (and timespan) in parallel.
+        """
+        tlog = TimeLogger(level=logging.INFO)
+        futures = [executor.submit(self.read, timespan, p[0], p[1]) for p in pairs]
+        results = get_results(futures)
+        tlog.log(f"loading {len(pairs)} stacks")
+        return list(zip(pairs, results))
 
 
 class CrossCorrelationDataStore(ComputedDataStore[CrossCorrelation]):
