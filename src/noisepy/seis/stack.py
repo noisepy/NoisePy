@@ -62,15 +62,21 @@ def stack_cross_correlations(
 
     def initializer():
         # Important to have them sorted when we distribute work across nodes
-        pairs_all = sorted(
-            filter(lambda p: sta_filter(p[0]) and sta_filter(p[1]), cc_store.get_station_pairs()), key=lambda x: str(x)
+        pairs = cc_store.get_station_pairs()
+        pairs_filt = sorted(
+            filter(lambda p: sta_filter(p[0]) and sta_filter(p[1]), pairs),
+            key=lambda x: str(x),
         )
-        if len(pairs_all) == 0:
-            raise IOError(NO_CCF_DATA_MSG)
+        if len(pairs_filt) == 0:
+            detail = (
+                f"{len(pairs)} total pairs found in the store. These filtered down to 0 pairs "
+                f"according to the config: stations={fft_params.stations}, net_list={fft_params.net_list}"
+            )
+            raise IOError(NO_CCF_DATA_MSG + "\n" + detail)
 
-        logger.info(f"Station pairs: {len(pairs_all)}")
+        logger.info(f"Station pairs: {len(pairs_filt)}")
 
-        return [pairs_all]
+        return [pairs_filt]
 
     [pairs_all] = scheduler.initialize(initializer, 1)
 
@@ -215,7 +221,7 @@ def stack_pair(
 
     def append_stacks(comp: str, tparameters: Dict[str, Any], stack_data: List[Tuple[Any, np.ndarray]]):
         for method, data in stack_data:
-            name = f"Allstack_{method.value}" if type(method) == StackMethod else str(method)
+            name = f"Allstack_{method.value}" if isinstance(method, StackMethod) else str(method)
             stack_results.append(Stack(comp, name, tparameters, data))
 
     # loop through cross-component for stacking
