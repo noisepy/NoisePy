@@ -8,7 +8,7 @@
       "module": "pytest",
       "args": [
         "--log-cli-level=INFO",
-        "${workspaceFolder}/tests/"
+        "${workspaceFolder}/tests"
       ]
     },
     {

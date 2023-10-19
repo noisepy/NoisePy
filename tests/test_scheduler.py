@@ -3,11 +3,15 @@ from typing import List
 from unittest.mock import MagicMock, Mock, patch  # noqa: F401
 
 import pytest
+from mpi4py import MPI
 
 from noisepy.seis.constants import AWS_BATCH_JOB_ARRAY_INDEX, AWS_BATCH_JOB_ID
-from noisepy.seis.scheduler import AWSBatchArrayScheduler, SingleNodeScheduler
+from noisepy.seis.scheduler import (
+    AWSBatchArrayScheduler,
+    MPIScheduler,
+    SingleNodeScheduler,
+)
 
-VALID_JOB_ID = "job_id:123"
 # Single Node Scheduler
 
 
@@ -41,6 +45,7 @@ def test_synchronize():
 
 
 # AWS Batch Array Scheduler
+VALID_JOB_ID = "job_id:123"
 
 
 # get_array_size test
@@ -92,6 +97,8 @@ def test_get_indices_valid_index():
 
     assert indices == [2]
 
+    os.environ.pop(AWS_BATCH_JOB_ARRAY_INDEX, None)
+
 
 def test_get_indices_missing_index():
     # os.environ["AWS_BATCH_JOB_ARRAY_INDEX"] = ""
@@ -107,7 +114,71 @@ def test_get_indices_missing_index():
 # is_array_job test
 def test_is_array_job():
     # no index
-    assert AWSBatchArrayScheduler.is_array_job()
+    assert not AWSBatchArrayScheduler.is_array_job()
     # with index
     os.environ[AWS_BATCH_JOB_ARRAY_INDEX] = "2"
     assert AWSBatchArrayScheduler.is_array_job()
+
+
+# MPIScheduler Test
+class MockMPIComm:
+    def __init__(self, rank):
+        self.rank = rank
+
+    def Get_rank(self):
+        return self.rank
+
+
+# Create a fixture to provide an instance of MPIScheduler for testing
+@pytest.fixture
+def mpi_scheduler(mocker):
+    scheduler = MPIScheduler(root=0)
+    scheduler.comm = mocker.MagicMock(MPI.Intracomm)
+
+    return scheduler
+
+
+# Test the initialize method
+def test_initializer(mpi_scheduler):
+    # Define a simple initializer function for testing
+    def initializer():
+        return [1, 2, 3]
+
+    # Set the expected result for the root process
+    expected_result_root = [1, 2, 3]
+
+    # Mock the bcast method to return the expected values
+    expected_values = [1, 2, 3]
+    mpi_scheduler.comm.bcast.side_effect = expected_values
+
+    # Test for the root process (rank 0)
+    if mpi_scheduler.comm.Get_rank() == 0:
+        result = mpi_scheduler.initialize(initializer, shared_vars=3)
+        assert result == expected_result_root
+    else:
+        result = mpi_scheduler.initialize(initializer, shared_vars=3)
+        assert result == expected_values
+
+
+# Test the get_indices method
+def test_get_indices(mpi_scheduler):
+    # Define a list of items for testing
+    items = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+    # Set the rank and size for testing
+    mpi_scheduler.comm.Get_rank.return_value = 2
+    mpi_scheduler.comm.Get_size.return_value = 4
+
+    expected_indices = [2, 6]
+
+    result = mpi_scheduler.get_indices(items)
+    assert result == expected_indices
+
+
+# Test the synchronize method
+def test_synchronizeMPI(mpi_scheduler):
+    # Call the synchronize method
+    mpi_scheduler.synchronize()
+
+    # Verify that the barrier operation was called
+    mpi_scheduler.comm.barrier.assert_called_once()
