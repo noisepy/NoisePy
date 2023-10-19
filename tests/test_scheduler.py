@@ -121,12 +121,6 @@ def test_is_array_job():
 
 
 # MPIScheduler Test
-class MockMPIComm:
-    def __init__(self, rank):
-        self.rank = rank
-
-    def Get_rank(self):
-        return self.rank
 
 
 # Create a fixture to provide an instance of MPIScheduler for testing
@@ -140,24 +134,24 @@ def mpi_scheduler(mocker):
 
 # Test the initialize method
 def test_initializer(mpi_scheduler):
+    expected_values = [1, 1, 1]
+
     # Define a simple initializer function for testing
     def initializer():
-        return [1, 2, 3]
-
-    # Set the expected result for the root process
-    expected_result_root = [1, 2, 3]
+        return expected_values
 
     # Mock the bcast method to return the expected values
-    expected_values = [1, 2, 3]
-    mpi_scheduler.comm.bcast.side_effect = expected_values
+
+    mpi_scheduler.comm.bcast.return_value = 1
 
     # Test for the root process (rank 0)
-    if mpi_scheduler.comm.Get_rank() == 0:
-        result = mpi_scheduler.initialize(initializer, shared_vars=3)
-        assert result == expected_result_root
-    else:
-        result = mpi_scheduler.initialize(initializer, shared_vars=3)
-        assert result == expected_values
+    mpi_scheduler.comm.Get_rank.return_value = 0
+    result = mpi_scheduler.initialize(initializer, shared_vars=3)
+    assert result == expected_values
+
+    mpi_scheduler.comm.Get_rank.return_value = 1
+    result = mpi_scheduler.initialize(initializer, shared_vars=3)
+    assert result == expected_values
 
 
 # Test the get_indices method
