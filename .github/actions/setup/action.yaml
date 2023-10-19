@@ -26,8 +26,8 @@ runs:
     - name: Install project no MPI
       if: ${{ inputs.mpi == 'false' }}
       shell: sh
-      run: pip install ".[dev]"
+      run: pip install ".[dev,aws]"
     - name: Install project MPI
       if: ${{ inputs.mpi == 'true' }}
       shell: sh
-      run: pip install ".[dev,mpi]"
+      run: pip install ".[dev,mpi,aws]"
