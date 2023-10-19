@@ -8,6 +8,7 @@ Detailed documentation can be found at https://noisepy.readthedocs.io/en/latest/
 [![Documentation Status](https://readthedocs.org/projects/noisepy/badge/?version=latest)](https://noisepy.readthedocs.io/en/latest/?badge=latest)
 [![Build Status](https://github.com/noisepy/NoisePy/actions/workflows/test.yaml/badge.svg)](https://github.com/noisepy/NoisePy/actions/workflows/test.yaml)
 [![Codecov](https://codecov.io/gh/noisepy/NoisePy/branch/main/graph/badge.svg)](https://codecov.io/gh/noisepy/NoisePy)
+[![DOI](https://zenodo.org/badge/157871462.svg)](https://zenodo.org/badge/latestdoi/157871462)
 
 <img src="https://raw.githubusercontent.com/noisepy/NoisePy/main/docs/figures/logo.png" width="800" height="400">
 
@@ -115,6 +116,8 @@ Thanks to our contributors so far!
 ## Use this reference when publishing on your work with noisepy
 
 Main code:
+
+* Zenodo DOI: [noisepy/NoisePy](https://zenodo.org/badge/latestdoi/157871462)
 * Jiang, C. and Denolle, M. [NoisePy: a new high-performance python tool for seismic ambient noise seismology.](https://doi.org/10.1785/0220190364) _Seismological Research Letter_ 91, no. 3 (2020): 1853–1866. https://doi.org/10.1785/0220190364
 
 Algorithms used:
