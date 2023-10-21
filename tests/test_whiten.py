@@ -5,6 +5,8 @@ from scipy.fftpack import next_fast_len
 
 from noisepy.seis.correlate import ConfigParameters
 from noisepy.seis.noise_module import moving_ave, whiten
+from noisepy.seis.datatypes import FreqNorm
+
 
 
 def whiten_original(data, fft_para: ConfigParameters):
@@ -56,9 +58,9 @@ def whiten_original(data, fft_para: ConfigParameters):
             1j * np.angle(FFTRawSign[:, low:left])
         )
         # Pass band:
-        if fft_para.freq_norm == "phase_only":
+        if fft_para.freq_norm == FreqNorm.PHASE_ONLY:
             FFTRawSign[:, left:right] = np.exp(1j * np.angle(FFTRawSign[:, left:right]))
-        elif fft_para.freq_norm == "rma":
+        elif fft_para.freq_norm == FreqNorm.RMA:
             for ii in range(data.shape[0]):
                 tave = moving_ave(np.abs(FFTRawSign[ii, left:right]), fft_para.smooth_N)
                 FFTRawSign[ii, left:right] = FFTRawSign[ii, left:right] / tave
@@ -76,9 +78,9 @@ def whiten_original(data, fft_para: ConfigParameters):
             1j * np.angle(FFTRawSign[low:left])
         )
         # Pass band:
-        if fft_para.freq_norm == "phase_only":
+        if fft_para.freq_norm == FreqNorm.PHASE_ONLY:
             FFTRawSign[left:right] = np.exp(1j * np.angle(FFTRawSign[left:right]))
-        elif fft_para.freq_norm == "rma":
+        elif fft_para.freq_norm == FreqNorm.RMA:
             tave = moving_ave(np.abs(FFTRawSign[left:right]), fft_para.smooth_N)
             FFTRawSign[left:right] = FFTRawSign[left:right] / tave
         # Right tapering:
@@ -103,7 +105,7 @@ fft_para.samp_freq = 1.0
 fft_para.freqmin = 0.01
 fft_para.freqmax = 0.2
 fft_para.smooth_N = 1
-fft_para.freq_norm = "phase_only"
+fft_para.freq_norm = FreqNorm.PHASE_ONLY
 
 
 def whiten1d():
