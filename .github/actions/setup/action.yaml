@@ -7,9 +7,6 @@
   run: |
     python3 -m ensurepip
     pip3 install --upgrade pip
-- name: Install mpi4py
-  shell: sh
-  run: pip install mpi4py
 - name: Setup MPI
   if: ${{ inputs.mpi == 'true' }}
   uses: mpi4py/setup-mpi@v1
