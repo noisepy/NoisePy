@@ -18,3 +18,8 @@
   if: ${{ inputs.mpi == 'true' }}
   shell: sh
   run: pip install ".[dev,mpi,aws]"
+- name: Install Dependencies
+  run: pip install ".[dev,aws]"
+      if [[ ${{ inputs.mpi }} == 'true' ]]; then
+        pip install ".[mpi]"
+      fi
