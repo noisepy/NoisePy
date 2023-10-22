@@ -2,8 +2,8 @@ import os
 from typing import List
 from unittest.mock import MagicMock, Mock, patch  # noqa: F401
 
+# from pytest_mock import mocker
 import pytest
-from mpi4py import MPI
 
 from noisepy.seis.constants import AWS_BATCH_JOB_ARRAY_INDEX, AWS_BATCH_JOB_ID
 from noisepy.seis.scheduler import (
@@ -11,6 +11,9 @@ from noisepy.seis.scheduler import (
     MPIScheduler,
     SingleNodeScheduler,
 )
+
+# from mpi4py import MPI
+
 
 # Single Node Scheduler
 
@@ -125,9 +128,9 @@ def test_is_array_job():
 
 # Create a fixture to provide an instance of MPIScheduler for testing
 @pytest.fixture
-def mpi_scheduler(mocker):
+def mpi_scheduler():
     scheduler = MPIScheduler(root=0)
-    scheduler.comm = mocker.MagicMock(MPI.Intracomm)
+    scheduler.comm = MagicMock()
 
     return scheduler
 
