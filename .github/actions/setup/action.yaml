@@ -1,25 +1,33 @@
-- name: Setup Python
-  uses: actions/setup-python@v4.5.0
-  with:
-    python-version: ${{inputs.python-version}}
-- name: Setup pip
-  shell: sh
-  run: |
-    python3 -m ensurepip
-    pip3 install --upgrade pip
-- name: Setup MPI
-  if: ${{ inputs.mpi == 'true' }}
-  uses: mpi4py/setup-mpi@v1
-- name: Install project no MPI
-  if: ${{ inputs.mpi == 'false' }}
-  shell: sh
-  run: pip install ".[dev,aws]"
-- name: Install project MPI
-  if: ${{ inputs.mpi == 'true' }}
-  shell: sh
-  run: pip install ".[dev,mpi,aws]"
-- name: Install Dependencies
-  run: pip install ".[dev,aws]"
-      if [[ ${{ inputs.mpi }} == 'true' ]]; then
-        pip install ".[mpi]"
-      fi
+name: Setup
+description: Setup NoisePy for testing
+inputs:
+  python-version:
+    required: true
+    description: Python version to install
+  mpi:
+    required: false
+    description: Whether to install with MPI or not
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v4.5.0
+      with:
+        python-version: ${{inputs.python-version}}
+    - name: Setup pip
+      shell: sh
+      run: |
+        python3 -m ensurepip
+        python3 -m pip install --upgrade pip
+    - name: Setup MPI
+      if: ${{ inputs.mpi == 'true' }}
+      uses: mpi4py/setup-mpi@v1
+    - name: Install project no MPI
+      if: ${{ inputs.mpi == 'false' }}
+      shell: sh
+      run: pip install ".[dev,aws]"
+    - name: Install project MPI
+      if: ${{ inputs.mpi == 'true' }}
+      shell: sh
+      run: pip install ".[dev,mpi,aws]"
