@@ -1,11 +1,18 @@
 from datetime import datetime, timezone
 from typing import List
+from unittest import mock
 
 import obspy
 import pytest
 
-from noisepy.seis.constants import NO_CCF_DATA_MSG, NO_DATA_MSG
-from noisepy.seis.main import Command, initialize_params, main, parse_args
+from noisepy.seis.constants import NO_CCF_DATA_MSG
+from noisepy.seis.main import (
+    Command,
+    _valid_config_file,
+    initialize_params,
+    main,
+    parse_args,
+)
 
 
 def test_parse_args():
@@ -42,9 +49,7 @@ def run_cmd_with_empty_dirs(cmd: Command, args: List[str]):
 
 def test_main_cc(tmp_path):
     tmp = str(tmp_path)
-    with pytest.raises(IOError) as excinfo:
-        run_cmd_with_empty_dirs(Command.CROSS_CORRELATE, [empty("raw_data", tmp), empty("xml", tmp)])
-    assert NO_DATA_MSG in str(excinfo.value)
+    run_cmd_with_empty_dirs(Command.CROSS_CORRELATE, [empty("raw_data", tmp), empty("xml", tmp)])
 
 
 def test_main_stack(tmp_path):
@@ -68,3 +73,15 @@ def test_main_download(tmp_path):
                 "--channels=''",
             ],
         )
+
+
+def test_valid_config(tmp_path):
+    cfgfile = tmp_path.joinpath("config.yaml")
+    parser = mock.Mock()
+    assert not _valid_config_file(parser, str(cfgfile))
+    parser.error.assert_called_once()
+
+    parser = mock.Mock()
+    cfgfile.write_text("")  # creates the file
+    assert _valid_config_file(parser, str(cfgfile))
+    parser.error.assert_not_called()

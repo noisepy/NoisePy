@@ -12,12 +12,15 @@ import fsspec
 import numpy as np
 from datetimerange import DateTimeRange
 
+from noisepy.seis.utils import io_retry
+
 from .datatypes import AnnotatedData, Station
 from .stores import timespan_str
 from .utils import TimeLogger, fs_join, get_filesystem, unstack
 
 META_ATTR = "metadata"
 VERSION_ATTR = "version"
+FAKE_STA = "FAKE_STATION"
 
 logger = logging.getLogger(__name__)
 
@@ -116,13 +119,14 @@ class PairDirectoryCache:
             if not self.items.get(src_idx, {}).get(rec_idx, None):
                 self.items[src_idx][rec_idx] = []
             return
+        grouped_timespans = defaultdict(list)
+        for t in timespans:
+            grouped_timespans[int(t.timedelta.total_seconds())].append(int(t.start_datetime.timestamp()))
+        for delta, starts in grouped_timespans.items():
+            self._add(src_idx, rec_idx, delta, starts)
 
-        delta = int(timespans[0].timedelta.total_seconds())
-        if not all(int(t.timedelta.total_seconds()) == delta for t in timespans):
-            all_deltas = set(int(t.timedelta.total_seconds()) for t in timespans)
-            raise ValueError(f"All timespans must have the same time delta ({all_deltas})")
-
-        starts = np.array(sorted([int(t.start_datetime.timestamp()) for t in timespans]), dtype=np.uint32)
+    def _add(self, src_idx: int, rec_idx: int, delta: int, start_ts: List[DateTimeRange]):
+        starts = np.array(sorted(start_ts), dtype=np.uint32)
         with self._lock:
             time_tuples = self.items[src_idx][rec_idx]
             for t in time_tuples:
@@ -213,12 +217,21 @@ class HierarchicalStoreBase(Generic[T]):
     def _load_src(self, src: str):
         if self.dir_cache.is_src_loaded(src):
             return
-        paths = [self.helper.parse_path(p) for p in self.helper.get_fs().find(fs_join(self.helper.get_root_dir(), src))]
+        logger.info(f"Loading directory cache for {src} - ix: {self.dir_cache.stations_idx.get(src, -4)}")
+        paths = io_retry(self._fs_find, src)
+
         grouped_paths = defaultdict(list)
         for rec_sta, timespan in [p for p in paths if p]:
             grouped_paths[rec_sta].append(timespan)
         for rec_sta, timespans in grouped_paths.items():
             self.dir_cache.add(src, rec_sta, sorted(timespans, key=lambda t: t.start_datetime.timestamp()))
+        # if we didn't find any paths, add a fake entry so we don't try again and is_src_loaded returns True
+        if len(grouped_paths) == 0:
+            self.dir_cache.add(src, FAKE_STA, [])
+
+    def _fs_find(self, src):
+        paths = [self.helper.parse_path(p) for p in self.helper.get_fs().find(fs_join(self.helper.get_root_dir(), src))]
+        return paths
 
     def append(self, timespan: DateTimeRange, src: Station, rec: Station, data: List[T]):
         path = self._get_path(src, rec, timespan)

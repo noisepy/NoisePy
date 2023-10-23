@@ -5,7 +5,7 @@ import typing
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, DefaultDict, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
@@ -121,8 +121,8 @@ class ConfigParameters(BaseModel):
     model_config = ConfigDict(validate_default=True)
 
     client_url_key: str = "SCEDC"
-    start_date: datetime = Field(default=datetime(2019, 1, 1))
-    end_date: datetime = Field(default=datetime(2019, 1, 2))
+    start_date: datetime = Field(default=datetime(2019, 1, 1, tzinfo=timezone.utc))
+    end_date: datetime = Field(default=datetime(2019, 1, 2, tzinfo=timezone.utc))
     samp_freq: float = Field(default=20.0)  # TODO: change this samp_freq for the obspy "sampling_rate"
     single_freq: bool = Field(
         default=True,
@@ -181,7 +181,7 @@ class ConfigParameters(BaseModel):
     stationxml: bool = Field(
         default=False, description="station.XML file used to remove instrument response for SAC/miniseed data"
     )
-    rm_resp: str = Field(default="no", description="select 'no' to not remove response and use 'inv','spectrum',")
+    rm_resp: str = Field(default="inv", description="select 'no' to not remove response and use 'inv','spectrum',")
     rm_resp_out: str = Field(default="VEL", description="output location from response removal")
     respdir: Optional[str] = Field(default=None, description="response directory")
     # some control parameters
@@ -212,6 +212,14 @@ class ConfigParameters(BaseModel):
 
     @model_validator(mode="after")
     def validate(cls, m: ConfigParameters) -> ConfigParameters:
+        def validate_date(d: datetime, name: str):
+            if d.tzinfo is None:
+                raise ValueError(f"{name} must have a timezone")
+            if d.tzinfo.utcoffset(None) != timezone.utc.utcoffset(None):
+                raise ValueError(f"{name} must be in UTC, but is {d.tzinfo}")
+
+        validate_date(m.start_date, "start_date")
+        validate_date(m.end_date, "end_date")
         if m.substack_len % m.cc_len != 0:
             raise ValueError(f"substack_len ({m.substack_len}) must be a multiple of cc_len ({m.cc_len})")
         return m
@@ -347,6 +355,9 @@ class CrossCorrelation(AnnotatedData):
         self.src = src
         self.rec = rec
 
+    def __repr__(self) -> str:
+        return f"{self.src}_{self.rec}/{self.data.shape}"
+
     def get_metadata(self) -> Tuple:
         return (self.src.name, self.src.location, self.rec.name, self.rec.location, self.parameters)
 
@@ -366,6 +377,9 @@ class Stack(AnnotatedData):
         self.component = component
         self.name = name
 
+    def __repr__(self) -> str:
+        return f"{self.component}/{self.name}/{self.data.shape}"
+
     def get_metadata(self) -> Tuple:
         return (self.component, self.name, self.parameters)
 
@@ -379,10 +393,15 @@ def to_json_types(params: Dict[str, Any]) -> Dict[str, Any]:
 
 def _to_json_type(value: Any) -> Any:
     # special case since numpy arrays are not json serializable
-    if type(value) == np.ndarray:
+    if isinstance(value, np.ndarray):
         return list(map(_to_json_type, value))
-    elif type(value) == np.float64 or type(value) == np.float32:
+    elif isinstance(value, np.float64) or isinstance(value, np.float32):
         return float(value)
-    elif type(value) == np.int64 or type(value) == np.int32 or type(value) == np.int16 or type(value) == np.int8:
+    elif (
+        isinstance(value, np.int64)
+        or isinstance(value, np.int32)
+        or isinstance(value, np.int16)
+        or isinstance(value, np.int8)
+    ):
         return int(value)
     return value

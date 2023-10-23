@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,7 +11,8 @@ from datetimerange import DateTimeRange
 from obspy.signal.filter import bandpass
 from scipy.fftpack import next_fast_len
 
-from noisepy.seis.stores import CrossCorrelationDataStore, StackStore
+from noisepy.seis.datatypes import Stack, Station
+from noisepy.seis.stores import CrossCorrelationDataStore
 
 logging.getLogger("matplotlib.font_manager").disabled = True
 logger = logging.getLogger(__name__)
@@ -628,7 +630,7 @@ def plot_substack_all_spect(
 
 
 def plot_all_moveout(
-    store: StackStore,
+    sta_stacks: List[Tuple[Station, Station, Stack]],
     stack_name,
     freqmin,
     freqmax,
@@ -662,15 +664,16 @@ def plot_all_moveout(
         if sdir is None:
             raise ValueError("sdir argument must be provided if savefig=True")
 
-    sta_pairs = store.get_station_pairs()
-    ts = store.get_timespans(sta_pairs[0][0], sta_pairs[0][1])
-    ts = ts[0] if len(ts) else None
-    if len(sta_pairs) == 0:
+    if len(sta_stacks) == 0:
         logger.error("No data available for plotting")
         return
 
     # Read some common arguments from the first available data set:
-    stacks = store.read(ts, sta_pairs[0][0], sta_pairs[0][1])
+    stacks = sta_stacks[0][1]
+    stacks = list(filter(lambda x: x.name == stack_name and x.component == ccomp, stacks))
+    if len(stacks) == 0:
+        logger.error(f"No data available for plotting {stack_name}/{ccomp}")
+        return
     dtmp = stacks[0].data
     params = stacks[0].parameters
     if len(params) == 0 or dtmp.size == 0:
@@ -679,7 +682,7 @@ def plot_all_moveout(
 
     dt, maxlag = (params[p] for p in ["dt", "maxlag"])
     stack_method = stack_name.split("0")[-1]
-    print(stack_name, stack_method)
+    logger.info(f"Plottting: {stack_method}, {len(sta_stacks)} station pairs")
 
     # lags for display
     if not disp_lag:
@@ -691,25 +694,26 @@ def plot_all_moveout(
     indx2 = indx1 + 2 * int(disp_lag / dt) + 1
 
     # cc matrix
-    nwin = len(sta_pairs)
+    nwin = len(sta_stacks)
     data = np.zeros(shape=(nwin, indx2 - indx1), dtype=np.float32)
     dist = np.zeros(nwin, dtype=np.float32)
     ngood = np.zeros(nwin, dtype=np.int16)
 
     # load cc and parameter matrix
-    for ii, (src, rec) in enumerate(sta_pairs):
-        stacks = store.read(ts, src, rec)
-        ts = store.get_timespans(src, rec)
-        ts = ts[0] if len(ts) else None
+    def load(ii):
+        (src, rec), stacks = sta_stacks[ii]
         stacks = list(filter(lambda x: x.name == stack_name and x.component == ccomp, stacks))
         if len(stacks) == 0:
             logger.warning(f"No data available for {src}_{rec}/{stack_name}/{ccomp}")
-            continue
+            return
         params, all_data = stacks[0].parameters, stacks[0].data
         dist[ii] = params["dist"]
         ngood[ii] = params["ngood"]
         crap = bandpass(all_data, freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
         data[ii] = crap[indx1:indx2]
+
+    for i in range(nwin):
+        load(i)
 
     # average cc
     ntrace = int(np.round(np.max(dist) + 0.51) / dist_inc)
