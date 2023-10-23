@@ -103,7 +103,6 @@ def test_get_indices_valid_index():
 
 
 def test_get_indices_missing_index():
-    # os.environ["AWS_BATCH_JOB_ARRAY_INDEX"] = ""
     os.environ.pop(AWS_BATCH_JOB_ARRAY_INDEX, None)
     os.environ[AWS_BATCH_JOB_ID] = VALID_JOB_ID
 
