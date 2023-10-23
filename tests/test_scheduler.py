@@ -12,7 +12,6 @@ from noisepy.seis.scheduler import (
     SingleNodeScheduler,
 )
 
-# from mpi4py import MPI
 
 
 # Single Node Scheduler
