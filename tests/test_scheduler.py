@@ -2,7 +2,6 @@ import os
 from typing import List
 from unittest.mock import MagicMock, Mock, patch  # noqa: F401
 
-# from pytest_mock import mocker
 import pytest
 
 from noisepy.seis.constants import AWS_BATCH_JOB_ARRAY_INDEX, AWS_BATCH_JOB_ID
@@ -11,9 +10,6 @@ from noisepy.seis.scheduler import (
     MPIScheduler,
     SingleNodeScheduler,
 )
-
-# from mpi4py import MPI
-
 
 # Single Node Scheduler
 
@@ -104,7 +100,6 @@ def test_get_indices_valid_index():
 
 
 def test_get_indices_missing_index():
-    # os.environ["AWS_BATCH_JOB_ARRAY_INDEX"] = ""
     os.environ.pop(AWS_BATCH_JOB_ARRAY_INDEX, None)
     os.environ[AWS_BATCH_JOB_ID] = VALID_JOB_ID
 
