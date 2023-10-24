@@ -60,7 +60,7 @@ class AWSBatchArrayScheduler(SingleNodeScheduler):
         # read environment variable set by AWS Batch
         aws_array_index = os.environ.get(AWS_BATCH_JOB_ARRAY_INDEX)
         if aws_array_index is None:
-            raise EnvironmentError("AWS_BATCH_JOB_ARRAY_INDEX environment variable not set")
+            raise ValueError("AWS_BATCH_JOB_ARRAY_INDEX environment variable not set")
         logger.info(f"Running in AWS Batch array job, index: {aws_array_index}")
         array_size = AWSBatchArrayScheduler._get_array_size()
         indices = list(range(int(aws_array_index), len(items), array_size))
@@ -76,7 +76,6 @@ class AWSBatchArrayScheduler(SingleNodeScheduler):
 
         parent_job_id = worker_job_id.split(":")[0]
         logger.info(f"AWS BATCH Parent job ID: {parent_job_id}")
-
         response = boto3.client("batch").describe_jobs(jobs=[parent_job_id])
         if "jobs" not in response or len(response["jobs"]) == 0:
             raise ValueError(f"Could not find parent job with ID {parent_job_id}")

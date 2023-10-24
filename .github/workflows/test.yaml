@@ -18,6 +18,7 @@ jobs:
       uses: ./.github/actions/setup
       with:
         python-version: ${{env.python_version}}
+        mpi: 'true'
     - name: pytest
       run: PYTHONPATH=src pytest tests/. integration_tests/. --cov
     - name: Upload coverage reports to Codecov
@@ -33,6 +34,7 @@ jobs:
       uses: ./.github/actions/setup
       with:
         python-version: ${{env.python_version}}
+        mpi : 'true'
     - name: pytest
       run: |
         set PYTHONPATH=src
