@@ -144,7 +144,7 @@ class ConfigParameters(BaseModel):
     step: float = Field(default=450.0, description="overlapping between each cc_len (sec)")
     freqmin: float = Field(default=0.05)
     freqmax: float = Field(default=2.0)
-    freq_norm: str = Field(
+    freq_norm: FreqNorm = Field(
         default=FreqNorm.RMA.value, description="choose between 'rma' for a soft whitenning or 'no' for no whitening"
     )
     # TODO: change "no"for "None", and add "one_bit"as an option
