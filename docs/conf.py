@@ -89,7 +89,6 @@ html_logo = 'figures/logo_small.png'
 html_theme_options = {
     'logo_only': False,
     'display_version': True,
-    'navigation_with_keys': True,
 }
 
 #html_theme = 'alabaster'
