@@ -18,7 +18,7 @@ from .channelcatalog import CSVChannelCatalog, XMLStationChannelCatalog
 from .constants import CONFIG_FILE, STATION_FILE, WILD_CARD
 from .correlate import cross_correlate
 from .datatypes import Channel, ConfigParameters
-from .download import download
+from .fdsn_download import download
 from .numpystore import NumpyCCStore, NumpyStackStore
 from .scedc_s3store import SCEDCS3DataStore
 from .scheduler import (

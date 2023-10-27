@@ -12,11 +12,10 @@ from obspy.clients.fdsn.header import FDSNNoDataException
 
 from noisepy.seis.channelcatalog import CSVChannelCatalog
 from noisepy.seis.datatypes import ConfigParameters
-from noisepy.seis.download import download as download_func
-from noisepy.seis.download import download_stream
+from noisepy.seis.fdsn_download import download, download_stream
 
 
-@patch("noisepy.seis.download.download_stream")
+@patch("noisepy.seis.fdsn_download.download_stream")
 @patch.object(Client, "get_stations_bulk")
 def test_download(get_stations_bulk_mock, download_stream_mock, tmp_path: pathlib.Path):
     cfg = ConfigParameters()
@@ -32,17 +31,17 @@ def test_download(get_stations_bulk_mock, download_stream_mock, tmp_path: pathli
     catalog = CSVChannelCatalog(csv_file)
     # mock the get_stations_bulk function by returning and inventory from csv
     get_stations_bulk_mock.return_value = catalog.get_inventory(None, None)
-    download_func(str(tmp_path), cfg)
+    download(str(tmp_path), cfg)
     tmp_path.joinpath("station.csv").unlink()
 
     # Throws because of missing station.csv
     cfg.down_list = True
     with pytest.raises(IOError):
-        download_func(str(tmp_path), cfg)
+        download(str(tmp_path), cfg)
 
     # copy station.csv to tmp_path and try again
     shutil.copy(csv_file, str(tmp_path))
-    download_func(str(tmp_path), cfg)
+    download(str(tmp_path), cfg)
 
     files = list(tmp_path.glob("*.h5"))
     assert len(files) == 1
