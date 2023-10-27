@@ -16,6 +16,7 @@ import pandas as pd
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from .datatypes import ConfigParameters
+from .channelcatalog import CSVChannelCatalog
 from .utils import TimeLogger
 from . import noise_module
 from obspy.clients.fdsn import Client
@@ -111,31 +112,11 @@ def download(direc: str, prepro_para: ConfigParameters) -> None:
         if not os.path.isfile(dlist):
             raise IOError("file %s not exist! double check!" % dlist)
 
-        # read station info from list
-        locs = pd.read_csv(dlist)
-        nsta = len(locs)
-        chan = list(locs.iloc[:]["channel"])
-        net = list(locs.iloc[:]["network"])
-        sta = list(locs.iloc[:]["station"])
-        lat = list(locs.iloc[:]["latitude"])
-        lon = list(locs.iloc[:]["longitude"])
-
-        # location info: useful for some occasion
-        try:
-            location = list(locs.iloc[:]["location"])
-        except Exception:
-            location = ["*"] * nsta
+        inv = CSVChannelCatalog(dlist).get_inventory(None, None)
+        logger.info(f"Read inventory from {dlist}")
 
     else:
         # calculate the total number of channels to download
-        sta = []
-        net = []
-        chan = []
-        location = []
-        lon = []
-        lat = []
-        elev = []
-        nsta = 0
         # loop through specified network, station and channel lists
         bulk_req = []
         for inet in prepro_para.net_list:
@@ -153,22 +134,31 @@ def download(direc: str, prepro_para: ConfigParameters) -> None:
             level="response",
         )
         logger.info("Fetched inventory")
-        for K in inv:
-            for tsta in K:
-                for ch in tsta.channels:
-                    net.append(K.code)
-                    sta.append(tsta.code)
-                    chan.append(ch.code)
-                    lon.append(tsta.longitude)
-                    lat.append(tsta.latitude)
-                    elev.append(tsta.elevation)
-                    # sometimes one station has many locations and
-                    # here we only get the first location
-                    if tsta[0].location_code:
-                        location.append(tsta[0].location_code)
-                    else:
-                        location.append("*")
-                    nsta += 1
+
+    sta = []
+    net = []
+    chan = []
+    location = []
+    lon = []
+    lat = []
+    elev = []
+    nsta = 0
+    for K in inv:
+        for tsta in K:
+            for ch in tsta.channels:
+                net.append(K.code)
+                sta.append(tsta.code)
+                chan.append(ch.code)
+                lon.append(tsta.longitude)
+                lat.append(tsta.latitude)
+                elev.append(tsta.elevation)
+                # sometimes one station has many locations and
+                # here we only get the first location
+                if tsta[0].location_code:
+                    location.append(tsta[0].location_code)
+                else:
+                    location.append("*")
+                nsta += 1
     tlog.log("Getting inventory")
     # rough estimation on memory needs (assume float32 dtype)
     nsec_chunk = prepro_para.inc_hours / 24 * 86400
@@ -254,7 +244,7 @@ def download(direc: str, prepro_para: ConfigParameters) -> None:
                 tasks.append(task)
 
             for ready in as_completed(tasks):
-                # Use partial waits so we can start savign results to the store
+                # Use partial waits so we can start saving results to the store
                 # while other computations are still running
                 ista, tr = ready.result()
                 if tr and len(tr):

@@ -154,7 +154,26 @@ class CSVChannelCatalog(ChannelCatalog):
         )
 
     def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
-        return None
+        # Build a obspy.Inventory from the dataframe
+        network_codes = list(self.df["network"].unique())
+        df = self.df
+        nets = []
+        for net in network_codes:
+            sta_names = list(df[df.network == net]["station"].unique())
+            stations = []
+            for sta in sta_names:
+                sta_row = df[df.network == net][df.station == sta].iloc[0]
+                lat = sta_row["latitude"]
+                lon = sta_row["longitude"]
+                elevation = sta_row["elevation"]
+                channels = [
+                    obspy.core.inventory.Channel(ch, "", lat, lon, elevation, 0)
+                    for ch in df[df.network == net][df.station == sta]["channel"].values
+                ]
+                station = obspy.core.inventory.Station(sta, lat, lon, elevation, channels=channels)
+                stations.append(station)
+            nets.append(obspy.core.inventory.Network(net, stations))
+        return obspy.Inventory(nets)
 
 
 # TODO: A channel catalog that uses the files in the SCEDC S3 bucket: s3://scedc-pds/FDSNstationXML/
