@@ -1257,7 +1257,7 @@ def portion_gaps(stream, starttime: obspy.UTCDateTime, endtime: obspy.UTCDateTim
     return pgaps
 
 
-@jit("float32[:](float32[:],float32)")
+@jit("float32[:](float32[:],float32)", nopython=True)
 def segment_interpolate(sig1, nfric):
     """
     this function interpolates the data to ensure all points located on interger times of the

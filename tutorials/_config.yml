@@ -23,7 +23,7 @@ only_build_toc_files: true
 
 # Information about where the book exists on the web
 repository:
-  url: https://github.comN/noisepy/NoisePy  # Online location of your book
+  url: https://github.com/noisepy/NoisePy  # Online location of your book
   path_to_book: tutorials  # Optional path to your book, relative to the repository root
   branch: main # Which branch of the repository should be used when creating links (optional)
 
