@@ -1,9 +1,11 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import pytest
 import scipy
 from scipy.fftpack import next_fast_len
 
 from noisepy.seis.correlate import ConfigParameters
+from noisepy.seis.datatypes import FreqNorm
 from noisepy.seis.noise_module import moving_ave, whiten
 
 
@@ -56,9 +58,9 @@ def whiten_original(data, fft_para: ConfigParameters):
             1j * np.angle(FFTRawSign[:, low:left])
         )
         # Pass band:
-        if fft_para.freq_norm == "phase_only":
+        if fft_para.freq_norm == FreqNorm.PHASE_ONLY:
             FFTRawSign[:, left:right] = np.exp(1j * np.angle(FFTRawSign[:, left:right]))
-        elif fft_para.freq_norm == "rma":
+        elif fft_para.freq_norm == FreqNorm.RMA:
             for ii in range(data.shape[0]):
                 tave = moving_ave(np.abs(FFTRawSign[ii, left:right]), fft_para.smooth_N)
                 FFTRawSign[ii, left:right] = FFTRawSign[ii, left:right] / tave
@@ -76,9 +78,9 @@ def whiten_original(data, fft_para: ConfigParameters):
             1j * np.angle(FFTRawSign[low:left])
         )
         # Pass band:
-        if fft_para.freq_norm == "phase_only":
+        if fft_para.freq_norm == FreqNorm.PHASE_ONLY:
             FFTRawSign[left:right] = np.exp(1j * np.angle(FFTRawSign[left:right]))
-        elif fft_para.freq_norm == "rma":
+        elif fft_para.freq_norm == FreqNorm.RMA:
             tave = moving_ave(np.abs(FFTRawSign[left:right]), fft_para.smooth_N)
             FFTRawSign[left:right] = FFTRawSign[left:right] / tave
         # Right tapering:
@@ -98,16 +100,16 @@ def whiten_original(data, fft_para: ConfigParameters):
 # it is not expected that the smoothed version returns the same, so currently no test for that
 # (would be good to add one based on some expected outcome)
 
-fft_para = ConfigParameters()
-fft_para.samp_freq = 1.0
-fft_para.freqmin = 0.01
-fft_para.freqmax = 0.2
-fft_para.smooth_N = 1
-fft_para.freq_norm = "phase_only"
 
-
-def whiten1d():
+def whiten1d(freq_norm: FreqNorm):
     # 1 D case
+    fft_para = ConfigParameters()
+    fft_para.samp_freq = 1.0
+    fft_para.freqmin = 0.01
+    fft_para.freqmax = 0.2
+    fft_para.smooth_N = 1
+    fft_para.freq_norm = freq_norm
+
     data = np.random.random(1000)
     white_original = whiten_original(data, fft_para)
     white_new = whiten(data, fft_para)
@@ -118,8 +120,15 @@ def whiten1d():
     return white_original, white_new
 
 
-def whiten2d():
+def whiten2d(freq_norm: FreqNorm):
     # 2 D case
+    fft_para = ConfigParameters()
+    fft_para.samp_freq = 1.0
+    fft_para.freqmin = 0.01
+    fft_para.freqmax = 0.2
+    fft_para.smooth_N = 1
+    fft_para.freq_norm = freq_norm
+
     data = np.random.random((5, 1000))
     white_original = whiten_original(data, fft_para)
     white_new = whiten(data, fft_para)
@@ -157,12 +166,14 @@ def plot_2d(white_original, white_new):
 
 
 # Use wrappers since test functions are not supposed to return values
-def test_whiten1d():
-    _, _ = whiten1d()
+@pytest.mark.parametrize("freqNorm", [FreqNorm.PHASE_ONLY, FreqNorm.RMA])
+def test_whiten1d(freqNorm: FreqNorm):
+    _, _ = whiten1d(freqNorm)
 
 
-def test_whiten2d():
-    _, _ = whiten2d()
+@pytest.mark.parametrize("freqNorm", [FreqNorm.PHASE_ONLY, FreqNorm.RMA])
+def test_whiten2d(freqNorm: FreqNorm):
+    _, _ = whiten2d(freqNorm)
 
 
 if __name__ == "__main__":

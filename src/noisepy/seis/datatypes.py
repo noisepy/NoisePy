@@ -117,6 +117,12 @@ class StackMethod(Enum):
     ALL = "all"
 
 
+class FreqNorm(Enum):
+    RMA = "rma"
+    NO = "no"
+    PHASE_ONLY = "phase_only"
+
+
 class ConfigParameters(BaseModel):
     model_config = ConfigDict(validate_default=True)
 
@@ -145,8 +151,8 @@ class ConfigParameters(BaseModel):
     step: float = Field(default=450.0, description="overlapping between each cc_len (sec)")
     freqmin: float = Field(default=0.05)
     freqmax: float = Field(default=2.0)
-    freq_norm: str = Field(
-        default="rma", description="choose between 'rma' for a soft whitenning or 'no' for no whitening"
+    freq_norm: FreqNorm = Field(
+        default=FreqNorm.RMA.value, description="choose between 'rma' for a soft whitenning or 'no' for no whitening"
     )
     # TODO: change "no"for "None", and add "one_bit"as an option
     # TODO: change time_norm option from "no"to "None"
