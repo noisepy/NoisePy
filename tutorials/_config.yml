@@ -32,3 +32,10 @@ repository:
 html:
   use_issues_button: true
   use_repository_button: true
+
+# Set navigation_with_keys: false to prevent pydata-sphinx-theme validation warning/error
+# See https://github.com/pydata/pydata-sphinx-theme/issues/1492
+sphinx:
+  config:
+    html_theme_options:
+      navigation_with_keys: false

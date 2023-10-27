@@ -25,7 +25,7 @@ from obspy.signal.util import _npts2nfft
 from scipy.fftpack import next_fast_len
 from scipy.signal import hilbert
 
-from .datatypes import ChannelData, ConfigParameters, StackMethod
+from .datatypes import ChannelData, ConfigParameters, FreqNorm, StackMethod
 
 logger = logging.getLogger(__name__)
 """
@@ -559,7 +559,7 @@ def noise_processing(fft_para: ConfigParameters, dataS):
         white = dataS
 
     # -----to whiten or not------
-    if fft_para.freq_norm != "no":
+    if fft_para.freq_norm != FreqNorm.NO:
         source_white = whiten(white, fft_para)  # whiten and return FFT
     else:
         Nfft = int(next_fast_len(int(dataS.shape[1])))
