@@ -123,6 +123,12 @@ class FreqNorm(Enum):
     PHASE_ONLY = "phase_only"
 
 
+class CCMethod(Enum):
+    XCORR = "xcorr"
+    DECONV = "deconv"
+    COHERENCY = "coherency"
+
+
 class ConfigParameters(BaseModel):
     model_config = ConfigDict(validate_default=True)
 
@@ -160,8 +166,8 @@ class ConfigParameters(BaseModel):
         default="no", description="'no' for no normalization, or 'rma', 'one_bit' for normalization in time domain,"
     )
     # FOR "COHERENCY"PLEASE set freq_norm to "rma", time_norm to "no"and cc_method to "xcorr"
-    cc_method: str = Field(
-        default="xcorr", description="'xcorr' for pure cross correlation, 'deconv' for deconvolution;"
+    cc_method: CCMethod = Field(
+        default=CCMethod.XCORR.value, description="'xcorr' for pure cross correlation, 'deconv' for deconvolution;"
     )
     smooth_N: int = Field(
         default=10, description="moving window length for time/freq domain normalization if selected (points)"

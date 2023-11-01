@@ -14,6 +14,7 @@ from scipy.fftpack.helper import next_fast_len
 from . import noise_module
 from .constants import NO_DATA_MSG
 from .datatypes import (
+    CCMethod,
     Channel,
     ChannelData,
     ConfigParameters,
@@ -350,7 +351,7 @@ def cross_correlation(
         return None
 
     # in the case of pure deconvolution, we recommend smoothing anyway.
-    if fft_params.cc_method == "deconv":
+    if fft_params.cc_method == CCMethod.DECONV:
         # -----------get the smoothed source spectrum for decon later----------
         sfft1 = noise_module.smooth_source_spect(fft_params, src_fft.fft)
         sfft1 = sfft1.reshape(src_fft.window_count, src_fft.length // 2)
