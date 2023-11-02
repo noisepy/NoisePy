@@ -1,21 +1,3 @@
-# Table of contents
-# Learn more at https://jupyterbook.org/customize/toc.html
-
-format: jb-book
-root: noise_configuration
-chapters:
-- file: noisepy_scedc_tutorial
-- file: noisepy_datastore
-- file: cloud/aws
-- file: cloud/compute_environment.yaml
-- file: cloud/job.yaml
-- file: cloud/job_cc.yaml
-- file: cloud/job_definition.yaml
-- file: cloud/job_queue.yaml
-- file: cloud/job_stack.yaml
-- file: cli/README
-- file: cli/config.yml
-
 # Configure Noisepy
 
 Welcome to NoisePy!
