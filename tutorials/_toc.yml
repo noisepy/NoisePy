@@ -4,5 +4,18 @@
 format: jb-book
 root: noise_configuration
 chapters:
-- file: noisepy_scedc_tutorial
-- file: noisepy_datastore
+  - file: noisepy_scedc_tutorial
+  - file: noisepy_datastore
+  - section: Cloud
+    chapters:
+      - file: cloud/aws.md
+      - file: cloud/compute_environment.yaml
+      - file: cloud/job.yaml
+      - file: cloud/job_cc.yaml
+      - file: cloud/job_definition.yaml
+      - file: cloud/job_queue.yaml
+      - file: cloud/job_stack.yaml
+  - section: CLI
+    chapters:
+      - file: cli/README.md
+      - file: cli/config.yml
