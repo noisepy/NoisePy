@@ -123,7 +123,7 @@ class FreqNorm(Enum):
     PHASE_ONLY = "phase_only"
 
 
-class CCMethod(Enum):
+class CCMethod(str, Enum):
     XCORR = "xcorr"
     DECONV = "deconv"
     COHERENCY = "coherency"
