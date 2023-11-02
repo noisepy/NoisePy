@@ -6,6 +6,7 @@ import obspy
 import pytest
 
 from noisepy.seis.constants import NO_CCF_DATA_MSG
+from noisepy.seis.datatypes import CCMethod
 from noisepy.seis.main import (
     Command,
     _valid_config_file,
@@ -22,7 +23,7 @@ def test_parse_args():
     cmd += ["--step", "5"]
     cmd += ["--samp_freq", "160.4"]
     cmd += ["--stations", "BAK,ARV"]
-    cmd += ["--cc_method", "foobar"]
+    cmd += ["--cc_method", "xcorr"]
     cmd += ["--substack", "true"]
     cmd += ["--correction", "False"]
     args = parse_args(cmd)
@@ -33,7 +34,7 @@ def test_parse_args():
     assert cfg.step == 5
     assert cfg.samp_freq == 160.4
     assert cfg.stations == ["BAK", "ARV"]
-    assert cfg.cc_method == "foobar"
+    assert cfg.cc_method == CCMethod.XCORR
     assert cfg.substack is True
     assert cfg.correction is False
 

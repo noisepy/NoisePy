@@ -12,6 +12,7 @@ from noisepy.seis.channelcatalog import (
     XMLStationChannelCatalog,  # Required stationXML handling object
 )
 from noisepy.seis.datatypes import (  # Main configuration object
+    CCMethod,
     ConfigParameters,
     StackMethod,
 )
@@ -26,8 +27,16 @@ S3_DATA = "s3://scedc-pds/continuous_waveforms/"
 S3_STATION_XML = "s3://scedc-pds/FDSNstationXML/CI/"  # S3 storage of stationXML
 
 
-@pytest.mark.parametrize("stack_method,substack", [(StackMethod.ALL, False), (StackMethod.LINEAR, True)])
-def test_cc_stack(tmp_path, stack_method, substack):
+@pytest.mark.parametrize(
+    "stack_method, substack, cc_method",
+    [
+        (StackMethod.ALL, False, CCMethod.XCORR),
+        (StackMethod.LINEAR, True, CCMethod.DECONV),
+        (StackMethod.LINEAR, True, CCMethod.COHERENCY),
+        (StackMethod.LINEAR, True, CCMethod.XCORR),
+    ],
+)
+def test_cc_stack(tmp_path, stack_method, substack, cc_method):
     path = str(tmp_path)
 
     cc_data_path = os.path.join(path, "CCF")
@@ -39,6 +48,7 @@ def test_cc_stack(tmp_path, stack_method, substack):
     config.stack_method = stack_method
     config.substack = substack
     config.keep_substack = substack
+    config.cc_method = cc_method
     # timeframe for analysis
     timerange = DateTimeRange(config.start_date, config.end_date)
 

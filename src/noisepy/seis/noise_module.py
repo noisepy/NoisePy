@@ -25,7 +25,7 @@ from obspy.signal.util import _npts2nfft
 from scipy.fftpack import next_fast_len
 from scipy.signal import hilbert
 
-from .datatypes import ChannelData, ConfigParameters, FreqNorm, StackMethod
+from .datatypes import CCMethod, ChannelData, ConfigParameters, FreqNorm, StackMethod
 
 logger = logging.getLogger(__name__)
 """
@@ -583,7 +583,7 @@ def smooth_source_spect(cc_para, fft1):
     cc_method = cc_para["cc_method"]
     smoothspect_N = cc_para["smoothspect_N"]
 
-    if cc_method == "deconv":
+    if cc_method == CCMethod.DECONV:
         # -----normalize single-station cc to z component-----
         temp = moving_ave(np.abs(fft1), smoothspect_N)
         try:
@@ -591,14 +591,14 @@ def smooth_source_spect(cc_para, fft1):
         except Exception:
             raise ValueError("smoothed spectrum has zero values")
 
-    elif cc_method == "coherency":
+    elif cc_method == CCMethod.COHERENCY:
         temp = moving_ave(np.abs(fft1), smoothspect_N)
         try:
             sfft1 = np.conj(fft1) / temp
         except Exception:
             raise ValueError("smoothed spectrum has zero values")
 
-    elif cc_method == "xcorr":
+    elif cc_method == CCMethod.XCORR:
         sfft1 = np.conj(fft1)
 
     else:
