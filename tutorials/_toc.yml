@@ -6,3 +6,6 @@ root: noise_configuration
 chapters:
 - file: noisepy_scedc_tutorial
 - file: noisepy_datastore
+- file: cloud/aws.md
+#- file: get_started.ipynb
+#- file: cli/README.md
