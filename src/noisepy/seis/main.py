@@ -120,7 +120,7 @@ def initialize_params(args, data_dir: str) -> ConfigParameters:
             params = ConfigParameters.load_yaml(config_path)
         else:
             logger.warning(f"Config file '{config_path}' not found. Using default parameters.")
-    cpy = params.model_copy(update={k: v for (k, v) in vars(args).items() if k in params.__fields__})
+    cpy = params.model_copy(update={k: v for (k, v) in vars(args).items() if k in params.model_fields})
     return cpy
 
 
