@@ -129,6 +129,12 @@ class CCMethod(str, Enum):
     COHERENCY = "coherency"
 
 
+class TimeNorm(str, Enum):
+    NO = "no"
+    ONE_BIT = "one_bit"
+    RMA = "rma"
+
+
 class ConfigParameters(BaseModel):
     model_config = ConfigDict(validate_default=True)
 
@@ -162,8 +168,9 @@ class ConfigParameters(BaseModel):
     )
     # TODO: change "no"for "None", and add "one_bit"as an option
     # TODO: change time_norm option from "no"to "None"
-    time_norm: str = Field(
-        default="no", description="'no' for no normalization, or 'rma', 'one_bit' for normalization in time domain,"
+    time_norm: TimeNorm = Field(
+        default=TimeNorm.NO.value,
+        description="'no' for no normalization, or 'rma', 'one_bit' for normalization in time domain,",
     )
     # FOR "COHERENCY"PLEASE set freq_norm to "rma", time_norm to "no"and cc_method to "xcorr"
     cc_method: CCMethod = Field(
