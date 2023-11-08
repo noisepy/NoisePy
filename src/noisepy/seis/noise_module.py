@@ -25,7 +25,14 @@ from obspy.signal.util import _npts2nfft
 from scipy.fftpack import next_fast_len
 from scipy.signal import hilbert
 
-from .datatypes import CCMethod, ChannelData, ConfigParameters, FreqNorm, StackMethod
+from .datatypes import (
+    CCMethod,
+    ChannelData,
+    ConfigParameters,
+    FreqNorm,
+    StackMethod,
+    TimeNorm,
+)
 
 logger = logging.getLogger(__name__)
 """
@@ -547,10 +554,10 @@ def noise_processing(fft_para: ConfigParameters, dataS):
     source_white: 2D matrix of data spectra
     """
     # ------to normalize in time or not------
-    if fft_para.time_norm != "no":
-        if fft_para.time_norm == "one_bit":  # sign normalization
+    if fft_para.time_norm != TimeNorm.NO:
+        if fft_para.time_norm == TimeNorm.ONE_BIT:  # sign normalization
             white = np.sign(dataS)
-        elif fft_para.time_norm == "rma":  # running mean: normalization over smoothed absolute average
+        elif fft_para.time_norm == TimeNorm.RMA:  # running mean: normalization over smoothed absolute average
             white = np.zeros(shape=dataS.shape, dtype=dataS.dtype)
             for kkk in range(dataS.shape[0]):
                 white[kkk, :] = dataS[kkk, :] / moving_ave(np.abs(dataS[kkk, :]), fft_para.smooth_N)
