@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timedelta, timezone
+from typing import Dict
 
 import numpy as np
 from datetimerange import DateTimeRange
@@ -41,7 +42,6 @@ def _ccstore_test_helper(ccstore: CrossCorrelationDataStore):
     conf = ConfigParameters()
     # test param serialization with real types
     params = cc_parameters(conf, coor, np.zeros(10, dtype=np.float32), np.zeros(10, dtype=np.int16), ["nn"])
-    # params = {"key": "Value"}
 
     # assert empty state
     assert not ccstore.contains(src.station, rec.station, ts1)
@@ -69,11 +69,11 @@ def _ccstore_test_helper(ccstore: CrossCorrelationDataStore):
     assert len(wrong_ccs) == 0
 
 
-def assert_dict_equal(d1, d2):
+def assert_dict_equal(d1: Dict, d2: Dict):
     # use json to compare dicts with nested values such as numpy arrays
-    dictA_str = json.dumps(to_json_types(d1), sort_keys=True)
-    dictB_str = json.dumps(to_json_types(d2), sort_keys=True)
-    assert dictA_str == dictB_str
+    d1_str = json.dumps(to_json_types(d1), sort_keys=True)
+    d2_str = json.dumps(to_json_types(d2), sort_keys=True)
+    assert d1_str == d2_str
 
 
 def check_populated_store(ccstore):
