@@ -8,7 +8,7 @@ if [[ "$FORMAT" != "zarr" && "$FORMAT" != "asdf" && "$FORMAT" != "numpy" ]]; the
        exit 1
 fi
 echo "FORMAT is _${FORMAT}_"
-RUNNER_TEMP=~/test_temp_${FORMAT}
+RUNNER_TEMP=~/noisepy_data/${FORMAT}
 
 # RUNNER_TEMP=s3://carlosgjs-noisepy/test_new
 # aws s3 rm --recursive $RUNNER_TEMP
@@ -18,9 +18,10 @@ STACK=$RUNNER_TEMP/STACK
 RAW=~/s3tmp/scedc/
 XML=~/s3tmp/FDSNstationXML
 
-mkdir $RUNNER_TEMP
+mkdir -p $RUNNER_TEMP
 LOGFILE="$HOME/logs/log_${FORMAT}_$(date -j +'%Y%m%d_%H%M%S').txt"
 STATIONS=ARV,BAK
+NETWORKS=CI
 START=2022-02-02
 END=2022-02-04
 CHANNELS=BHE,BHN,BHZ
@@ -36,15 +37,16 @@ rm -rf $CCF
 noisepy cross_correlate  \
 --raw_data_path=$RAW \
 --xml_path=$XML \
+--ccf_path=$CCF \
 --stations=$STATIONS \
 --channels=$CHANNELS \
+--net_list=$NETWORKS \
 --start=$START \
 --end=$END \
---ccf_path=$CCF \
 --loglevel=${LOG_LEVEL} \
 --format=${FORMAT} \
+--stop_on_error \
 --logfile=$LOGFILE \
---loglevel=${LOG_LEVEL}
 
 rm -rf $STACK
 noisepy stack --ccf_path $CCF \
@@ -52,6 +54,7 @@ noisepy stack --ccf_path $CCF \
 --stack_method=all \
 --format=${FORMAT} \
 --logfile=$LOGFILE \
+--stop_on_error \
 --loglevel=${LOG_LEVEL}
 
 du -ch $RUNNER_TEMP

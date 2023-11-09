@@ -78,11 +78,16 @@ jobs:
         --stations=ARV,BAK \
         --xml_path=s3://scedc-pds/FDSNstationXML/CI/ \
         --freq_norm ${{matrix.freq_norm}} \
+        --stop_on_error \
         --format ${{matrix.format}}
-        # noisepy cross_correlate --raw_data_path $RUNNER_TEMP/RAW_DATA --ccf_path $RUNNER_TEMP/CCF --freq_norm ${{matrix.freq_norm}} --format ${{matrix.format}}
     - name: Test Stacking (S2)
       run: |
-        noisepy stack --ccf_path $RUNNER_TEMP/CCF --stack_path $RUNNER_TEMP/STACK --stack_method ${{matrix.method}} --format ${{matrix.format}}
+        noisepy stack \
+        --ccf_path $RUNNER_TEMP/CCF \
+        --stack_path $RUNNER_TEMP/STACK \
+        --stack_method ${{matrix.method}} \
+        --stop_on_error \
+        --format ${{matrix.format}}
   s1_s2_mpi:
     strategy:
       fail-fast: true
@@ -112,10 +117,17 @@ jobs:
         --stations=ARV,BAK \
         --xml_path=s3://scedc-pds/FDSNstationXML/CI/  \
         --freq_norm ${{matrix.freq_norm}} \
+        --stop_on_error \
         --format numpy
     - name: Test Stacking (S2)
       run: |
-        mpiexec -n 3 noisepy stack --mpi --ccf_path $RUNNER_TEMP/CCF --stack_path $RUNNER_TEMP/STACK --stack_method ${{matrix.method}} --format numpy
+        mpiexec -n 3 noisepy stack \
+        --mpi \
+        --ccf_path $RUNNER_TEMP/CCF \
+        --stack_path $RUNNER_TEMP/STACK \
+        --stack_method ${{matrix.method}} \
+        --stop_on_error \
+        --format numpy
   s3_dates:
     strategy:
       fail-fast: true
@@ -135,4 +147,5 @@ jobs:
         --ccf_path $RUNNER_TEMP/CCF_S3 --freq_norm rma \
         --xml_path s3://scedc-pds/FDSNstationXML/CI/ \
         --stations "SBC,RIO" --start_date 2022-02-02 --end_date 2022-02-04 \
+        --stop_on_error \
         --config configs/s3_anon.yaml

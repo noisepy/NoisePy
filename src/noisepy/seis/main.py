@@ -195,9 +195,18 @@ def makedir(dir: str, storage_options: dict = {}):
     fs.makedirs(dir, exist_ok=True)
 
 
+class ErrorStopHandler(logging.Handler):
+    def handle(self, record):
+        if record.levelno == logging.ERROR:
+            raise RuntimeError(record.getMessage())
+        return record
+
+
 def main(args: typing.Any):
     logger = logging.getLogger(__package__)
     logger.setLevel(args.loglevel.upper())
+    if args.stop_on_error:
+        logger.addHandler(ErrorStopHandler())
 
     if args.logfile is not None:
         fh = logging.FileHandler(
@@ -299,6 +308,8 @@ def make_step_parser(subparsers: Any, cmd: Command, paths: List[str]) -> Any:
     parser.add_argument(
         "-c", "--config", type=lambda f: _valid_config_file(parser, f), required=False, help="Configuration YAML file"
     )
+    parser.add_argument("--stop_on_error", action="store_true", default=False, help="Stop on any errors")
+
     add_model(parser, ConfigParameters())
 
     if cmd != Command.DOWNLOAD:
