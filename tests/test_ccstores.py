@@ -1,10 +1,20 @@
+import json
 from datetime import datetime, timedelta, timezone
+from typing import Dict
 
 import numpy as np
 from datetimerange import DateTimeRange
 
 from noisepy.seis.asdfstore import ASDFCCStore
-from noisepy.seis.datatypes import Channel, ChannelType, CrossCorrelation, Station
+from noisepy.seis.datatypes import (
+    Channel,
+    ChannelType,
+    ConfigParameters,
+    CrossCorrelation,
+    Station,
+    to_json_types,
+)
+from noisepy.seis.noise_module import cc_parameters
 from noisepy.seis.numpystore import NumpyCCStore
 from noisepy.seis.stores import CrossCorrelationDataStore
 from noisepy.seis.zarrstore import ZarrCCStore
@@ -23,7 +33,15 @@ rec = Channel(ChannelType("bar"), Station("nw", "sta2"))
 
 def _ccstore_test_helper(ccstore: CrossCorrelationDataStore):
     data = np.random.random((10, 10))
-    params = {"key": "Value"}
+    coor = {
+        "lonS": 0,
+        "latS": 0,
+        "lonR": 0,
+        "latR": 0,
+    }
+    conf = ConfigParameters()
+    # test param serialization with real types
+    params = cc_parameters(conf, coor, np.zeros(10, dtype=np.float32), np.zeros(10, dtype=np.int16), ["nn"])
 
     # assert empty state
     assert not ccstore.contains(src.station, rec.station, ts1)
@@ -43,11 +61,19 @@ def _ccstore_test_helper(ccstore: CrossCorrelationDataStore):
     ccs = ccstore.read(ts1, sta_pairs[0][0], sta_pairs[0][1])
     cha_pairs = [(c.src, c.rec) for c in ccs]
     assert cha_pairs == [(src.type, rec.type)]
-    assert params == ccs[0].parameters
+
+    assert_dict_equal(params, ccs[0].parameters)
     assert np.all(data == ccs[0].data)
 
     wrong_ccs = ccstore.read(ts1, src.station, Station("nw", "wrong"))
     assert len(wrong_ccs) == 0
+
+
+def assert_dict_equal(d1: Dict, d2: Dict):
+    # use json to compare dicts with nested values such as numpy arrays
+    d1_str = json.dumps(to_json_types(d1), sort_keys=True)
+    d2_str = json.dumps(to_json_types(d2), sort_keys=True)
+    assert d1_str == d2_str
 
 
 def check_populated_store(ccstore):
