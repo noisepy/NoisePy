@@ -944,7 +944,7 @@ def cc_parameters(cc_para, coor, tcorr, ncorr, comp):
         "lonR": np.float32(lonR),
         "latR": np.float32(latR),
         "ngood": ncorr,
-        "cc_method": cc_method,
+        "cc_method": str(cc_method.value),
         "time": tcorr,
         "substack": substack,
         "comp": comp,

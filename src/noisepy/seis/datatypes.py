@@ -423,4 +423,6 @@ def _to_json_type(value: Any) -> Any:
         or isinstance(value, np.int8)
     ):
         return int(value)
+    elif isinstance(value, np.bool_):
+        return bool(value)
     return value
