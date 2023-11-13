@@ -195,6 +195,13 @@ def makedir(dir: str, storage_options: dict = {}):
     fs.makedirs(dir, exist_ok=True)
 
 
+class ErrorStopHandler(logging.Handler):
+    def handle(self, record):
+        if record.levelno == logging.ERROR:
+            raise RuntimeError(record.getMessage())
+        return record
+
+
 def main(args: typing.Any):
     logger = logging.getLogger(__package__)
     logger.setLevel(args.loglevel.upper())
@@ -260,12 +267,19 @@ def main(args: typing.Any):
         scheduler = get_scheduler(args)
         stack_cross_correlations(cc_store, stack_store, params, scheduler)
 
-    if args.cmd == Command.DOWNLOAD:
-        cmd_wrapper(run_download, None, args.raw_data_path)
-    if args.cmd == Command.CROSS_CORRELATE:
-        cmd_wrapper(run_cross_correlation, args.raw_data_path, args.ccf_path)
-    if args.cmd == Command.STACK:
-        cmd_wrapper(run_stack, args.ccf_path, args.stack_path)
+    err_handler = ErrorStopHandler()
+    if args.stop_on_error:
+        logger.addHandler(err_handler)
+    try:
+        if args.cmd == Command.DOWNLOAD:
+            cmd_wrapper(run_download, None, args.raw_data_path)
+        if args.cmd == Command.CROSS_CORRELATE:
+            cmd_wrapper(run_cross_correlation, args.raw_data_path, args.ccf_path)
+        if args.cmd == Command.STACK:
+            cmd_wrapper(run_stack, args.ccf_path, args.stack_path)
+    finally:
+        if args.stop_on_error:
+            logger.removeHandler(err_handler)
 
 
 def add_path(parser, prefix: str):
@@ -299,6 +313,8 @@ def make_step_parser(subparsers: Any, cmd: Command, paths: List[str]) -> Any:
     parser.add_argument(
         "-c", "--config", type=lambda f: _valid_config_file(parser, f), required=False, help="Configuration YAML file"
     )
+    parser.add_argument("--stop_on_error", action="store_true", default=False, help="Stop on any errors")
+
     add_model(parser, ConfigParameters())
 
     if cmd != Command.DOWNLOAD:
@@ -337,13 +353,13 @@ def parse_args(arguments: Iterable[str]) -> argparse.Namespace:
     return args
 
 
-def _enable_s3fs_debug_logs():
-    os.environ["S3FS_LOGGING_LEVEL"] = "DEBUG"
-    for pkg in ["urllib3", "s3fs", "zarr"]:
-        logger.info("Enable debug log for %s", pkg)
-        lgr = logging.getLogger(pkg)
-        lgr.setLevel(logging.DEBUG)
-        lgr.propagate = True
+# def _enable_s3fs_debug_logs():
+#     os.environ["S3FS_LOGGING_LEVEL"] = "DEBUG"
+#     for pkg in ["urllib3", "s3fs", "zarr"]:
+#         logger.info("Enable debug log for %s", pkg)
+#         lgr = logging.getLogger(pkg)
+#         lgr.setLevel(logging.DEBUG)
+#         lgr.propagate = True
 
 
 if __name__ == "__main__":
