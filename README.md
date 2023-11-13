@@ -77,7 +77,7 @@ To run the code on a single core, open the terminal and activate the noisepy env
 We use I/O on disk, so users need root access to the file system. To install rootless docker, see instructions [here](https://docs.docker.com/engine/security/rootless/#install).
 ```bash
 docker pull  ghcr.io/noisepy/noisepy:latest
-docker run -v ~/tmp:/tmp cross_correlate --path /tmp
+docker run -v ~/tmp:/tmp ghcr.io/noisepy/noisepy:latest cross_correlate --path /tmp
 ```
 
 # Tutorials

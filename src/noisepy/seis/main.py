@@ -205,8 +205,6 @@ class ErrorStopHandler(logging.Handler):
 def main(args: typing.Any):
     logger = logging.getLogger(__package__)
     logger.setLevel(args.loglevel.upper())
-    if args.stop_on_error:
-        logger.addHandler(ErrorStopHandler())
 
     if args.logfile is not None:
         fh = logging.FileHandler(
@@ -269,12 +267,19 @@ def main(args: typing.Any):
         scheduler = get_scheduler(args)
         stack_cross_correlations(cc_store, stack_store, params, scheduler)
 
-    if args.cmd == Command.DOWNLOAD:
-        cmd_wrapper(run_download, None, args.raw_data_path)
-    if args.cmd == Command.CROSS_CORRELATE:
-        cmd_wrapper(run_cross_correlation, args.raw_data_path, args.ccf_path)
-    if args.cmd == Command.STACK:
-        cmd_wrapper(run_stack, args.ccf_path, args.stack_path)
+    err_handler = ErrorStopHandler()
+    if args.stop_on_error:
+        logger.addHandler(err_handler)
+    try:
+        if args.cmd == Command.DOWNLOAD:
+            cmd_wrapper(run_download, None, args.raw_data_path)
+        if args.cmd == Command.CROSS_CORRELATE:
+            cmd_wrapper(run_cross_correlation, args.raw_data_path, args.ccf_path)
+        if args.cmd == Command.STACK:
+            cmd_wrapper(run_stack, args.ccf_path, args.stack_path)
+    finally:
+        if args.stop_on_error:
+            logger.removeHandler(err_handler)
 
 
 def add_path(parser, prefix: str):
@@ -348,13 +353,13 @@ def parse_args(arguments: Iterable[str]) -> argparse.Namespace:
     return args
 
 
-def _enable_s3fs_debug_logs():
-    os.environ["S3FS_LOGGING_LEVEL"] = "DEBUG"
-    for pkg in ["urllib3", "s3fs", "zarr"]:
-        logger.info("Enable debug log for %s", pkg)
-        lgr = logging.getLogger(pkg)
-        lgr.setLevel(logging.DEBUG)
-        lgr.propagate = True
+# def _enable_s3fs_debug_logs():
+#     os.environ["S3FS_LOGGING_LEVEL"] = "DEBUG"
+#     for pkg in ["urllib3", "s3fs", "zarr"]:
+#         logger.info("Enable debug log for %s", pkg)
+#         lgr = logging.getLogger(pkg)
+#         lgr.setLevel(logging.DEBUG)
+#         lgr.propagate = True
 
 
 if __name__ == "__main__":
