@@ -4,7 +4,8 @@
 format: jb-book
 root: noise_configuration
 chapters:
-- file: noisepy_scedc_tutorial
-- file: noisepy_datastore
+- file: noisepy_scedc_tutorial.ipynb
+- file: noisepy_datastore.ipynb
+- file: get_started.ipynb
 - file: cloud/aws.md
-- file: README
+- file: README.md

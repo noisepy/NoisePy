@@ -1,6 +1,6 @@
 # NoisePy CLI Tutorial
 
-NoisePy provides a CLI (command line interface) for running processing jobs. This tutorial works through the same tasks as the **Noisepy Colab Tutorial** from the `tutorials/get_started.ipynb` Jupyter Notebook.
+NoisePy provides a CLI (command line interface) for running processing jobs. This tutorial works through the same tasks as the **Noisepy Colab Tutorial** from the [get_started.ipynb](get_started.ipynb) Jupyter Notebook.
 
 NOTE: The `tutorials/cli/config.yml` file contains the parameters being used throughout the tutorial. All commands are meant to be run from the `tutorials/cli` directory.
 
@@ -31,7 +31,7 @@ This step will perform the cross correlation. For each time chunk, it will read 
 ```sh
 noisepy cross_correlate --raw_data_path ./tmpdata/RAW_DATA --ccf_path ./tmpdata/CCF
 ```
-Optionally, this step can be run via MPI (e.g. with 2 processes). See  `Noisepy/README.md` installation:
+Optionally, this step can be run via MPI (e.g. with 2 processes). See [Installation](https://github.com/noisepy/NoisePy/#installation):
 
 ```sh
 mpiexec -n 2 noisepy cross_correlate --mpi --raw_data_path ./tmpdata/RAW_DATA --ccf_path ./tmpdata/CCF
@@ -50,7 +50,7 @@ This combines the time-chunked ASDF files to stack over each time chunk and at e
 ```sh
 noisepy stack --ccf_path ./tmpdata/CCF --stack_path ./tmpdata/STACK
 ```
-Optionally, this step can be run via MPI (e.g. with 3 processes). See `Noisepy/README.md` installation:
+Optionally, this step can be run via MPI (e.g. with 3 processes). See [Installation](https://github.com/noisepy/NoisePy/#installation):
 ```sh
 mpiexec -n 3 noisepy stack --mpi --ccf_path ./tmpdata/CCF --stack_path ./tmpdata/STACK
 ```
