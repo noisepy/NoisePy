@@ -125,7 +125,6 @@ class PNWDataStore(RawDataStore):
                 f.seek(byteoffset)
                 buff = io.BytesIO(f.read(bytes))
                 stream += obspy.read(buff)
-        # taper each segment
         return ChannelData(stream)
 
     def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
