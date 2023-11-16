@@ -6,7 +6,7 @@ Disclaimer: this code should not be used "as-is" and not run like a blackbox. Th
 Detailed documentation can be found at https://noisepy.github.io/NoisePy/
 
 [![Documentation Status](https://github.com/noisepy/NoisePy/actions/workflows/notebook.yml/badge.svg)](https://noisepy.readthedocs.io/en/latest/?badge=latest)
-[![Build Status](https://github.com/noisepy/NoisePy/actions/workflows/test.yml/badge.svg)](https://github.com/noisepy/NoisePy/actions/workflows/test.yaml)
+[![Build Status](https://github.com/noisepy/NoisePy/actions/workflows/test.yaml/badge.svg)](https://github.com/noisepy/NoisePy/actions/workflows/test.yaml)
 [![Codecov](https://codecov.io/gh/noisepy/NoisePy/branch/main/graph/badge.svg)](https://codecov.io/gh/noisepy/NoisePy)
 [![DOI](https://zenodo.org/badge/157871462.svg)](https://zenodo.org/badge/latestdoi/157871462)
 
