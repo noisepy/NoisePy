@@ -3,14 +3,14 @@ NoisePy is a Python package designed for fast and easy computation of ambient no
 
 Disclaimer: this code should not be used "as-is" and not run like a blackbox. The user is expected to change local paths and parameters. Submit an issue to github with information such as the scripts+error messages to debug.
 
-Detailed documentation can be found at https://noisepy.readthedocs.io/en/latest/
+Detailed documentation can be found at https://noisepy.github.io/NoisePy/
 
-[![Documentation Status](https://readthedocs.org/projects/noisepy/badge/?version=latest)](https://noisepy.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://github.com/noisepy/NoisePy/actions/workflows/notebooks.yml/badge.svg)](https://noisepy.github.io/NoisePy/)
 [![Build Status](https://github.com/noisepy/NoisePy/actions/workflows/test.yaml/badge.svg)](https://github.com/noisepy/NoisePy/actions/workflows/test.yaml)
 [![Codecov](https://codecov.io/gh/noisepy/NoisePy/branch/main/graph/badge.svg)](https://codecov.io/gh/noisepy/NoisePy)
 [![DOI](https://zenodo.org/badge/157871462.svg)](https://zenodo.org/badge/latestdoi/157871462)
 
-<img src="https://raw.githubusercontent.com/noisepy/NoisePy/main/docs/figures/logo.png" width="800" height="400">
+<img src="https://raw.githubusercontent.com/noisepy/NoisePy/main/docs_old/figures/logo.png" width="800" height="400">
 
 ## Major updates coming
 NoisePy is going through a major refactoring to make this package easier to develop and deploy. Submit an issue, fork the repository and create pull requests to [contribute](CONTRIBUTING.md).

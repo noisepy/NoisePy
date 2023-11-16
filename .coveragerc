@@ -9,7 +9,7 @@ exclude_lines =
     if __name__ == .__main__.:
 ignore_errors = True
 omit =
-    test/*,docs/*
+    test/*,docs_old/*
 
 [html]
 directory = coverage_html_report

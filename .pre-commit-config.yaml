@@ -1,6 +1,6 @@
 exclude: |
   (?x)^(
-    docs/conf.py
+    docs_old/conf.py
   )
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks

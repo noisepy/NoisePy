@@ -26,7 +26,7 @@ If you want to use multiple cores (e.g, 4), run the script with the following co
     $ mpirun -n 4 python download.py
 
 The outputted files from S0A include ASDF files containing daily-long (24h) continous noise data, a parameter file recording all used parameters in the script of S0A and a CSV file of
-all station information (more details on reading the ASDF files with downloaded data can be found in docs/src/ASDF.md). The continous waveforms data stored in the ASDF file can be displayed
+all station information (more details on reading the ASDF files with downloaded data can be found in docs_old/src/ASDF.md). The continous waveforms data stored in the ASDF file can be displayed
 using the plotting modules named as *plotting_modules* in the directory of *src* as shown below.
 
 .. code-block:: python
