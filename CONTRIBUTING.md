@@ -51,7 +51,7 @@ Please follow the [Conventional Commits](https://github.com/uw-ssec/rse-guidelin
 
 ## Overview
 
-<img src="./docs/figures/data_flow.png">
+<img src="./docs_old/figures/data_flow.png">
 The data processing in NoisePy consists of three steps:
 
 1. **(Optional) Step 0 - Download**: The `download()` function or the `noisepy download` CLI command can be

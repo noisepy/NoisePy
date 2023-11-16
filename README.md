@@ -10,7 +10,7 @@ Detailed documentation can be found at https://noisepy.github.io/NoisePy/
 [![Codecov](https://codecov.io/gh/noisepy/NoisePy/branch/main/graph/badge.svg)](https://codecov.io/gh/noisepy/NoisePy)
 [![DOI](https://zenodo.org/badge/157871462.svg)](https://zenodo.org/badge/latestdoi/157871462)
 
-<img src="https://raw.githubusercontent.com/noisepy/NoisePy/main/docs/figures/logo.png" width="800" height="400">
+<img src="https://raw.githubusercontent.com/noisepy/NoisePy/main/docs_old/figures/logo.png" width="800" height="400">
 
 ## Major updates coming
 NoisePy is going through a major refactoring to make this package easier to develop and deploy. Submit an issue, fork the repository and create pull requests to [contribute](CONTRIBUTING.md).

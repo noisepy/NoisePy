@@ -24,7 +24,7 @@ Noisepy uses various steps:
 2. Stacking: Data is aggregated and stacked over all time periods. Stacked data will be stored in ``StackStore``.
 
 Workflow is described in the figure below.
-<img src="../docs/figures/data_flow.png">
+<img src="../docs_old/figures/data_flow.png">
 
 ## Applications
 ### Monitoring
