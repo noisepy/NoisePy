@@ -1,5 +1,4 @@
 from noisepy.seis.datatypes import ConfigParameters
-import os
 
 def test_stations_file_behavior():
     # Test loading from stations_file
