@@ -135,6 +135,14 @@ class TimeNorm(str, Enum):
     RMA = "rma"
 
 
+class RmResp(str, Enum):
+    NO = "no"
+    INV = "inv"
+    SPECTRUM = "spectrum"
+    POLES_ZEROS = "poleszeros"
+    RESP = "RESP"
+
+
 class ConfigParameters(BaseModel):
     model_config = ConfigDict(validate_default=True)
 
@@ -200,7 +208,9 @@ class ConfigParameters(BaseModel):
     stationxml: bool = Field(
         default=False, description="station.XML file used to remove instrument response for SAC/miniseed data"
     )
-    rm_resp: str = Field(default="inv", description="select 'no' to not remove response and use 'inv','spectrum',")
+    rm_resp: RmResp = Field(
+        default=RmResp.INV.value, description="select 'no' to not remove response and use 'inv','spectrum',"
+    )
     rm_resp_out: str = Field(default="VEL", description="output location from response removal")
     respdir: Optional[str] = Field(default=None, description="response directory")
     # some control parameters

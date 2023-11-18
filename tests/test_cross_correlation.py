@@ -10,7 +10,13 @@ from noisepy.seis.correlate import (
     _safe_read_data,
     cross_correlate,
 )
-from noisepy.seis.datatypes import Channel, ChannelData, ConfigParameters, Station
+from noisepy.seis.datatypes import (
+    Channel,
+    ChannelData,
+    ConfigParameters,
+    RmResp,
+    Station,
+)
 from noisepy.seis.scedc_s3store import SCEDCS3DataStore
 
 
@@ -57,7 +63,7 @@ def test_correlation_nodata():
 def test_correlation():
     config = ConfigParameters()
     config.samp_freq = 1.0
-    config.rm_resp = "no"  # since we are using a mock catalog
+    config.rm_resp = RmResp.NO  # since we are using a mock catalog
     path = os.path.join(os.path.dirname(__file__), "./data/cc")
     raw_store = SCEDCS3DataStore(path, MockCatalog())
     ts = raw_store.get_timespans()
