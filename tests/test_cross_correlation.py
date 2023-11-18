@@ -60,10 +60,11 @@ def test_correlation_nodata():
     assert NO_DATA_MSG in str(excinfo.value)
 
 
-def test_correlation():
+@pytest.mark.parametrize("rm_resp", [RmResp.NO, RmResp.POLES_ZEROS, RmResp.RESP])
+def test_correlation(rm_resp: RmResp):
     config = ConfigParameters()
     config.samp_freq = 1.0
-    config.rm_resp = RmResp.NO  # since we are using a mock catalog
+    config.rm_resp = rm_resp
     path = os.path.join(os.path.dirname(__file__), "./data/cc")
     raw_store = SCEDCS3DataStore(path, MockCatalog())
     ts = raw_store.get_timespans()
@@ -77,6 +78,10 @@ def test_correlation():
     nsta = len(set([c.station.name for c in channels]))
     cc_store = Mock()
     cc_store.contains.return_value = False
-    cross_correlate(raw_store, config, cc_store)
-    expected_writes = nsta * (nsta + 1) / 2
-    assert expected_writes == cc_store.append.call_count
+    if rm_resp == RmResp.NO:  # since we are using a mock catalog
+        cross_correlate(raw_store, config, cc_store)
+        expected_writes = nsta * (nsta + 1) / 2
+        assert expected_writes == cc_store.append.call_count
+    else:
+        with pytest.raises(ValueError):
+            cross_correlate(raw_store, config, cc_store)
