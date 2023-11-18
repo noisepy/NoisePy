@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import os
 import typing
 from abc import ABC, abstractmethod
 from collections import defaultdict
@@ -157,7 +158,7 @@ class ConfigParameters(BaseModel):
     lomax: float = Field(default=-115.0, description="Download: maximum longitude")
     down_list: bool = Field(default=False, description="download stations from a pre-compiled list or not")
     net_list: List[str] = Field(default=["CI"], description="network list")
-    stations: List[str] = Field(default=["*"], description="station list")
+    stations: List[str] = Field(default=[], description="station list")
     channels: List[str] = Field(default=["BHE", "BHN", "BHZ"], description="channel list")
     # pre-processing parameters
     step: float = Field(default=450.0, description="overlapping between each cc_len (sec)")
@@ -220,6 +221,8 @@ class ConfigParameters(BaseModel):
         description="Storage options to pass to fsspec, keyed by protocol (local files are ''))",
     )
 
+    stations_file: str = Field(default="")
+
     def get_storage_options(self, path: str) -> Dict[str, Any]:
         """The storage options for the given path"""
         url = urlparse(path)
@@ -228,6 +231,23 @@ class ConfigParameters(BaseModel):
     @property
     def dt(self) -> float:
         return 1.0 / self.samp_freq
+    
+    def load_stations(self) -> List[str]:
+        if self.stations_file:
+            # Load the list from the file
+            with open(self.stations_file, 'r') as file:
+                self.stations = file.read().splitlines()
+        return []
+
+    def save_stations(self, value: List[str]):
+        if self.stations_file:
+            # Save the list to the file
+            with open(self.stations_file, 'w') as file:
+                file.write("\n".join(value))
+            # Set stations field to Empty List
+            self.stations = []
+        else:
+            self.stations = value
 
     @model_validator(mode="after")
     def validate(cls, m: ConfigParameters) -> ConfigParameters:
@@ -241,8 +261,20 @@ class ConfigParameters(BaseModel):
         validate_date(m.end_date, "end_date")
         if m.substack_len % m.cc_len != 0:
             raise ValueError(f"substack_len ({m.substack_len}) must be a multiple of cc_len ({m.cc_len})")
-        return m
+        
+        if m.stations_file and m.stations:
+            raise ValueError("If stations_file is set, stations must be empty.")
+        
+        def validate_stations_file(stations_file):
+            
+            if stations_file and not os.path.isfile(stations_file):
+                raise ValueError(f"{stations_file} is not a valid file path in stations_file.")
+    
+            return stations_file
 
+        validate_stations_file(m.stations_file)
+        return m
+    
     # TODO: Remove once all uses of ConfigParameters have been converted to use strongly typed access
     def __getitem__(self, key):
         # Hack since pydantic model properties are nor part of the object's __dict__
