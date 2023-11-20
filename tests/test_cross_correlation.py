@@ -83,6 +83,6 @@ def test_correlation(rm_resp: RmResp):
         expected_writes = nsta * (nsta + 1) / 2
         assert expected_writes == cc_store.append.call_count
     else:
-        # TODO: Remove this once the noise_module has unit tests for these other modes (see issue #250)  
+        # TODO: Remove this once the noise_module has unit tests for these other modes (see issue #250)
         with pytest.raises(ValueError):
             cross_correlate(raw_store, config, cc_store)
