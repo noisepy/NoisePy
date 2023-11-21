@@ -232,11 +232,13 @@ class ConfigParameters(BaseModel):
     def dt(self) -> float:
         return 1.0 / self.samp_freq
     
-    def load_stations(self) -> List[str]:
-        if self.stations_file:
+    def load_stations(self,stations_list=None) -> List[str]:
+        if stations_list is None:
             # Load the list from the file
             with open(self.stations_file, 'r') as file:
                 self.stations = file.read().splitlines()
+        else:
+            self.stations=stations_list
         return []
 
     def save_stations(self, value: List[str]):
@@ -262,8 +264,8 @@ class ConfigParameters(BaseModel):
         if m.substack_len % m.cc_len != 0:
             raise ValueError(f"substack_len ({m.substack_len}) must be a multiple of cc_len ({m.cc_len})")
         
-        if m.stations_file and m.stations:
-            raise ValueError("If stations_file is set, stations must be empty.")
+        # if m.stations_file and m.stations:
+        #     raise ValueError("If stations_file is set, stations must be empty.")
         
         def validate_stations_file(stations_file):
             

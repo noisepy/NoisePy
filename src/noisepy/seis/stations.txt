@@ -1,2 +1,3 @@
-station1
-station2
+RPV
+SVD
+BBR

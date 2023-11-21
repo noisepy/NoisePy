@@ -7,7 +7,7 @@ def test_stations_file_behavior():
 
     ConfigParameters.load_stations(config)
 
-    assert config.stations  == ["station1", "station2"]
+    assert config.stations  == ["RPV", "SVD","BBR"]
 
     new_stations = ['new_station1','new_station2']
     config.stations_file = "../src/noisepy/seis/stations1.txt"
