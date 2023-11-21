@@ -30,6 +30,7 @@ from .datatypes import (
     ChannelData,
     ConfigParameters,
     FreqNorm,
+    RmResp,
     StackMethod,
     TimeNorm,
 )
@@ -243,12 +244,12 @@ def preprocess_raw(
     # remove traces of too small length
 
     # options to remove instrument response
-    if rm_resp != "no":
-        if rm_resp != "inv":
+    if rm_resp != RmResp.NO:
+        if rm_resp != RmResp.INV:
             if (respdir is None) or (not os.path.isdir(respdir)):
                 raise ValueError("response file folder not found! abort!")
 
-        if rm_resp == "inv":
+        if rm_resp == RmResp.INV:
             # ----check whether inventory is attached----
             if not inv[0][0][0].response:
                 raise ValueError("no response found in the inventory! abort!")
@@ -264,14 +265,14 @@ def preprocess_raw(
                     st = []
                     return st
 
-        elif rm_resp == "spectrum":
+        elif rm_resp == RmResp.SPECTRUM:
             logger.info("remove response using spectrum")
             specfile = glob.glob(os.path.join(respdir, "*" + station + "*"))
             if len(specfile) == 0:
                 raise ValueError("no response sepctrum found for %s" % station)
             st = resp_spectrum(st, specfile[0], samp_freq, pre_filt)
 
-        elif rm_resp == "RESP":
+        elif rm_resp == RmResp.RESP:
             logger.info("remove response using RESP files")
             resp = glob.glob(os.path.join(respdir, "RESP." + station + "*"))
             if len(resp) == 0:
@@ -283,7 +284,7 @@ def preprocess_raw(
             }
             st.simulate(paz_remove=None, pre_filt=pre_filt, seedresp=seedresp)
 
-        elif rm_resp == "poleszeros":
+        elif rm_resp == RmResp.POLES_ZEROS:
             logger.info("remove response using poles and zeros")
             paz_sts = glob.glob(os.path.join(respdir, "*" + station + "*"))
             if len(paz_sts) == 0:
