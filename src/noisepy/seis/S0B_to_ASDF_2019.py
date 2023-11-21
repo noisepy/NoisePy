@@ -10,6 +10,7 @@ import pyasdf
 from mpi4py import MPI
 
 from . import noise_module
+from .datatypes import RmResp
 
 if not sys.warnoptions:
     import warnings
@@ -57,7 +58,7 @@ locations = os.path.join(
 input_fmt = "sac"  # input file format between 'sac' and 'mseed'
 samp_freq = 10  # targeted sampling rate
 stationxml = False  # station.XML file exists or not
-rm_resp = "no"  # select 'no' to not remove response and
+rm_resp = RmResp.NO  # select 'no' to not remove response and
 # use 'inv','spectrum','RESP', or 'polozeros' to remove response
 respdir = os.path.join(
     rootpath, "resp"
