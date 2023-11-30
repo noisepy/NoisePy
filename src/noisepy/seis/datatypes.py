@@ -247,18 +247,8 @@ class ConfigParameters(BaseModel):
             with open(self.stations_file, "w") as file:
                 file.write("\n".join(value))
             # Set stations field to Empty List
-            # self.stations = []
+            self.stations = []
         return 0
-
-    # def save_stations(self, value: List[str]):
-    #     if self.stations_file:
-    #         # Save the list to the file
-    #         with open(self.stations_file, "w") as file:
-    #             file.write("\n".join(value))
-    #         # Set stations field to Empty List
-    #         self.stations = []
-    #     else:
-    #         self.stations = value
 
     @model_validator(mode="after")
     def validate(cls, m: ConfigParameters) -> ConfigParameters:
@@ -273,29 +263,10 @@ class ConfigParameters(BaseModel):
         if m.substack_len % m.cc_len != 0:
             raise ValueError(f"substack_len ({m.substack_len}) must be a multiple of cc_len ({m.cc_len})")
 
-        # if m.stations_file and m.stations:
-        #  raise ValueError("Only one of stations_file or stations can be specified, not both.")
-
         if m.stations_file and not os.path.isfile(m.stations_file):
             raise ValueError(f"{m.stations_file} is not a valid file path in stations_file.")
 
-        # def validate_stations_file(stations_file):
-        #     return stations_file
-
-        # validate_stations_file(m.stations_file)
         return m
-
-        # if m.stations_file and m.stations:
-        #     raise ValueError("If stations_file is set, stations must be empty.")
-
-        # def validate_stations_file(stations_file):
-        #     if stations_file and not os.path.isfile(stations_file):
-        #         raise ValueError(f"{stations_file} is not a valid file path in stations_file.")
-
-        #     return stations_file
-
-        # validate_stations_file(m.stations_file)
-        # return m
 
     # TODO: Remove once all uses of ConfigParameters have been converted to use strongly typed access
     def __getitem__(self, key):

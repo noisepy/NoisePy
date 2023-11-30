@@ -16,4 +16,4 @@ def test_stations_file_behavior():
     config.stations_file = os.path.join(os.path.dirname(__file__), "./data/stations1.txt")
     ConfigParameters.save_stations(config, new_stations)
 
-    # assert config.stations == []
+    assert config.stations == []
