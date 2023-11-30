@@ -241,7 +241,6 @@ class ConfigParameters(BaseModel):
             self.stations = stations_list
         return 0
 
-
     def save_stations(self, value: List[str]):
         if self.stations_file:
             # Save the list to the file
@@ -274,7 +273,6 @@ class ConfigParameters(BaseModel):
         if m.substack_len % m.cc_len != 0:
             raise ValueError(f"substack_len ({m.substack_len}) must be a multiple of cc_len ({m.cc_len})")
 
-        
         # if m.stations_file and m.stations:
         #  raise ValueError("Only one of stations_file or stations can be specified, not both.")
 
@@ -286,7 +284,7 @@ class ConfigParameters(BaseModel):
 
         # validate_stations_file(m.stations_file)
         return m
-    
+
         # if m.stations_file and m.stations:
         #     raise ValueError("If stations_file is set, stations must be empty.")
 
