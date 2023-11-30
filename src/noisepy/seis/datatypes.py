@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 import typing
 from abc import ABC, abstractmethod
@@ -230,6 +231,8 @@ class ConfigParameters(BaseModel):
         description="Storage options to pass to fsspec, keyed by protocol (local files are ''))",
     )
 
+    stations_file: str = Field(default="")
+
     def get_storage_options(self, path: str) -> Dict[str, Any]:
         """The storage options for the given path"""
         url = urlparse(path)
@@ -238,6 +241,24 @@ class ConfigParameters(BaseModel):
     @property
     def dt(self) -> float:
         return 1.0 / self.samp_freq
+
+    def load_stations(self, stations_list=None) -> List[str]:
+        if stations_list is None:
+            # Load the list from the file
+            with open(self.stations_file, "r") as file:
+                self.stations = file.read().splitlines()
+        else:
+            self.stations = stations_list
+        return 0
+
+    def save_stations(self, value: List[str]):
+        if self.stations_file:
+            # Save the list to the file
+            with open(self.stations_file, "w") as file:
+                file.write("\n".join(value) + "\n")
+            # Set stations field to Empty List
+            self.stations = []
+        return 0
 
     @model_validator(mode="after")
     def validate(cls, m: ConfigParameters) -> ConfigParameters:
@@ -251,6 +272,10 @@ class ConfigParameters(BaseModel):
         validate_date(m.end_date, "end_date")
         if m.substack_len % m.cc_len != 0:
             raise ValueError(f"substack_len ({m.substack_len}) must be a multiple of cc_len ({m.cc_len})")
+
+        if m.stations_file and not os.path.isfile(m.stations_file):
+            raise ValueError(f"{m.stations_file} is not a valid file path in stations_file.")
+
         return m
 
     # TODO: Remove once all uses of ConfigParameters have been converted to use strongly typed access

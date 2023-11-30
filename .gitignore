@@ -176,3 +176,4 @@ tutorials/pnw_data
 
 # Jupyterbook
 _build/
+log.txt
