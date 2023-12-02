@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import sys
 import typing
 from abc import ABC, abstractmethod
@@ -231,7 +230,7 @@ class ConfigParameters(BaseModel):
         description="Storage options to pass to fsspec, keyed by protocol (local files are ''))",
     )
 
-    stations_file: str = Field(default="")
+    stations_file: Optional[str] = Field(default=None)
 
     def get_storage_options(self, path: str) -> Dict[str, Any]:
         """The storage options for the given path"""
@@ -242,23 +241,28 @@ class ConfigParameters(BaseModel):
     def dt(self) -> float:
         return 1.0 / self.samp_freq
 
-    def load_stations(self, stations_list=None) -> List[str]:
-        if stations_list is None:
+    def load_stations(self, stations_list=None) -> Optional[List[str]]:
+        if stations_list is None and self.stations_file:
+            # Use get_filesystem to get the filesystem associated with the filename
+            fs = get_filesystem(self.stations_file, storage_options=self.storage_options)
+
             # Load the list from the file
-            with open(self.stations_file, "r") as file:
+            with fs.open(self.stations_file, "r") as file:
                 self.stations = file.read().splitlines()
         else:
             self.stations = stations_list
-        return 0
+
+        return self.stations if self.stations else None
 
     def save_stations(self, value: List[str]):
         if self.stations_file:
+            fs = get_filesystem(self.stations_file, storage_options=self.storage_options)
             # Save the list to the file
-            with open(self.stations_file, "w") as file:
+            with fs.open(self.stations_file, "w") as file:
                 file.write("\n".join(value) + "\n")
             # Set stations field to Empty List
-            self.stations = []
-        return 0
+            # self.stations = []
+        return None
 
     @model_validator(mode="after")
     def validate(cls, m: ConfigParameters) -> ConfigParameters:
@@ -273,8 +277,12 @@ class ConfigParameters(BaseModel):
         if m.substack_len % m.cc_len != 0:
             raise ValueError(f"substack_len ({m.substack_len}) must be a multiple of cc_len ({m.cc_len})")
 
-        if m.stations_file and not os.path.isfile(m.stations_file):
-            raise ValueError(f"{m.stations_file} is not a valid file path in stations_file.")
+        if m.stations_file:
+            fs = get_filesystem(m.stations_file, storage_options=m.storage_options)
+
+            # Check if the file exists
+            if not fs.exists(m.stations_file):
+                raise ValueError(f"{m.stations_file} is not a valid file path in stations_file.")
 
         return m
 
