@@ -32,7 +32,9 @@ Specifically, this plotting module includes functions of:
 #############################################################################
 # #############PLOTTING FUNCTIONS FOR FILES FROM S0##########################
 #############################################################################
-def plot_waveform(raw_data_store: RawDataStore, ts: DateTimeRange, net, sta, freqmin, freqmax, savefig=False, sdir=None):
+def plot_waveform(
+    raw_data_store: RawDataStore, ts: DateTimeRange, net, sta, freqmin, freqmax, savefig=False, sdir=None
+):
     """
     display the downloaded waveform for station A
 
