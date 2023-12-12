@@ -11,8 +11,8 @@ from datetimerange import DateTimeRange
 from obspy.signal.filter import bandpass
 from scipy.fftpack import next_fast_len
 
-from noisepy.seis.datatypes import Stack, Station
-from noisepy.seis.stores import CrossCorrelationDataStore
+from noisepy.seis.datatypes import Channel, ChannelType, Stack, Station
+from noisepy.seis.stores import CrossCorrelationDataStore, RawDataStore
 
 logging.getLogger("matplotlib.font_manager").disabled = True
 logger = logging.getLogger(__name__)
@@ -32,37 +32,42 @@ Specifically, this plotting module includes functions of:
 #############################################################################
 # #############PLOTTING FUNCTIONS FOR FILES FROM S0##########################
 #############################################################################
-def plot_waveform(sfile, net, sta, freqmin, freqmax, savefig=False, sdir=None):
+def plot_waveform(raw_data_store: RawDataStore, ts: DateTimeRange, net, sta, freqmin, freqmax, savefig=False, sdir=None):
     """
     display the downloaded waveform for station A
 
     PARAMETERS:
     -----------------------
-    sfile: containing all wavefrom data for a time-chunck in ASDF format
+    raw_data_store: Store to read Raw data from
+    ts: Timespan to plot
     net,sta,comp: network, station name and component
     freqmin: min frequency to be filtered
     freqmax: max frequency to be filtered
+    savefg: Whether to save the figures as a PDF on disk
+    sdir: Save directory
 
     USAGE:
     -----------------------
-    plot_waveform('temp.h5','CI','BLC',0.01,0.5)
+    plot_waveform(raw_data_store, '2023-10-21T00:00:00+0000 - 2023-10-21T12:00:00+0000', 'CI','BLC',0.01,0.5)
     """
-    # open pyasdf file to read
-    try:
-        ds = pyasdf.ASDFDataSet(sfile, mode="r")
-        sta_list = ds.waveforms.list()
-    except Exception:
-        raise Exception("exit! cannot open %s to read" % sfile)
+    # get all available timespans
+    timespans = raw_data_store.get_timespans()
+    if ts not in timespans:
+        raise ValueError("no data for timestamp: %s in %s" % (ts, timespans))
 
-    # check whether station exists
+    # get all available channels
+    channels = raw_data_store.get_channels(ts)
+
     tsta = net + "." + sta
-    if tsta not in sta_list:
-        raise ValueError("no data for %s in %s" % (tsta, sfile))
-
-    tcomp = ds.waveforms[tsta].get_waveform_tags()
+    tcomp = sorted(set(str(channel.type) for channel in channels if tsta == channel.station))
     ncomp = len(tcomp)
+
+    # check whether 'tsta' exists
+    if ncomp == 0:
+        raise ValueError("no data for %s in %s" % (tsta, channels))
+
     if ncomp == 1:
-        tr = ds.waveforms[tsta][tcomp[0]]
+        tr = raw_data_store.read_data(ts, Channel(ChannelType(tcomp[0]), sta)).stream
         dt = tr[0].stats.delta
         npts = tr[0].stats.npts
         tt = np.arange(0, npts) * dt
@@ -86,13 +91,13 @@ def plot_waveform(sfile, net, sta, freqmin, freqmax, savefig=False, sdir=None):
         plt.tight_layout()
         plt.show()
     elif ncomp == 3:
-        tr = ds.waveforms[tsta][tcomp[0]]
+        tr = raw_data_store.read_data(ts, Channel(ChannelType(tcomp[0]), sta)).stream
         dt = tr[0].stats.delta
         npts = tr[0].stats.npts
         tt = np.arange(0, npts) * dt
         data = np.zeros(shape=(ncomp, npts), dtype=np.float32)
         for ii in range(ncomp):
-            data[ii] = ds.waveforms[tsta][tcomp[ii]][0].data
+            data[ii] = raw_data_store.read_data(ts, Channel(ChannelType(tcomp[ii]), sta)).stream[0].data
             data[ii] = bandpass(data[ii], freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
         plt.figure(figsize=(9, 6))
         plt.subplot(311)
@@ -111,7 +116,7 @@ def plot_waveform(sfile, net, sta, freqmin, freqmax, savefig=False, sdir=None):
         if savefig:
             if not os.path.isdir(sdir):
                 os.mkdir(sdir)
-            outfname = sdir + "/{0:s}_{1:s}.{2:s}.pdf".format(sfile.split(".")[0], net, sta)
+            outfname = os.path.join(sdir, f"{raw_data_store}.{ts}_{net}.{sta}.pdf")
             plt.savefig(outfname, format="pdf", dpi=400)
             plt.close()
         else:
