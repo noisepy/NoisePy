@@ -11,7 +11,7 @@ from datetimerange import DateTimeRange
 from obspy.signal.filter import bandpass
 from scipy.fftpack import next_fast_len
 
-from noisepy.seis.datatypes import Channel, ChannelType, Stack, Station
+from noisepy.seis.datatypes import Stack, Station
 from noisepy.seis.stores import CrossCorrelationDataStore, RawDataStore
 
 logging.getLogger("matplotlib.font_manager").disabled = True
@@ -50,28 +50,27 @@ def plot_waveform(
 
     USAGE:
     -----------------------
-    plot_waveform(raw_data_store, '2015-03-22T10:00:00+0000 - 2015-03-22T10:10:00+0000', 'CI','BLC',0.01,0.5)
+    plot_waveform(raw_data_store, DateTimeRange('2023-10-21T00:00:00+0000','2023-10-21T12:00:00+0000'),
+     'CI','BLC',0.01,0.5)
     """
     # get all available timespans
     timespans = raw_data_store.get_timespans()
     if ts not in timespans:
-        raise ValueError("no data for timespan: %s in %s" % (ts, timespans))
+        raise ValueError(
+            "no data for timespan: %s in [%s-%s]" % (ts, timespans[0].start_datetime, timespans[-1].end_datetime)
+        )
 
     # get all available channels
-    channels = raw_data_store.get_channels(ts)
-
-    tsta = net + "." + sta
-    tcomp = sorted(
-        set(str(channel.type) for channel in channels if sta == channel.station.name and net == channel.station.network)
-    )
-    ncomp = len(tcomp)
+    all_channels = raw_data_store.get_channels(ts)
+    channels = list(filter(lambda ch: sta == ch.station.name and net == ch.station.network, all_channels))
+    number_of_channels = len(channels)
 
     # check whether 'tsta' exists
-    if ncomp == 0:
-        raise ValueError("no data for %s in %s" % (tsta, channels))
+    if number_of_channels == 0:
+        raise ValueError("no data for %s.%s in %s" % (net, sta, channels))
 
-    if ncomp == 1:
-        tr = raw_data_store.read_data(ts, Channel(ChannelType(tcomp[0]), tsta)).stream
+    if number_of_channels == 1:
+        tr = raw_data_store.read_data(ts, channels[0]).stream
         dt = tr[0].stats.delta
         npts = tr[0].stats.npts
         tt = np.arange(0, npts) * dt
@@ -85,7 +84,7 @@ def plot_waveform(
                 tr[0].stats.starttime,
                 net,
                 sta,
-                tcomp[0].split("_")[0].upper(),
+                str(channels[0].type).split("_")[0].upper(),
                 freqmin,
                 freqmax,
             )
@@ -94,26 +93,26 @@ def plot_waveform(
         plt.ylabel("Amplitude")
         plt.tight_layout()
         plt.show()
-    elif ncomp == 3:
-        tr = raw_data_store.read_data(ts, Channel(ChannelType(tcomp[0]), tsta)).stream
+    elif number_of_channels == 3:
+        tr = raw_data_store.read_data(ts, channels[0]).stream
         dt = tr[0].stats.delta
         npts = tr[0].stats.npts
         tt = np.arange(0, npts) * dt
-        data = np.zeros(shape=(ncomp, npts), dtype=np.float32)
-        for ii in range(ncomp):
-            data[ii] = raw_data_store.read_data(ts, Channel(ChannelType(tcomp[ii]), tsta)).stream[0].data
+        data = np.zeros(shape=(number_of_channels, npts), dtype=np.float32)
+        for ii in range(number_of_channels):
+            data[ii] = raw_data_store.read_data(ts, channels[ii]).stream[0].data
             data[ii] = bandpass(data[ii], freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
         plt.figure(figsize=(9, 6))
         plt.subplot(311)
         plt.plot(tt, data[0], "k-", linewidth=1)
         plt.title("T\u2080:%s   %s.%s   @%5.3f-%5.2f Hz" % (tr[0].stats.starttime, net, sta, freqmin, freqmax))
-        plt.legend([tcomp[0].split("_")[0].upper()], loc="upper left")
+        plt.legend([str(channels[0].type).split("_")[0].upper()], loc="upper left")
         plt.subplot(312)
         plt.plot(tt, data[1], "k-", linewidth=1)
-        plt.legend([tcomp[1].split("_")[0].upper()], loc="upper left")
+        plt.legend([str(channels[1].type).split("_")[0].upper()], loc="upper left")
         plt.subplot(313)
         plt.plot(tt, data[2], "k-", linewidth=1)
-        plt.legend([tcomp[2].split("_")[0].upper()], loc="upper left")
+        plt.legend([str(channels[2].type).split("_")[0].upper()], loc="upper left")
         plt.xlabel("Time [s]")
         plt.tight_layout()
 
