@@ -50,18 +50,19 @@ def plot_waveform(
 
     USAGE:
     -----------------------
-    plot_waveform(raw_data_store, '2023-10-21T00:00:00+0000 - 2023-10-21T12:00:00+0000', 'CI','BLC',0.01,0.5)
+    plot_waveform(raw_data_store, '2015-03-22T10:00:00+0900 - 2015-03-22T10:10:00+0000', 'CI','BLC',0.01,0.5)
     """
     # get all available timespans
     timespans = raw_data_store.get_timespans()
     if ts not in timespans:
-        raise ValueError("no data for timestamp: %s in %s" % (ts, timespans))
+        raise ValueError("no data for timespan: %s in %s" % (ts, timespans))
 
     # get all available channels
     channels = raw_data_store.get_channels(ts)
 
     tsta = net + "." + sta
-    tcomp = sorted(set(str(channel.type) for channel in channels if tsta == channel.station))
+    tcomp = sorted(set(str(channel.type) for channel in channels
+                       if sta == channel.station.name and net == channel.station.network))
     ncomp = len(tcomp)
 
     # check whether 'tsta' exists
@@ -69,7 +70,7 @@ def plot_waveform(
         raise ValueError("no data for %s in %s" % (tsta, channels))
 
     if ncomp == 1:
-        tr = raw_data_store.read_data(ts, Channel(ChannelType(tcomp[0]), sta)).stream
+        tr = raw_data_store.read_data(ts, Channel(ChannelType(tcomp[0]), tsta)).stream
         dt = tr[0].stats.delta
         npts = tr[0].stats.npts
         tt = np.arange(0, npts) * dt
@@ -93,13 +94,13 @@ def plot_waveform(
         plt.tight_layout()
         plt.show()
     elif ncomp == 3:
-        tr = raw_data_store.read_data(ts, Channel(ChannelType(tcomp[0]), sta)).stream
+        tr = raw_data_store.read_data(ts, Channel(ChannelType(tcomp[0]), tsta)).stream
         dt = tr[0].stats.delta
         npts = tr[0].stats.npts
         tt = np.arange(0, npts) * dt
         data = np.zeros(shape=(ncomp, npts), dtype=np.float32)
         for ii in range(ncomp):
-            data[ii] = raw_data_store.read_data(ts, Channel(ChannelType(tcomp[ii]), sta)).stream[0].data
+            data[ii] = raw_data_store.read_data(ts, Channel(ChannelType(tcomp[ii]), tsta)).stream[0].data
             data[ii] = bandpass(data[ii], freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
         plt.figure(figsize=(9, 6))
         plt.subplot(311)
@@ -118,7 +119,7 @@ def plot_waveform(
         if savefig:
             if not os.path.isdir(sdir):
                 os.mkdir(sdir)
-            outfname = os.path.join(sdir, f"{raw_data_store}.{ts}_{net}.{sta}.pdf")
+            outfname = os.path.join(sdir, f"{ts}_{net}.{sta}.pdf")
             plt.savefig(outfname, format="pdf", dpi=400)
             plt.close()
         else:
