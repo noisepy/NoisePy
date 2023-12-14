@@ -61,8 +61,9 @@ def plot_waveform(
     channels = raw_data_store.get_channels(ts)
 
     tsta = net + "." + sta
-    tcomp = sorted(set(str(channel.type) for channel in channels
-                       if sta == channel.station.name and net == channel.station.network))
+    tcomp = sorted(
+        set(str(channel.type) for channel in channels if sta == channel.station.name and net == channel.station.network)
+    )
     ncomp = len(tcomp)
 
     # check whether 'tsta' exists
