@@ -50,7 +50,7 @@ def plot_waveform(
 
     USAGE:
     -----------------------
-    plot_waveform(raw_data_store, '2015-03-22T10:00:00+0900 - 2015-03-22T10:10:00+0000', 'CI','BLC',0.01,0.5)
+    plot_waveform(raw_data_store, '2015-03-22T10:00:00+0000 - 2015-03-22T10:10:00+0000', 'CI','BLC',0.01,0.5)
     """
     # get all available timespans
     timespans = raw_data_store.get_timespans()
