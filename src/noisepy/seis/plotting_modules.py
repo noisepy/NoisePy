@@ -192,6 +192,7 @@ def plot_substack_cc(
 
     # for spair in spairs:
     for src_sta, rec_sta in sta_pairs:
+        ccs = cc_store.read(ts, src_sta, rec_sta)
         for cc in ccs:
             src_cha, rec_cha, params, all_data = cc.src, cc.rec, cc.parameters, cc.data
             try:
@@ -752,10 +753,10 @@ def plot_all_moveout(
         # ax.text(np.ones(len(ndist))*(disp_lag-5),dist[ndist],ngood[ndist],fontsize=8)
     else:
         fig, ax = plt.subplots(figsize=(10, 6))
-        print(disp_lag, data.shape[1])
-        tt = 2 * np.linspace(0, disp_lag, data.shape[1]) - disp_lag
-        for ii in range(len(data)):
-            ax.plot(tt, data[ii] / np.max(np.abs(data[ii])) * 10 + dist[ii], "k")
+        print(disp_lag, ndata.shape[1])
+        tt = 2 * np.linspace(0, disp_lag, ndata.shape[1]) - disp_lag
+        for ii in range(len(ndata)):
+            ax.plot(tt, ndata[ii] / np.max(np.abs(ndata[ii])) * 10 + ndist[ii], "k")
             ax.set_title("stacked %s (%5.3f-%5.2f Hz)" % (stack_method, freqmin, freqmax))
             ax.set_xlabel("time [s]")
             ax.set_ylabel("distance [km]")
@@ -860,7 +861,7 @@ def plot_all_moveout_1D_1comp(
         plt.title("%s %s filtered @%4.1f-%4.1f Hz" % (sta, ccomp, freqmin, freqmax))
         plt.xlabel("time (s)")
         plt.ylabel("offset (km)")
-        plt.text(disp_lag * 0.9, dist + 0.5, receiver, fontsize=6)
+        plt.text(disp_lag * 0.9, dist + 0.5, treceiver, fontsize=6)
 
         # ----use to plot o times------
         if mdist < dist:
