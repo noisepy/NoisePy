@@ -1,61 +1,83 @@
-# NoisePy CLI Tutorial
+# Configure Noisepy
 
-NoisePy provides a CLI (command line interface) for running processing jobs. This tutorial works through the same tasks as the **Noisepy Colab Tutorial** from the [get_started.ipynb](get_started.ipynb) Jupyter Notebook.
+Welcome to NoisePy!
 
-NOTE: The `tutorials/cli/config.yml` file contains the parameters being used throughout the tutorial. All commands are meant to be run from the `tutorials/cli` directory.
+**Noisepy** is a software to compute large-scale cross correlations for HPC and Cloud infrastructure. The difference in using Noisepy for either infrastructure is the back-end data format that are either file-system (H5) or object-storage (npz/mseed) optimzed.
 
-## Step 0: download data
+ **NoisePy** also offers tools for ambient noise monitoring (velocity and attenuation) and for Earth imaging (measuring phase and group velocities).
+
+ NoisePy leverages several efforts published, please consider
+
+* Jiang, C., Denolle, M. 2020. NoisePy: a new high-performance python tool for ambient noise seismology. Seismological Research Letters. 91, 1853-1866. https://doi.10.1785/0220190364.
+* Yuan C, Bryan J, Denolle M. Numerical comparison of time-, frequency-and wavelet-domain methods for coda wave interferometry. Geophysical Journal International. 2021 Aug;226(2):828-46.  https://doi.org/10.1093/gji/ggab140
+* Yang X, Bryan J, Okubo K, Jiang C, Clements T, Denolle MA. Optimal stacking of noise cross-correlation functions. Geophysical Journal International. 2023 Mar;232(3):1600-18. https://doi.org/10.1093/gji/ggac410
 
 
-This step will download data using obspy and save them into ASDF files locally. The data will be stored for each time chunk defined in hours by inc_hours.
-
-The download will clean up the raw data by detrending, removing the mean, bandpassing (broadly), removing the instrumental response, merging gaps, ignoring too-gappy data.
+We gratefully acknowledge support from the [Packard Foundation](https://www.packard.org)
 
 
-```sh
-mkdir tmpdata
-noisepy download --config config.yml --raw_data_path ./tmpdata/RAW_DATA
+## NoisePy Workflow
+
+Noisepy uses various steps:
+0. [optional] data download: for users who want to work entirely locally, this step prepares and organize the data in a ``DataStore``.
+1. Cross correlations: data may be streamed from the DataStore, which can be hosted on the Cloud, pre-processing and cross correlations are done for each time chunk (e.g., one day for broadband data). Cross-correlations are saved for each time chunck in ``CCStore``.
+2. Stacking: Data is aggregated and stacked over all time periods. Stacked data will be stored in ``StackStore``.
+
+Workflow is described in the figure below.
+<img src="../docs_old/figures/data_flow.png">
+
+## Applications
+### Monitoring
+NoisePy includes various functions to measure dv/v. Please check the tutorials. The software will read the ``CCstore`` to aggregate and measure dv/v. The outputs are tabular data in CSV.
+Link HERE.
+### Imaging
+NoisePy includes functions to measure phase and group velocity dispersion curve measurements. The software will read the ``StackStore`` and ouput curves as tabular data in CSV.
+
+## Configuring NoisePy
+
+The ``config.yml`` file contains all parameters to configure NoisePy.
+
 ```
-
-Verify the data is there:
-```sh
-ls -la ./tmpdata/RAW_DATA
-```
-
-Notice that this directory contains a `config.yml` file. This file will contain any parameters used during the `download` step. It could be different from the original `config.yml` since all the paramters can be overriden through CLI arguments. See `noisepy download --help.`
-
-## Step 1: Cross-correlation
-
-This step will perform the cross correlation. For each time chunk, it will read the data, perform classic ambient noise pre-processing (time and frequency normalization), FFT, cross correlation, substacking, saving cross correlations in to a temp ASDF file (this is not fast and will be improved).
-
-```sh
-noisepy cross_correlate --raw_data_path ./tmpdata/RAW_DATA --ccf_path ./tmpdata/CCF
-```
-Optionally, this step can be run via MPI (e.g. with 2 processes). See [Installation](https://github.com/noisepy/NoisePy/#installation):
-
-```sh
-mpiexec -n 2 noisepy cross_correlate --mpi --raw_data_path ./tmpdata/RAW_DATA --ccf_path ./tmpdata/CCF
-```
-NOTE: We didn't pass a `--config` argument explicitly because `noisepy` will always look for one in the input data directory for the given step, `./tmpdata/RAW_DATA` in this case.
-
-Once again, verify the data for this step:
-```sh
-ls -la ./tmpdata/CCF
-```
-
-## Step 2: Stack the cross correlation
-
-This combines the time-chunked ASDF files to stack over each time chunk and at each station pair.
-
-```sh
-noisepy stack --ccf_path ./tmpdata/CCF --stack_path ./tmpdata/STACK
-```
-Optionally, this step can be run via MPI (e.g. with 3 processes). See [Installation](https://github.com/noisepy/NoisePy/#installation):
-```sh
-mpiexec -n 3 noisepy stack --mpi --ccf_path ./tmpdata/CCF --stack_path ./tmpdata/STACK
-```
-
-
-```sh
-ls -R tmpdata/STACK
+start_date: 2019-02-01 00:00:00 # start date of period of interest
+end_date: 2019-02-02 00:00:00   # end date of the total period of interest.
+samp_freq: 20                   # (Hz) desired sampling rate to process data
+cc_len: 3600                  # (sec) window length of the cross-correlation
+step: 1800.0                    #  (sec) step window to run through continuous data
+lamin: 31                       # minimum latitude if a search is required
+lamax: 42                       # maximum latitude if a search is required
+lomin: -124                     # minimum longitude if a search is required
+lomax: -115                     # maximum longitude if a search is required
+freqmin: 0.05                   # (Hz) minimum frequency for pre-processing
+freqmax: 2.0                    # (Hz) maximum frequency for pre-processing
+freq_norm: rma                  # IMPORTANT: type of frequency normalization ('rma' or 'no)
+time_norm: 'no'                 # IMPORTANT: type of temporal normalization
+cc_method: xcorr
+smooth_N: 10
+smoothspect_N: 10
+substack: true
+substack_len: 3600
+maxlag: 200
+inc_hours: 12
+max_over_std: 10
+ncomp: 3
+stationxml: false
+rm_resp: inv
+rm_resp_out: VEL
+respdir: null
+acorr_only: false
+xcorr_only: true
+stack_method: linear
+keep_substack: false
+rotation: true
+correction: false
+correction_csv: null
+down_list: false
+net_list:
+- '*'
+stations:
+- *
+channels:
+- BHE
+- BHN
+- BHZ
 ```
