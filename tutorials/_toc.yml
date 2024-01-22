@@ -4,8 +4,9 @@
 format: jb-book
 root: README
 chapters:
-- file: noisepy_scedc_tutorial.ipynb
-- file: noisepy_datastore.ipynb
 - file: get_started.ipynb
-- file: cloud/aws.md
+- file: noisepy_datastore.ipynb
+- file: noisepy_scedc_tutorial.ipynb
 - file: CLI
+- file: cloud/aws.md
+- file: plot_stacks.ipynb

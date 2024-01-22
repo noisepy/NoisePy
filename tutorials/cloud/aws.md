@@ -1,4 +1,4 @@
-# Running NoisePy on AWS
+# Running on AWS
 
 
 ## AWS accounts and roles.
@@ -97,9 +97,16 @@ sudo docker run -v ~/tmp:/tmp cross_correlate --path /tmp
 ### Exploration using notebooks
 We recommend starting off with a notebook to explore simple jobs and the desirable configuration (e.g., noise pre-processing).  Refer to the [SCOPED HPS Book](https://seisscoped.org/HPS/softhardware/AWS_101.html) to open a Jupyter notebook.
 
+One the jupyter server is started, upload noisepy_scedc_tutorial.ipynb.
+
+
 
 ### Exploration using CLI
 You may edit the ``config.yml`` file with appropriate parameters. Refer to the NoiseConfig page to set up.
+
+#### 1. Cross-correlation
+
+This is a toy problem that uses a small set of stations, reads from a cloud store, and output data in zarr.
 
 
 ```
@@ -111,17 +118,9 @@ noisepy cross_correlate --format zarr --raw_data_path s3://scedc-pds/continuous_
 --end=2022-02-03
 ```
 
-## Cross-correlation - Batch Deployment
+#### 2. Stacking
 
-This is a toy problem that uses a small set of stations, reads from a cloud store, and output data in zarr.
-
-In terminal, type the following command.
-
-
-
-## Stacking
-
-This toy problem gathers the all the ross correlations calculated and stack them into a Zarr format on an S3 bucket.
+This toy problem gathers the all the cross correlations calculated and stack them into a Zarr format on an S3 bucket.
 
 ```
 noisepy stack \
@@ -131,7 +130,7 @@ noisepy stack \
 ```
 
 
-## Data and QC exploration
+#### 3. Data and QC exploration
 
 We recommend using a notebook to plot and explore the data.
 TBD.
