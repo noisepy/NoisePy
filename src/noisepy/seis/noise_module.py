@@ -221,7 +221,7 @@ def preprocess_raw(
         st[ii].data = scipy.signal.detrend(st[ii].data, type="constant")
         st[ii].data = scipy.signal.detrend(st[ii].data, type="linear")
         st[ii] = st[ii].taper(max_percentage=0.05)
-        
+
     # merge, taper and filter the data
     if len(st) > 1:
         st.merge(method=1, fill_value=0)
