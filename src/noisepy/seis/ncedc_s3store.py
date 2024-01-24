@@ -41,10 +41,6 @@ class NCEDCS3DataStore(RawDataStore):
     """
 
     # TODO: Support reading directly from the S3 bucket
-
-    # for checking the filename has the form: CIGMR__LHN___2022002.ms
-    # file_re = re.compile(r".*[0-9]{7}\.ms$", re.IGNORECASE)
-    
     # for checking the filename has the form: AAS.NC.EHZ..D.2020.002
     file_re = re.compile(r".*[0-9]{4}.*[0-9]{3}$", re.IGNORECASE)
 
@@ -131,17 +127,14 @@ class NCEDCS3DataStore(RawDataStore):
     def read_data(self, timespan: DateTimeRange, chan: Channel) -> ChannelData:
         self._ensure_channels_loaded(timespan)
         # reconstruct the file name from the channel parameters
-        chan_str = (
-            f"{chan.station.name}.{chan.station.network}.{chan.type.name}."
-            f"{chan.station.location}.D"
-        )
+        chan_str = f"{chan.station.name}.{chan.station.network}.{chan.type.name}." f"{chan.station.location}.D"
         filename = fs_join(
             self.paths[timespan.start_datetime], f"{chan_str}.{timespan.start_datetime.strftime('%Y.%j')}"
         )
         if not self.fs.exists(filename):
             logger.warning(f"Could not find file {filename}")
             return ChannelData.empty()
-        
+
         with self.fs.open(filename) as f:
             stream = obspy.read(f)
         data = ChannelData(stream)
@@ -154,16 +147,14 @@ class NCEDCS3DataStore(RawDataStore):
         # The SCEDC S3 bucket stores files in the form: CIGMR__LHN___2022002.ms
         # The NCEDC S3 bucket stores files in the form: AAS.NC.EHZ..D.2020.002
         year = int(filename[-8:-4])
-        day =  int(filename[-3:])
+        day = int(filename[-3:])
         jan1 = datetime(year, 1, 1, tzinfo=timezone.utc)
         return DateTimeRange(jan1 + timedelta(days=day - 1), jan1 + timedelta(days=day))
 
     def _parse_channel(filename: str) -> Channel:
         # e.g.
-        # CIGMR__LHN___2022002
-        # CE13884HNZ10_2022002
         # AAS.NC.EHZ..D.2020.002
-        
+
         network = filename.split(".")[1]
         station = filename.split(".")[0]
         channel = filename.split(".")[2]
