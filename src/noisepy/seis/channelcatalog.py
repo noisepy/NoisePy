@@ -68,7 +68,13 @@ class XMLStationChannelCatalog(ChannelCatalog):
         """
         super().__init__()
         self.xmlpath = xmlpath
-        self.path_format = path_format
+        # If path_format is not provided, use a default format
+        if "ncedc" in xmlpath:
+            path_format: str = "{network}.{name}.xml"
+            self.path_format = path_format
+        else:
+            self.path_format = path_format
+
         self.fs = get_filesystem(xmlpath, storage_options=storage_options)
         if not self.fs.exists(self.xmlpath):
             raise Exception(f"The XML Station file directory '{xmlpath}' doesn't exist")
