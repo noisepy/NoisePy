@@ -2,10 +2,10 @@
 # Learn more at https://jupyterbook.org/customize/toc.html
 
 format: jb-book
-root: noisepy_scedc_tutorial.ipynb
+root: noise_configuration.md
 chapters:
-- file: noise_configuration.md
-- file: noisepy_datastore.ipynb
 - file: get_started.ipynb
+- file: noisepy_datastore.ipynb
+- file: noisepy_scedc_tutorial.ipynb
+- file: CLI.md
 - file: cloud/aws.md
-- file: README
