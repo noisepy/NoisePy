@@ -12,7 +12,7 @@ from obspy.signal.filter import bandpass
 from scipy.fftpack import next_fast_len
 
 from noisepy.seis.datatypes import Stack, Station
-from noisepy.seis.stores import CrossCorrelationDataStore
+from noisepy.seis.stores import CrossCorrelationDataStore, RawDataStore
 
 logging.getLogger("matplotlib.font_manager").disabled = True
 logger = logging.getLogger(__name__)
@@ -32,37 +32,45 @@ Specifically, this plotting module includes functions of:
 #############################################################################
 # #############PLOTTING FUNCTIONS FOR FILES FROM S0##########################
 #############################################################################
-def plot_waveform(sfile, net, sta, freqmin, freqmax, savefig=False, sdir=None):
+def plot_waveform(
+    raw_data_store: RawDataStore, ts: DateTimeRange, net, sta, freqmin, freqmax, savefig=False, sdir=None
+):
     """
     display the downloaded waveform for station A
 
     PARAMETERS:
     -----------------------
-    sfile: containing all wavefrom data for a time-chunck in ASDF format
+    raw_data_store: Store to read Raw data from
+    ts: Timespan to plot
     net,sta,comp: network, station name and component
     freqmin: min frequency to be filtered
     freqmax: max frequency to be filtered
+    savefg: Whether to save the figures as a PDF on disk
+    sdir: Save directory
 
     USAGE:
     -----------------------
-    plot_waveform('temp.h5','CI','BLC',0.01,0.5)
+    plot_waveform(raw_data_store, DateTimeRange('2023-10-21T00:00:00+0000','2023-10-21T12:00:00+0000'),
+     'CI','BLC',0.01,0.5)
     """
-    # open pyasdf file to read
-    try:
-        ds = pyasdf.ASDFDataSet(sfile, mode="r")
-        sta_list = ds.waveforms.list()
-    except Exception:
-        raise Exception("exit! cannot open %s to read" % sfile)
+    # get all available timespans
+    timespans = raw_data_store.get_timespans()
+    if ts not in timespans:
+        raise ValueError(
+            "no data for timespan: %s in [%s-%s]" % (ts, timespans[0].start_datetime, timespans[-1].end_datetime)
+        )
 
-    # check whether station exists
-    tsta = net + "." + sta
-    if tsta not in sta_list:
-        raise ValueError("no data for %s in %s" % (tsta, sfile))
+    # get all available channels
+    all_channels = raw_data_store.get_channels(ts)
+    channels = list(filter(lambda ch: sta == ch.station.name and net == ch.station.network, all_channels))
+    number_of_channels = len(channels)
 
-    tcomp = ds.waveforms[tsta].get_waveform_tags()
-    ncomp = len(tcomp)
-    if ncomp == 1:
-        tr = ds.waveforms[tsta][tcomp[0]]
+    # check whether 'tsta' exists
+    if number_of_channels == 0:
+        raise ValueError("no data for %s.%s in %s" % (net, sta, channels))
+
+    if number_of_channels == 1:
+        tr = raw_data_store.read_data(ts, channels[0]).stream
         dt = tr[0].stats.delta
         npts = tr[0].stats.npts
         tt = np.arange(0, npts) * dt
@@ -76,7 +84,7 @@ def plot_waveform(sfile, net, sta, freqmin, freqmax, savefig=False, sdir=None):
                 tr[0].stats.starttime,
                 net,
                 sta,
-                tcomp[0].split("_")[0].upper(),
+                str(channels[0].type).split("_")[0].upper(),
                 freqmin,
                 freqmax,
             )
@@ -85,33 +93,33 @@ def plot_waveform(sfile, net, sta, freqmin, freqmax, savefig=False, sdir=None):
         plt.ylabel("Amplitude")
         plt.tight_layout()
         plt.show()
-    elif ncomp == 3:
-        tr = ds.waveforms[tsta][tcomp[0]]
+    elif number_of_channels == 3:
+        tr = raw_data_store.read_data(ts, channels[0]).stream
         dt = tr[0].stats.delta
         npts = tr[0].stats.npts
         tt = np.arange(0, npts) * dt
-        data = np.zeros(shape=(ncomp, npts), dtype=np.float32)
-        for ii in range(ncomp):
-            data[ii] = ds.waveforms[tsta][tcomp[ii]][0].data
+        data = np.zeros(shape=(number_of_channels, npts), dtype=np.float32)
+        for ii in range(number_of_channels):
+            data[ii] = raw_data_store.read_data(ts, channels[ii]).stream[0].data
             data[ii] = bandpass(data[ii], freqmin, freqmax, int(1 / dt), corners=4, zerophase=True)
         plt.figure(figsize=(9, 6))
         plt.subplot(311)
         plt.plot(tt, data[0], "k-", linewidth=1)
         plt.title("T\u2080:%s   %s.%s   @%5.3f-%5.2f Hz" % (tr[0].stats.starttime, net, sta, freqmin, freqmax))
-        plt.legend([tcomp[0].split("_")[0].upper()], loc="upper left")
+        plt.legend([str(channels[0].type).split("_")[0].upper()], loc="upper left")
         plt.subplot(312)
         plt.plot(tt, data[1], "k-", linewidth=1)
-        plt.legend([tcomp[1].split("_")[0].upper()], loc="upper left")
+        plt.legend([str(channels[1].type).split("_")[0].upper()], loc="upper left")
         plt.subplot(313)
         plt.plot(tt, data[2], "k-", linewidth=1)
-        plt.legend([tcomp[2].split("_")[0].upper()], loc="upper left")
+        plt.legend([str(channels[2].type).split("_")[0].upper()], loc="upper left")
         plt.xlabel("Time [s]")
         plt.tight_layout()
 
         if savefig:
             if not os.path.isdir(sdir):
                 os.mkdir(sdir)
-            outfname = sdir + "/{0:s}_{1:s}.{2:s}.pdf".format(sfile.split(".")[0], net, sta)
+            outfname = os.path.join(sdir, f"{ts}_{net}.{sta}.pdf")
             plt.savefig(outfname, format="pdf", dpi=400)
             plt.close()
         else:
@@ -184,6 +192,7 @@ def plot_substack_cc(
 
     # for spair in spairs:
     for src_sta, rec_sta in sta_pairs:
+        ccs = cc_store.read(ts, src_sta, rec_sta)
         for cc in ccs:
             src_cha, rec_cha, params, all_data = cc.src, cc.rec, cc.parameters, cc.data
             try:
@@ -744,10 +753,10 @@ def plot_all_moveout(
         # ax.text(np.ones(len(ndist))*(disp_lag-5),dist[ndist],ngood[ndist],fontsize=8)
     else:
         fig, ax = plt.subplots(figsize=(10, 6))
-        print(disp_lag, data.shape[1])
-        tt = 2 * np.linspace(0, disp_lag, data.shape[1]) - disp_lag
-        for ii in range(len(data)):
-            ax.plot(tt, data[ii] / np.max(np.abs(data[ii])) * 10 + dist[ii], "k")
+        print(disp_lag, ndata.shape[1])
+        tt = 2 * np.linspace(0, disp_lag, ndata.shape[1]) - disp_lag
+        for ii in range(len(ndata)):
+            ax.plot(tt, ndata[ii] / np.max(np.abs(ndata[ii])) * 10 + ndist[ii], "k")
             ax.set_title("stacked %s (%5.3f-%5.2f Hz)" % (stack_method, freqmin, freqmax))
             ax.set_xlabel("time [s]")
             ax.set_ylabel("distance [km]")
@@ -852,7 +861,7 @@ def plot_all_moveout_1D_1comp(
         plt.title("%s %s filtered @%4.1f-%4.1f Hz" % (sta, ccomp, freqmin, freqmax))
         plt.xlabel("time (s)")
         plt.ylabel("offset (km)")
-        plt.text(disp_lag * 0.9, dist + 0.5, receiver, fontsize=6)
+        plt.text(disp_lag * 0.9, dist + 0.5, treceiver, fontsize=6)
 
         # ----use to plot o times------
         if mdist < dist:
