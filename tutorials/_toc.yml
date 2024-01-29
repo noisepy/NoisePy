@@ -6,6 +6,7 @@ root: noisepy_scedc_tutorial.ipynb
 chapters:
 - file: noise_configuration.md
 - file: noisepy_datastore.ipynb
+- file: noisepy_ncedc_tutorial.ipynb
 - file: get_started.ipynb
 - file: cloud/aws.md
 - file: README
