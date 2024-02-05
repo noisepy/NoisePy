@@ -17,7 +17,7 @@ See our [checklist](./checklist.md)
     - You can use most defaults but we recomment `Allow SSH traffic from` to `My IP`
     - In order to access Jupyter notebook on the instance, click `Allow HTTPS traffic from the internet`.
 - Advanced details:
-    - If applicable, select `IAM instance profile` to the appropriate role for EC2 service. See [IAM Role](./checklist.md#iam-role-and-permission) for reference.
+    - If applicable, select `IAM instance profile` to the appropriate role for EC2 service. See [IAM Role](./checklist.md) for reference.
 
 More information about getting on the cloud in the [SCOPED HPS Book](https://seisscoped.org/HPS/softhardware/AWS_101.html).
 
