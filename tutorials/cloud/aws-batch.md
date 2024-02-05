@@ -3,7 +3,7 @@
 ## Pre-requisites
 * You are not required to run this on a AWS EC2 instance, but you would need [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-quickstart.html) as well as the [jq tool](https://jqlang.github.io/jq/download/) installed.
 
-* AWS Batch requires a special IAM role to be created for running the jobs. This can be done from the IAM console. See [instructions](./checklist.md#iam-role-and-permission) to create the role. 
+* AWS Batch requires a special IAM role to be created for running the jobs. This can be done from the IAM console. See [instructions](./checklist.md#iam-role-and-permission) to create the role.
 
 * Be sure to go to the S3 bucket where you'll be writing the results of the jobs and [modify the permissions](./checklist.md#s3-object-storage-and-policy) accordingly.
 

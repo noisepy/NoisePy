@@ -9,7 +9,7 @@ Make sure you have an account on AWS idenfitied by a 12-digit number. AWS requir
 ## IAM Role and Permission
 * `<ROLE>`: A virtual identity that has specific permissions. The role ARN is in the format of `arn:aws:iam::<ACCOUNT-ID>:role/<ROLE>`.
 
-AWS batch requires an IAM role to be created for running the jobs. This can be done from the IAM console on the AWS web console. Depending on the type of service to use, separate roles may be created. 
+AWS batch requires an IAM role to be created for running the jobs. This can be done from the IAM console on the AWS web console. Depending on the type of service to use, separate roles may be created.
 
 * **EC2 service** generally uses the following configuration:
     - Trusted Entity Type: AWS Service
