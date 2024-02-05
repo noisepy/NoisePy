@@ -10,7 +10,7 @@ See our [checklist](./checklist.md)
 - Application and OS images:
     - Select the AWS Linux
 - Instance type:
-    - t2.micro (free) or bigger machines
+    - t2.micro (free) or bigger machines (RAM recommended TBD)
 - Key pair for SSH:
     - Create a new Key pair (RSA)
 - Network settings:
@@ -76,7 +76,7 @@ Below we use stations from SCEDC public data archive on the AWS S3 to run a tiny
 We recommend starting off with a notebook to explore simple jobs and the desirable configuration (e.g., noise pre-processing). Refer to the [SCOPED HPS Book](https://seisscoped.org/HPS/softhardware/AWS_101.html) to open a Jupyter notebook.
 
 ### Exploration Using CLI
-You may create or edit the [config.yml](../config.yml) file with appropriate parameters. The cross-correlation function is written to the `ccf_path`. 
+You may create or edit the [config.yml](../config.yml) file with appropriate parameters. The cross-correlation function is written to the `ccf_path`.
 
 ```bash
 noisepy cross_correlate --format numpy --raw_data_path s3://scedc-pds/continuous_waveforms/ \
