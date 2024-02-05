@@ -7,5 +7,7 @@ chapters:
 - file: noise_configuration.md
 - file: noisepy_datastore.ipynb
 - file: get_started.ipynb
-- file: cloud/aws.md
+- file: cloud/checklist.md
+- file: cloud/aws-ec2.md
+- file: cloud/aws-batch.md
 - file: README
