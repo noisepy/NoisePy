@@ -2,7 +2,7 @@
 
 Welcome to NoisePy!
 
-**Noisepy** is a software to compute large-scale cross correlations for HPC and Cloud infrastructure. The difference in using Noisepy for either infrastructure is the back-end data format that are either file-system (H5) or object-storage (npz/mseed) optimzed.
+**NoisePy** is a software to compute large-scale cross correlations for HPC and Cloud infrastructure. The difference in using Noisepy for either infrastructure is the back-end data format that are either file-system (H5) or object-storage (npz/mseed) optimzed.
 
 **NoisePy** also offers tools for ambient noise monitoring (velocity and attenuation) and for Earth imaging (measuring phase and group velocities).
 
