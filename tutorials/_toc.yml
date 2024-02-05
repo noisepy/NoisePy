@@ -8,4 +8,6 @@ chapters:
 - file: noisepy_datastore.ipynb
 - file: noisepy_scedc_tutorial.ipynb
 - file: CLI.md
-- file: cloud/aws.md
+- file: cloud/checklist.md
+- file: cloud/aws-ec2.md
+- file: cloud/aws-batch.md
