@@ -9,8 +9,9 @@ import pandas as pd
 import pyasdf
 from mpi4py import MPI
 
+from noisepy.seis.io.datatypes import RmResp
+
 from . import noise_module
-from .datatypes import RmResp
 
 if not sys.warnoptions:
     import warnings

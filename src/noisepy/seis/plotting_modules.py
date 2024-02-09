@@ -11,8 +11,8 @@ from datetimerange import DateTimeRange
 from obspy.signal.filter import bandpass
 from scipy.fftpack import next_fast_len
 
-from noisepy.seis.datatypes import Stack, Station
-from noisepy.seis.stores import CrossCorrelationDataStore, RawDataStore
+from noisepy.seis.io.datatypes import Stack, Station
+from noisepy.seis.io.stores import CrossCorrelationDataStore, RawDataStore
 
 logging.getLogger("matplotlib.font_manager").disabled = True
 logger = logging.getLogger(__name__)

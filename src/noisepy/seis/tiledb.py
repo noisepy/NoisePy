@@ -4,8 +4,8 @@ from typing import Any, Dict
 import numpy as np
 import tiledb
 
-from noisepy.seis.utils import fs_join, get_filesystem
-from noisepy.seis.zarrstore import logger
+from noisepy.seis.io.utils import fs_join, get_filesystem
+from noisepy.seis.io.zarrstore import logger
 
 
 # Experimentation with TileDB

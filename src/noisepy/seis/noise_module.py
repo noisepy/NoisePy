@@ -25,7 +25,7 @@ from obspy.signal.util import _npts2nfft
 from scipy.fftpack import next_fast_len
 from scipy.signal import hilbert
 
-from .datatypes import (
+from noisepy.seis.io.datatypes import (
     CCMethod,
     ChannelData,
     ConfigParameters,

@@ -3,10 +3,10 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
+import utils
 from datetimerange import DateTimeRange
-from utils import date_range
 
-from noisepy.seis.datatypes import (
+from noisepy.seis.io.datatypes import (
     ChannelType,
     ConfigParameters,
     CrossCorrelation,
@@ -38,7 +38,7 @@ class SerializableMock(MagicMock):
 
 
 def test_stack_error(caplog):
-    ts = date_range(1, 1, 2)
+    ts = utils.date_range(1, 1, 2)
     config = ConfigParameters(start_date=ts.start_datetime, end_date=ts.end_datetime)
     sta = Station("CI", "BAK")
     cc_store = SerializableMock()
@@ -56,7 +56,7 @@ def test_stack_error(caplog):
 
 
 def test_stack_contains():
-    ts = date_range(1, 1, 2)
+    ts = utils.date_range(1, 1, 2)
     config = ConfigParameters(start_date=ts.start_datetime, end_date=ts.end_datetime)
     sta = Station("CI", "BAK")
     cc_store = SerializableMock()
@@ -69,7 +69,7 @@ def test_stack_contains():
 
 
 def test_stack_pair():
-    ts = date_range(1, 1, 2)
+    ts = utils.date_range(1, 1, 2)
     config = ConfigParameters(start_date=ts.start_datetime, end_date=ts.end_datetime)
     sta = Station("CI", "BAK")
     params = {
@@ -87,6 +87,6 @@ def test_stack_pair():
     cc_store.read.return_value = ccs
     stacks = stack_pair(sta, sta, [ts, ts], cc_store, config)
     assert len(stacks) == 6
-    ts2 = date_range(1, 20, 22)
+    ts2 = utils.date_range(1, 20, 22)
     stacks = stack_pair(sta, sta, [ts2], cc_store, config)
     assert len(stacks) == 0
