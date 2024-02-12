@@ -20,8 +20,6 @@ from noisepy.seis.io.datatypes import (
 )
 from noisepy.seis.io.scedc_s3store import SCEDCS3DataStore
 
-# from noisepy.seis.io.channelcatalog import MockCatalog
-
 
 def test_read_channels():
     CLOSEST_FREQ = 60
