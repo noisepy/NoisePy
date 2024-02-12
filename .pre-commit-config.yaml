@@ -15,6 +15,17 @@ repos:
         exclude: \.ipy(n|nb)$
         args: ["--autofix", "--indent=2", "--no-sort-keys"]
 
+    # Clear output from jupyter notebooks so that only the input cells are committed.
+  - repo: local
+    hooks:
+      - id: jupyter-nb-clear-output
+        name: Clear output from Jupyter notebooks
+        description: Clear output from Jupyter notebooks.
+        files: \.ipynb$
+        stages: [commit]
+        language: system
+        entry: jupyter nbconvert --clear-output
+
   - repo: https://github.com/PyCQA/isort
     rev: 5.12.0
     hooks:
