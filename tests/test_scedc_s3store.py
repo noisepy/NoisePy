@@ -20,7 +20,7 @@ files_dates = [
 
 @pytest.mark.parametrize("file,expected", files_dates)
 def test_parsefilename(file: str, expected: DateTimeRange):
-    assert expected == SCEDCS3DataStore._parse_timespan(file)
+    assert expected == SCEDCS3DataStore._parse_timespan(None, file)
 
 
 data_paths = [
@@ -31,9 +31,9 @@ data_paths = [
 
 
 read_channels = [
-    (SCEDCS3DataStore._parse_channel("BKTHIS_LHZ00_2022002.ms")),
-    (SCEDCS3DataStore._parse_channel("CIFOX2_LHZ___2022002.ms")),
-    (SCEDCS3DataStore._parse_channel("CINCH__LHZ___2022002.ms")),
+    (SCEDCS3DataStore._parse_channel(None, "BKTHIS_LHZ00_2022002.ms")),
+    (SCEDCS3DataStore._parse_channel(None, "CIFOX2_LHZ___2022002.ms")),
+    (SCEDCS3DataStore._parse_channel(None, "CINCH__LHZ___2022002.ms")),
 ]
 
 

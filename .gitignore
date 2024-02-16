@@ -171,6 +171,7 @@ src/noisepy/seis/_version.py
 # Temp locations for tutorials
 tutorials/get_started_data/
 tutorials/scedc_data/
+tutorials/ncedc_data/
 tutorials/cli/tmpdata
 tutorials/pnw_data
 

@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+from abc import abstractmethod
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
@@ -34,16 +35,11 @@ def channel_filter(stations: List[str], ch_prefixes: str) -> Callable[[Channel],
     return filter
 
 
-class SCEDCS3DataStore(RawDataStore):
+class MiniSeedS3DataStore(RawDataStore):
     """
-    A data store implementation to read from a directory of miniSEED (.ms) files from the SCEDC S3 bucket.
+    A data store implementation to read from a directory of miniSEED (.ms) files from an S3 bucket.
     Every directory is a a day and each .ms file contains the data for a channel.
     """
-
-    # TODO: Support reading directly from the S3 bucket
-
-    # for checking the filename has the form: CIGMR__LHN___2022002.ms
-    file_re = re.compile(r".*[0-9]{7}\.ms$", re.IGNORECASE)
 
     def __init__(
         self,
@@ -51,6 +47,7 @@ class SCEDCS3DataStore(RawDataStore):
         chan_catalog: ChannelCatalog,
         ch_filter: Callable[[Channel], bool] = lambda s: True,  # noqa: E731
         date_range: DateTimeRange = None,
+        file_name_regex: str = None,
         storage_options: dict = {},
     ):
         """
@@ -61,6 +58,7 @@ class SCEDCS3DataStore(RawDataStore):
                             if None, all channels are used
         """
         super().__init__()
+        self.file_re = re.compile(file_name_regex, re.IGNORECASE)
         self.fs = get_filesystem(path, storage_options=storage_options)
         self.channel_catalog = chan_catalog
         self.path = path
@@ -80,12 +78,12 @@ class SCEDCS3DataStore(RawDataStore):
 
     def _load_channels(self, full_path: str, ch_filter: Callable[[Channel], bool]):
         tlog = TimeLogger(logger=logger, level=logging.INFO)
-        msfiles = [f for f in self.fs.glob(fs_join(full_path, "*.ms")) if self.file_re.match(f) is not None]
+        msfiles = [f for f in self.fs.glob(fs_join(full_path, "*")) if self.file_re.match(f) is not None]
         tlog.log(f"Loading {len(msfiles)} files from {full_path}")
         for f in msfiles:
-            timespan = SCEDCS3DataStore._parse_timespan(f)
+            timespan = self._parse_timespan(f)
             self.paths[timespan.start_datetime] = full_path
-            channel = SCEDCS3DataStore._parse_channel(os.path.basename(f))
+            channel = self._parse_channel(os.path.basename(f))
             if not ch_filter(channel):
                 continue
             key = str(timespan)  # DataTimeFrame is not hashable
@@ -100,7 +98,7 @@ class SCEDCS3DataStore(RawDataStore):
                 date = date_range.start_datetime + timedelta(days=d)
                 if self.date_range is None or date not in self.date_range:
                     continue
-                date_path = str(date.year) + "/" + str(date.year) + "_" + str(date.timetuple().tm_yday).zfill(3) + "/"
+                date_path = self._get_datepath(date)
                 full_path = fs_join(self.path, date_path)
                 self._load_channels(full_path, self.ch_filter)
 
@@ -128,13 +126,7 @@ class SCEDCS3DataStore(RawDataStore):
     def read_data(self, timespan: DateTimeRange, chan: Channel) -> ChannelData:
         self._ensure_channels_loaded(timespan)
         # reconstruct the file name from the channel parameters
-        chan_str = (
-            f"{chan.station.network}{chan.station.name.ljust(5, '_')}{chan.type.name}"
-            f"{chan.station.location.ljust(3, '_')}"
-        )
-        filename = fs_join(
-            self.paths[timespan.start_datetime], f"{chan_str}{timespan.start_datetime.strftime('%Y%j')}.ms"
-        )
+        filename = self._get_filename(timespan, chan)
         if not self.fs.exists(filename):
             logger.warning(f"Could not find file {filename}")
             return ChannelData.empty()
@@ -147,14 +139,43 @@ class SCEDCS3DataStore(RawDataStore):
     def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
         return self.channel_catalog.get_inventory(timespan, station)
 
-    def _parse_timespan(filename: str) -> DateTimeRange:
-        # The SCEDC S3 bucket stores files in the form: CIGMR__LHN___2022002.ms
-        year = int(filename[-10:-6])
-        day = int(filename[-6:-3])
-        jan1 = datetime(year, 1, 1, tzinfo=timezone.utc)
-        return DateTimeRange(jan1 + timedelta(days=day - 1), jan1 + timedelta(days=day))
+    @abstractmethod
+    def _get_datepath(self, timespan: datetime) -> str:
+        pass
 
-    def _parse_channel(filename: str) -> Channel:
+    @abstractmethod
+    def _get_filename(self, timespan: DateTimeRange, channel: Channel) -> str:
+        pass
+
+    @abstractmethod
+    def _parse_channel(self, filename: str) -> Channel:
+        pass
+
+    @abstractmethod
+    def _parse_timespan(self, filename: str) -> DateTimeRange:
+        pass
+
+
+class SCEDCS3DataStore(MiniSeedS3DataStore):
+    def __init__(
+        self,
+        path: str,
+        chan_catalog: ChannelCatalog,
+        ch_filter: Callable[[Channel], bool] = lambda s: True,  # noqa: E731
+        date_range: DateTimeRange = None,
+        storage_options: dict = {},
+    ):
+        super().__init__(
+            path,
+            chan_catalog,
+            ch_filter=ch_filter,
+            date_range=date_range,
+            # for checking the filename has the form: CIGMR__LHN___2022002.ms
+            file_name_regex=r".*[0-9]{7}\.ms$",
+            storage_options=storage_options,
+        )
+
+    def _parse_channel(self, filename: str) -> Channel:
         # e.g.
         # CIGMR__LHN___2022002
         # CE13884HNZ10_2022002
@@ -167,3 +188,73 @@ class SCEDCS3DataStore(RawDataStore):
             # lat/lon/elev will be populated later
             Station(network, station, location=location),
         )
+
+    def _parse_timespan(self, filename: str) -> DateTimeRange:
+        # The SCEDC S3 bucket stores files in the form: CIGMR__LHN___2022002.ms
+        year = int(filename[-10:-6])
+        day = int(filename[-6:-3])
+        jan1 = datetime(year, 1, 1, tzinfo=timezone.utc)
+        return DateTimeRange(jan1 + timedelta(days=day - 1), jan1 + timedelta(days=day))
+
+    def _get_filename(self, timespan: DateTimeRange, channel: Channel) -> str:
+        chan_str = (
+            f"{channel.station.network}{channel.station.name.ljust(5, '_')}{channel.type.name}"
+            f"{channel.station.location.ljust(3, '_')}"
+        )
+        filename = fs_join(
+            self.paths[timespan.start_datetime], f"{chan_str}{timespan.start_datetime.strftime('%Y%j')}.ms"
+        )
+        return filename
+
+    def _get_datepath(self, date: datetime) -> str:
+        return str(date.year) + "/" + str(date.year) + "_" + str(date.timetuple().tm_yday).zfill(3) + "/"
+
+
+class NCEDCS3DataStore(MiniSeedS3DataStore):
+    def __init__(
+        self,
+        path: str,
+        chan_catalog: ChannelCatalog,
+        ch_filter: Callable[[Channel], bool] = lambda s: True,  # noqa: E731
+        date_range: DateTimeRange = None,
+        storage_options: dict = {},
+    ):
+        super().__init__(
+            path,
+            chan_catalog,
+            ch_filter=ch_filter,
+            date_range=date_range,
+            # for checking the filename has the form: AAS.NC.EHZ..D.2020.002
+            file_name_regex=r".*[0-9]{4}.*[0-9]{3}$",
+            storage_options=storage_options,
+        )
+
+    def _parse_channel(self, filename: str) -> Channel:
+        # e.g.
+        # AAS.NC.EHZ..D.2020.002
+        split_fn = filename.split(".")
+        network = split_fn[1]
+        station = split_fn[0]
+        channel = split_fn[2]
+        location = split_fn[3]
+        if len(channel) > 3:
+            channel = channel[:3]
+        return Channel(
+            ChannelType(channel, location),
+            # lat/lon/elev will be populated later
+            Station(network, station, location=location),
+        )
+
+    def _parse_timespan(self, filename: str) -> DateTimeRange:
+        # The NCEDC S3 bucket stores files in the form: AAS.NC.EHZ..D.2020.002
+        year = int(filename[-8:-4])
+        day = int(filename[-3:])
+        jan1 = datetime(year, 1, 1, tzinfo=timezone.utc)
+        return DateTimeRange(jan1 + timedelta(days=day - 1), jan1 + timedelta(days=day))
+
+    def _get_datepath(self, date: datetime) -> str:
+        return str(date.year) + "/" + str(date.year) + "." + str(date.timetuple().tm_yday).zfill(3) + "/"
+
+    def _get_filename(self, timespan: DateTimeRange, chan: Channel) -> str:
+        chan_str = f"{chan.station.name}.{chan.station.network}.{chan.type.name}." f"{chan.station.location}.D"
+        return fs_join(self.paths[timespan.start_datetime], f"{chan_str}.{timespan.start_datetime.strftime('%Y.%j')}")
