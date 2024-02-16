@@ -1,8 +1,9 @@
-from typing import List
+from typing import Callable, List
 
 import obspy
 from datetimerange import DateTimeRange
 
+from .constants import WILD_CARD
 from .datatypes import Channel, ChannelData, Station
 from .stores import RawDataStore
 
@@ -38,3 +39,18 @@ class LocationChannelFilterStore(RawDataStore):
             elif ch.type.location < min_chans[key].type.location:
                 min_chans[key] = ch
         return list(min_chans.values())
+
+
+def channel_filter(net_list: List[str], sta_list: List[str], cha_list: List[str]) -> Callable[[Channel], bool]:
+    stations = set(sta_list)
+    networks = set(net_list)
+    channels = set(cha_list)
+
+    def filter(ch: Channel) -> bool:
+        return (
+            (WILD_CARD in stations or ch.station.name in stations)
+            and (WILD_CARD in networks or ch.station.network in networks)
+            and (WILD_CARD in channels or ch.type.name in channels)
+        )
+
+    return filter
