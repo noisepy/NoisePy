@@ -443,6 +443,7 @@ def stats2inv_mseed(stats, locs: pd.DataFrame) -> Inventory:
 
     return inv
 
+
 def cut_trace_make_stat(fc_para: ConfigParameters, ch_data: ChannelData):
     """
     this function cuts continous noise data into user-defined segments, estimate the statistics of
