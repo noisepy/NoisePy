@@ -26,8 +26,12 @@ runs:
     - name: Install project no MPI
       if: ${{ inputs.mpi == 'false' }}
       shell: sh
-      run: pip install ".[dev,aws,noisepy-seis-io]"
+      run: |
+        pip install "noisepy-seis-io"
+        pip install ".[dev,aws]"
     - name: Install project MPI
       if: ${{ inputs.mpi == 'true' }}
       shell: sh
-      run: pip install ".[dev,mpi,aws,noisepy-seis-io]"
+      run: |
+        pip install "noisepy-seis-io"
+        pip install ".[dev,mpi,aws]"

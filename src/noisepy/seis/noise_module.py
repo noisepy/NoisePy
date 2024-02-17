@@ -443,41 +443,6 @@ def stats2inv_mseed(stats, locs: pd.DataFrame) -> Inventory:
 
     return inv
 
-
-def sta_info_from_inv(inv: obspy.core.inventory.inventory.Inventory):
-    """
-    this function outputs station info from the obspy inventory object
-    (used in S0B)
-    PARAMETERS:
-    ----------------------
-    inv: obspy inventory object
-    RETURNS:
-    ----------------------
-    sta: station name
-    net: netowrk name
-    lon: longitude of the station
-    lat: latitude of the station
-    elv: elevation of the station
-    location: location code of the station
-    """
-    # load from station inventory
-    sta = inv[0][0].code
-    net = inv[0].code
-    lon = inv[0][0].longitude
-    lat = inv[0][0].latitude
-    if inv[0][0].elevation:
-        elv = inv[0][0].elevation
-    else:
-        elv = 0.0
-
-    if inv[0][0][0].location_code:
-        location = inv[0][0][0].location_code
-    else:
-        location = "00"
-
-    return sta, net, lon, lat, elv, location
-
-
 def cut_trace_make_stat(fc_para: ConfigParameters, ch_data: ChannelData):
     """
     this function cuts continous noise data into user-defined segments, estimate the statistics of
