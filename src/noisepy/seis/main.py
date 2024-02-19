@@ -12,7 +12,7 @@ import dateutil.parser
 from datetimerange import DateTimeRange
 
 from noisepy.seis.io.asdfstore import ASDFCCStore, ASDFRawDataStore, ASDFStackStore
-from noisepy.seis.io.channel_filter_store import LocationChannelFilterStore
+from noisepy.seis.io.channel_filter_store import LocationChannelFilterStore,channel_filter
 from noisepy.seis.io.channelcatalog import CSVChannelCatalog, XMLStationChannelCatalog
 from noisepy.seis.io.datatypes import Channel, ConfigParameters
 from noisepy.seis.io.numpystore import NumpyCCStore, NumpyStackStore
@@ -125,21 +125,6 @@ def initialize_params(args, data_dir: str) -> ConfigParameters:
     return cpy
 
 
-def get_channel_filter(net_list: List[str], sta_list: List[str], chan_list: List[str]) -> Callable[[Channel], bool]:
-    stations = set(sta_list)
-    networks = set(net_list)
-    channels = set(chan_list)
-
-    def filter(ch: Channel) -> bool:
-        return (
-            (WILD_CARD in stations or ch.station.name in stations)
-            and (WILD_CARD in networks or ch.station.network in networks)
-            and (WILD_CARD in channels or ch.type.name in channels)
-        )
-
-    return filter
-
-
 def create_raw_store(args, params: ConfigParameters):
     raw_dir = args.raw_data_path
 
@@ -163,7 +148,7 @@ def create_raw_store(args, params: ConfigParameters):
         store = SCEDCS3DataStore(
             raw_dir,
             catalog,
-            get_channel_filter(params.net_list, params.stations, params.channels),
+            channel_filter(params.net_list, params.stations, params.channels),
             DateTimeRange(params.start_date, params.end_date),
             params.storage_options,
         )
