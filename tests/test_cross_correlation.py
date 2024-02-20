@@ -20,6 +20,7 @@ from noisepy.seis.io.datatypes import (
 )
 from noisepy.seis.io.scedc_s3store import SCEDCS3DataStore
 
+
 def test_read_channels():
     CLOSEST_FREQ = 60
     samp_freq = 40

@@ -12,7 +12,10 @@ import dateutil.parser
 from datetimerange import DateTimeRange
 
 from noisepy.seis.io.asdfstore import ASDFCCStore, ASDFRawDataStore, ASDFStackStore
-from noisepy.seis.io.channel_filter_store import LocationChannelFilterStore,channel_filter
+from noisepy.seis.io.channel_filter_store import (
+    LocationChannelFilterStore,
+    channel_filter,
+)
 from noisepy.seis.io.channelcatalog import CSVChannelCatalog, XMLStationChannelCatalog
 from noisepy.seis.io.datatypes import Channel, ConfigParameters
 from noisepy.seis.io.numpystore import NumpyCCStore, NumpyStackStore

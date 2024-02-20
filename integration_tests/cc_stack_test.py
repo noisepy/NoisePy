@@ -8,6 +8,7 @@ from noisepy.seis import (  # noisepy core functions
     cross_correlate,
     stack_cross_correlations,
 )
+from noisepy.seis.io.channel_filter_store import channel_filter
 from noisepy.seis.io.channelcatalog import (
     XMLStationChannelCatalog,  # Required stationXML handling object
 )
@@ -20,7 +21,6 @@ from noisepy.seis.io.numpystore import NumpyCCStore, NumpyStackStore
 from noisepy.seis.io.scedc_s3store import (  # Object to query SCEDC data from on S3
     SCEDCS3DataStore,
 )
-from noisepy.seis.io.channel_filter_store import channel_filter
 
 S3_STORAGE_OPTIONS = {"s3": {"anon": True}}
 S3_DATA = "s3://scedc-pds/continuous_waveforms/"
