@@ -10,6 +10,7 @@ from noisepy.seis.io.datatypes import (
     ChannelType,
     ConfigParameters,
     CrossCorrelation,
+    StackMethod,
     Station,
 )
 from noisepy.seis.stack import (
@@ -68,14 +69,32 @@ def test_stack_contains():
     assert result
 
 
-def test_stack_pair():
-    ts = utils.date_range(1, 1, 2)
+# ALL performs LINEAR + PWS + ROBUST
+stackmethod = [
+    StackMethod.LINEAR,
+    StackMethod.PWS,
+    StackMethod.ROBUST,
+    StackMethod.AUTO_COVARIANCE,
+    StackMethod.NROOT,
+    StackMethod.SELECTIVE,
+    StackMethod.ALL,
+]
+
+
+@pytest.mark.parametrize("stackmethod", stackmethod)
+@pytest.mark.parametrize("substack", [True, False])
+@pytest.mark.parametrize("rotation", [True])
+def test_stack_pair(stackmethod, substack: bool, rotation: bool):
+    ts = date_range(1, 1, 2)
     config = ConfigParameters(start_date=ts.start_datetime, end_date=ts.end_datetime)
+    config.stack_method = stackmethod
+    config.substack = substack
+    config.rotation = rotation
     sta = Station("CI", "BAK")
-    params = {
-        "ngood": 4,
-        "time": 1548979200.0,
-    }
+    if substack:
+        params = {"ngood": [1, 1], "time": [1548979200.0, 1548979300.0], "azi": 90.0, "baz": 270.0}
+    else:
+        params = {"ngood": 4, "time": 1548979200.0, "azi": 90.0, "baz": 270.0}
     cc_store = SerializableMock()
 
     data = np.random.rand(1, 8001)
@@ -86,7 +105,7 @@ def test_stack_pair():
 
     cc_store.read.return_value = ccs
     stacks = stack_pair(sta, sta, [ts, ts], cc_store, config)
-    assert len(stacks) == 6
-    ts2 = utils.date_range(1, 20, 22)
+    assert len(stacks) > 0
+    ts2 = date_range(1, 20, 22)
     stacks = stack_pair(sta, sta, [ts2], cc_store, config)
     assert len(stacks) == 0

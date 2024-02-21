@@ -70,10 +70,12 @@ class MockCatalogMock:
 
 
 @pytest.mark.parametrize("rm_resp", [RmResp.NO, RmResp.POLES_ZEROS, RmResp.RESP])
-def test_correlation(rm_resp: RmResp):
+@pytest.mark.parametrize("cc_method", [CCMethod.XCORR, CCMethod.COHERENCY, CCMethod.DECONV])
+def test_correlation(rm_resp: RmResp, cc_method: CCMethod):
     config = ConfigParameters()
     config.samp_freq = 1.0
     config.rm_resp = rm_resp
+    config.cc_method = cc_method
     path = os.path.join(os.path.dirname(__file__), "./data/cc")
 
     raw_store = SCEDCS3DataStore(path, MockCatalogMock())
