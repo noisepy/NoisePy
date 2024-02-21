@@ -232,109 +232,6 @@ def preprocess_raw(
     return ntr
 
 
-def resp_spectrum(source, resp_file, downsamp_freq, pre_filt=None):
-    """
-    this function removes the instrument response using response spectrum from evalresp.
-    the response spectrum is evaluated based on RESP/PZ files before inverted using the obspy
-    function of invert_spectrum. a module of create_resp.py is provided in directory of 'additional_modules'
-    to create the response spectrum
-    PARAMETERS:
-    ----------------------
-    source: obspy stream object of targeted noise data
-    resp_file: numpy data file of response spectrum
-    downsamp_freq: sampling rate of the source data
-    pre_filt: pre-defined filter parameters
-    RETURNS:
-    ----------------------
-    source: obspy stream object of noise data with instrument response removed
-    """
-    # --------resp_file is the inverted spectrum response---------
-    respz = np.load(resp_file)
-    nrespz = respz[1][:]
-    spec_freq = max(respz[0])
-
-    # -------on current trace----------
-    nfft = _npts2nfft(source[0].stats.npts)
-    sps = int(source[0].stats.sampling_rate)
-
-    # ---------do the interpolation if needed--------
-    if spec_freq < 0.5 * sps:
-        raise ValueError("spectrum file has peak freq smaller than the data, abort!")
-    else:
-        indx = np.where(respz[0] <= 0.5 * sps)
-        nfreq = np.linspace(0, 0.5 * sps, nfft // 2 + 1)
-        nrespz = np.interp(nfreq, np.real(respz[0][indx]), respz[1][indx])
-
-    # ----do interpolation if necessary-----
-    source_spect = np.fft.rfft(source[0].data, n=nfft)
-
-    # -----nrespz is inversed (water-leveled) spectrum-----
-    source_spect *= nrespz
-    source[0].data = np.fft.irfft(source_spect)[0 : source[0].stats.npts]
-
-    if pre_filt is not None:
-        source[0].data = np.float32(
-            bandpass(
-                source[0].data,
-                pre_filt[0],
-                pre_filt[-1],
-                df=sps,
-                corners=4,
-                zerophase=True,
-            )
-        )
-
-    return source
-
-
-def adaptive_filter(arr, g):
-    """
-    the adaptive covariance filter to enhance coherent signals. Fellows the method of
-    Nakata et al., 2015 (Appendix B)
-
-    the filtered signal [x1] is given by x1 = ifft(P*x1(w)) where x1 is the ffted spectra
-    and P is the filter. P is constructed by using the temporal covariance matrix.
-
-    PARAMETERS:
-    ----------------------
-    arr: numpy.ndarray contains the 2D traces of daily/hourly cross-correlation functions
-    g: a positive number to adjust the filter harshness
-    RETURNS:
-    ----------------------
-    narr: numpy vector contains the stacked cross correlation function
-    """
-    if arr.ndim == 1:
-        return arr
-    N, M = arr.shape
-    Nfft = next_fast_len(M)
-
-    # fft the 2D array
-    spec = scipy.fftpack.fft(arr, axis=1, n=Nfft)[:, :M]
-
-    # make cross-spectrm matrix
-    cspec = np.zeros(shape=(N * N, M), dtype=np.complex64)
-    for ii in range(N):
-        for jj in range(N):
-            kk = ii * N + jj
-            cspec[kk] = spec[ii] * np.conjugate(spec[jj])
-
-    S1 = np.zeros(M, dtype=np.complex64)
-    S2 = np.zeros(M, dtype=np.complex64)
-    # construct the filter P
-    for ii in range(N):
-        mm = ii * N + ii
-        S2 += cspec[mm]
-        for jj in range(N):
-            kk = ii * N + jj
-            S1 += cspec[kk]
-
-    p = np.power((S1 - S2) / (S2 * (N - 1)), g)
-
-    # make ifft
-    narr = np.real(scipy.fftpack.ifft(np.multiply(p, spec), Nfft, axis=1)[:, :M])
-    return np.mean(narr, axis=0)
-
-
 def stats2inv_staxml(stats, respdir) -> Inventory:
     if not respdir:
         raise ValueError("Abort! staxml is selected but no directory is given to access the files")
@@ -941,6 +838,61 @@ def rotation(bigstack, parameters, locs):
     return tcorr
 
 
+def resp_spectrum(source, resp_file, downsamp_freq, pre_filt=None):
+    """
+    this function removes the instrument response using response spectrum from evalresp.
+    the response spectrum is evaluated based on RESP/PZ files before inverted using the obspy
+    function of invert_spectrum. a module of create_resp.py is provided in directory of 'additional_modules'
+    to create the response spectrum
+    PARAMETERS:
+    ----------------------
+    source: obspy stream object of targeted noise data
+    resp_file: numpy data file of response spectrum
+    downsamp_freq: sampling rate of the source data
+    pre_filt: pre-defined filter parameters
+    RETURNS:
+    ----------------------
+    source: obspy stream object of noise data with instrument response removed
+    """
+    # --------resp_file is the inverted spectrum response---------
+    respz = np.load(resp_file)
+    nrespz = respz[1][:]
+    spec_freq = max(respz[0])
+
+    # -------on current trace----------
+    nfft = _npts2nfft(source[0].stats.npts)
+    sps = int(source[0].stats.sampling_rate)
+
+    # ---------do the interpolation if needed--------
+    if spec_freq < 0.5 * sps:
+        raise ValueError("spectrum file has peak freq smaller than the data, abort!")
+    else:
+        indx = np.where(respz[0] <= 0.5 * sps)
+        nfreq = np.linspace(0, 0.5 * sps, nfft // 2 + 1)
+        nrespz = np.interp(nfreq, np.real(respz[0][indx]), respz[1][indx])
+
+    # ----do interpolation if necessary-----
+    source_spect = np.fft.rfft(source[0].data, n=nfft)
+
+    # -----nrespz is inversed (water-leveled) spectrum-----
+    source_spect *= nrespz
+    source[0].data = np.fft.irfft(source_spect)[0 : source[0].stats.npts]
+
+    if pre_filt is not None:
+        source[0].data = np.float32(
+            bandpass(
+                source[0].data,
+                pre_filt[0],
+                pre_filt[-1],
+                df=sps,
+                corners=4,
+                zerophase=True,
+            )
+        )
+
+    return source
+
+
 ####################################################
 ############## UTILITY FUNCTIONS ###################
 ####################################################
@@ -1256,6 +1208,54 @@ def robust_stack(cc_array, epsilon):
         if nstep > 10:
             return newstack, w, nstep
     return newstack, w, nstep
+
+
+def adaptive_filter(arr, g):
+    """
+    the adaptive covariance filter to enhance coherent signals. Fellows the method of
+    Nakata et al., 2015 (Appendix B)
+
+    the filtered signal [x1] is given by x1 = ifft(P*x1(w)) where x1 is the ffted spectra
+    and P is the filter. P is constructed by using the temporal covariance matrix.
+
+    PARAMETERS:
+    ----------------------
+    arr: numpy.ndarray contains the 2D traces of daily/hourly cross-correlation functions
+    g: a positive number to adjust the filter harshness
+    RETURNS:
+    ----------------------
+    narr: numpy vector contains the stacked cross correlation function
+    """
+    if arr.ndim == 1:
+        return arr
+    N, M = arr.shape
+    Nfft = next_fast_len(M)
+
+    # fft the 2D array
+    spec = scipy.fftpack.fft(arr, axis=1, n=Nfft)[:, :M]
+
+    # make cross-spectrm matrix
+    cspec = np.zeros(shape=(N * N, M), dtype=np.complex64)
+    for ii in range(N):
+        for jj in range(N):
+            kk = ii * N + jj
+            cspec[kk] = spec[ii] * np.conjugate(spec[jj])
+
+    S1 = np.zeros(M, dtype=np.complex64)
+    S2 = np.zeros(M, dtype=np.complex64)
+    # construct the filter P
+    for ii in range(N):
+        mm = ii * N + ii
+        S2 += cspec[mm]
+        for jj in range(N):
+            kk = ii * N + jj
+            S1 += cspec[kk]
+
+    p = np.power((S1 - S2) / (S2 * (N - 1)), g)
+
+    # make ifft
+    narr = np.real(scipy.fftpack.ifft(np.multiply(p, spec), Nfft, axis=1)[:, :M])
+    return np.mean(narr, axis=0)
 
 
 def whiten_1D(timeseries, fft_para: ConfigParameters, n_taper):
