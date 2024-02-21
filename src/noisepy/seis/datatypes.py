@@ -220,7 +220,7 @@ class ConfigParameters(BaseModel):
     stack_method: StackMethod = Field(default=StackMethod.LINEAR.value)
     keep_substack: bool = Field(default=False, description="keep all sub-stacks in final ASDF file")
     # new rotation para
-    rotation: bool = Field(default=False, description="rotation from E-N-Z to R-T-Z")
+    rotation: bool = Field(default=True, description="rotation from E-N-Z to R-T-Z")
     correction: bool = Field(default=False, description="angle correction due to mis-orientation")
     correction_csv: Optional[str] = Field(default=None, description="Path to e.g. meso_angles.csv")
     # 'RESP', or 'polozeros' to remove response
