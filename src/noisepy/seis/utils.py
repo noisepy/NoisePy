@@ -16,6 +16,7 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 from noisepy.seis.constants import AWS_EXECUTION_ENV
 
 S3_SCHEME = "s3"
+HTTPS_SCHEME = "https"
 FIND_RETRIES = 5
 FIND_RETRY_SLEEP = 0.1  # (100ms)
 utils_logger = logging.getLogger(__name__)
@@ -28,6 +29,8 @@ def get_filesystem(path: str, storage_options: dict = {}) -> fsspec.AbstractFile
     storage_options = storage_options.get(url.scheme, storage_options)
     if url.scheme == S3_SCHEME:
         return fsspec.filesystem(url.scheme, **storage_options)
+    elif url.scheme == HTTPS_SCHEME:
+        return fsspec.filesystem(url.scheme)
     else:
         return fsspec.filesystem("file", **storage_options)
 
