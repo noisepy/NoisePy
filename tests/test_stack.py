@@ -5,6 +5,7 @@ import numpy as np
 import pytest
 import utils
 from datetimerange import DateTimeRange
+from utils import date_range
 
 from noisepy.seis.io.datatypes import (
     ChannelType,

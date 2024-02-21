@@ -12,6 +12,7 @@ from noisepy.seis.correlate import (
     cross_correlate,
 )
 from noisepy.seis.io.datatypes import (
+    CCMethod,
     Channel,
     ChannelData,
     ConfigParameters,
