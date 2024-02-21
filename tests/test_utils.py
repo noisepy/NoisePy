@@ -3,9 +3,10 @@ import os
 import numpy as np
 import pytest
 from fsspec.implementations.local import LocalFileSystem
+from fsspec.implementations.http import HTTPFileSystem
 from s3fs import S3FileSystem
 
-from noisepy.seis.utils import fs_join, get_filesystem, remove_nan_rows, unstack
+from noisepy.seis.utils import fs_join, get_filesystem, remove_nan_rows, unstack, get_fs_sep
 
 SEP = os.path.sep
 paths = [
@@ -24,12 +25,18 @@ fs_types = [
     ("s3://bucket/path", S3FileSystem),
     ("/some/file", LocalFileSystem),
     ("s3/local/file", LocalFileSystem),
+    ("https://abc.com/file", HTTPFileSystem)
 ]
 
 
 @pytest.mark.parametrize("path, fs_type", fs_types)
 def test_get_filesystem(path, fs_type):
     assert isinstance(get_filesystem(path), fs_type)
+
+
+@pytest.mark.parametrize("path, fs_type", fs_types)
+def test_fs_sep(path, fs_type):
+    assert get_fs_sep(path) == get_filesystem(path).sep
 
 
 def test_unstack():
