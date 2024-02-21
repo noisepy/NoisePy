@@ -11,7 +11,7 @@ def test_channeltype():
         ChannelType("toolong")
 
 
-@pytest.mark.parametrize("ch,orien", [("bhe", "e"), ("bhe_00", "e")])
+@pytest.mark.parametrize("ch,orien", [("bhe", "e"), ("bhe_00", "e"), ("BHU", "Z")])
 def test_orientation(ch, orien):
     ch = ChannelType(ch)
     assert ch.get_orientation() == orien
