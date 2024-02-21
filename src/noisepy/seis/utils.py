@@ -47,10 +47,8 @@ def fs_join(path1: str, path2: str) -> str:
 def get_fs_sep(path1: str) -> str:
     """Helper for getting a path separator that can handle both S3 URLs and local file system paths"""
     url = urlparse(path1)
-    if url.scheme == S3_SCHEME:
-        return posixpath.sep
-    else:
-        return os.sep
+    fs = fsspec.filesystem(url.scheme)
+    return fs.sep
 
 
 def io_retry(func: Callable, *args, **kwargs) -> Any:
