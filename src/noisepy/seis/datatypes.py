@@ -193,9 +193,8 @@ class ConfigParameters(BaseModel):
     substack: bool = Field(
         default=False, description="True:  smaller stacks within the time chunk. False: it will stack over inc_hours"
     )
-    substack_len: int = Field(
-        default=1800, description="how long to stack over (for monitoring purpose): need to be multiples of cc_len"
-    )
+    substack_windows: int = Field(default=1, description="How many windows of size cc_len to stack over.")
+
     maxlag: int = Field(default=200, description="lags of cross-correlation to save (sec)")
     inc_hours: int = Field(default=24, description="Time increment size in hours")
     # criteria for data selection
@@ -238,6 +237,10 @@ class ConfigParameters(BaseModel):
         return self.storage_options.get(url.scheme, {})
 
     @property
+    def substack_len(self) -> int:
+        return self.cc_len * self.substack_windows
+
+    @property
     def dt(self) -> float:
         return 1.0 / self.samp_freq
 
@@ -274,8 +277,6 @@ class ConfigParameters(BaseModel):
 
         validate_date(m.start_date, "start_date")
         validate_date(m.end_date, "end_date")
-        if m.substack_len % m.cc_len != 0:
-            raise ValueError(f"substack_len ({m.substack_len}) must be a multiple of cc_len ({m.cc_len})")
 
         if m.stations_file:
             fs = get_filesystem(m.stations_file, storage_options=m.storage_options)
@@ -291,6 +292,8 @@ class ConfigParameters(BaseModel):
         # Hack since pydantic model properties are nor part of the object's __dict__
         if key == "dt":
             return self.dt
+        if key == "substack_len":
+            return self.substack_len
         return self.__dict__[key]
 
     def save_yaml(self, filename: str):
