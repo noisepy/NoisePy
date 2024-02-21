@@ -225,7 +225,7 @@ def stack_pair(
             stack_results.append(Stack(comp, name, tparameters, data))
 
     # loop through cross-component for stacking
-    # iflag = 1
+    iflag = 1
     for icomp in range(nccomp):
         comp = enz_system[icomp]
         indx = np.where(cc_comp.lower() == comp.lower())[0]
@@ -233,7 +233,7 @@ def stack_pair(
 
         # jump if there are not enough data
         if len(indx) < 2:
-            # iflag = 0
+            iflag = 0
             continue
 
         # output stacked data
@@ -276,7 +276,7 @@ def stack_pair(
                 append_stacks(comp, tparameters, [(stack_name, cc_final[ii])])
 
     # do rotation if needed
-    if fft_params.rotation:
+    if fft_params.rotation and iflag:
         if np.all(bigstack == 0):
             return stack_results
         tparameters["station_source"] = src_sta.name

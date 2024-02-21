@@ -13,7 +13,7 @@ def test_taper(data: np.ndarray):
     if data_taper.ndim == 1:
         assert np.isclose(data_taper[0], 0)
         assert np.isclose(data_taper[-1], 0)
-    elif data_taper.ndim == 2:
+    else:
         assert np.isclose(np.linalg.norm(data_taper[:, 0]), 0)
         assert np.isclose(np.linalg.norm(data_taper[:, -1]), 0)
 
@@ -23,7 +23,7 @@ def test_demean(data: np.ndarray):
     data_demean = demean(data)
     if data_demean.ndim == 1:
         assert np.isclose(np.mean(data_demean), 0)
-    elif data_demean.ndim == 2:
+    else:
         assert np.isclose(np.linalg.norm(np.mean(data_demean, axis=1)), 0)
 
 
@@ -32,7 +32,7 @@ def test_detrend(data: np.ndarray):
     data_detrend = detrend(data)
     if data_detrend.ndim == 1:
         npts = data_detrend.shape[0]
-    elif data_detrend.ndim == 2:
+    else:
         npts = data_detrend.shape[1]
 
     X = np.ones((npts, 2))
