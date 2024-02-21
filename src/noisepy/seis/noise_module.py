@@ -232,7 +232,7 @@ def preprocess_raw(
     return ntr
 
 
-def stats2inv_staxml(stats, respdir) -> Inventory:
+def stats2inv_staxml(stats, respdir: str) -> Inventory:
     if not respdir:
         raise ValueError("Abort! staxml is selected but no directory is given to access the files")
     else:
@@ -1006,7 +1006,7 @@ def mad(arr):
     return data
 
 
-def detrend(data):
+def detrend(data: np.ndarray) -> np.ndarray:
     """
     this function removes the signal trend based on QR decomposion
     NOTE: QR is a lot faster than the least square inversion used by
@@ -1018,7 +1018,6 @@ def detrend(data):
     ---------------------
     data: data matrix with trend removed
     """
-    # ndata = np.zeros(shape=data.shape,dtype=data.dtype)
     if data.ndim == 1:
         npts = data.shape[0]
         X = np.ones((npts, 2))
@@ -1039,7 +1038,7 @@ def detrend(data):
     return data
 
 
-def demean(data):
+def demean(data: np.ndarray) -> np.ndarray:
     """
     this function remove the mean of the signal
     PARAMETERS:
@@ -1058,7 +1057,7 @@ def demean(data):
     return data
 
 
-def taper(data):
+def taper(data: np.ndarray) -> np.ndarray:
     """
     this function applies a cosine taper using obspy functions
     PARAMETERS:
@@ -1068,14 +1067,13 @@ def taper(data):
     ---------------------
     data: data matrix with taper applied
     """
-    # ndata = np.zeros(shape=data.shape,dtype=data.dtype)
     if data.ndim == 1:
         npts = data.shape[0]
         # window length
         if npts * 0.05 > 20:
             wlen = 20
         else:
-            wlen = npts * 0.05
+            wlen = int(npts * 0.05)
         # taper values
         func = _get_function_from_entry_point("taper", "hann")
         if 2 * wlen == npts:
@@ -1097,7 +1095,7 @@ def taper(data):
         if npts * 0.05 > 20:
             wlen = 20
         else:
-            wlen = npts * 0.05
+            wlen = int(npts * 0.05)
         # taper values
         func = _get_function_from_entry_point("taper", "hann")
         if 2 * wlen == npts:
