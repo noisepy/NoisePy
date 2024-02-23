@@ -3,7 +3,6 @@ import math
 from typing import Tuple
 
 import numpy as np
-import pyasdf
 
 ### -----
 # These scripts are aim to perform the 2-D radiative transfer equation
@@ -13,28 +12,6 @@ import pyasdf
 ### -----
 
 logger = logging.getLogger(__name__)
-
-
-### -----
-def read_pyasdf(sfile: str, ccomp: str) -> Tuple[float, float, np.ndarray, np.ndarray]:
-    # useful parameters from each asdf file
-    with pyasdf.ASDFDataSet(sfile, mode="r") as ds:
-        alist = ds.auxiliary_data.list()
-        try:
-            dt = ds.auxiliary_data[alist[0]][ccomp].parameters["dt"]
-            dist = ds.auxiliary_data[alist[0]][ccomp].parameters["dist"]
-            logger.info(f"working on {sfile} (comp: {ccomp}) that is {dist} km apart. dt: {dt}")
-            # read stacked data
-            sdata = ds.auxiliary_data[alist[0]][ccomp].data[:]
-
-            # time domain variables
-            npts = sdata.size
-            tvec = np.arange(-npts // 2 + 1, npts // 2 + 1) * dt
-            return dist, dt, tvec, sdata
-
-        except Exception:
-            logger.warning(f"continue! no {ccomp} component exist")
-            return None
 
 
 ### -----
@@ -252,7 +229,7 @@ def get_SSR(fnum: int, para) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     return SSR_final, mfpx, intby
 
 
-def get_optimal(fnum: int, para) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def get_optimal_Esyn(fnum: int, para) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     # Getting the optimal value from the grid searching results (the SSR output from the get_SSR)
     # Return with the optimal value of mean free path, intrinsic absorption parameter
