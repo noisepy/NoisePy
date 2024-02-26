@@ -50,7 +50,7 @@ quick index of dv/v methods:
 """
 
 
-def stretching(ref, cur, dv_range, nbtrial, para):
+def stretching(ref: np.ndarray, cur: np.ndarray, dv_range: float, nbtrial: int, para: dict):
     """
     This function compares the Reference waveform to stretched/compressed current waveforms to get the
     relative seismic velocity variation (and associated error).
@@ -145,7 +145,7 @@ def stretching(ref, cur, dv_range, nbtrial, para):
     return dv, error, cc, cdp
 
 
-def stretching_vect(ref, cur, dv_range, nbtrial, para):
+def stretching_vect(ref: np.ndarray, cur: np.ndarray, dv_range: float, nbtrial: int, para: dict):
     """
     This function compares the Reference waveform to stretched/compressed current waveforms
     to get the relative seismic velocity variation (and associated error).
@@ -240,7 +240,7 @@ def stretching_vect(ref, cur, dv_range, nbtrial, para):
     return dv, error, cc, cdp
 
 
-def dtw_dvv(ref, cur, para, maxLag, b, direction):
+def dtw_dvv(ref: np.ndarray, cur: np.ndarray, para: dict, maxLag: int, b: float, direction: int):
     """
     Dynamic time warping for dv/v estimation.
 
@@ -303,7 +303,14 @@ def dtw_dvv(ref, cur, para, maxLag, b, direction):
     return m0 * 100, em0 * 100, dist
 
 
-def mwcs_dvv(ref, cur, moving_window_length, slide_step, para, smoothing_half_win=5):
+def mwcs_dvv(
+    ref: np.ndarray,
+    cur: np.ndarray,
+    moving_window_length: float,
+    slide_step: float,
+    para: dict,
+    smoothing_half_win: int = 5,
+):
     """
     Moving Window Cross Spectrum method to measure dv/v (relying on phi=2*pi*f*t in freq domain)
 
@@ -467,7 +474,7 @@ def mwcs_dvv(ref, cur, moving_window_length, slide_step, para, smoothing_half_wi
     return -m0 * 100, em0 * 100
 
 
-def wcc_dvv(ref, cur, moving_window_length, slide_step, para):
+def wcc_dvv(ref: np.ndarray, cur: np.ndarray, moving_window_length: float, slide_step: float, para: dict):
     """
     Windowed cross correlation (WCC) for dt or dv/v mesurement (Snieder et al. 2012)
 
@@ -564,16 +571,16 @@ def wcc_dvv(ref, cur, moving_window_length, slide_step, para):
 
 
 def wxs_dvv(
-    ref,
-    cur,
-    allfreq,
-    para,
-    dj=1 / 12,
-    s0=-1,
-    J=-1,
-    sig=False,
-    wvn="morlet",
-    unwrapflag=False,
+    ref: np.ndarray,
+    cur: np.ndarray,
+    allfreq: bool,
+    para: dict,
+    dj: float = 1 / 12,
+    s0: int = -1,
+    J: int = -1,
+    sig: bool = False,
+    wvn: str = "morlet",
+    unwrapflag: bool = False,
 ):
     """
     Compute dt or dv/v in time and frequency domain from wavelet cross spectrum (wxs).
@@ -675,17 +682,17 @@ def wxs_dvv(
 
 
 def wts_dvv(
-    ref,
-    cur,
-    allfreq,
-    para,
-    dv_range,
-    nbtrial,
-    dj=1 / 12,
-    s0=-1,
-    J=-1,
-    wvn="morlet",
-    normalize=True,
+    ref: np.ndarray,
+    cur: np.ndarray,
+    allfreq: bool,
+    para: dict,
+    dv_range: float,
+    nbtrial: int,
+    dj: float = 1 / 12,
+    s0: int = -1,
+    J: int = -1,
+    wvn: str = "morlet",
+    normalize: bool = True,
 ):
     """
     Apply stretching method to continuous wavelet transformation (CWT) of signals
@@ -782,17 +789,17 @@ def wts_dvv(
 
 
 def wts_allfreq(
-    ref,
-    cur,
-    allfreq,
-    para,
-    dv_range,
-    nbtrial,
-    dj=1 / 12,
-    s0=-1,
-    J=-1,
-    wvn="morlet",
-    normalize=True,
+    ref: np.ndarray,
+    cur: np.ndarray,
+    allfreq: bool,
+    para: dict,
+    dv_range: float,
+    nbtrial: int,
+    dj: float = 1 / 12,
+    s0: int = -1,
+    J: int = -1,
+    wvn: str = "morlet",
+    normalize: bool = True,
 ):
     """
     Apply stretching method to continuous wavelet transformation (CWT) of signals
@@ -871,18 +878,18 @@ def wts_allfreq(
 
 
 def wtdtw_allfreq(
-    ref,
-    cur,
-    allfreq,
-    para,
-    maxLag,
-    b,
-    direction,
-    dj=1 / 12,
-    s0=-1,
-    J=-1,
-    wvn="morlet",
-    normalize=True,
+    ref: np.ndarray,
+    cur: np.ndarray,
+    allfreq: bool,
+    para: dict,
+    maxLag: int,
+    b: float,
+    direction: int,
+    dj: float = 1 / 12,
+    s0: int = -1,
+    J: int = -1,
+    wvn: str = "morlet",
+    normalize: bool = True,
 ):
     """
     Apply dynamic time warping method to continuous wavelet transformation (CWT) of signals
@@ -1343,18 +1350,18 @@ def wct_modified(
 
 
 def wtdtw_dvv(
-    ref,
-    cur,
-    allfreq,
-    para,
-    maxLag,
-    b,
-    direction,
-    dj=1 / 12,
-    s0=-1,
-    J=-1,
-    wvn="morlet",
-    normalize=True,
+    ref: np.ndarray,
+    cur: np.ndarray,
+    allfreq: bool,
+    para: dict,
+    maxLag: int,
+    b: float,
+    direction: int,
+    dj: float = 1 / 12,
+    s0: int = -1,
+    J: int = -1,
+    wvn: str = "morlet",
+    normalize: bool = True,
 ):
     """
     Apply dynamic time warping method to continuous wavelet transformation (CWT) of signals

@@ -16,6 +16,7 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 from noisepy.seis.constants import AWS_EXECUTION_ENV
 
 S3_SCHEME = "s3"
+HTTPS_SCHEME = "https"
 FIND_RETRIES = 5
 FIND_RETRY_SLEEP = 0.1  # (100ms)
 utils_logger = logging.getLogger(__name__)
@@ -28,6 +29,8 @@ def get_filesystem(path: str, storage_options: dict = {}) -> fsspec.AbstractFile
     storage_options = storage_options.get(url.scheme, storage_options)
     if url.scheme == S3_SCHEME:
         return fsspec.filesystem(url.scheme, **storage_options)
+    elif url.scheme == HTTPS_SCHEME:
+        return fsspec.filesystem(url.scheme)
     else:
         return fsspec.filesystem("file", **storage_options)
 
@@ -44,10 +47,8 @@ def fs_join(path1: str, path2: str) -> str:
 def get_fs_sep(path1: str) -> str:
     """Helper for getting a path separator that can handle both S3 URLs and local file system paths"""
     url = urlparse(path1)
-    if url.scheme == S3_SCHEME:
-        return posixpath.sep
-    else:
-        return os.sep
+    fs = fsspec.filesystem(url.scheme)
+    return fs.sep
 
 
 def io_retry(func: Callable, *args, **kwargs) -> Any:

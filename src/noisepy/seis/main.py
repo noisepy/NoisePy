@@ -13,11 +13,11 @@ from datetimerange import DateTimeRange
 
 from . import __version__
 from .asdfstore import ASDFCCStore, ASDFRawDataStore, ASDFStackStore
-from .channel_filter_store import LocationChannelFilterStore
+from .channel_filter_store import LocationChannelFilterStore, channel_filter
 from .channelcatalog import CSVChannelCatalog, XMLStationChannelCatalog
-from .constants import CONFIG_FILE, STATION_FILE, WILD_CARD
+from .constants import CONFIG_FILE, STATION_FILE
 from .correlate import cross_correlate
-from .datatypes import Channel, ConfigParameters
+from .datatypes import ConfigParameters
 from .fdsn_download import download
 from .numpystore import NumpyCCStore, NumpyStackStore
 from .scedc_s3store import SCEDCS3DataStore
@@ -124,21 +124,6 @@ def initialize_params(args, data_dir: str) -> ConfigParameters:
     return cpy
 
 
-def get_channel_filter(net_list: List[str], sta_list: List[str], chan_list: List[str]) -> Callable[[Channel], bool]:
-    stations = set(sta_list)
-    networks = set(net_list)
-    channels = set(chan_list)
-
-    def filter(ch: Channel) -> bool:
-        return (
-            (WILD_CARD in stations or ch.station.name in stations)
-            and (WILD_CARD in networks or ch.station.network in networks)
-            and (WILD_CARD in channels or ch.type.name in channels)
-        )
-
-    return filter
-
-
 def create_raw_store(args, params: ConfigParameters):
     raw_dir = args.raw_data_path
 
@@ -162,7 +147,7 @@ def create_raw_store(args, params: ConfigParameters):
         store = SCEDCS3DataStore(
             raw_dir,
             catalog,
-            get_channel_filter(params.net_list, params.stations, params.channels),
+            channel_filter(params.net_list, params.stations, params.channels),
             DateTimeRange(params.start_date, params.end_date),
             params.storage_options,
         )
