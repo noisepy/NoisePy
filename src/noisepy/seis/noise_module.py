@@ -10,10 +10,8 @@ import os
 
 import numpy as np
 import obspy
-import pandas as pd
 import scipy
 from numba import jit
-from obspy.core.inventory import Channel, Inventory, Network, Site, Station
 from obspy.core.util.base import _get_function_from_entry_point
 from obspy.signal.filter import bandpass
 from obspy.signal.util import _npts2nfft
