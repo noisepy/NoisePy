@@ -1,8 +1,9 @@
 import os
 from unittest.mock import Mock
 
+import obspy
 import pytest
-from test_channelcatalog import MockCatalog
+from datetimerange import DateTimeRange
 
 from noisepy.seis.constants import NO_DATA_MSG
 from noisepy.seis.correlate import (
@@ -10,7 +11,7 @@ from noisepy.seis.correlate import (
     _safe_read_data,
     cross_correlate,
 )
-from noisepy.seis.datatypes import (
+from noisepy.seis.io.datatypes import (
     CCMethod,
     Channel,
     ChannelData,
@@ -18,7 +19,7 @@ from noisepy.seis.datatypes import (
     RmResp,
     Station,
 )
-from noisepy.seis.scedc_s3store import SCEDCS3DataStore
+from noisepy.seis.io.scedc_s3store import SCEDCS3DataStore
 
 
 def test_read_channels():
@@ -61,6 +62,14 @@ def test_correlation_nodata():
     assert NO_DATA_MSG in str(excinfo.value)
 
 
+class MockCatalogMock:
+    def get_full_channel(self, timespan: DateTimeRange, channel: Channel) -> Channel:
+        return channel
+
+    def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
+        return obspy.Inventory()
+
+
 @pytest.mark.parametrize("rm_resp", [RmResp.NO, RmResp.POLES_ZEROS, RmResp.RESP])
 @pytest.mark.parametrize("cc_method", [CCMethod.XCORR, CCMethod.COHERENCY, CCMethod.DECONV])
 def test_correlation(rm_resp: RmResp, cc_method: CCMethod):
@@ -69,7 +78,8 @@ def test_correlation(rm_resp: RmResp, cc_method: CCMethod):
     config.rm_resp = rm_resp
     config.cc_method = cc_method
     path = os.path.join(os.path.dirname(__file__), "./data/cc")
-    raw_store = SCEDCS3DataStore(path, MockCatalog())
+
+    raw_store = SCEDCS3DataStore(path, MockCatalogMock())
     ts = raw_store.get_timespans()
     assert len(ts) == 1
     channels = raw_store.get_channels(ts[0])

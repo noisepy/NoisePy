@@ -1,6 +1,6 @@
 import os
 
-from noisepy.seis.datatypes import ConfigParameters
+from noisepy.seis.io.datatypes import ConfigParameters
 
 
 def test_stations_file_behavior():

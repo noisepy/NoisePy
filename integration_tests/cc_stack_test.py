@@ -8,17 +8,17 @@ from noisepy.seis import (  # noisepy core functions
     cross_correlate,
     stack_cross_correlations,
 )
-from noisepy.seis.channel_filter_store import channel_filter
-from noisepy.seis.channelcatalog import (
+from noisepy.seis.io.channel_filter_store import channel_filter
+from noisepy.seis.io.channelcatalog import (
     XMLStationChannelCatalog,  # Required stationXML handling object
 )
-from noisepy.seis.datatypes import (  # Main configuration object
+from noisepy.seis.io.datatypes import (  # Main configuration object
     CCMethod,
     ConfigParameters,
     StackMethod,
 )
-from noisepy.seis.numpystore import NumpyCCStore, NumpyStackStore
-from noisepy.seis.scedc_s3store import (  # Object to query SCEDC data from on S3
+from noisepy.seis.io.numpystore import NumpyCCStore, NumpyStackStore
+from noisepy.seis.io.scedc_s3store import (  # Object to query SCEDC data from on S3
     SCEDCS3DataStore,
 )
 
