@@ -19,7 +19,7 @@ from noisepy.seis.io.datatypes import (
     RmResp,
     Station,
 )
-from noisepy.seis.io.scedc_s3store import SCEDCS3DataStore
+from noisepy.seis.io.s3store import SCEDCS3DataStore
 
 
 def test_read_channels():

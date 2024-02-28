@@ -18,7 +18,7 @@ from noisepy.seis.io.datatypes import (  # Main configuration object
     StackMethod,
 )
 from noisepy.seis.io.numpystore import NumpyCCStore, NumpyStackStore
-from noisepy.seis.io.scedc_s3store import (  # Object to query SCEDC data from on S3
+from noisepy.seis.io.s3store import (  # Object to query SCEDC data from on S3
     SCEDCS3DataStore,
 )
 

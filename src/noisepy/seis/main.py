@@ -19,7 +19,7 @@ from noisepy.seis.io.channel_filter_store import (
 from noisepy.seis.io.channelcatalog import CSVChannelCatalog, XMLStationChannelCatalog
 from noisepy.seis.io.datatypes import ConfigParameters
 from noisepy.seis.io.numpystore import NumpyCCStore, NumpyStackStore
-from noisepy.seis.io.scedc_s3store import SCEDCS3DataStore
+from noisepy.seis.io.s3store import SCEDCS3DataStore
 from noisepy.seis.io.utils import fs_join, get_filesystem, io_retry
 from noisepy.seis.io.zarrstore import ZarrCCStore, ZarrStackStore
 
