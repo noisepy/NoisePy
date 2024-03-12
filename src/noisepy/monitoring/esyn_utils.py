@@ -229,7 +229,7 @@ def get_SSR(fnum: int, para) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     return SSR_final, mfpx, intby
 
 
-def get_optimal_Esyn(fnum: int, para) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def get_optimal_Esyn(fnum: int, para) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     # Getting the optimal value from the grid searching results (the SSR output from the get_SSR)
     # Return with the optimal value of mean free path, intrinsic absorption parameter
