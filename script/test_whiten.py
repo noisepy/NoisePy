@@ -3,7 +3,7 @@ import numpy as np
 import scipy
 from scipy.fftpack import next_fast_len
 
-from noisepy.seis.datatypes import FreqNorm
+from noisepy.seis.io.datatypes import FreqNorm
 from noisepy.seis.noise_module import moving_ave, whiten
 
 

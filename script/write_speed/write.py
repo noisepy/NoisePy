@@ -13,8 +13,8 @@ import numpy as np
 import pyasdf
 import zarr
 
-from noisepy.seis.tiledb import _TileDBHelper
-from noisepy.seis.utils import fs_join, get_filesystem
+from noisepy.seis.io.tiledb import _TileDBHelper
+from noisepy.seis.io.utils import fs_join, get_filesystem
 
 logger = logging.getLogger(__name__)
 s3_path = "s3://<bucket>/write_speed/"

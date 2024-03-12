@@ -8,6 +8,7 @@ chapters:
 - file: noisepy_datastore.ipynb
 - file: noisepy_scedc_tutorial.ipynb
 - file: noisepy_ncedc_tutorial.ipynb
+- file: noisepy_compositestore_tutorial.ipynb
 - file: CLI.md
 - file: cloud/checklist.md
 - file: cloud/aws-ec2.md
