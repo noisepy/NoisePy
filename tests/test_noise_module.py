@@ -1,8 +1,15 @@
 import numpy as np
 import pytest
 
-from noisepy.seis.noise_module import mad, demean, detrend, taper, noise_processing, smooth_source_spect
-from noisepy.seis.io.datatypes import ConfigParameters, TimeNorm, FreqNorm, CCMethod
+from noisepy.seis.io.datatypes import CCMethod, ConfigParameters, FreqNorm, TimeNorm
+from noisepy.seis.noise_module import (
+    demean,
+    detrend,
+    mad,
+    noise_processing,
+    smooth_source_spect,
+    taper,
+)
 
 data = [np.random.random(100), np.random.random(1000), np.random.random([2, 100]), np.random.random([2, 1000])]
 data2 = [np.random.random(1000) + np.arange(1000) * 1e-3, np.random.random([2, 1000]) + np.arange(1000) * 1e-3]
@@ -17,6 +24,7 @@ def test_taper(data: np.ndarray):
     else:
         assert np.isclose(np.linalg.norm(data_taper[:, 0]), 0)
         assert np.isclose(np.linalg.norm(data_taper[:, -1]), 0)
+
 
 @pytest.mark.parametrize("mask", [True, False])
 def test_mad(mask: bool):
@@ -69,4 +77,3 @@ def test_smooth_source_spect(cc_method: CCMethod):
     config.cc_method = cc_method
     fft1 = np.random.random(500)
     smooth_source_spect(config, fft1)
-

@@ -76,7 +76,7 @@ class MockCatalogMock:
             return obspy.Inventory()
 
 
-@pytest.mark.parametrize("rm_resp", [RmResp.NO, RmResp.INV]) # add tests for SPECTRUM, RESP and POLES_ZEROS
+@pytest.mark.parametrize("rm_resp", [RmResp.NO, RmResp.INV])  # add tests for SPECTRUM, RESP and POLES_ZEROS
 @pytest.mark.parametrize("cc_method", [CCMethod.XCORR, CCMethod.COHERENCY, CCMethod.DECONV])
 @pytest.mark.parametrize("substack", [True, False])
 @pytest.mark.parametrize("substack_len", [1, 2])
