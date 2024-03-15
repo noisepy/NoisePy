@@ -7,12 +7,15 @@ import utils
 from datetimerange import DateTimeRange
 from utils import date_range
 
+from noisepy.seis.noise_module import rotation, cc_parameters
+
 from noisepy.seis.io.datatypes import (
     ChannelType,
     ConfigParameters,
     CrossCorrelation,
     StackMethod,
     Station,
+    CCMethod
 )
 from noisepy.seis.stack import (
     stack_cross_correlations,
@@ -110,3 +113,15 @@ def test_stack_pair(stackmethod, substack: bool, rotation: bool):
     ts2 = date_range(1, 20, 22)
     stacks = stack_pair(sta, sta, [ts2], cc_store, config)
     assert len(stacks) == 0
+
+
+@pytest.mark.parametrize("bigstack", [np.random.rand(9, 8000), np.random.rand(8, 8000)])
+@pytest.mark.parametrize("locs", [{}, {"station": ["CI.BAK", "CI.SVD"], "angle": [0., 1.]}])
+def test_rotation(bigstack: np.ndarray, locs: dict):
+    parameters = {"ngood": 4, "time": 1548979200.0, "azi": 90.0, "baz": 270.0, "station_source": "CI.BAK", "station_receiver": "CI.SVD"}
+    rotated = rotation(bigstack, parameters, locs)
+    if bigstack.shape[0] < 9:
+        assert len(rotated) == 0
+    else:
+        assert rotated.shape == bigstack.shape
+        

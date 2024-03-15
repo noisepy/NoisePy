@@ -67,16 +67,27 @@ class MockCatalogMock:
         return channel
 
     def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
-        return obspy.Inventory()
+        net = station.network
+        sta = station.name
+        path = os.path.join(os.path.dirname(__file__), f"data/{net}/{net}_{sta}.xml")
+        if os.path.exists(path):
+            return obspy.read_inventory(path)
+        else:
+            return obspy.Inventory()
 
 
-@pytest.mark.parametrize("rm_resp", [RmResp.NO, RmResp.POLES_ZEROS, RmResp.RESP])
+@pytest.mark.parametrize("rm_resp", [RmResp.NO, RmResp.INV]) # add tests for SPECTRUM, RESP and POLES_ZEROS
 @pytest.mark.parametrize("cc_method", [CCMethod.XCORR, CCMethod.COHERENCY, CCMethod.DECONV])
-def test_correlation(rm_resp: RmResp, cc_method: CCMethod):
+@pytest.mark.parametrize("substack", [True, False])
+@pytest.mark.parametrize("substack_len", [1, 2])
+def test_correlation(rm_resp: RmResp, cc_method: CCMethod, substack: bool, substack_len: int):
     config = ConfigParameters()
     config.samp_freq = 1.0
     config.rm_resp = rm_resp
     config.cc_method = cc_method
+    if substack:
+        config.substack = substack
+        config.substack_len = substack_len * config.cc_len
     path = os.path.join(os.path.dirname(__file__), "./data/cc")
 
     raw_store = SCEDCS3DataStore(path, MockCatalogMock())
@@ -91,11 +102,6 @@ def test_correlation(rm_resp: RmResp, cc_method: CCMethod):
     nsta = len(set([c.station.name for c in channels]))
     cc_store = Mock()
     cc_store.contains.return_value = False
-    if rm_resp == RmResp.NO:  # since we are using a mock catalog
-        cross_correlate(raw_store, config, cc_store)
-        expected_writes = nsta * (nsta + 1) / 2
-        assert expected_writes == cc_store.append.call_count
-    else:
-        # TODO: Remove this once the noise_module has unit tests for these other modes (see issue #250)
-        with pytest.raises(ValueError):
-            cross_correlate(raw_store, config, cc_store)
+    cross_correlate(raw_store, config, cc_store)
+    expected_writes = nsta * (nsta + 1) / 2
+    assert expected_writes == cc_store.append.call_count

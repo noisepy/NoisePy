@@ -164,8 +164,6 @@ def preprocess_raw(
             # --reset the time to remove the discrepancy---
             st[0].stats.starttime -= fric * 1e-6
 
-    # remove traces of too small length
-
     # options to remove instrument response
     if rm_resp != RmResp.NO:
         if rm_resp != RmResp.INV:
@@ -188,14 +186,14 @@ def preprocess_raw(
                     st = []
                     return st
 
-        elif rm_resp == RmResp.SPECTRUM:
+        elif rm_resp == RmResp.SPECTRUM: # TODO: to be implement
             logger.info("remove response using spectrum")
             specfile = glob.glob(os.path.join(respdir, "*" + station + "*"))
             if len(specfile) == 0:
                 raise ValueError("no response sepctrum found for %s" % station)
             st = resp_spectrum(st, specfile[0], samp_freq, pre_filt)
 
-        elif rm_resp == RmResp.RESP:
+        elif rm_resp == RmResp.RESP: # TODO: to be implement
             logger.info("remove response using RESP files")
             resp = glob.glob(os.path.join(respdir, "RESP." + station + "*"))
             if len(resp) == 0:
@@ -207,7 +205,7 @@ def preprocess_raw(
             }
             st.simulate(paz_remove=None, pre_filt=pre_filt, seedresp=seedresp)
 
-        elif rm_resp == RmResp.POLES_ZEROS:
+        elif rm_resp == RmResp.POLES_ZEROS: # TODO: to be implement
             logger.info("remove response using poles and zeros")
             paz_sts = glob.glob(os.path.join(respdir, "*" + station + "*"))
             if len(paz_sts) == 0:
