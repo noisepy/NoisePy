@@ -6,6 +6,11 @@ __pycache__/
 # C extensions
 *.so
 
+
+# Remove io package added manually
+./src/noisepy/io
+
+
 # Distribution / packaging
 .Python
 build/

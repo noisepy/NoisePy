@@ -18,6 +18,10 @@ We gratefully acknowledge support from the [Packard Foundation](https://www.pack
 
 ## NoisePy Workflow
 
+<img src="../docs_old/figures/data_flow.png">
+
+
+
 The data processing in NoisePy consists of three steps:
 
 1. **(Optional) Step 0 - Download**: The `download()` function or the `noisepy download` CLI command can be used to download data from an FDSN web service. Alternatively, data from an [S3 bucket](https://s3.console.aws.amazon.com/s3/buckets/scedc-pds) can be copied locally using the `aws` CLI, or streamed directly from S3. for users who want to work entirely locally, this step prepares and organize the data in a ``DataStore``.
@@ -33,7 +37,6 @@ NoisePy accesses data through 3 "DataStore" abstract classes: `DataStore`, `Cros
 2. Stacking: Data is aggregated and stacked over all time periods. Stacked data will be stored in ``StackStore``.
 
 Workflow is described in the figure below.
-
 <img src="../docs_old/figures/data_flow.png">
 
 ## Applications
@@ -42,6 +45,43 @@ NoisePy includes various functions to measure dv/v. Please check the tutorials. 
 
 ### Imaging
 NoisePy includes functions to measure phase and group velocity dispersion curve measurements. The software will read the ``StackStore`` and ouput curves as tabular data in CSV.
+
+
+
+## Install NoisePy
+
+Cloning the repository will give you access to all of the software and notebooks. Tutorial notebooks are always available for direct download from this documentation.
+
+```bash
+git clone https://github.com/noisepy/NoisePy
+```
+
+Create a conda environment and install ``noisepy``.
+
+```bash
+conda create -n noisepy python=3.10 pip
+conda activate noisepy
+pip install noisepy-seis
+```
+
+To install the version of noisepy that is compatible with AWS:
+
+```bash
+conda create -n noisepy python=3.10 pip
+conda activate noisepy
+conda install -c conda-forge openmpi
+python -m ipykernel install --user --name noisepy
+pip install -e ".[aws]"
+```
+
+To install the version in order to contribute and edit the core scripts
+```bash
+cd  NoisePy
+conda create -n noisepy python=3.10 pip
+conda activate noisepy
+python -m ipykernel install --user --name noisepy
+pip install -e ".[dev]"
+```
 
 ## Configuring NoisePy
 

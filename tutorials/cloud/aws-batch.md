@@ -60,4 +60,4 @@ aws batch submit-job --no-cli-pager --cli-input-yaml file://job_stack.yaml --job
 See comment above `arrayProperties` in `job_cc.yaml` and `job_stack.yaml` for instructions on how to process in parallel across multiple nodes.
 
 ## Plotting Results
-See chapter TBD to read and plot results.
+Open a JupyterNotebook on AWS [tutorials](https://seisscoped.org/HPS-book/chapters/cloud/AWS_101.html) and see chapter [Plotting](../plot_stacks.ipynb) to read and plot results.

@@ -19,7 +19,7 @@ See our [checklist](./checklist.md)
 - Advanced details:
     - If applicable, select `IAM instance profile` to the appropriate role for EC2 service. See [IAM Role](./checklist.md) for reference.
 
-More information about getting on the cloud in the [SCOPED HPS Book](https://seisscoped.org/HPS/softhardware/AWS_101.html).
+More information about getting on the cloud in the [SCOPED HPS Book](https://seisscoped.org/HPS-book/chapters/cloud/AWS_101.html).
 
 ### SSH Into Your Instance
 Make your private key file only readable by you (assuming it's named/downloaded to `~/Downloads/ec2.pem`). Go to your instance's summary page and copy the `Public IPv4 DNS` in the format of `XXXXX.us-west-2.compute.amazonaws.com`.
@@ -73,7 +73,12 @@ sudo docker run -v ~/tmp:/tmp cross_correlate --path /tmp
 Below we use stations from SCEDC public data archive on the AWS S3 to run a tiny cross-correlation workflow using NoisePy. The continuous waveform is publicized at `s3://scedc-pds/continuous_waveforms/` with associated StationXML file at `s3://scedc-pds/FDSNstationXML/`.
 
 ### Exploration Using Jupyter Notebooks
-We recommend starting off with a notebook to explore simple jobs and the desirable configuration (e.g., noise pre-processing). Refer to the [SCOPED HPS Book](https://seisscoped.org/HPS/softhardware/AWS_101.html) to open a Jupyter notebook.
+We recommend starting off with a notebook to explore simple jobs and the desirable configuration (e.g., noise pre-processing). Refer to the [ to open a Jupyter notebook.
+
+1. Open a jupyterhub on aws, follow these [instructions]](https://seisscoped.org/HPS/chapters/cloud/AWS_101.html)
+2. Download tutorial notebooks, e.g. [SCEDC](https://noisepy.github.io/NoisePy/noisepy_scedc_tutorial.html) or the [NCEDC](https://noisepy.github.io/NoisePy/noisepy_ncedc_tutorial.html) to your local laptop
+3. Upload the notebook on the jupyterhub.
+
 
 ### Exploration Using CLI
 You may create or edit the [config.yml](../config.yml) file with appropriate parameters. The cross-correlation function is written to the `ccf_path`.

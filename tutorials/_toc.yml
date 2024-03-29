@@ -3,13 +3,22 @@
 
 format: jb-book
 root: noise_configuration.md
-chapters:
-- file: get_started.ipynb
-- file: noisepy_datastore.ipynb
-- file: noisepy_scedc_tutorial.ipynb
-- file: noisepy_ncedc_tutorial.ipynb
-- file: noisepy_compositestore_tutorial.ipynb
-- file: CLI.md
-- file: cloud/checklist.md
-- file: cloud/aws-ec2.md
-- file: cloud/aws-batch.md
+parts:
+- caption: Noisepy 101
+  chapters:
+  - file: get_started.ipynb
+  - file: noisepy_datastore.ipynb
+  - file: noisepy_scedc_tutorial.ipynb
+  - file: noisepy_ncedc_tutorial.ipynb
+  - file: noisepy_compositestore_tutorial.ipynb
+  - file: plot_stacks.ipynb
+
+- caption: Large-Scale
+  chapters:
+  - file: CLI.md
+
+- caption: Cloud
+  chapters:
+  - file: cloud/checklist.md
+  - file: cloud/aws-ec2.md
+  - file: cloud/aws-batch.md

@@ -10,8 +10,19 @@ There are multiple ways in which you can contribute:
 
 NoisePy is going under major re-development. Part of the core development involves adding data objects and stores, modularizing it to facilitate community development, and giving alternative workflows for HPC, Cloud, and DAS.
 
+We have separated the ``io`` package of the repository in order to provide a light-weight io reader. Because of the shared code space name, we had issue adding noisepy.seis.io as a dependency without overwriting the other package.
+
+Here is the work around:
+1. git clone both packages as separate.
+2. in the NoisePy folder, pip install for development (instructions below)
+3. copy ``noisepy-io/src/noisepy/seis/io`` into ``Noisepy/src/noisepy/seis``
+4. When contributing back to a remote server, the ``io`` folder is added to a .git_ignore so that files are not updated.
+
+__Developer Install__
+
 Fork the repository, and create your local version, then follow the installation steps:
 ```bash
+cd Noisepy
 conda create -n noisepy python=3.10 pip
 conda activate noisepy
 conda install -c conda-forge openmpi
@@ -20,10 +31,17 @@ pip install -e ".[dev,aws,mpi]"
 ```
 it will install all of the dependencies of the package, including IPython to start a jupyter notebook (excluded otherwise to minimmize dependencies for command line deployment).
 
+Add the ``io`` files into the folder structure.
+
 Install the `pre-commit` hook:
 ```sh
 pre-commit install
 ```
+
+### Notes about noisepy.seis.io
+When using pip install ``. -e [dev]``, you are not using the pypi distribution, instead using local source. Manual pip install (``pip install noisepy-seis-io``) will fail because it is added to other place not your local source.
+
+It is recommended to
 
 This will run the linting and formatting checks configured in the project before every commit.
 
