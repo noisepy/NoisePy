@@ -15,9 +15,9 @@ import numpy as np
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from .datatypes import ConfigParameters
-from .channelcatalog import CSVChannelCatalog
-from .utils import TimeLogger
+from noisepy.seis.io.datatypes import ConfigParameters
+from noisepy.seis.io.channelcatalog import CSVChannelCatalog
+from noisepy.seis.io.utils import TimeLogger
 from . import noise_module
 from obspy.clients.fdsn import Client
 from obspy.clients.fdsn.header import FDSNNoDataException

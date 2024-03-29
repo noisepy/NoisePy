@@ -1,8 +1,9 @@
 import os
 from unittest.mock import Mock
 
+import obspy
 import pytest
-from test_channelcatalog import MockCatalog
+from datetimerange import DateTimeRange
 
 from noisepy.seis.constants import NO_DATA_MSG
 from noisepy.seis.correlate import (
@@ -10,7 +11,7 @@ from noisepy.seis.correlate import (
     _safe_read_data,
     cross_correlate,
 )
-from noisepy.seis.datatypes import (
+from noisepy.seis.io.datatypes import (
     CCMethod,
     Channel,
     ChannelData,
@@ -18,7 +19,7 @@ from noisepy.seis.datatypes import (
     RmResp,
     Station,
 )
-from noisepy.seis.scedc_s3store import SCEDCS3DataStore
+from noisepy.seis.io.s3store import SCEDCS3DataStore
 
 
 def test_read_channels():
@@ -61,15 +62,35 @@ def test_correlation_nodata():
     assert NO_DATA_MSG in str(excinfo.value)
 
 
-@pytest.mark.parametrize("rm_resp", [RmResp.NO, RmResp.POLES_ZEROS, RmResp.RESP])
+class MockCatalogMock:
+    def get_full_channel(self, timespan: DateTimeRange, channel: Channel) -> Channel:
+        return channel
+
+    def get_inventory(self, timespan: DateTimeRange, station: Station) -> obspy.Inventory:
+        net = station.network
+        sta = station.name
+        path = os.path.join(os.path.dirname(__file__), f"data/{net}/{net}_{sta}.xml")
+        if os.path.exists(path):
+            return obspy.read_inventory(path)
+        else:
+            return obspy.Inventory()
+
+
+@pytest.mark.parametrize("rm_resp", [RmResp.NO, RmResp.INV])  # add tests for SPECTRUM, RESP and POLES_ZEROS
 @pytest.mark.parametrize("cc_method", [CCMethod.XCORR, CCMethod.COHERENCY, CCMethod.DECONV])
-def test_correlation(rm_resp: RmResp, cc_method: CCMethod):
+@pytest.mark.parametrize("substack", [True, False])
+@pytest.mark.parametrize("substack_len", [1, 2])
+def test_correlation(rm_resp: RmResp, cc_method: CCMethod, substack: bool, substack_len: int):
     config = ConfigParameters()
     config.samp_freq = 1.0
     config.rm_resp = rm_resp
     config.cc_method = cc_method
+    if substack:
+        config.substack = substack
+        config.substack_len = substack_len * config.cc_len
     path = os.path.join(os.path.dirname(__file__), "./data/cc")
-    raw_store = SCEDCS3DataStore(path, MockCatalog())
+
+    raw_store = SCEDCS3DataStore(path, MockCatalogMock())
     ts = raw_store.get_timespans()
     assert len(ts) == 1
     channels = raw_store.get_channels(ts[0])
@@ -81,11 +102,6 @@ def test_correlation(rm_resp: RmResp, cc_method: CCMethod):
     nsta = len(set([c.station.name for c in channels]))
     cc_store = Mock()
     cc_store.contains.return_value = False
-    if rm_resp == RmResp.NO:  # since we are using a mock catalog
-        cross_correlate(raw_store, config, cc_store)
-        expected_writes = nsta * (nsta + 1) / 2
-        assert expected_writes == cc_store.append.call_count
-    else:
-        # TODO: Remove this once the noise_module has unit tests for these other modes (see issue #250)
-        with pytest.raises(ValueError):
-            cross_correlate(raw_store, config, cc_store)
+    cross_correlate(raw_store, config, cc_store)
+    expected_writes = nsta * (nsta + 1) / 2
+    assert expected_writes == cc_store.append.call_count

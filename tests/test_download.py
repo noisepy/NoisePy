@@ -10,9 +10,9 @@ from obspy import Stream, Trace
 from obspy.clients.fdsn import Client
 from obspy.clients.fdsn.header import FDSNNoDataException
 
-from noisepy.seis.channelcatalog import CSVChannelCatalog
-from noisepy.seis.datatypes import ConfigParameters
 from noisepy.seis.fdsn_download import download, download_stream
+from noisepy.seis.io.channelcatalog import CSVChannelCatalog
+from noisepy.seis.io.datatypes import ConfigParameters
 
 
 @patch("noisepy.seis.fdsn_download.download_stream")

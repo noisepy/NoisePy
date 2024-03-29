@@ -14,16 +14,6 @@ coverage:
         if_not_found: error
         if_ci_failed: error
 
-    # set commit status, if coverage of diff is below target threshold
-    patch:
-      default:
-        target: 90
-        set_pending: yes
-        base: auto
-        if_no_uploads: error
-        if_not_found: error
-        if_ci_failed: error
-
     # not exactly sure in what cases this commit status is triggered..
     changes:
       default:

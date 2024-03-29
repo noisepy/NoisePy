@@ -7,7 +7,7 @@ import obspy
 import pytest
 
 from noisepy.seis.constants import NO_CCF_DATA_MSG
-from noisepy.seis.datatypes import CCMethod
+from noisepy.seis.io.datatypes import CCMethod
 from noisepy.seis.main import (
     Command,
     ErrorStopHandler,

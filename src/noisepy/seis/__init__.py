@@ -24,7 +24,6 @@ The main functions exported by the package are:
                     Used to assemble and/or stack all cross-correlation functions computed for the staion
                     pairs in the cross_correlate step
 - noise_module:     Collection of functions used in the cross_correlate and stacking steps
-- plotting_modules: Utility functions for plotting the data
 """
 
 logging.basicConfig(

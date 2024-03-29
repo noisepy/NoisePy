@@ -3,16 +3,18 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
+import utils
 from datetimerange import DateTimeRange
 from utils import date_range
 
-from noisepy.seis.datatypes import (
+from noisepy.seis.io.datatypes import (
     ChannelType,
     ConfigParameters,
     CrossCorrelation,
     StackMethod,
     Station,
 )
+from noisepy.seis.noise_module import rotation
 from noisepy.seis.stack import (
     stack_cross_correlations,
     stack_pair,
@@ -39,7 +41,7 @@ class SerializableMock(MagicMock):
 
 
 def test_stack_error(caplog):
-    ts = date_range(1, 1, 2)
+    ts = utils.date_range(1, 1, 2)
     config = ConfigParameters(start_date=ts.start_datetime, end_date=ts.end_datetime)
     sta = Station("CI", "BAK")
     cc_store = SerializableMock()
@@ -57,7 +59,7 @@ def test_stack_error(caplog):
 
 
 def test_stack_contains():
-    ts = date_range(1, 1, 2)
+    ts = utils.date_range(1, 1, 2)
     config = ConfigParameters(start_date=ts.start_datetime, end_date=ts.end_datetime)
     sta = Station("CI", "BAK")
     cc_store = SerializableMock()
@@ -109,3 +111,21 @@ def test_stack_pair(stackmethod, substack: bool, rotation: bool):
     ts2 = date_range(1, 20, 22)
     stacks = stack_pair(sta, sta, [ts2], cc_store, config)
     assert len(stacks) == 0
+
+
+@pytest.mark.parametrize("bigstack", [np.random.rand(9, 8000), np.random.rand(8, 8000)])
+@pytest.mark.parametrize("locs", [{}, {"station": ["CI.BAK", "CI.SVD"], "angle": [0.0, 1.0]}])
+def test_rotation(bigstack: np.ndarray, locs: dict):
+    parameters = {
+        "ngood": 4,
+        "time": 1548979200.0,
+        "azi": 90.0,
+        "baz": 270.0,
+        "station_source": "CI.BAK",
+        "station_receiver": "CI.SVD",
+    }
+    rotated = rotation(bigstack, parameters, locs)
+    if bigstack.shape[0] < 9:
+        assert len(rotated) == 0
+    else:
+        assert rotated.shape == bigstack.shape
