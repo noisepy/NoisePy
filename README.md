@@ -79,7 +79,8 @@ A short tutorial on how to use NoisePy can be is available as a [web page](https
 This tutorial presents one simple example of how NoisePy might work. We strongly encourage you to download the NoisePy package and play it on your own! If you have any comments and/or suggestions during running the codes, please do not hesitate to contact us through email or open an issue in this github page!
 
 Chengxin Jiang (chengxinjiang@gmail.com)
-Marine Denolle (mdenolle@uw.edu).
+Marine Denolle (mdenolle@uw.edu)
+Yiyu Ni (niyiyu@uw.edu)
 
 ## Taxonomy
 Taxonomy of the NoisePy variables.
