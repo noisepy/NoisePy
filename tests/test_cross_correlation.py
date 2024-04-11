@@ -80,11 +80,13 @@ class MockCatalogMock:
 @pytest.mark.parametrize("cc_method", [CCMethod.XCORR, CCMethod.COHERENCY, CCMethod.DECONV])
 @pytest.mark.parametrize("substack", [True, False])
 @pytest.mark.parametrize("substack_len", [1, 2])
-def test_correlation(rm_resp: RmResp, cc_method: CCMethod, substack: bool, substack_len: int):
+@pytest.mark.parametrize("inc_hours", [0, 24])
+def test_correlation(rm_resp: RmResp, cc_method: CCMethod, substack: bool, substack_len: int, inc_hours: int):
     config = ConfigParameters()
     config.samp_freq = 1.0
     config.rm_resp = rm_resp
     config.cc_method = cc_method
+    config.inc_hours = inc_hours
     if substack:
         config.substack = substack
         config.substack_len = substack_len * config.cc_len
