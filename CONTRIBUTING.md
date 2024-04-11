@@ -14,10 +14,14 @@ Fork the repository, and create your local version, then follow the installation
 ```bash
 conda create -n noisepy -y python=3.10 pip mpi4py
 conda activate noisepy
-python -m ipykernel install --user --name noisepy
 pip install -e ".[dev,aws,mpi]"
 ```
-It will install all of the dependencies of the package, including IPython to start a jupyter notebook (excluded otherwise to minimmize dependencies for command line deployment).
+
+Install the Jupyter notebook and ipython kernel
+```bash
+pip install ipykernel notebook
+python -m ipykernel install --user --name noisepy
+```
 
 Install the `pre-commit` hook:
 ```bash
