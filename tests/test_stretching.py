@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from obspy.signal.invsim import cosine_taper
 
-from noisepy.monitoring.monitoring_utils import (
+from noisepy.monitoring.monitoring_methods import (
     mwcs_dvv,
     stretching,
     stretching_vect,
