@@ -247,12 +247,17 @@ def cut_trace_make_stat(fc_para: ConfigParameters, ch_data: ChannelData):
     dataS_t = []
     dataS = []
 
-    # useful parameters for trace sliding
-    nseg = int(np.floor((fc_para.inc_hours / 24 * 86400 - fc_para.cc_len) / fc_para.step))
     sps = int(ch_data.sampling_rate)
     starttime = ch_data.start_timestamp
     # copy data into array
     data = ch_data.data
+
+    if fc_para.inc_hours == 0:
+        # specifically for DAS data, set the inc_hours to 0
+        nseg = 1
+    else:
+        # useful parameters for trace sliding
+        nseg = int(np.floor((fc_para.inc_hours / 24 * 86400 - fc_para.cc_len) / fc_para.step))
 
     # if the data is shorter than the tim chunck, return zero values
     if data.size < sps * fc_para.inc_hours * 3600:

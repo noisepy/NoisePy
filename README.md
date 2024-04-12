@@ -1,10 +1,6 @@
 # About NoisePy
 NoisePy is a Python package designed for fast and easy computation of ambient noise cross-correlation functions. It provides additional functionality for noise monitoring and surface wave dispersion analysis.
 
-Disclaimer: this code should not be used "as-is" and not run like a blackbox. The user is expected to change local paths and parameters. Submit an issue to github with information such as the scripts+error messages to debug.
-
-Detailed documentation can be found at https://noisepy.github.io/NoisePy/
-
 [![Documentation Status](https://github.com/noisepy/NoisePy/actions/workflows/notebooks.yml/badge.svg)](https://noisepy.github.io/NoisePy/)
 [![Build Status](https://github.com/noisepy/NoisePy/actions/workflows/test.yaml/badge.svg)](https://github.com/noisepy/NoisePy/actions/workflows/test.yaml)
 [![Codecov](https://codecov.io/gh/noisepy/NoisePy/branch/main/graph/badge.svg)](https://codecov.io/gh/noisepy/NoisePy)
@@ -18,30 +14,30 @@ NoisePy is going through a major refactoring to make this package easier to deve
 # Installation
 The nature of NoisePy being composed of python scripts allows flexible package installation, which is essentially to build dependent libraries the scripts and related functions live upon. We recommend using [conda](https://docs.conda.io/en/latest/) or [pip](https://pypi.org/project/pip/) to install.
 
-### Note the order of the command lines below matters ###
+**Note the order of the command lines below matters**
 
-## With Conda and pip:
+## With Conda and pip
 ```bash
-conda create -n noisepy python=3.10 pip
+conda create -n noisepy -y python=3.10 pip
 conda activate noisepy
 pip install noisepy-seis
 ```
 
-## With Conda and pip and MPI support:
+## With Conda and pip and MPI support
 ```bash
-conda create -n noisepy python=3.10 pip
+conda create -n noisepy -y python=3.10 pip mpi4py
 conda activate noisepy
-conda install -c conda-forge openmpi
 pip install noisepy-seis[mpi]
 ```
 
-## With virtual environment:
+## With virtual environment
 ```bash
 python -m venv noisepy
 source noisepy/bin/activate
 pip install noisepy-seis
 ```
-## With virtual environment and MPI support:
+
+## With virtual environment and MPI support
 An MPI installation is required. E.g. for macOS using [brew](https://brew.sh/) :
 ```bash
 brew install open-mpi
@@ -53,7 +49,6 @@ source noisepy/bin/activate
 pip install noisepy-seis[mpi]
 ```
 
-
 # Functionality
 Here is a list of features of the package:
 * download continous noise data based:
@@ -61,13 +56,10 @@ Here is a list of features of the package:
    + on AWS S3 bucket calls, with a test on the SCEDC AWS Open Dataset.
 * save seismic data in [ASDF](https://asdf-definition.readthedocs.io/en/latest/) format, which convinently assembles meta, wavefrom and auxililary data into one single file ([Tutorials](https://github.com/SeismicData/pyasdf/blob/master/doc/tutorial.rst) on reading/writing ASDF files)
 * offers scripts to precondition data sets before cross correlations. This involves working with gappy data from various formats (SAC/miniSEED) and storing it on local in ASDF.
-
 * performs fast and easy cross-correlation with functionality to run in parallel through [MPI](https://en.wikipedia.org/wiki/Message_Passing_Interface)
 * **Applications module**:
    + *Ambient noise monitoring*: measure dv/v using a wide variety of techniques in time, fourier, and wavelet domain (Yuan et al., 2021)
    + *Surface wave dispersion*: construct dispersion images using conventional techniques.
-
-
 
 # Usage
 
@@ -81,22 +73,21 @@ docker run -v ~/tmp:/tmp ghcr.io/noisepy/noisepy:latest cross_correlate --path /
 ```
 
 # Tutorials
-A short tutorial on how to use NoisePy-seis can be is available as a [web page](https://noisepy.github.io/NoisePy/noisepy_scedc_tutorial.html) or [Jupyter notebook](https://github.com/noisepy/NoisePy/blob/main/tutorials/noisepy_scedc_tutorial.ipynb) and can be
+A short tutorial on how to use NoisePy can be is available as a [web page](https://noisepy.github.io/NoisePy/noisepy_scedc_tutorial.html) or [Jupyter notebook](https://github.com/noisepy/NoisePy/blob/main/tutorials/noisepy_scedc_tutorial.ipynb) and can be
 [run directly in Colab](https://colab.research.google.com/github/noisepy/NoisePy/blob/main/tutorials/noisepy_scedc_tutorial.ipynb).
 
-
-This tutorial presents one simple example of how NoisePy might work! We strongly encourage you to download the NoisePy package and play it on your own! If you have any  comments and/or suggestions during running the codes, please do not hesitate to contact us through email or open an issue in this github page!
+This tutorial presents one simple example of how NoisePy might work. We strongly encourage you to download the NoisePy package and play it on your own! If you have any comments and/or suggestions during running the codes, please do not hesitate to contact us through email or open an issue in this github page!
 
 Chengxin Jiang (chengxinjiang@gmail.com)
-Marine Denolle (mdenolle@uw.edu).
+Marine Denolle (mdenolle@uw.edu)
+Yiyu Ni (niyiyu@uw.edu)
 
 ## Taxonomy
 Taxonomy of the NoisePy variables.
 
 * ``station`` refers to the site that has the seismic instruments that records ground shaking.
-* `` channel`` refers to the direction of ground motion investigated for 3 component seismometers. For DAS project, it may refers to the single channel sensors.
+* ``channel`` refers to the direction of ground motion investigated for 3 component seismometers. For DAS project, it may refers to the single channel sensors.
 * ``ista`` is the index name for looping over stations
-
 * ``cc_len`` correlation length, basic window length in seconds
 * ``step`` is the window that get skipped when sliding windows in seconds
 * ``smooth_N`` number of points for smoothing the  time or frequency domain discrete arrays.
@@ -104,11 +95,7 @@ Taxonomy of the NoisePy variables.
 * ``substack,substack_len`` boolean, window length over which to substack the correlation (to save storage or do monitoring), it has to be a multiple of ``cc_len``.
 * ``time_chunk, nchunk`` refers to the time unit that defined a single job. for instace, ``cc_len`` is the correlation length (e.g., 1 hour, 30 min), the overall duration of the experiment is the total length (1 month, 1 year, ...). The time chunk could be 1 day: the code would loop through each cc_len window in a for loop. But each day will be sent as a thread.
 
-
 # Acknowledgements
-
-## Contributing
-
 Thanks to our contributors so far!
 
 [![Contributors](https://contrib.rocks/image?repo=noisepy/NoisePy)](https://github.com/noisepy/NoisePy/graphs/contributors)
@@ -126,6 +113,5 @@ Algorithms used:
 * (dv/v in wavelet domain) Yuan, C., Bryan, J. T., and Denolle, M. [Numerical comparison of time-, frequency- and wavelet-domain methods for coda wave interferometry.](https://doi.org/10.1093/gji/ggab140) _Geophysical Journal International_ 226, no. 2 (2021): 828-846. https://doi.org/10.1093/gji/ggab140
 
 * (optimal stacking) Yang X, Bryan J, Okubo K, Jiang C, Clements T, Denolle MA. [Optimal stacking of noise cross-correlation functions/](https://doi.org/10.1093/gji/ggac410) _Geophysical Journal International_. 2023 Mar;232(3):1600-18. https://doi.org/10.1093/gji/ggac410
-
 
 This research received software engineering support from the University of Washington’s Scientific Software Engineering Center ([SSEC](https://escience.washington.edu/software-engineering/ssec/)) supported by Schmidt Futures, as part of the Virtual Institute for Scientific Software (VISS). We would like to acknowledge [Carlos Garcia Jurado Suarez](https://github.com/carlosgjs) and [Nicholas Rich](https://github.com/nrich20) for their collaboration and contributions to the software.
