@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from noisepy.monitoring.monitoring_utils import (
+from noisepy.monitoring.monitoring_methods import (
     dtw_dvv,
     mwcs_dvv,
     stretching,
