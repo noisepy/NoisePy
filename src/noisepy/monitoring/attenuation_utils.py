@@ -4,6 +4,8 @@ from typing import Tuple
 
 import numpy as np
 
+from noisepy.monitoring.monitoring_utils import ConfigParameters_monitoring
+
 ### -----
 # These scripts are aim to perform the 2-D radiative transfer equation
 # for scalar waves (Shang and Gao 1988; Sato 1993),
@@ -156,6 +158,9 @@ def get_SSR(fnum: int, para) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         intby:     The searching range of intrinsic absorption parameter b array
     ----------------------------------------------
     """
+    # default config parameters which can be customized
+    monito_config = ConfigParameters_monitoring()
+
     fb = para["fb"]
     dt = para["dt"]
     c = para["cvel"]
@@ -165,6 +170,8 @@ def get_SSR(fnum: int, para) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     twinbe = para["twin"]
     npts = para["npts"]
     fmsv_mean = para["fmsv"]
+    intb_interval_base = monito_config.intb_interval_base
+    mfp_interval_base = monito_config.mfp_interval_base
 
     Esyn_temp = np.ndarray((len(mfpx), len(intby), npts // 2 + 1))
     Eobs_temp = np.ndarray((len(mfpx), len(intby), npts // 2 + 1))
@@ -172,6 +179,9 @@ def get_SSR(fnum: int, para) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     SSR_final[:][:] = 0.0
     for aa in range(fnum):
         r = float(vdist[aa])
+        if r <= 10 ** (-6):
+            r = 0.000001  # To avoid zero value at denominator
+
         twindow = []
         twindow = range(int(twinbe[aa][fb][0]), int(twinbe[aa][fb][1]), 1)
         SSR_temppp = np.ndarray((len(mfpx), len(intby), len(twindow)))
@@ -181,10 +191,10 @@ def get_SSR(fnum: int, para) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         Eobs_temp[:][:][:] = 0.0
 
         for nfree in range(len(mfpx)):
-            mean_free = 0.4 + 0.2 * nfree
+            mean_free = 0.2 + mfp_interval_base * nfree
             mfpx[nfree] = mean_free
             for nb in range(len(intby)):
-                intrinsic_b = 0.01 * (nb + 1)
+                intrinsic_b = intb_interval_base * (nb + 1)
                 intby[nb] = intrinsic_b
 
                 # calculate the Esyn and SSR for combination of mean_free_path and intrinsic_b
@@ -275,6 +285,8 @@ def get_optimal_Esyn(fnum: int, para) -> Tuple[np.ndarray, np.ndarray, np.ndarra
     sta_pair = para["sta"]
     aa = para["filenum"]
     r = float(vdist[aa])
+    if r <= 10 ** (-6):
+        r = 0.000001  # To avoid zero value at denominator
 
     loc = np.where(SSR[fb].T == np.amin(SSR[fb].T))
     ymin = intby[loc[0]]

@@ -56,6 +56,12 @@ class ConfigParameters_monitoring(BaseModel):
     cvel: float = Field(default=2.6, description="Rayleigh wave velocities over the freqency bands")
     atten_tbeg: float = Field(default=2.0, description="begin time (sec) of the coda window for measuring attenuation")
     atten_tend: float = Field(default=8.0, description="end time (sec) of the coda window for measuring attenuation")
+    intb_interval_base: float = Field(
+        default=0.01, description="interval base of intrinsic absorption parameter for a grid-searching process"
+    )
+    mfp_interval_base: float = Field(
+        default=0.2, description="interval base of mean free path for a grid-searching process"
+    )
 
     storage_options: DefaultDict[str, typing.MutableMapping] = Field(
         default=defaultdict(dict),
