@@ -976,6 +976,181 @@ def wtdtw_dvv(ref, cur, allfreq, para, maxLag, b, direction, dj=1 / 12, s0=-1, J
         return freq[freq_indin], dvv, err
 
 
+def wts_allfreq(
+    ref: np.ndarray,
+    cur: np.ndarray,
+    allfreq: bool,
+    para: dict,
+    dv_range: float,
+    nbtrial: int,
+    dj: float = 1 / 12,
+    s0: int = -1,
+    J: int = -1,
+    wvn: str = "morlet",
+    normalize: bool = True,
+):
+    """
+    Apply stretching method to continuous wavelet transformation (CWT) of signals
+    for all frequecies in an interest range
+
+    Parameters
+    --------------
+    :type ref: :class:`~numpy.ndarray`
+    :param ref: 1d array. The reference trace.
+    :type cur: :class:`~numpy.ndarray`
+    :param cur: 1d array. Cross-correlation measurements.
+    :type ave: :class:`~numpy.ndarray`
+    :param ave: flag to averaging the dv/v over a frequency range.
+
+    :params, dj, s0, J, wvn, refer to function 'wavelet.cwt'
+    :normalize: True - normalize signals before stretching. Default is True
+    :param maxdv: Velocity relative variation range [-maxdv, maxdv](100%)
+    :param ndv : Number of stretching coefficient between dvmin and dvmax, no need to be higher than 100  ('float')
+    :nwindow: the times of current period/frequency, which will be time window if windowflag is False
+    :windowflag: if True, the given window 'twindow' will be used,
+                 otherwise, the current period*nwindow will be used as time window
+
+    Written by Congcong Yuan (30 Jun, 2019)
+    """
+    # common variables
+    freq = para["freq"]
+    dt = para["dt"]
+    fmin = np.min(freq)
+    fmax = np.max(freq)
+
+    # apply cwt on two traces
+    cwt1, sj, freq, coi, _, _ = pycwt.cwt(cur, dt, dj, s0, J, wvn)
+    cwt2, sj, freq, coi, _, _ = pycwt.cwt(ref, dt, dj, s0, J, wvn)
+
+    # extract real values of cwt
+    rcwt1, rcwt2 = np.real(cwt1), np.real(cwt2)
+
+    # zero out data outside frequency band
+    if (fmax > np.max(freq)) | (fmax <= fmin):
+        raise ValueError("Abort: input frequency out of limits!")
+    else:
+        freq_indin = np.where((freq >= fmin) & (freq <= fmax))[0]
+
+        # initialize variable
+        nfreq = len(freq_indin)
+        dvv, cc, cdp, err = (
+            np.zeros(nfreq, dtype=np.float32),
+            np.zeros(nfreq, dtype=np.float32),
+            np.zeros(nfreq, dtype=np.float32),
+            np.zeros(nfreq, dtype=np.float32),
+        )
+
+        # loop through each freq
+        for ii, ifreq in enumerate(freq_indin):
+            # prepare windowed data
+            wcwt1, wcwt2 = rcwt1[ifreq], rcwt2[ifreq]
+
+            # Normalizes both signals, if appropriate.
+            if normalize:
+                ncwt1 = (wcwt1 - wcwt1.mean()) / wcwt1.std()
+                ncwt2 = (wcwt2 - wcwt2.mean()) / wcwt2.std()
+            else:
+                ncwt1 = wcwt1
+                ncwt2 = wcwt2
+
+            # run stretching
+            dv, error, c1, c2 = stretching(ncwt2, ncwt1, dv_range, nbtrial, para)
+            dvv[ii], cc[ii], cdp[ii], err[ii] = dv, c1, c2, error
+
+    del cwt1, cwt2, rcwt1, rcwt2, ncwt1, ncwt2, wcwt1, wcwt2, coi, sj
+
+    if not allfreq:
+        return np.mean(dvv), np.mean(err)
+    else:
+        return freq[freq_indin], dvv, err
+
+
+def wtdtw_allfreq(
+    ref: np.ndarray,
+    cur: np.ndarray,
+    allfreq: bool,
+    para: dict,
+    maxLag: int,
+    b: float,
+    direction: int,
+    dj: float = 1 / 12,
+    s0: int = -1,
+    J: int = -1,
+    wvn: str = "morlet",
+    normalize: bool = True,
+):
+    """
+    Apply dynamic time warping method to continuous wavelet transformation (CWT) of signals
+    for all frequecies in an interest range
+
+    Parameters
+    --------------
+    :type cur: :class:`~numpy.ndarray`
+    :param cur: 1d array. Cross-correlation measurements.
+    :type ref: :class:`~numpy.ndarray`
+    :param ref: 1d array. The reference trace.
+    :type t: :class:`~numpy.ndarray`
+    :param t: 1d array. Cross-correlation measurements.
+    :param twindow: 1d array. [earlist time, latest time] time window limit
+    :param fwindow: 1d array. [lowest frequncy, highest frequency] frequency window limit
+    :params, dj, s0, J, wvn, refer to function 'wavelet.cwt'
+    :normalize: True - normalize signals before stretching. Default is True
+    :param maxLag : max number of points to search forward and backward.
+                Suggest setting it larger if window is set larger.
+    :param b : b-value to limit strain, which is to limit the maximum velocity perturbation.
+               See equation 11 in (Mikesell et al. 2015)
+    :nwindow: the times of current period/frequency, which will be time window if windowflag is False
+    :windowflag: if True, the given window 'twindow' will be used,
+                 otherwise, the current period*nwindow will be used as time window
+
+    Written by Congcong Yuan (30 Jun, 2019)
+    """
+    # common variables
+    freq = para["freq"]
+    dt = para["dt"]
+    fmin = np.min(freq)
+    fmax = np.max(freq)
+
+    # apply cwt on two traces
+    cwt1, sj, freq, coi, _, _ = pycwt.cwt(cur, dt, dj, s0, J, wvn)
+    cwt2, sj, freq, coi, _, _ = pycwt.cwt(ref, dt, dj, s0, J, wvn)
+
+    # extract real values of cwt
+    rcwt1, rcwt2 = np.real(cwt1), np.real(cwt2)
+
+    # zero out cone of influence and data outside frequency band
+    if (fmax > np.max(freq)) | (fmax <= fmin):
+        raise ValueError("Abort: input frequency out of limits!")
+    else:
+        freq_indin = np.where((freq >= fmin) & (freq <= fmax))[0]
+
+        # Use DTW method to extract dvv
+        nfreq = len(freq_indin)
+        dvv, err = np.zeros(nfreq, dtype=np.float32), np.zeros(nfreq, dtype=np.float32)
+
+        for ii, ifreq in enumerate(freq_indin):
+            # prepare windowed data
+            wcwt1, wcwt2 = rcwt1[ifreq], rcwt2[ifreq]
+            # Normalizes both signals, if appropriate.
+            if normalize:
+                ncwt1 = (wcwt1 - wcwt1.mean()) / wcwt1.std()
+                ncwt2 = (wcwt2 - wcwt2.mean()) / wcwt2.std()
+            else:
+                ncwt1 = wcwt1
+                ncwt2 = wcwt2
+
+            # run dtw
+            dv, error, dist = dtw_dvv(ncwt2, ncwt1, para, maxLag, b, direction)
+            dvv[ii], err[ii] = dv, error
+
+    del cwt1, cwt2, rcwt1, rcwt2, ncwt1, ncwt2, wcwt1, wcwt2, coi, sj, dist
+
+    if not allfreq:
+        return np.mean(dvv), np.mean(err)
+    else:
+        return freq[freq_indin], dvv, err
+
+
 #############################################################
 ################ MONITORING UTILITY FUNCTIONS ###############
 #############################################################
