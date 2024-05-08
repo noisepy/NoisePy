@@ -221,11 +221,14 @@ def stretching(ref, cur, dv_range, nbtrial, para):
     #   On the precision of noise-correlation interferometry, Geophys. J. Int., 185(3)
     T = 1 / (fmax - fmin)
     X = cc
+    # extremely similar signals can return cc>1.0 (not possible), so we limit cc to 1.0 to prevent sqrt(neg)
+    if X > 1.0:
+        X = 1.0
     wc = np.pi * (fmin + fmax)
     t1 = np.min([tmin, tmax])
     t2 = np.max([tmin, tmax])
     error = 100 * (
-        np.sqrt(1 - X**2) / (2 * X) * np.sqrt((6 * np.sqrt(np.pi / 2) * T) / (wc**2 * (t2**3 - t1**3)))
+        (np.sqrt(1 - X**2) / (2 * X)) * (np.sqrt((6 * np.sqrt(np.pi / 2) * T) / (wc**2 * (t2) ** 3 - (t1) ** 3)))
     )
 
     return dv, error, cc, cdp
