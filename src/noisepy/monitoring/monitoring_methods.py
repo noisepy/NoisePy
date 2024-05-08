@@ -136,22 +136,19 @@ def wcc_dvv(ref, cur, moving_window_length, slide_step, para):
 
 def stretching(ref, cur, dv_range, nbtrial, para):
     """
-    This function compares the Reference waveform to stretched/compressed
-    current waveforms to get the relative seismic velocity variation (and
-    associated error).
-    It also computes the correlation coefficient between the Reference
-    waveform and the current waveform.
+    This function compares the Reference waveform to stretched/compressed current waveforms to get the
+    relative seismic velocity variation (and associated error).
+    It also computes the correlation coefficient between the Reference waveform and the current waveform.
 
     PARAMETERS:
     ----------------
     ref: Reference waveform (np.ndarray, size N)
     cur: Current waveform (np.ndarray, size N)
-    dv_range: absolute bound for the velocity variation; example: dv=0.03 for
-                [-3,3]% of relative velocity change ('float')
-    nbtrial: number of stretching coefficient between dvmin and dvmax,
-                no need to be higher than 100  ('float')
-    para: vector of the indices of the cur and ref windows on wich you want to
-                do the measurements (np.ndarray, size tmin*delta:tmax*delta)
+    dv_range: absolute bound for the velocity variation; example: dv=0.03 for [-3,3]% of
+                relative velocity change ('float')
+    nbtrial: number of stretching coefficient between dvmin and dvmax, no need to be higher than 100  ('float')
+    para: vector of the indices of the cur and ref windows on wich you want to do the measurements
+            (np.ndarray, size tmin*delta:tmax*delta)
     For error computation, we need parameters:
         fmin: minimum frequency of the data
         fmax: maximum frequency of the data
@@ -160,15 +157,13 @@ def stretching(ref, cur, dv_range, nbtrial, para):
     RETURNS:
     ----------------
     dv: Relative velocity change dv/v (in %)
-    cc: correlation coefficient between the reference waveform and the
-            best stretched/compressed current waveform
-    cdp: correlation coefficient between the reference waveform and
-            the initial current waveform
-    error: Errors in the dv/v measurements based on Weaver et al (2011),
-            On the precision of noise-correlation interferometry, Geophys. J. Int., 185(3)
+    cc: correlation coefficient between the reference waveform and the best stretched/compressed current waveform
+    cdp: correlation coefficient between the reference waveform and the initial current waveform
+    error: Errors in the dv/v measurements based on Weaver et al (2011), On the precision of noise-correlation
+            interferometry, Geophys. J. Int., 185(3)
 
-    Note: The code first finds the best correlation coefficient between the
-            Reference waveform and the stretched/compressed current waveform among the "nbtrial" values.
+    Note: The code first finds the best correlation coefficient between the Reference waveform and
+            the stretched/compressed current waveform among the "nbtrial" values.
     A refined analysis is then performed around this value to obtain a more precise dv/v measurement.
 
     Originally by L. Viens 04/26/2018 (Viens et al., 2018 JGR)
@@ -199,8 +194,8 @@ def stretching(ref, cur, dv_range, nbtrial, para):
         waveform_ref = ref
         waveform_cur = s
         cof[ii] = np.corrcoef(waveform_ref, waveform_cur)[0, 1]
-    # correlation coefficient between the reference and initial current waveforms
-    cdp = np.corrcoef(cur, ref)[0, 1]
+
+    cdp = np.corrcoef(cur, ref)[0, 1]  # correlation coefficient between the reference and initial current waveforms
 
     # find the maximum correlation coefficient
     imax = np.nanargmax(cof)
@@ -219,108 +214,11 @@ def stretching(ref, cur, dv_range, nbtrial, para):
         waveform_cur = s
         ncof[ii] = np.corrcoef(waveform_ref, waveform_cur)[0, 1]
 
-    # Find maximum correlation coefficient of the refined analysis
-    cc = np.max(ncof)
-    dv = 100.0 * dtfiner[np.argmax(ncof)] - 100
-    # Multiply by 100 to convert to percentage (Epsilon = -dt/t = dv/v)
-
-    # Error computation based on Weaver et al (2011),
-    # On the precision of noise-correlation interferometry, Geophys. J. Int., 185(3)
-    T = 1 / (fmax - fmin)
-    X = cc
-    wc = np.pi * (fmin + fmax)
-    t1 = np.min([tmin, tmax])
-    t2 = np.max([tmin, tmax])
-    error = 100 * (
-        np.sqrt(1 - X**2) / (2 * X) * np.sqrt((6 * np.sqrt(np.pi / 2) * T) / (wc**2 * (t2**3 - t1**3)))
-    )
-
-    return dv, error, cc, cdp
-
-
-def stretching_vect(ref: np.ndarray, cur: np.ndarray, dv_range: float, nbtrial: int, para: dict):
-    """
-    This function compares the Reference waveform to stretched/compressed current waveforms
-    to get the relative seismic velocity variation (and associated error).
-    It also computes the correlation coefficient between the Reference waveform and the current waveform.
-
-    PARAMETERS:
-    ----------------
-    ref: Reference waveform (np.ndarray, size N)
-    cur: Current waveform (np.ndarray, size N)
-    dv_range: absolute bound for the velocity variation; example: dv=0.03 for [-3,3]%
-    of relative velocity change ('float')
-    nbtrial: number of stretching coefficient between dvmin and dvmax, no need to be higher than 100  ('float')
-    para: vector of the indices of the cur and ref windows on wich you want to do the
-    measurements (np.ndarray, size tmin*delta:tmax*delta)
-    For error computation, we need parameters:
-        fmin: minimum frequency of the data
-        fmax: maximum frequency of the data
-        tmin: minimum time window where the dv/v is computed
-        tmax: maximum time window where the dv/v is computed
-    RETURNS:
-    ----------------
-    dv: Relative velocity change dv/v (in %)
-    cc: correlation coefficient between the reference waveform and the best stretched/compressed current waveform
-    cdp: correlation coefficient between the reference waveform and the initial current waveform
-    error: Errors in the dv/v measurements based on Weaver et al (2011), On the precision
-    of noise-correlation interferometry, Geophys. J. Int., 185(3)
-
-    Note: The code first finds the best correlation coefficient between the Reference waveform and
-    the stretched/compressed current waveform among the "nbtrial" values.
-    A refined analysis is then performed around this value to obtain a more precise dv/v measurement .
-
-    Originally by L. Viens 04/26/2018 (Viens et al., 2018 JGR)
-    modified by Chengxin Jiang
-    modified by Laura Ermert: vectorized version
-    """
-    # load common variables from dictionary
-    twin = para["twin"]
-    freq = para["freq"]
-    dt = para["dt"]
-    tmin = np.min(twin)
-    tmax = np.max(twin)
-    fmin = np.min(freq)
-    fmax = np.max(freq)
-    tvec = np.arange(tmin, tmax, dt)
-
-    # make useful one for measurements
-    dvmin = -np.abs(dv_range)
-    dvmax = np.abs(dv_range)
-    Eps = 1 + (np.linspace(dvmin, dvmax, nbtrial))
-    cdp = np.corrcoef(cur, ref)[0, 1]  # correlation coefficient between the reference and initial current waveforms
-    waveforms = np.zeros((nbtrial + 1, len(ref)))
-    waveforms[0, :] = ref
-
-    # Set of stretched/compressed current waveforms
-    for ii in range(nbtrial):
-        nt = tvec * Eps[ii]
-        s = np.interp(x=tvec, xp=nt, fp=cur)
-        waveforms[ii + 1, :] = s
-    cof = np.corrcoef(waveforms)[0][1:]
-
-    # find the maximum correlation coefficient
-    imax = np.nanargmax(cof)
-    if imax >= len(Eps) - 2:
-        imax = imax - 2
-    if imax < 2:
-        imax = imax + 2
-
-    # Proceed to the second step to get a more precise dv/v measurement
-    dtfiner = np.linspace(Eps[imax - 2], Eps[imax + 2], nbtrial)
-    # ncof    = np.zeros(dtfiner.shape,dtype=np.float32)
-    waveforms = np.zeros((nbtrial + 1, len(ref)))
-    waveforms[0, :] = ref
-    for ii in range(len(dtfiner)):
-        nt = tvec * dtfiner[ii]
-        s = np.interp(x=tvec, xp=nt, fp=cur)
-        waveforms[ii + 1, :] = s
-    ncof = np.corrcoef(waveforms)[0][1:]
-    cc = np.max(ncof)  # Find maximum correlation coefficient of the refined  analysis
+    cc = np.max(ncof)  # Find maximum correlation coefficient of the refined analysis
     dv = 100.0 * dtfiner[np.argmax(ncof)] - 100  # Multiply by 100 to convert to percentage (Epsilon = -dt/t = dv/v)
 
-    # Error computation based on Weaver et al (2011), On the precision of noise-correlation interferometry,
-    # Geophys. J. Int., 185(3)
+    # Error computation based on Weaver et al (2011),
+    #   On the precision of noise-correlation interferometry, Geophys. J. Int., 185(3)
     T = 1 / (fmax - fmin)
     X = cc
     wc = np.pi * (fmin + fmax)
@@ -505,7 +403,7 @@ def mwcs_dvv(ref, cur, moving_window_length, slide_step, para, smoothing_half_wi
         phi = phi[index_range]
 
         # Calculate the slope with a weighted least square linear regression
-        # forced through the origin; weights for the WLS must be the variance !
+        # forced through the origin; weights for the WLS must be the variance!
         m, em = linear_regression(v.flatten(), phi.flatten(), w.flatten())
         delta_t.append(m)
 
@@ -586,7 +484,7 @@ def wxs_dvv(ref, cur, allfreq, para, dj=1 / 12, s0=-1, J=-1, sig=False, wvn="mor
     Originally written by Tim Clements (1 March, 2019)
     Modified by Congcong Yuan (30 June, 2019) based on (Mao et al. 2019).
     Updated by Chengxin Jiang (10 Oct, 2019) to merge the functionality
-            for mesurements across all frequency and one freq range
+        for mesurements across all frequency and one freq range
     """
     # common variables
     t = para["t"]
@@ -680,10 +578,9 @@ def wts_dvv(ref, cur, allfreq, para, dv_range, nbtrial, dj=1 / 12, s0=-1, J=-1, 
     cur: The complete "Current" time series (numpy.ndarray)
     allfreq: a boolen variable to make measurements on all frequency range or not
     para: a dict containing freq/time info of the data matrix
-    dv_range: absolute bound for the velocity variation; example: dv=0.03 for
-                [-3,3]% of relative velocity change (float)
-    nbtrial: number of stretching coefficient between dvmin and dvmax,
-                no need to be higher than 100  (float)
+    dv_range: absolute bound for the velocity variation; example: dv=0.03 for [-3,3]%
+                of relative velocity change (float)
+    nbtrial: number of stretching coefficient between dvmin and dvmax, no need to be higher than 100 (float)
     dj, s0, J, sig, wvn: common parameters used in 'wavelet.wct'
     normalize: normalize the wavelet spectrum or not. Default is True
 
@@ -782,10 +679,9 @@ def wts_dvv_02(ref, cur, allfreq, para, dv_range, nbtrial, dj=1 / 12, s0=-1, J=-
     cur: The complete "Current" time series (numpy.ndarray)
     allfreq: a boolen variable to make measurements on all frequency range or not
     para: a dict containing freq/time info of the data matrix
-    dv_range: absolute bound for the velocity variation; example: dv=0.03 for
-                [-3,3]% of relative velocity change (float)
-    nbtrial: number of stretching coefficient between dvmin and dvmax,
-                no need to be higher than 100  (float)
+    dv_range: absolute bound for the velocity variation; example: dv=0.03 for [-3,3]%
+                of relative velocity change (float)
+    nbtrial: number of stretching coefficient between dvmin and dvmax, no need to be higher than 100 (float)
     dj, s0, J, sig, wvn: common parameters used in 'wavelet.wct'
     normalize: normalize the wavelet spectrum or not. Default is True
 
@@ -885,7 +781,7 @@ def wtdtw_dvv(ref, cur, allfreq, para, maxLag, b, direction, dj=1 / 12, s0=-1, J
     allfreq: a boolen variable to make measurements on all frequency range or not
     maxLag: max number of points to search forward and backward.
     b: b-value to limit strain, which is to limit the maximum velocity perturbation.
-                See equation 11 in (Mikesell et al. 2015)
+        See equation 11 in (Mikesell et al. 2015)
     direction: direction to accumulate errors (1=forward, -1=backward)
     dj, s0, J, sig, wvn: common parameters used in 'wavelet.wct'
     normalize: normalize the wavelet spectrum or not. Default is True
@@ -949,8 +845,6 @@ def wtdtw_dvv(ref, cur, allfreq, para, maxLag, b, direction, dj=1 / 12, s0=-1, J
     else:
         # initialize variable
         nfreq = len(freq_indin)
-
-        # dvv, cc, cdp, err = (
         dvv, err = (
             np.zeros(nfreq, dtype=np.float32),
             np.zeros(nfreq, dtype=np.float32),
@@ -973,181 +867,6 @@ def wtdtw_dvv(ref, cur, allfreq, para, maxLag, b, direction, dj=1 / 12, s0=-1, J
             dv, error, dist = dtw_dvv(ncwt2[itvec], ncwt1[itvec], para, maxLag, b, direction)
             dvv[ii], err[ii] = dv, error
 
-        return freq[freq_indin], dvv, err
-
-
-def wts_allfreq(
-    ref: np.ndarray,
-    cur: np.ndarray,
-    allfreq: bool,
-    para: dict,
-    dv_range: float,
-    nbtrial: int,
-    dj: float = 1 / 12,
-    s0: int = -1,
-    J: int = -1,
-    wvn: str = "morlet",
-    normalize: bool = True,
-):
-    """
-    Apply stretching method to continuous wavelet transformation (CWT) of signals
-    for all frequecies in an interest range
-
-    Parameters
-    --------------
-    :type ref: :class:`~numpy.ndarray`
-    :param ref: 1d array. The reference trace.
-    :type cur: :class:`~numpy.ndarray`
-    :param cur: 1d array. Cross-correlation measurements.
-    :type ave: :class:`~numpy.ndarray`
-    :param ave: flag to averaging the dv/v over a frequency range.
-
-    :params, dj, s0, J, wvn, refer to function 'wavelet.cwt'
-    :normalize: True - normalize signals before stretching. Default is True
-    :param maxdv: Velocity relative variation range [-maxdv, maxdv](100%)
-    :param ndv : Number of stretching coefficient between dvmin and dvmax, no need to be higher than 100  ('float')
-    :nwindow: the times of current period/frequency, which will be time window if windowflag is False
-    :windowflag: if True, the given window 'twindow' will be used,
-                 otherwise, the current period*nwindow will be used as time window
-
-    Written by Congcong Yuan (30 Jun, 2019)
-    """
-    # common variables
-    freq = para["freq"]
-    dt = para["dt"]
-    fmin = np.min(freq)
-    fmax = np.max(freq)
-
-    # apply cwt on two traces
-    cwt1, sj, freq, coi, _, _ = pycwt.cwt(cur, dt, dj, s0, J, wvn)
-    cwt2, sj, freq, coi, _, _ = pycwt.cwt(ref, dt, dj, s0, J, wvn)
-
-    # extract real values of cwt
-    rcwt1, rcwt2 = np.real(cwt1), np.real(cwt2)
-
-    # zero out data outside frequency band
-    if (fmax > np.max(freq)) | (fmax <= fmin):
-        raise ValueError("Abort: input frequency out of limits!")
-    else:
-        freq_indin = np.where((freq >= fmin) & (freq <= fmax))[0]
-
-        # initialize variable
-        nfreq = len(freq_indin)
-        dvv, cc, cdp, err = (
-            np.zeros(nfreq, dtype=np.float32),
-            np.zeros(nfreq, dtype=np.float32),
-            np.zeros(nfreq, dtype=np.float32),
-            np.zeros(nfreq, dtype=np.float32),
-        )
-
-        # loop through each freq
-        for ii, ifreq in enumerate(freq_indin):
-            # prepare windowed data
-            wcwt1, wcwt2 = rcwt1[ifreq], rcwt2[ifreq]
-
-            # Normalizes both signals, if appropriate.
-            if normalize:
-                ncwt1 = (wcwt1 - wcwt1.mean()) / wcwt1.std()
-                ncwt2 = (wcwt2 - wcwt2.mean()) / wcwt2.std()
-            else:
-                ncwt1 = wcwt1
-                ncwt2 = wcwt2
-
-            # run stretching
-            dv, error, c1, c2 = stretching(ncwt2, ncwt1, dv_range, nbtrial, para)
-            dvv[ii], cc[ii], cdp[ii], err[ii] = dv, c1, c2, error
-
-    del cwt1, cwt2, rcwt1, rcwt2, ncwt1, ncwt2, wcwt1, wcwt2, coi, sj
-
-    if not allfreq:
-        return np.mean(dvv), np.mean(err)
-    else:
-        return freq[freq_indin], dvv, err
-
-
-def wtdtw_allfreq(
-    ref: np.ndarray,
-    cur: np.ndarray,
-    allfreq: bool,
-    para: dict,
-    maxLag: int,
-    b: float,
-    direction: int,
-    dj: float = 1 / 12,
-    s0: int = -1,
-    J: int = -1,
-    wvn: str = "morlet",
-    normalize: bool = True,
-):
-    """
-    Apply dynamic time warping method to continuous wavelet transformation (CWT) of signals
-    for all frequecies in an interest range
-
-    Parameters
-    --------------
-    :type cur: :class:`~numpy.ndarray`
-    :param cur: 1d array. Cross-correlation measurements.
-    :type ref: :class:`~numpy.ndarray`
-    :param ref: 1d array. The reference trace.
-    :type t: :class:`~numpy.ndarray`
-    :param t: 1d array. Cross-correlation measurements.
-    :param twindow: 1d array. [earlist time, latest time] time window limit
-    :param fwindow: 1d array. [lowest frequncy, highest frequency] frequency window limit
-    :params, dj, s0, J, wvn, refer to function 'wavelet.cwt'
-    :normalize: True - normalize signals before stretching. Default is True
-    :param maxLag : max number of points to search forward and backward.
-                Suggest setting it larger if window is set larger.
-    :param b : b-value to limit strain, which is to limit the maximum velocity perturbation.
-               See equation 11 in (Mikesell et al. 2015)
-    :nwindow: the times of current period/frequency, which will be time window if windowflag is False
-    :windowflag: if True, the given window 'twindow' will be used,
-                 otherwise, the current period*nwindow will be used as time window
-
-    Written by Congcong Yuan (30 Jun, 2019)
-    """
-    # common variables
-    freq = para["freq"]
-    dt = para["dt"]
-    fmin = np.min(freq)
-    fmax = np.max(freq)
-
-    # apply cwt on two traces
-    cwt1, sj, freq, coi, _, _ = pycwt.cwt(cur, dt, dj, s0, J, wvn)
-    cwt2, sj, freq, coi, _, _ = pycwt.cwt(ref, dt, dj, s0, J, wvn)
-
-    # extract real values of cwt
-    rcwt1, rcwt2 = np.real(cwt1), np.real(cwt2)
-
-    # zero out cone of influence and data outside frequency band
-    if (fmax > np.max(freq)) | (fmax <= fmin):
-        raise ValueError("Abort: input frequency out of limits!")
-    else:
-        freq_indin = np.where((freq >= fmin) & (freq <= fmax))[0]
-
-        # Use DTW method to extract dvv
-        nfreq = len(freq_indin)
-        dvv, err = np.zeros(nfreq, dtype=np.float32), np.zeros(nfreq, dtype=np.float32)
-
-        for ii, ifreq in enumerate(freq_indin):
-            # prepare windowed data
-            wcwt1, wcwt2 = rcwt1[ifreq], rcwt2[ifreq]
-            # Normalizes both signals, if appropriate.
-            if normalize:
-                ncwt1 = (wcwt1 - wcwt1.mean()) / wcwt1.std()
-                ncwt2 = (wcwt2 - wcwt2.mean()) / wcwt2.std()
-            else:
-                ncwt1 = wcwt1
-                ncwt2 = wcwt2
-
-            # run dtw
-            dv, error, dist = dtw_dvv(ncwt2, ncwt1, para, maxLag, b, direction)
-            dvv[ii], err[ii] = dv, error
-
-    del cwt1, cwt2, rcwt1, rcwt2, ncwt1, ncwt2, wcwt1, wcwt2, coi, sj, dist
-
-    if not allfreq:
-        return np.mean(dvv), np.mean(err)
-    else:
         return freq[freq_indin], dvv, err
 
 
@@ -1196,8 +915,7 @@ def nextpow2(x):
 
 def getCoherence(dcs, ds1, ds2):
     """
-    get cross coherence between reference and current waveforms
-        following equation of A3 in Clark et al., 2011
+    get cross coherence between reference and current waveforms following equation of A3 in Clark et al., 2011
 
     Parameters
     --------------
@@ -1219,8 +937,8 @@ def getCoherence(dcs, ds1, ds2):
 
 def computeErrorFunction(u1, u0, nSample, lag, norm="L2"):
     """
-    compute Error Function used in DTW. The error function is equation 1 in Hale, 2013.
-    You could uncomment the L1 norm and comment the L2 norm if you want on Line 29.
+    compute Error Function used in DTW. The error function is equation 1 in Hale, 2013. You could uncomment the
+    L1 norm and comment the L2 norm if you want on Line 29
 
     Parameters
     --------------
@@ -1282,8 +1000,7 @@ def accumulateErrorFunction(dir, err, nSample, lag, b):
 
     Parameters
     --------------
-    dir: accumulation direction
-            ( dir > 0 = forward in time, dir <= 0 = backward in time)
+    dir: accumulation direction ( dir > 0 = forward in time, dir <= 0 = backward in time)
     err: the 2D error function; size = (nsamp,2*lag+1)
     nSample: numer of points to compare in the traces
     lag: maximum lag in sample number to search
@@ -1446,9 +1163,10 @@ def wct_modified(
 ):
     """
         Wavelet coherence transform (WCT).
-
+    ​
         The WCT finds regions in time frequency space where the two time
         series co-vary, but do not necessarily have high power.
+    ​
         Parameters
         ----------
         y1, y2 : numpy.ndarray, list
@@ -1538,6 +1256,5 @@ def wct_modified(
         )
     else:
         sig = np.asarray([0])
-    del b1, c1, b2, c2  # for passing flake8 checking
 
     return WCT, aWCT, coi, freq, sig
