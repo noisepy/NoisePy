@@ -23,7 +23,7 @@ data2 = [
     (
         np.sin(np.arange(100) / 10),
         np.sin(np.arange(100) / 10.1),
-        {"twin": [0, 99], "t": np.array([0, 100]), "freq": [0.01, 0.49], "dt": 1},
+        {"twin": [0, 99], "t": np.array(np.arange(100)), "freq": [0.01, 0.49], "dt": 1},
     )
 ]
 
@@ -63,7 +63,7 @@ def test_mwcs_dvv(d1: np.ndarray, d2: np.ndarray, param: dict):
     assert dv < 0
 
 
-@pytest.mark.parametrize("d1,d2,param", data)
+@pytest.mark.parametrize("d1,d2,param", data2)
 @pytest.mark.parametrize("allfreq", [True, False])
 def test_wxs_dvv(d1: np.ndarray, d2: np.ndarray, param: dict, allfreq: bool):
     if allfreq:
@@ -74,7 +74,7 @@ def test_wxs_dvv(d1: np.ndarray, d2: np.ndarray, param: dict, allfreq: bool):
     assert np.all(dvv < 0)
 
 
-@pytest.mark.parametrize("d1,d2,param", data)
+@pytest.mark.parametrize("d1,d2,param", data2)
 @pytest.mark.parametrize("allfreq", [True, False])
 @pytest.mark.parametrize("normalize", [True, False])
 def test_wts_dvv(d1: np.ndarray, d2: np.ndarray, param: dict, allfreq: bool, normalize: bool):
