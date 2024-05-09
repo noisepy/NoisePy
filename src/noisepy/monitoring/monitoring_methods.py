@@ -1,8 +1,12 @@
+import logging
+
 import numpy as np
 import pycwt
 import scipy
 from obspy.signal.invsim import cosine_taper
 from obspy.signal.regression import linear_regression
+
+logger = logging.getLogger(__name__)
 
 """
 This dvv module is written to realize the measurements of velocity perturbation dv/v. In general,
@@ -113,7 +117,7 @@ def wcc_dvv(ref, cur, moving_window_length, slide_step, para):
     del m
 
     if maxind > len(cur) + int(slide_step / dt):
-        print("The last window was too small, but was computed")
+        logger.warning("The last window was too small, but was computed")
 
     delta_t = np.array(delta_t)
     delta_t_coef = np.array(delta_t_coef)
@@ -127,7 +131,7 @@ def wcc_dvv(ref, cur, moving_window_length, slide_step, para):
         m0, em0 = linear_regression(time_axis.flatten(), delta_t.flatten(), w.flatten(), intercept_origin=True)
 
     else:
-        print("not enough points to estimate dv/v for wcc")
+        logger.warning("not enough points to estimate dv/v for wcc")
         m0 = 0
         em0 = 0
 
@@ -290,7 +294,7 @@ def dtw_dvv(ref, cur, para, maxLag, b, direction):
         )
 
     else:
-        print("not enough points to estimate dv/v for dtw")
+        logger.warning("not enough points to estimate dv/v for dtw")
         m0 = 0
         em0 = 0
 
@@ -428,7 +432,7 @@ def mwcs_dvv(ref, cur, moving_window_length, slide_step, para, smoothing_half_wi
         del w, v, e, s2x2, sx2, m, em
 
     if maxind > len(cur) + int(slide_step / dt):
-        print("The last window was too small, but was computed")
+        logger.warning("The last window was too small, but was computed")
 
     # ensure all matrix are np array
     delta_t = np.array(delta_t)
@@ -458,7 +462,7 @@ def mwcs_dvv(ref, cur, moving_window_length, slide_step, para, smoothing_half_wi
         m0, em0 = linear_regression(time_axis[indx], delta_t[indx], w, intercept_origin=True)
 
     else:
-        print("not enough points to estimate dv/v for mwcs")
+        logger.warning("not enough points to estimate dv/v for mwcs")
         m0 = 0
         em0 = 0
 
@@ -539,7 +543,7 @@ def wxs_dvv(ref, cur, allfreq, para, dj=1 / 12, s0=-1, J=-1, sig=False, wvn="mor
             m, em = linear_regression(tvec, delta_t_m, w2, intercept_origin=True)
             dvv, err = -m, em
         else:
-            print("not enough points to estimate dv/v for wts")
+            logger.warning("not enough points to estimate dv/v for wts")
             dvv, err = np.nan, np.nan
 
         return dvv * 100, err * 100
@@ -564,7 +568,7 @@ def wxs_dvv(ref, cur, allfreq, para, dj=1 / 12, s0=-1, J=-1, sig=False, wvn="mor
                 m, em = linear_regression(tvec, delta_t[ifreq, itvec], w, intercept_origin=True)
                 dvv[ii], err[ii] = -m, em
             else:
-                print("not enough points to estimate dv/v for wts")
+                logger.warning("not enough points to estimate dv/v for wts")
                 dvv[ii], err[ii] = np.nan, np.nan
 
         return freq[freq_indin], dvv * 100, err * 100
