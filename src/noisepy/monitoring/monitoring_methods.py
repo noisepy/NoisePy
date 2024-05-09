@@ -671,107 +671,6 @@ def wts_dvv(ref, cur, allfreq, para, dv_range, nbtrial, dj=1 / 12, s0=-1, J=-1, 
         return freq[freq_indin], dvv, err
 
 
-def wts_dvv_02(ref, cur, allfreq, para, dv_range, nbtrial, dj=1 / 12, s0=-1, J=-1, wvn="morlet", normalize=True):
-    """
-    Apply stretching method to continuous wavelet transformation (CWT) of signals
-    for all frequecies in an interest range
-
-    Parameters
-    --------------
-    ref: The complete "Reference" time series (numpy.ndarray)
-    cur: The complete "Current" time series (numpy.ndarray)
-    allfreq: a boolen variable to make measurements on all frequency range or not
-    para: a dict containing freq/time info of the data matrix
-    dv_range: absolute bound for the velocity variation; example: dv=0.03 for [-3,3]%
-                of relative velocity change (float)
-    nbtrial: number of stretching coefficient between dvmin and dvmax, no need to be higher than 100 (float)
-    dj, s0, J, sig, wvn: common parameters used in 'wavelet.wct'
-    normalize: normalize the wavelet spectrum or not. Default is True
-
-    RETURNS:
-    ------------------
-    dvv: estimated dv/v
-    err: error of dv/v estimation
-
-    Written by Congcong Yuan (30 Jun, 2019)
-    """
-    # common variables
-    t = para["t"]
-    twin = para["twin"]
-    freq = para["freq"]
-    dt = para["dt"]
-    tmin = np.min(twin)
-    tmax = np.max(twin)
-    fmin = np.min(freq)
-    fmax = np.max(freq)
-    itvec = np.arange(np.int64((tmin - t.min()) / dt) + 1, np.int64((tmax - t.min()) / dt) + 1)
-    # tvec = t[itvec]
-
-    # apply cwt on two traces
-    cwt1, sj, freq, coi, _, _ = pycwt.cwt(cur, dt, dj, s0, J, wvn)
-    cwt2, sj, freq, coi, _, _ = pycwt.cwt(ref, dt, dj, s0, J, wvn)
-
-    # extract real values of cwt
-    rcwt1, rcwt2 = np.real(cwt1), np.real(cwt2)
-
-    # zero out data outside frequency band
-    if (fmax > np.max(freq)) | (fmax <= fmin):
-        raise ValueError("Abort: input frequency out of limits!")
-    else:
-        freq_indin = np.where((freq >= fmin) & (freq <= fmax))[0]
-
-    # convert wavelet domain back to time domain (~filtering)
-    if not allfreq:
-        # inverse cwt to time domain
-        icwt1 = pycwt.icwt(cwt1[freq_indin], sj[freq_indin], dt, dj, wvn)
-        icwt2 = pycwt.icwt(cwt2[freq_indin], sj[freq_indin], dt, dj, wvn)
-
-        # assume all time window is used
-        wcwt1, wcwt2 = np.real(icwt1), np.real(icwt2)
-
-        # Normalizes both signals, if appropriate.
-        if normalize:
-            ncwt1 = (wcwt1 - wcwt1.mean()) / wcwt1.std()
-            ncwt2 = (wcwt2 - wcwt2.mean()) / wcwt2.std()
-        else:
-            ncwt1 = wcwt1
-            ncwt2 = wcwt2
-
-        # run stretching
-        dvv, err, cc, cdp = stretching(ncwt2[itvec], ncwt1[itvec], dv_range, nbtrial, para)
-        return dvv, err, cc, cdp
-
-    # directly take advantage of the real-valued parts of wavelet transforms
-    else:
-        # initialize variable
-        nfreq = len(freq_indin)
-        dvv, cc, cdp, err = (
-            np.zeros(nfreq, dtype=np.float32),
-            np.zeros(nfreq, dtype=np.float32),
-            np.zeros(nfreq, dtype=np.float32),
-            np.zeros(nfreq, dtype=np.float32),
-        )
-
-        # loop through each freq
-        for ii, ifreq in enumerate(freq_indin):
-            # prepare windowed data
-            wcwt1, wcwt2 = rcwt1[ifreq], rcwt2[ifreq]
-
-            # Normalizes both signals, if appropriate.
-            if normalize:
-                ncwt1 = (wcwt1 - wcwt1.mean()) / wcwt1.std()
-                ncwt2 = (wcwt2 - wcwt2.mean()) / wcwt2.std()
-            else:
-                ncwt1 = wcwt1
-                ncwt2 = wcwt2
-
-            # run stretching
-            dv, error, c1, c2 = stretching(ncwt2[itvec], ncwt1[itvec], dv_range, nbtrial, para)
-            dvv[ii], cc[ii], cdp[ii], err[ii] = dv, c1, c2, error
-
-        return freq[freq_indin], dvv, err, cc, cdp
-
-
 def wtdtw_dvv(ref, cur, allfreq, para, maxLag, b, direction, dj=1 / 12, s0=-1, J=-1, wvn="morlet", normalize=True):
     """
     Apply dynamic time warping method to continuous wavelet transformation (CWT) of signals
@@ -980,8 +879,8 @@ def computeErrorFunction(u1, u0, nSample, lag, norm="L2"):
 
     if norm == "L2":
         err = err**2
-    elif norm == "L1":
-        err = np.abs(err)
+    # elif norm == "L1":
+    #    err = np.abs(err)
 
     # Now fix corners with constant extrapolation
     for ll in np.arange(-lag, lag + 1):
