@@ -1,5 +1,5 @@
-jobName: 'noisepy-cross-correlate'
-jobQueue: ''
+jobName: '' # [REQUIRED] Specify a name for the cross-correlation job.
+jobQueue: '' # [REQUIRED] The job queue into which the job is submitted.
 jobDefinition: '' # [REQUIRED] The job definition used by this job.
 # Uncomment to run a job across multiple nodes. The days in the time range will be split across the nodes.
 # arrayProperties:
@@ -12,7 +12,7 @@ containerOverrides: # An object with various properties that override the defaul
   - cross_correlate
   - --raw_data_path=s3://scedc-pds/continuous_waveforms/
   - --xml_path=s3://scedc-pds/FDSNstationXML/CI/
-  - --ccf_path=s3://<YOUR_S3_BUCKET>/<CC_PATH>
-  - --config=s3://<YOUR_S3_BUCKET>/<CONFIG_PATH>/config.yaml
+  - --ccf_path=s3://<S3_BUCKET>/<PATH>/<CC_PATH>
+  - --config=s3://<S3_BUCKET>/<PATH>/config.yaml
 timeout:
   attemptDurationSeconds: 36000  # 10 hrs
