@@ -2,7 +2,7 @@
 # Learn more at https://jupyterbook.org/customize/toc.html
 
 format: jb-book
-root: noise_configuration.md
+root: noisepy_configuration.md
 chapters:
 - file: get_started.ipynb
 - file: noisepy_datastore.ipynb
