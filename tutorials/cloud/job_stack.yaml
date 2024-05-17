@@ -1,5 +1,5 @@
-jobName: 'noisepy-stack'
-jobQueue: ''
+jobName: '' # [REQUIRED] Specify a name for the stacking job.
+jobQueue: '' # [REQUIRED] The job queue into which the job is submitted.
 jobDefinition: '' # [REQUIRED] The job definition used by this job.
 # Uncomment to run a job across multiple nodes. The station pairs to be stacked will be split across the nodes.
 # arrayProperties:
@@ -10,7 +10,7 @@ containerOverrides: # An object with various properties that override the defaul
     type: MEMORY
   command: # The command to send to the container that overrides the default command from the Docker image or the job definition.
   - stack
-  - --ccf_path=s3://<YOUR_S3_BUCKET>/<CC_PATH>
-  - --stack_path=s3://<YOUR_S3_BUCKET>/<STACK_PATH>
+  - --ccf_path=s3://<S3_BUCKET>/<PATH>/<CC_PATH>
+  - --stack_path=s3://<S3_BUCKET>/<PATH>/<STACK_PATH>
 timeout:
   attemptDurationSeconds: 7200  # 2 hrs

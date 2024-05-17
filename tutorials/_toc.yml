@@ -2,7 +2,7 @@
 # Learn more at https://jupyterbook.org/customize/toc.html
 
 format: jb-book
-root: noise_configuration.md
+root: noisepy_configuration.md
 chapters:
 - file: get_started.ipynb
 - file: noisepy_datastore.ipynb
@@ -10,6 +10,4 @@ chapters:
 - file: noisepy_ncedc_tutorial.ipynb
 - file: noisepy_compositestore_tutorial.ipynb
 - file: CLI.md
-- file: cloud/checklist.md
-- file: cloud/aws-ec2.md
-- file: cloud/aws-batch.md
+- file: cloud/noisepy_aws_batch.ipynb
