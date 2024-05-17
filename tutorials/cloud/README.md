@@ -26,4 +26,3 @@ noisepy stack \
 --ccf_path s3://<S3_BUCKET>/<CC_PATH> \
 --stack_path s3://<S3_BUCKET>/<STACK_PATH> \
 ```
-
