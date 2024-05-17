@@ -9,6 +9,8 @@ logo: ../docs_old/figures/logo.png
 # See https://jupyterbook.org/content/execute.html
 execute:
   execute_notebooks: force
+  exclude_patterns:
+    - noisepy_aws_batch.ipynb
   timeout: 360
 
 only_build_toc_files: true
