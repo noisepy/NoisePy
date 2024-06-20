@@ -154,7 +154,8 @@ def preprocess_raw(
     # make downsampling if needed
     if abs(samp_freq - sps) > 1e-4:
         # downsampling here
-        st.interpolate(samp_freq, method="weighted_average_slopes")
+        # st.interpolate(samp_freq, method="weighted_average_slopes")
+        st.resample(samp_freq)
         delta = st[0].stats.delta
 
         # when starttimes are between sampling points
