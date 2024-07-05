@@ -355,9 +355,14 @@ def cross_correlation(
     if fft_params.cc_method == CCMethod.DECONV:
         # -----------get the smoothed source spectrum for decon later----------
         sfft1 = noise_module.smooth_source_spect(fft_params, src_fft.fft)
-        sfft1 = sfft1.reshape(src_fft.window_count, src_fft.length // 2)
+        sfft1 = sfft1.reshape(
+            src_fft.window_count, src_fft.length // 2
+        )  # conjugate already included in smooth_source_spect
     else:
         sfft1 = np.conj(src_fft.fft).reshape(src_fft.window_count, src_fft.length // 2)
+
+    # note here that sfft1 and ffts have gone through noise_processing already:
+    # if FreqNorm is not None, then they have been whitened already.
 
     result = cross_corr(fft_params, src_chan, rec_chan, sfft1, sou_ind, ffts[iiR], Nfft)
     return result
