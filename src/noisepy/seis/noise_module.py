@@ -1612,7 +1612,7 @@ def whiten_1D(timeseries, fft_para, n_taper):
     delta = fft_para["dt"]
     freqmin = fft_para["freqmin"]
     freqmax = fft_para["freqmax"]
-    smooth_N = fft_para["smooth_N"]
+    smooth_N = fft_para["smoothspect_N"]
 
     nfft = next_fast_len(len(timeseries))
     spec = np.fft.fft(timeseries, nfft)
@@ -1671,7 +1671,7 @@ def whiten_2D(timeseries, fft_para, n_taper):
     delta = fft_para["dt"]
     freqmin = fft_para["freqmin"]
     freqmax = fft_para["freqmax"]
-    smooth_N = fft_para["smooth_N"]
+    smooth_N = fft_para["smoothpect_N"]
 
     nfft = next_fast_len(timeseries.shape[1])
     spec = np.fft.fftn(timeseries, s=[nfft])
@@ -1708,7 +1708,7 @@ def whiten_2D(timeseries, fft_para, n_taper):
     return spec_out
 
 
-def whiten(data, fft_para, n_taper=100):
+def whiten(data, fft_para, n_taper=1000):
     """
     This function takes a timeseries array, transforms to frequency domain using fft,
     whitens the amplitude of the spectrum in frequency domain between *freqmin* and *freqmax*
