@@ -23,6 +23,12 @@ conda activate noisepy
 pip install noisepy-seis
 ```
 
+To add jupyter dependencies, install them
+```
+pip install ipykernel notebook
+python -m ipykernel install --user --name noisepy
+```
+
 ## With Conda and pip and MPI support
 ```bash
 conda create -n noisepy -y python=3.10 pip mpi4py
