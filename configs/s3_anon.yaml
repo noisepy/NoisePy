@@ -1,0 +1,3 @@
+storage_options:
+  s3:
+    anon: true

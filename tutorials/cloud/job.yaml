@@ -1,0 +1,26 @@
+jobName: '' # [REQUIRED] Specify a name for the job.
+jobQueue: '' # [REQUIRED] The job queue into which the job is submitted.
+jobDefinition: '' # [REQUIRED] The job definition used by this job.
+containerOverrides: # An object with various properties that override the defaults for the job definition that specify the name of a container in the specified job definition and the overrides it should receive.
+  command: # The command to send to the container that overrides the default command from the Docker image or the job definition.
+  - cross_correlate
+  - --format=numpy
+  - --raw_data_path=s3://scedc-pds/continuous_waveforms/
+  - --xml_path=s3://scedc-pds/FDSNstationXML/CI/
+  - --ccf_path=s3://<S3_BUCKET>/<PATH>/<CC_PATH>
+  - --net_list=CI
+  - --stations=*
+  - --start=2022-02-02
+  - --end=2022-02-03
+  - --loglevel=debug
+  - --logfile=log.txt
+# Uncomment to run a job across multiple nodes.
+# Cross-correlation:
+#    The array size needs to be set to the number of days in the time range.
+#    Each day will run on a separate node.
+#    E.g. [2022-02-02 to 2022-02-9) -> size: 8
+# Stacking:
+#   The array size needs to be set to the number of station pairs to stack.
+#   Each station pair will run on a separate node.
+# arrayProperties:
+#   size: 0  # The size of the array job.

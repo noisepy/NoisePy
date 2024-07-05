@@ -1,0 +1,17 @@
+ARG PYTHON_VERSION=3.10.12
+FROM --platform=$TARGETPLATFORM python:${PYTHON_VERSION}
+
+# This is a version of Dockerfile to build from a local wheel
+# Build with:
+# script/docker_dev.sh
+
+# Split out the install of dependencies and the noisepy code so
+# the dependencies layer gets cached. Much faster build times this way.
+COPY ./dist/_reqs.txt .
+RUN pip install -r _reqs.txt
+
+COPY ./dist/*.whl .
+RUN pip install --no-deps *.whl
+
+ENTRYPOINT ["noisepy"]
+CMD ["--help"]

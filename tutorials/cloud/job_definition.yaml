@@ -1,0 +1,24 @@
+jobDefinitionName: ''  # [REQUIRED] Specify a name for the job definition to register.
+type: container
+platformCapabilities:
+- FARGATE
+containerProperties:
+  image: 'ghcr.io/noisepy/noisepy'
+  command:
+  - '--help'
+  jobRoleArn: '' # [REQUIRED] The Amazon Resource Name (ARN) of the IAM role that the container can assume for AWS permissions.
+  executionRoleArn: '' # [REQUIRED] The Amazon Resource Name (ARN) of the IAM role that the Amazon ECS container agent and the Docker daemon can assume.
+  resourceRequirements: # The type and amount of resources to assign to a container.
+  - value: '16'
+    type: VCPU
+  - value: '32768'
+    type: MEMORY
+  networkConfiguration: # The network configuration for jobs that are running on Fargate resources.
+    assignPublicIp: ENABLED  # Indicates whether the job has a public IP address. Valid values are: ENABLED, DISABLED.
+  ephemeralStorage: # The amount of ephemeral storage to allocate for the task.
+    sizeInGiB: 21  # The total amount, in GiB, of ephemeral storage to set for the task.
+retryStrategy: # The retry strategy to use for failed jobs that are submitted with this job definition.
+  attempts: 1  # The number of times to move a job to the RUNNABLE status.
+propagateTags: true # Specifies whether to propagate the tags from the job or job definition to the corresponding Amazon ECS task.
+timeout: # The timeout configuration for jobs that are submitted with this job definition, after which Batch terminates your jobs if they have not finished.
+  attemptDurationSeconds: 36000  # The job timeout time (in seconds) that's measured from the job attempt's startedAt timestamp.

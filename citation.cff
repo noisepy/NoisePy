@@ -8,4 +8,4 @@ authors:
 title: "NoisePy: a new high-performance python tool for seismic ambient noise seismology."
 date-released: 2020
 doi: https://doi.org/10.1785/0220190364
-url: "https://github.com/mdenolle/NoisePy.git"
+url: "https://github.com/noisepy/NoisePy.git"

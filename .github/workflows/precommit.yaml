@@ -2,7 +2,7 @@ name: pre-commit checks
 
 on:
   pull_request:
-  push: { branches: [master] }
+  push: { branches: [main] }
   workflow_dispatch:
 
 jobs:
@@ -14,8 +14,8 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v4.5.0
       with:
-        python-version: 3.8
-    - name: Install pre-commit
-      run: pip install pre-commit==3.3.3
+        python-version: '3.10'
+    - name: Install pre-commit and Jupyter
+      run: pip install pre-commit==3.3.3 jupyter==1.0.0
     - name: Run pre-commit checks
       run: pre-commit run --all-files --show-diff-on-failure

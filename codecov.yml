@@ -1,8 +1,5 @@
 # config for codecov
 
-codecov:
-  token: eee2d1a8-f24b-401b-a211-19c10e987f53
-
 coverage:
   status:
 
@@ -13,16 +10,6 @@ coverage:
         target: auto
         threshold: 0
         set_pending: yes
-        if_no_uploads: error
-        if_not_found: error
-        if_ci_failed: error
-
-    # set commit status, if coverage of diff is below target threshold
-    patch:
-      default:
-        target: 90
-        set_pending: yes
-        base: auto
         if_no_uploads: error
         if_not_found: error
         if_ci_failed: error

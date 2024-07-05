@@ -2,6 +2,12 @@
 # Learn more at https://jupyterbook.org/customize/toc.html
 
 format: jb-book
-root: get_started
+root: noisepy_configuration.md
 chapters:
-- file: noisepy_scedc_tutorial
+- file: get_started.ipynb
+- file: noisepy_datastore.ipynb
+- file: noisepy_scedc_tutorial.ipynb
+- file: noisepy_ncedc_tutorial.ipynb
+- file: noisepy_compositestore_tutorial.ipynb
+- file: CLI.md
+- file: cloud/noisepy_aws_batch.ipynb

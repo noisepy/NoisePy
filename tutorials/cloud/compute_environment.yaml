@@ -1,0 +1,10 @@
+computeEnvironmentName: ''  # [REQUIRED] Specify a name for your compute environment.
+type: MANAGED
+state: ENABLED
+computeResources: # Details about the compute resources managed by the compute environment.
+  type: FARGATE
+  maxvCpus: 256 # [REQUIRED] The maximum number of Amazon EC2 vCPUs that a compute environment can reach.
+  subnets:
+  - '' # [REQUIRED] The VPC subnets where the compute resources are launched.
+  securityGroupIds:
+  - '' # [REQUIRED] The Amazon EC2 security groups that are associated with instances launched in the compute environment.

@@ -1,0 +1,6 @@
+jobQueueName: ''  # [REQUIRED] Specify a name for the job queue.
+state: ENABLED
+priority: 0
+computeEnvironmentOrder: # The set of compute environments mapped to a job queue and their order relative to each other.
+- order: 0  # The order of the compute environment.
+  computeEnvironment: '' # [REQUIRED] The Amazon Resource Name (ARN) of the compute environment.
