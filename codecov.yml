@@ -8,7 +8,7 @@ coverage:
     project:
       default:
         target: auto
-        threshold: 0
+        threshold: 1
         set_pending: yes
         if_no_uploads: error
         if_not_found: error
