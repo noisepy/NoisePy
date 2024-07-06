@@ -422,7 +422,7 @@ def correlate(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
     )
 
     # check if we are in the case of autocorrelation
-    if np.all(fft1_smoothed_abs == fft2):
+    if np.all(np.abs(fft1_smoothed_abs) == np.abs(fft2)):
         x_corr = False
     else:
         x_corr = True
