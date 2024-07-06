@@ -63,10 +63,12 @@ def test_detrend(data: np.ndarray):
 
 @pytest.mark.parametrize("freq_norm", [FreqNorm.NO, FreqNorm.RMA])
 @pytest.mark.parametrize("time_norm", [TimeNorm.ONE_BIT, TimeNorm.RMA])
-def test_noise_processing(time_norm: TimeNorm, freq_norm: FreqNorm):
+@pytest.mark.parametrize("smoothspect_N", [10, 1])
+def test_noise_processing(time_norm: TimeNorm, freq_norm: FreqNorm, smoothspect_N: int):
     config = ConfigParameters()
     config.time_norm = time_norm
     config.freq_norm = freq_norm
+    config.smoothspect_N = smoothspect_N
     dataS = np.random.random([2, 500])
     noise_processing(config, dataS)
 

@@ -1092,7 +1092,6 @@ def whiten_1D(timeseries, fft_para: ConfigParameters, n_taper):
     ----------------------
     FFTRawSign: numpy.ndarray contains the FFT of the whitened input trace between the frequency bounds
     """
-
     nfft = next_fast_len(len(timeseries))
     spec = np.fft.fft(timeseries, nfft)
     freq = np.fft.fftfreq(nfft, d=fft_para.dt)
