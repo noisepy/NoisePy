@@ -425,8 +425,8 @@ def correlate(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
     if np.all(fft1_smoothed_abs == fft2):
         x_corr = False
     else:
-        x_corr = True  
-        
+        x_corr = True
+
     # Marine removes this because if users have FreqNorm as RMA or 1bit or smoothspect_N==1,
     #  then the fft2 will already be smoothed.
     # if method == "coherency":
