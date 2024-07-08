@@ -1064,7 +1064,7 @@ def robust_stack(cc_array, epsilon):
     return newstack, w, nstep
 
 
-def whiten_1D(timeseries, fft_para: ConfigParameters):
+def whiten_1D(timeseries, fft_para: ConfigParameters, n_taper):
     """
     This function takes a 1-dimensional timeseries array, transforms to frequency domain using fft,
     whitens the amplitude of the spectrum in frequency domain between *freqmin* and *freqmax*
@@ -1088,8 +1088,15 @@ def whiten_1D(timeseries, fft_para: ConfigParameters):
     ix0 = np.argmin(np.abs(freq - fft_para.freqmin))
     ix1 = np.argmin(np.abs(freq - fft_para.freqmax))
 
-    ix00 = 0
-    ix11 = nfft
+    if ix1 + n_taper > nfft:
+        ix11 = nfft
+    else:
+        ix11 = ix1 + n_taper
+
+    if ix0 - n_taper < 0:
+        ix00 = 0
+    else:
+        ix00 = ix0 - n_taper
 
     spec_out = spec.copy()
     spec_out[0:ix00] = 0.0 + 0.0j
@@ -1109,7 +1116,7 @@ def whiten_1D(timeseries, fft_para: ConfigParameters):
     return spec_out
 
 
-def whiten_2D(timeseries, fft_para: ConfigParameters):
+def whiten_2D(timeseries, fft_para: ConfigParameters, n_taper):
     """
     This function takes a 2-dimensional timeseries array, transforms to frequency domain using fft,
     whitens the amplitude of the spectrum in frequency domain between *freqmin* and *freqmax*
@@ -1133,8 +1140,15 @@ def whiten_2D(timeseries, fft_para: ConfigParameters):
     ix0 = np.argmin(np.abs(freq - fft_para.freqmin))
     ix1 = np.argmin(np.abs(freq - fft_para.freqmax))
 
-    ix00 = 0
-    ix11 = nfft
+    if ix1 + n_taper > nfft:
+        ix11 = nfft
+    else:
+        ix11 = ix1 + n_taper
+
+    if ix0 - n_taper < 0:
+        ix00 = 0
+    else:
+        ix00 = ix0 - n_taper
 
     spec_out = spec.copy()  # may be inconvenient due to higher memory usage
     spec_out[:, 0:ix00] = 0.0 + 0.0j
@@ -1175,7 +1189,7 @@ def whiten(data, fft_para: ConfigParameters, n_taper=100):
 
     # Speed up FFT by padding to optimal size for FFTPACK
     if data.ndim == 1:
-        FFTRawSign = whiten_1D(data, fft_para)
+        FFTRawSign = whiten_1D(data, fft_para, n_taper)
         # ARR_OUT: Only for consistency with noisepy approach of holding the full
         # spectrum (not just 0 and positive freq. part)
         arr_out = np.zeros((FFTRawSign.shape[0] - 1) * 2 + 1, dtype=complex)
@@ -1183,7 +1197,7 @@ def whiten(data, fft_para: ConfigParameters, n_taper=100):
         arr_out[FFTRawSign.shape[0] :] = FFTRawSign[1:].conjugate()[::-1]
 
     elif data.ndim == 2:
-        FFTRawSign = whiten_2D(data, fft_para)
+        FFTRawSign = whiten_2D(data, fft_para, n_taper)
         arr_out = np.zeros((FFTRawSign.shape[0], (FFTRawSign.shape[1] - 1) * 2 + 1), dtype=complex)
         arr_out[:, FFTRawSign.shape[1] :] = FFTRawSign[:, 1:].conjugate()[::-1]
     return FFTRawSign
