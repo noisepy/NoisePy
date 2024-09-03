@@ -45,7 +45,7 @@ jobs:
       name: Install Python
       with:
         python-version: 3.9
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4.1.7
       with:
         name: releases
         path: dist
@@ -96,7 +96,7 @@ jobs:
     permissions:
       id-token: write
     steps:
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4.1.7
       with:
         name: releases
         path: dist
