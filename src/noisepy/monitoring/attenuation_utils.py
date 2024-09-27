@@ -427,7 +427,6 @@ def get_optimal_Esyn(para) -> Tuple[float, float, np.ndarray, np.ndarray, np.nda
     nwindows = twin_select.shape[1]
     npair = fmsv.shape[0]
 
-    print("GET OPTIMAL")
     loc = np.where(SSR.T == np.amin(SSR.T))
     if len(loc[0]) > 1:
         loc = (loc[0][0], loc[1][0])
@@ -454,8 +453,8 @@ def get_optimal_Esyn(para) -> Tuple[float, float, np.ndarray, np.ndarray, np.nda
             # Scale the Esyn
             scaled_Esyn, scaling_temp = scaling_Esyn(Esyn[aa, ncoda], Eobs[aa, ncoda], twindow, dt)
             logger.info(
-                f"nwindow {ncoda}, pair {aa}, (mfp, intb)=({result_mfp:.1f}, \
-                    {result_intb:.2f}) -- scaling amp: {scaling_temp:.2f}"
+                f"nwindow {ncoda}, pair {aa}, (mfp, intb)=({result_mfp:.1f},"
+                f"{result_intb:.2f}) -- scaling amp: {scaling_temp:.2f}"
             )
             Esyn[aa, ncoda] = scaled_Esyn
             scaling_amplitude[aa, ncoda] = scaling_temp
