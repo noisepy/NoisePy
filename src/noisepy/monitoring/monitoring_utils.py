@@ -50,6 +50,7 @@ class ConfigParameters_monitoring(BaseModel):
     ratio: float = Field(default=3.0, description="ratio for determining noise level by Mean absolute deviation (MAD)")
 
     # --- paramters for measuring attenuation
+    single_station: bool = Field(default=True, description="make measurement one one lag or two")
     smooth_winlen: float = Field(
         default=5.0, description="smoothing window length of the envelope waveforms for measuring attenuation"
     )
