@@ -1076,7 +1076,7 @@ def whiten_1D(timeseries, fft_para: ConfigParameters, n_taper):
         dt: The sampling space of the `data`
         freqmin: The lower frequency bound
         freqmax: The upper frequency bound
-        smooth_N: integer, it defines the half window length to smooth
+        smoothspect_N: integer, it defines the half window length to smooth
         n_taper, optional: integer, define the width of the taper in samples
     RETURNS:
     ----------------------
@@ -1103,10 +1103,10 @@ def whiten_1D(timeseries, fft_para: ConfigParameters, n_taper):
     spec_out[0:ix00] = 0.0 + 0.0j
     spec_out[ix11:] = 0.0 + 0.0j
 
-    if fft_para.smooth_N <= 1:
+    if fft_para.smoothspect_N <= 1:
         spec_out[ix00:ix11] = np.exp(1.0j * np.angle(spec_out[ix00:ix11]))
     else:
-        spec_out[ix00:ix11] /= moving_ave(np.abs(spec_out[ix00:ix11]), fft_para.smooth_N)
+        spec_out[ix00:ix11] /= moving_ave(np.abs(spec_out[ix00:ix11]), fft_para.smoothspect_N)
 
     x = np.linspace(np.pi / 2.0, np.pi, ix0 - ix00)
     spec_out[ix00:ix0] *= np.cos(x) ** 2
@@ -1129,7 +1129,7 @@ def whiten_2D(timeseries, fft_para: ConfigParameters, n_taper):
         dt: The sampling space of the `data`
         freqmin: The lower frequency bound
         freqmax: The upper frequency bound
-        smooth_N: integer, it defines the half window length to smooth
+        smoothspect_N: integer, it defines the half window length to smooth
         n_taper, optional: integer, define the width of the taper in samples
     RETURNS:
     ----------------------
@@ -1156,10 +1156,10 @@ def whiten_2D(timeseries, fft_para: ConfigParameters, n_taper):
     spec_out[:, 0:ix00] = 0.0 + 0.0j
     spec_out[:, ix11:] = 0.0 + 0.0j
 
-    if fft_para.smooth_N <= 1:
+    if fft_para.smoothspect_N <= 1:
         spec_out[:, ix00:ix11] = np.exp(1.0j * np.angle(spec_out[:, ix00:ix11]))
     else:
-        spec_out[:, ix00:ix11] /= moving_ave_2D(np.abs(spec_out[:, ix00:ix11]), fft_para.smooth_N)
+        spec_out[:, ix00:ix11] /= moving_ave_2D(np.abs(spec_out[:, ix00:ix11]), fft_para.smoothspect_N)
 
     x = np.linspace(np.pi / 2.0, np.pi, ix0 - ix00)
     spec_out[:, ix00:ix0] *= np.cos(x) ** 2
