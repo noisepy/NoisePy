@@ -81,7 +81,10 @@ class MockCatalogMock:
 @pytest.mark.parametrize("substack", [True, False])
 @pytest.mark.parametrize("substack_len", [1, 2])
 @pytest.mark.parametrize("inc_hours", [0, 24])
-def test_correlation(rm_resp: RmResp, cc_method: CCMethod, substack: bool, substack_len: int, inc_hours: int):
+@pytest.mark.parametrize("dpath", ["./data/cc", "./data/acc"])
+def test_cross_correlation(
+    rm_resp: RmResp, cc_method: CCMethod, substack: bool, substack_len: int, inc_hours: int, dpath: str
+):
     config = ConfigParameters()
     config.samp_freq = 1.0
     config.rm_resp = rm_resp
@@ -90,7 +93,7 @@ def test_correlation(rm_resp: RmResp, cc_method: CCMethod, substack: bool, subst
     if substack:
         config.substack = substack
         config.substack_len = substack_len * config.cc_len
-    path = os.path.join(os.path.dirname(__file__), "./data/cc")
+    path = os.path.join(os.path.dirname(__file__), dpath)
 
     raw_store = SCEDCS3DataStore(path, MockCatalogMock())
     ts = raw_store.get_timespans()
