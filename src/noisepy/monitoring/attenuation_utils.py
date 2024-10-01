@@ -251,6 +251,7 @@ def windowing_SSR(
     dt: float,
     cvel: float,
     ncoda: int,
+    PLOT_CHECK: bool = False,
 ) -> float:
     """
     # Calculate the sum of squared residuals (SSR) in the specific window
