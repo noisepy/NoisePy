@@ -1,7 +1,9 @@
 import logging
 import math
+import os
 from typing import Tuple
 
+import matplotlib.pyplot as plt
 import numpy as np
 
 from noisepy.monitoring.monitoring_utils import ConfigParameters_monitoring
@@ -136,20 +138,203 @@ def check_s0(x: float) -> None:
 
 
 ### -----
-def get_SSR(fnum: int, para) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def window_determine(tbeg: float, tend: float, nwindows=6) -> Tuple[np.ndarray]:
+    """
+    # Determine the window begin and end time
+    ----------------------------------------------
+    Parameters:
+        tbeg: The begin time of the window
+        tend: The end time of the window
+        dt:   The sampling interval
+    ----------------------------------------------
+    Return:
+        twinbe: The window begin and end time array
+    ----------------------------------------------
+    """
+
+    twinbe = np.ndarray((nwindows, 2))
+    coda_length = tend - tbeg
+
+    for i in range(3):
+        twinbe[i][0] = tbeg + i * coda_length / 10
+        twinbe[i][1] = tbeg + (i + 1) * coda_length / 10
+
+        twinbe[i + 3][0] = tbeg + (i + 5) * coda_length / 10
+        twinbe[i + 3][1] = tbeg + (i + 5 + 1) * coda_length / 10
+
+    return twinbe
+
+
+### -----
+def get_energy_density(
+    fmsv_single: np.ndarray, dt: float, cvel: float, r: float, npts: int, mean_free_path: float, intrinsic_b: float
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    # Calculate the energy density function
+    ----------------------------------------------
+    Parameters:
+        fmsv_single: The mean-squared value
+        dt:          The sampling interval
+        cvel:        The Rayleigh wave velocity
+        r:           The distance between the source and receiver
+        npts:        The total sample number
+        mean_free_path: The mean free path
+        intrinsic_b: The intrinsic absorption parameter b
+    ----------------------------------------------
+    Return:
+        Esyn_temp: The synthetic energy density function
+        Eobs_temp: The observed energy density function
+    ----------------------------------------------
+    """
+
+    monito_config = ConfigParameters_monitoring()
+    ONESTATION = monito_config.single_station
+
+    # initialize the temporary arrays
+    Esyn_temp = np.zeros((npts // 2 + 1))
+    Eobs_temp = np.zeros((npts // 2 + 1))
+
+    Eobs_temp = fmsv_single
+    # calculate the Esyn and SSR for combination of mean_free_path and intrinsic_b
+    for twn in range(npts // 2):
+        tm = dt * twn
+        s0 = cvel**2 * tm**2 - r**2
+        if s0 <= 0:
+            # logger.warning(f"s0 {s0} <0")
+            continue
+
+        if ONESTATION:
+            tmp = ESYN_RadiaTrans_onesta(mean_free_path, tm, r, cvel)
+        else:
+            tmp = ESYN_RadiaTrans_intersta(mean_free_path, tm, r, cvel)
+
+        Esyn_temp[twn] = tmp * math.exp(-1 * intrinsic_b * tm)
+
+    return Esyn_temp, Eobs_temp
+
+
+# ---
+def scaling_Esyn(Esyn_temp: np.ndarray, Eobs_temp: np.ndarray, twindow: np.ndarray, dt: float) -> np.ndarray:
+    """
+    # Scaling the Esyn in the specific window
+    ----------------------------------------------
+    Parameters:
+        Esyn_temp: The synthetic energy density function
+        Eobs_temp: The observed energy density function
+        twindow:   The window begin and end time array
+        dt:        The sampling interval
+    ----------------------------------------------
+    Return:
+        Esyn_temp: The scaled synthetic energy density function
+    ----------------------------------------------
+    """
+
+    # find the scaling factor in the specific window
+    SSR_temppp = np.zeros((len(twindow)))
+    for tsn in range(len(twindow)):
+        tsb = int(twindow[tsn] // dt)
+        SSR_temppp[tsn] = math.log10(Eobs_temp[tsb]) - math.log10(Esyn_temp[tsb])
+    crap = np.mean(SSR_temppp)
+    Esyn_temp *= 10**crap  # scale the Esyn
+    # using scalar factor for further fitting processes --> shape matters more than amplitude
+
+    return Esyn_temp, 10**crap
+
+
+# ### -----
+def windowing_SSR(
+    coda_window: np.array,
+    mean_free_path: float,
+    intrinsic_b: float,
+    fmsv: np.ndarray,
+    dist: np.ndarray,
+    npts: int,
+    dt: float,
+    cvel: float,
+    ncoda: int,
+    PLOT_CHECK: bool = False,
+) -> float:
+    """
+    # Calculate the sum of squared residuals (SSR) in the specific window
+    ----------------------------------------------
+    Parameters:
+        Eobs: The observed energy density function
+        Esyn: The synthetic energy density function
+        coda_window: The window begin and end time array
+        mean_free_path: The mean free path
+        intrinsic_b: The intrinsic absorption parameter b
+        npts: The total sample number
+    ----------------------------------------------
+    Return:
+        window_SSR: The sum of squared residuals in the specific window
+    """
+    Esyn_temp = np.zeros((npts // 2))
+    Eobs_temp = np.zeros((npts // 2))
+
+    npair = fmsv.shape[0]
+    window_SSR = 0.0
+    if PLOT_CHECK:
+        fig, ax = plt.subplots(npair, figsize=(6, 40))
+
+    for aa in range(npair):
+        twindow = np.arange((coda_window[aa, 0]), (coda_window[aa, 1]), dt)
+        r = float(dist[aa])
+
+        # Get the energy density
+        Esyn_temp, Eobs_temp = get_energy_density(fmsv[aa], dt, cvel, r, npts, mean_free_path, intrinsic_b)
+
+        # Scale the Esyn
+        scaled_Esyn, scaling_amplitude = scaling_Esyn(Esyn_temp, Eobs_temp, twindow, dt)
+        # logger.info(f"pair {aa}, (mfp, intb)=({mean_free_path:.1f}, {intrinsic_b:.2f}) \
+        # -- scaling amp: {scaling_amplitude:.2f}")
+
+        if PLOT_CHECK:
+            ax[aa].plot(Eobs_temp, color="black", ls="-", label="Eobs")
+            ax[aa].plot(scaled_Esyn, color="blue", ls="-", label="Esyn")
+            ax[aa].plot([twindow[0] // dt, twindow[0] // dt], [0, 1], color="red", ls="--", label="window")
+            ax[aa].plot([twindow[-1] // dt, twindow[-1] // dt], [0, 1], color="red", ls="--")
+            ax[aa].set_title(
+                f"pair {aa} on (mfp, intb)=({mean_free_path:.1f}, {intrinsic_b:.2f}) \
+                    -- scaling amp: {scaling_amplitude:.2f}"
+            )
+            ax[aa].set_yscale("log")
+            ax[aa].set_xlabel("Npts")
+            ax[aa].set_xlim(0, npts // 8)
+            ax[aa].set_ylim(10**-6, 10)
+
+        # Calculate the SSR in the rescale Esyn and Eobs
+        tsb = int(twindow[0] // dt)
+        tse = int((twindow[-1]) // dt) + 1
+        SSR_temp = 0.0
+        for twn in range(tsb, tse):
+            SSR_temp = SSR_temp + ((Eobs_temp[twn]) - (scaled_Esyn[twn])) ** 2
+        window_SSR += SSR_temp
+
+    if PLOT_CHECK:
+        os.system("mkdir figure_checking")
+        ax[0].legend(loc="upper right")
+        plt.tight_layout()
+        fname = f"figure_checking/Scaled_density_ncoda{ncoda}_mfp{mean_free_path:.1f}_intb{intrinsic_b:.2f}.png"
+        plt.savefig(fname)
+        plt.close(fig)
+
+    return window_SSR
+
+
+### -----
+def get_SSR_codawindows(para) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     #  Calculate the sum of squared residuals (SSR) between Eobs and Esyn
     #  for different combination of mean free path and intrinsic absorption parameter b
     ----------------------------------------------
     Parameters:
-        fb: the number of used frequency band
         dt: data sampling interval
-        c:  Rayleigh wave velocity
+        cvel:  Rayleigh wave velocity
         npts:   Total sample number
         vdist:  Inter-station distance
         mfpx:   The mean free path array
         intby:  The intrinsic absorption parameter b array
-        twinbe: Window begin time and end time array
+        twin_select: Window begin time and end time array
         fmsv_mean: Observed mean-squared value
     ----------------------------------------------
     Return:
@@ -161,164 +346,122 @@ def get_SSR(fnum: int, para) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     # default config parameters which can be customized
     monito_config = ConfigParameters_monitoring()
 
-    fb = para["fb"]
     dt = para["dt"]
-    c = para["cvel"]
+    cvel = para["cvel"]
     vdist = para["vdist"]
+    npts = para["npts"]
     mfpx = para["mfp"]
     intby = para["intb"]
-    twinbe = para["twin"]
-    npts = para["npts"]
+    twin_select = para["twin"]
     fmsv_mean = para["fmsv"]
     intb_interval_base = monito_config.intb_interval_base
     mfp_interval_base = monito_config.mfp_interval_base
+    nwindows = twin_select.shape[1]
 
-    Esyn_temp = np.ndarray((len(mfpx), len(intby), npts // 2 + 1))
-    Eobs_temp = np.ndarray((len(mfpx), len(intby), npts // 2 + 1))
-    SSR_final = np.ndarray((len(mfpx), len(intby)))
-    SSR_final[:][:] = 0.0
-    for aa in range(fnum):
-        r = float(vdist[aa])
-        if r <= 10 ** (-6):
-            r = 0.000001  # To avoid zero value at denominator
+    SSR_final = np.zeros((len(mfpx), len(intby)))
+    # grid search in combination of mean_free_path and intrinsic_b
+    for nfree in range(len(mfpx)):
+        mean_free = 0.2 + mfp_interval_base * nfree
+        mfpx[nfree] = mean_free
+        for nb in range(len(intby)):
+            intrinsic_b = intb_interval_base * (nb + 1)
+            intby[nb] = intrinsic_b
 
-        twindow = []
-        twindow = range(int(twinbe[aa][fb][0]), int(twinbe[aa][fb][1]), 1)
-        SSR_temppp = np.ndarray((len(mfpx), len(intby), len(twindow)))
+            SSR_temp = 0.0
+            #### specific window for all pairs
+            for ncoda in range(nwindows):
+                twindow = twin_select[:, ncoda, :]
+                single_window_SSR = windowing_SSR(
+                    twindow, mean_free, intrinsic_b, fmsv_mean, vdist, npts, dt, cvel, ncoda
+                )
 
-        # grid search in combination of mean_free_path and intrinsic_b
-        Esyn_temp[:][:][:] = 0.0
-        Eobs_temp[:][:][:] = 0.0
+                SSR_temp = SSR_temp + single_window_SSR
+                # logger.info(f"window {ncoda}, (mfp, intb)=({mean_free:.1f}, {intrinsic_b:.2f}) \
+                # -- single SSR: {single_window_SSR:.2f}, final SSR: {SSR_temp:.2f}")
+            SSR_final[nfree][nb] = SSR_temp
 
-        for nfree in range(len(mfpx)):
-            mean_free = 0.2 + mfp_interval_base * nfree
-            mfpx[nfree] = mean_free
-            for nb in range(len(intby)):
-                intrinsic_b = intb_interval_base * (nb + 1)
-                intby[nb] = intrinsic_b
-
-                # calculate the Esyn and SSR for combination of mean_free_path and intrinsic_b
-                for twn in range(npts // 2 + 1):
-                    tm = dt * twn
-                    Eobs_temp[nfree][nb][twn] = fmsv_mean[aa][fb + 1][twn]
-
-                    s0 = c**2 * tm**2 - r**2
-                    if s0 < 0:
-                        # logger.warning(f"s0 {s0} <0")
-                        continue
-
-                    tmp = ESYN_RadiaTrans_onesta(mean_free, tm, r, c)
-                    Esyn_temp[nfree][nb][twn] = tmp * math.exp(-1 * intrinsic_b * tm)
-                # using scalar factor for further fitting processes --> shape matters more than amplitude
-
-                #### specific window --> find the scaling factor in the specific window
-                for tsn in range(len(twindow)):
-                    tsb = int(twindow[tsn] // dt)
-                    SSR_temppp[nfree][nb][tsn] = 0.0
-                    SSR_temppp[nfree][nb][tsn] = math.log10(Eobs_temp[nfree][nb][tsb]) - math.log10(
-                        Esyn_temp[nfree][nb][tsb]
-                    )
-
-                crap = np.mean(SSR_temppp[nfree][nb])
-                Esyn_temp[nfree][nb] *= 10**crap  # scale the Esyn
-
-                #### specific window
-                #### Calculate the SSR in the specific window
-                for tsn in range(len(twindow)):
-                    tsb = int(twindow[tsn] // dt)
-                    tse = int((twindow[tsn] + 1) // dt)
-                    SSR_temp = 0.0
-                    for twn in range(tsb, tse):
-                        SSR_temp += (math.log10(Eobs_temp[nfree][nb][twn]) - math.log10(Esyn_temp[nfree][nb][twn])) ** 2
-                SSR_final[nfree][nb] += SSR_temp
-            # --- time comsuming for plotting out individual fitting curves
-            # plot_fitting_curves(mean_free,y,fmsv_mean[aa][0][:],Eobs_temp[nfree],Esyn_temp[nfree],fname[aa],vdist[aa],twindow)
         # logger.info(f"mean_free: {mean_free}, intrinsic_b {intrinsic_b}, SSR:{SSR_temp}")
-        SSR_final = SSR_final / (np.min(SSR_final[:][:]))
+    SSR_final = SSR_final / (np.min(SSR_final[:][:]))
 
     return SSR_final, mfpx, intby
 
 
-def get_optimal_Esyn(fnum: int, para) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def get_optimal_Esyn(para) -> Tuple[float, float, np.ndarray, np.ndarray, np.ndarray]:
     """
     # Getting the optimal value from the grid searching results (the SSR output from the get_SSR)
     # Return with the optimal value of mean free path, intrinsic absorption parameter
     # and the optimal fit of synthetic energy density function
     ----------------------------------------------
     Parameters:
-        fb: the number of used frequency band
         dt: data sampling interval
-        c:  Rayleigh wave velocity
+        cvel:  Rayleigh wave velocity
         npts:   Total sample number
         vdist:  Inter-station distance
         mfpx:   The mean free path array
         intby:  The intrinsic absorption parameter b array
-        twinbe: Window begin time and end time array
-        fmsv_mean: Observed mean-squared value
-        fmin:   Lower bound of measured frequency band
-        fmax:   Upper bound of measured frequency band
+        twin_select: Window begin time and end time array
+        fmsv: Observed mean-squared value
         SSR:    The sum of squared residuals over combination of mean free path
                 and intrinsic absorption parameter b
         sta_pair: Station pair
-        aa:     The file number of measurment (here in this test is 0)
     ----------------------------------------------
     Return:
         result_intb: The optimal value of intrinsic absorption parameter b
         result_mfp:  The optimal value of mean free path
         Eobs:   The observed energy density function
         Esyn:   The optimal fit of synthetic energy density function
+        scaling_amplitude: The scaling amplitude on synthetic energy density function
     ----------------------------------------------
     """
-    fb = para["fb"]
+
     dt = para["dt"]
-    c = para["cvel"]
+    cvel = para["cvel"]
     vdist = para["vdist"]
     mfpx = para["mfp"]
     intby = para["intb"]
-    twinbe = para["twin"]
+    twin_select = para["twin"]
     npts = para["npts"]
-    fmsv_mean = para["fmsv"]
+    fmsv = para["fmsv"]
 
-    fmin = para["fmin"]
-    fmax = para["fmax"]
     SSR = para["SSR"]
     sta_pair = para["sta"]
-    aa = para["filenum"]
-    r = float(vdist[aa])
-    if r <= 10 ** (-6):
-        r = 0.000001  # To avoid zero value at denominator
 
-    loc = np.where(SSR[fb].T == np.amin(SSR[fb].T))
-    ymin = intby[loc[0]]
-    xmin = mfpx[loc[1]]
-    logger.info(f" Station Pair: {sta_pair}, frequency band {fmin}-{fmax}Hz, intrinsic_b {ymin}, mean_free: {xmin}")
-    result_intb = np.take(ymin, 0)
-    result_mfp = np.take(xmin, 0)
+    nwindows = twin_select.shape[1]
+    npair = fmsv.shape[0]
 
-    twindow = []
-    twindow = range(int(twinbe[aa][fb][0]), int(twinbe[aa][fb][1]), 1)
+    loc = np.where(SSR.T == np.amin(SSR.T))
+    if len(loc[0]) > 1:
+        loc = (loc[0][0], loc[1][0])
 
-    Eobs = np.ndarray((npts // 2 + 1))
-    Esyn = np.ndarray((npts // 2 + 1))
-    temppp = np.ndarray((len(twindow)))
-    for twn in range(npts // 2 + 1):
-        tm = dt * twn
-        s0 = c**2 * tm**2 - r**2
-        if s0 <= 0:
-            continue
-        Eobs[twn] = fmsv_mean[aa][fb + 1][twn]
-        tmp = ESYN_RadiaTrans_onesta(result_mfp, tm, r, c)
-        Esyn[twn] = tmp * math.exp(-1 * result_intb * tm)
+    intrinsic_b = intby[loc[0]]
+    mean_free_path = mfpx[loc[1]]
+    logger.info(f"Station Pair: {sta_pair}, intrinsic_b {intrinsic_b}, mean_free: {mean_free_path}")
 
-    for tsn in range(len(twindow)):
-        tsb = int(twindow[tsn] // dt)
-        temppp[tsn] = 0.0
-        temppp[tsn] = math.log10(Eobs[tsb]) - math.log10(Esyn[tsb])
+    result_intb = np.take(intrinsic_b, 0)
+    result_mfp = np.take(mean_free_path, 0)
 
-    crap = np.mean(temppp)
-    Esyn *= 10**crap
+    Eobs = np.zeros((npair, nwindows, npts // 2 + 1))
+    Esyn = np.zeros((npair, nwindows, npts // 2 + 1))
+    scaling_amplitude = np.zeros((npair, nwindows))
 
-    return result_intb, result_mfp, Eobs, Esyn
+    for ncoda in range(nwindows):
+        for aa in range(npair):
+            twindow = twin_select[aa, ncoda, :]
+            # Get the energy density
+            Esyn[aa, ncoda], Eobs[aa, ncoda] = get_energy_density(
+                fmsv[aa], dt, cvel, vdist, npts, result_mfp, result_intb
+            )
+
+            # Scale the Esyn
+            scaled_Esyn, scaling_temp = scaling_Esyn(Esyn[aa, ncoda], Eobs[aa, ncoda], twindow, dt)
+            logger.info(
+                f"nwindow {ncoda}, pair {aa}, (mfp, intb)=({result_mfp:.1f},"
+                f"{result_intb:.2f}) -- scaling amp: {scaling_temp:.2f}"
+            )
+            Esyn[aa, ncoda] = scaled_Esyn
+            scaling_amplitude[aa, ncoda] = scaling_temp
+
+    return result_intb, result_mfp, Eobs, Esyn, scaling_amplitude
 
 
 # -----

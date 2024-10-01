@@ -404,11 +404,11 @@ def correlate(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
     # ----load paramters----
     dt = D["dt"]
     maxlag = D["maxlag"]
-    method = D["cc_method"]
+    # method = D["cc_method"]
     cc_len = D["cc_len"]
     substack = D["substack"]
     substack_len = D["substack_len"]
-    smoothspect_N = D["smoothspect_N"]
+    # smoothspect_N = D["smoothspect_N"]
 
     nwin = fft1_smoothed_abs.shape[0]
     Nfft2 = fft1_smoothed_abs.shape[1]
@@ -421,16 +421,24 @@ def correlate(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
         fft2.size,
     )
 
-    if method == "coherency":
-        temp = moving_ave(
-            np.abs(
-                fft2.reshape(
-                    fft2.size,
-                )
-            ),
-            smoothspect_N,
-        )
-        corr /= temp
+    # check if we are in the case of autocorrelation
+    if np.all(np.abs(fft1_smoothed_abs) == np.abs(fft2)):
+        x_corr = False
+    else:
+        x_corr = True
+
+    # Marine removes this because if users have FreqNorm as RMA or 1bit or smoothspect_N==1,
+    #  then the fft2 will already be smoothed.
+    # if method == "coherency":
+    #     temp = moving_ave(
+    #         np.abs(
+    #             fft2.reshape(
+    #                 fft2.size,
+    #             )
+    #         ),
+    #         smoothspect_N,
+    #     )
+    #     corr /= temp
     corr = corr.reshape(nwin, Nfft2)
 
     if substack:
@@ -446,7 +454,8 @@ def correlate(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
                 crap[:Nfft2] = corr[i, :]
                 crap[:Nfft2] = crap[:Nfft2] - np.mean(crap[:Nfft2])  # remove the mean in freq domain (spike at t=0)
                 crap[-(Nfft2) + 1 :] = np.flip(np.conj(crap[1:(Nfft2)]), axis=0)
-                crap[0] = complex(0, 0)
+                if x_corr:
+                    crap[0] = complex(0, 0)  # this only if fft1 is different than fft2
                 s_corr[i, :] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
 
             # remove abnormal data
@@ -478,7 +487,8 @@ def correlate(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
                 crap[:Nfft2] = np.mean(corr[itime, :], axis=0)  # linear average of the correlation
                 crap[:Nfft2] = crap[:Nfft2] - np.mean(crap[:Nfft2])  # remove the mean in freq domain (spike at t=0)
                 crap[-(Nfft2) + 1 :] = np.flip(np.conj(crap[1:(Nfft2)]), axis=0)
-                crap[0] = complex(0, 0)
+                if x_corr:
+                    crap[0] = complex(0, 0)
                 s_corr[istack, :] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
                 n_corr[istack] = len(itime)  # number of windows stacks
                 t_corr[istack] = tstart  # save the time stamps
@@ -1076,7 +1086,7 @@ def whiten_1D(timeseries, fft_para: ConfigParameters, n_taper):
         dt: The sampling space of the `data`
         freqmin: The lower frequency bound
         freqmax: The upper frequency bound
-        smooth_N: integer, it defines the half window length to smooth
+        smoothspect_N: integer, it defines the half window length to smooth
         n_taper, optional: integer, define the width of the taper in samples
     RETURNS:
     ----------------------
@@ -1103,10 +1113,10 @@ def whiten_1D(timeseries, fft_para: ConfigParameters, n_taper):
     spec_out[0:ix00] = 0.0 + 0.0j
     spec_out[ix11:] = 0.0 + 0.0j
 
-    if fft_para.smooth_N <= 1:
+    if fft_para.smoothspect_N <= 1:
         spec_out[ix00:ix11] = np.exp(1.0j * np.angle(spec_out[ix00:ix11]))
     else:
-        spec_out[ix00:ix11] /= moving_ave(np.abs(spec_out[ix00:ix11]), fft_para.smooth_N)
+        spec_out[ix00:ix11] /= moving_ave(np.abs(spec_out[ix00:ix11]), fft_para.smoothspect_N)
 
     x = np.linspace(np.pi / 2.0, np.pi, ix0 - ix00)
     spec_out[ix00:ix0] *= np.cos(x) ** 2
@@ -1129,7 +1139,7 @@ def whiten_2D(timeseries, fft_para: ConfigParameters, n_taper):
         dt: The sampling space of the `data`
         freqmin: The lower frequency bound
         freqmax: The upper frequency bound
-        smooth_N: integer, it defines the half window length to smooth
+        smoothspect_N: integer, it defines the half window length to smooth
         n_taper, optional: integer, define the width of the taper in samples
     RETURNS:
     ----------------------
@@ -1156,10 +1166,10 @@ def whiten_2D(timeseries, fft_para: ConfigParameters, n_taper):
     spec_out[:, 0:ix00] = 0.0 + 0.0j
     spec_out[:, ix11:] = 0.0 + 0.0j
 
-    if fft_para.smooth_N <= 1:
+    if fft_para.smoothspect_N <= 1:
         spec_out[:, ix00:ix11] = np.exp(1.0j * np.angle(spec_out[:, ix00:ix11]))
     else:
-        spec_out[:, ix00:ix11] /= moving_ave_2D(np.abs(spec_out[:, ix00:ix11]), fft_para.smooth_N)
+        spec_out[:, ix00:ix11] /= moving_ave_2D(np.abs(spec_out[:, ix00:ix11]), fft_para.smoothspect_N)
 
     x = np.linspace(np.pi / 2.0, np.pi, ix0 - ix00)
     spec_out[:, ix00:ix0] *= np.cos(x) ** 2

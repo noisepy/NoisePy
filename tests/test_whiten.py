@@ -21,7 +21,7 @@ def whiten_original(data, fft_para: ConfigParameters):
         dt: The sampling space of the `data`
         freqmin: The lower frequency bound
         freqmax: The upper frequency bound
-        smooth_N: integer, it defines the half window length to smooth
+        smoothspect_N: integer, it defines the half window length to smooth
         freq_norm: whitening method between 'one-bit' and 'RMA'
     RETURNS:
     ----------------------
@@ -62,7 +62,7 @@ def whiten_original(data, fft_para: ConfigParameters):
             FFTRawSign[:, left:right] = np.exp(1j * np.angle(FFTRawSign[:, left:right]))
         elif fft_para.freq_norm == FreqNorm.RMA:
             for ii in range(data.shape[0]):
-                tave = moving_ave(np.abs(FFTRawSign[ii, left:right]), fft_para.smooth_N)
+                tave = moving_ave(np.abs(FFTRawSign[ii, left:right]), fft_para.smoothspect_N)
                 FFTRawSign[ii, left:right] = FFTRawSign[ii, left:right] / tave
         # Right tapering:
         FFTRawSign[:, right:high] = np.cos(np.linspace(0.0, np.pi / 2.0, high - right)) ** 2 * np.exp(
@@ -81,7 +81,7 @@ def whiten_original(data, fft_para: ConfigParameters):
         if fft_para.freq_norm == FreqNorm.PHASE_ONLY:
             FFTRawSign[left:right] = np.exp(1j * np.angle(FFTRawSign[left:right]))
         elif fft_para.freq_norm == FreqNorm.RMA:
-            tave = moving_ave(np.abs(FFTRawSign[left:right]), fft_para.smooth_N)
+            tave = moving_ave(np.abs(FFTRawSign[left:right]), fft_para.smoothspect_N)
             FFTRawSign[left:right] = FFTRawSign[left:right] / tave
         # Right tapering:
         FFTRawSign[right:high] = np.cos(np.linspace(0.0, np.pi / 2.0, high - right)) ** 2 * np.exp(
@@ -107,7 +107,7 @@ def whiten1d(freq_norm: FreqNorm):
     fft_para.samp_freq = 1.0
     fft_para.freqmin = 0.01
     fft_para.freqmax = 0.2
-    fft_para.smooth_N = 1
+    fft_para.smoothspect_N = 1
     fft_para.freq_norm = freq_norm
 
     data = np.random.random(1000)
@@ -126,7 +126,7 @@ def whiten2d(freq_norm: FreqNorm):
     fft_para.samp_freq = 1.0
     fft_para.freqmin = 0.01
     fft_para.freqmax = 0.2
-    fft_para.smooth_N = 1
+    fft_para.smoothspect_N = 1
     fft_para.freq_norm = freq_norm
 
     data = np.random.random((5, 1000))
