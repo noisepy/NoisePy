@@ -380,7 +380,7 @@ def correlate(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
     PARAMETERS:
     ---------------------
     fft1_smoothed_abs: smoothed power spectral density of the FFT for the source station
-    fft2: raw FFT spectrum of the receiver station
+    fft2: raw FFT spectrum of the receiver station, but it will also be smoothed if FeqNorm is selected
     D: dictionary containing following parameters:
         maxlag:  maximum lags to keep in the cross correlation
         dt:      sampling rate (in s)
@@ -388,6 +388,7 @@ def correlate(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
         method:  cross-correlation methods selected by the user
         freqmin: minimum frequency (Hz)
         freqmax: maximum frequency (Hz)
+        smoothspect_N: number of points overwhich to smooth
     Nfft:    number of frequency points for ifft
     dataS_t: matrix of datetime object.
 
