@@ -1,5 +1,6 @@
 import logging
 import math
+import os
 from typing import Tuple
 
 import matplotlib.pyplot as plt
@@ -269,7 +270,6 @@ def windowing_SSR(
     """
     Esyn_temp = np.zeros((npts // 2))
     Eobs_temp = np.zeros((npts // 2))
-    PLOT_CHECK = False
 
     npair = fmsv.shape[0]
     window_SSR = 0.0
@@ -311,9 +311,10 @@ def windowing_SSR(
         window_SSR += SSR_temp
 
     if PLOT_CHECK:
+        os.system("mkdir figure_checking")
         ax[0].legend(loc="upper right")
         plt.tight_layout()
-        fname = f"figures/Scaled_density_ncoda{ncoda}_mfp{mean_free_path:.1f}_intb{intrinsic_b:.2f}.png"
+        fname = f"figure_checking/Scaled_density_ncoda{ncoda}_mfp{mean_free_path:.1f}_intb{intrinsic_b:.2f}.png"
         plt.savefig(fname)
         plt.close(fig)
 
