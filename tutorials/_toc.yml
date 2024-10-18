@@ -9,11 +9,11 @@ parts:
   - file: get_started.ipynb
   - file: tutorial_cli.md
   - file: tutorial_datastore.ipynb
+  - file: tutorial_scedc.ipynb
   - file: tutorial_plot_stacks.ipynb
 
-- caption: Examples
+- caption: More Examples
   chapters:
-  - file: tutorial_scedc.ipynb
   - file: tutorial_ncedc.ipynb
   - file: tutorial_compositestore.ipynb
   - file: tutorial_cli_mpi.ipynb

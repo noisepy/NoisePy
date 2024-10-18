@@ -25,6 +25,7 @@ def test_parse_args():
     cmd += ["--step", "5"]
     cmd += ["--sampling_rate", "160.4"]
     cmd += ["--stations", "BAK,ARV"]
+    cmd += ["--channels", "BHE,BHN,BHZ"]
     cmd += ["--cc_method", "xcorr"]
     cmd += ["--substack", "true"]
     cmd += ["--correction", "False"]
@@ -36,6 +37,7 @@ def test_parse_args():
     assert cfg.step == 5
     assert cfg.sampling_rate == 160.4
     assert cfg.stations == ["BAK", "ARV"]
+    assert cfg.channels == ["BHE", "BHN", "BHZ"]
     assert cfg.cc_method == CCMethod.XCORR
     assert cfg.substack is True
     assert cfg.correction is False
