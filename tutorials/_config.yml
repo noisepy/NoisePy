@@ -42,6 +42,10 @@ html:
   use_repository_button: true
   use_edit_page_button: true
 
+launch_buttons:
+  notebook_interface: classic
+  colab_url: "https://colab.research.google.com"
+
 # Set navigation_with_keys: false to prevent pydata-sphinx-theme validation warning/error
 # See https://github.com/pydata/pydata-sphinx-theme/issues/1492
 # sphinx: # for some reasons, this suppresses the github button.
