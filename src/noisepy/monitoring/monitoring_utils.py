@@ -197,7 +197,7 @@ def calc_segments(fft_params: ConfigParameters, num_chunk: int, MAX_MEM: int) ->
             num_segmts = int(np.floor((fft_params.inc_hours * 3600 - fft_params.cc_len) / fft_params.step))
         else:
             num_segmts = int(fft_params.inc_hours / (fft_params.substack_len / 3600))
-    npts_segmt = int(2 * fft_params.maxlag * fft_params.samp_freq) + 1
+    npts_segmt = int(2 * fft_params.maxlag * fft_params.sampling_rate) + 1
     memory_size = num_chunk * num_segmts * npts_segmt * 4 / 1024**3
 
     if memory_size > MAX_MEM:

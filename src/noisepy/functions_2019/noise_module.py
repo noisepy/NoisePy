@@ -283,7 +283,7 @@ def stacking_rma(cc_array, cc_time, cc_ngood, stack_para):
     nstacks:    number of overall segments for the final stacks
     """
     # load useful parameters from dict
-    samp_freq = stack_para["samp_freq"]
+    sampling_rate = stack_para["sampling_rate"]
     smethod = stack_para["stack_method"]
     rma_substack = stack_para["rma_substack"]
     rma_step = stack_para["rma_step"]
@@ -344,7 +344,7 @@ def stacking_rma(cc_array, cc_time, cc_ngood, stack_para):
         if smethod == StackMethod.LINEAR:
             allstacks1 = np.mean(cc_array, axis=0)
         elif smethod == StackMethod.PWS:
-            allstacks1 = pws(cc_array, samp_freq)
+            allstacks1 = pws(cc_array, sampling_rate)
         elif smethod == StackMethod.ROBUST:
             (
                 allstacks1,
@@ -354,7 +354,7 @@ def stacking_rma(cc_array, cc_time, cc_ngood, stack_para):
             allstacks1 = selective_stack(cc_array, 0.001)
         elif smethod == StackMethod.ALL:
             allstacks1 = np.mean(cc_array, axis=0)
-            allstacks2 = pws(cc_array, samp_freq)
+            allstacks2 = pws(cc_array, sampling_rate)
             allstacks3 = robust_stack(cc_array, 0.001)
             allstacks4 = selective_stack(cc_array, 0.001)
         nstacks = np.sum(cc_ngood)

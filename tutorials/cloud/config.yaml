@@ -25,7 +25,7 @@ respdir: null
 rm_resp: inv
 rm_resp_out: VEL
 rotation: true
-samp_freq: 20.0
+sampling_rate: 20.0
 single_freq: true
 smooth_N: 10
 smoothspect_N: 10
