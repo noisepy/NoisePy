@@ -20,7 +20,7 @@ lomin: -122.0
 max_over_std: 10
 maxlag: 200
 ncomp: 3
-net_list: [CI]
+networks: [CI]
 respdir: null
 rm_resp: inv
 rm_resp_out: VEL

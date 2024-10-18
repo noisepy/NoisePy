@@ -40,6 +40,3 @@ NoisePy includes various functions to measure dv/v. The software will read the `
 
 ### Imaging
 NoisePy includes functions to measure phase and group velocity dispersion curve measurements. The software will read the ``StackStore`` and ouput curves as tabular data in CSV.
-
-## Configuring NoisePy
-The [config.yml](./config.yml) file contains all parameters to configure NoisePy.

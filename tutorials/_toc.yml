@@ -16,6 +16,7 @@ parts:
   - file: tutorial_scedc.ipynb
   - file: tutorial_ncedc.ipynb
   - file: tutorial_compositestore.ipynb
+  - file: tutorial_cli_mpi.ipynb
   - file: tutorial_pnwstore.ipynb
 
 - caption: Application

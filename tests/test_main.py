@@ -72,7 +72,7 @@ def test_main_download(tmp_path):
                 "--start_date=2020-01-01",
                 "--end_date=2020-01-01",
                 "--stations=''",
-                "--net_list=''",
+                "--networks=''",
                 "--channels=''",
             ],
         )

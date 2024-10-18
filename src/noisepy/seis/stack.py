@@ -56,7 +56,7 @@ def stack_cross_correlations(
     t_tot = tlog.reset()
 
     stations = set(fft_params.stations)
-    networks = set(fft_params.net_list)
+    networks = set(fft_params.networks)
 
     def sta_filter(sta: Station) -> bool:
         return (WILD_CARD in stations or sta.name in stations) and (WILD_CARD in networks or sta.network in networks)
@@ -71,7 +71,7 @@ def stack_cross_correlations(
         if len(pairs_filt) == 0:
             detail = (
                 f"{len(pairs)} total pairs found in the store. These filtered down to 0 pairs "
-                f"according to the config: stations={fft_params.stations}, net_list={fft_params.net_list}"
+                f"according to the config: stations={fft_params.stations}, networks={fft_params.networks}"
             )
             raise IOError(NO_CCF_DATA_MSG + "\n" + detail)
 

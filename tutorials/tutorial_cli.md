@@ -1,8 +1,6 @@
 # CLI Tutorial
 
-NoisePy provides a CLI (command line interface) for running processing jobs. This tutorial works through the same tasks as the **Noisepy Colab Tutorial** from the [get_started.ipynb](get_started.ipynb) Jupyter Notebook.
-
-NOTE: The [config.yml](./config.yml) file contains the parameters being used throughout the tutorial.
+NoisePy provides a CLI (command line interface) for running processing jobs. This tutorial works through the same tasks as the **Noisepy Colab Tutorial** from the [get_started.ipynb](./get_started.ipynb) Jupyter Notebook. The [config.yml](./config.yml) file contains all parameters and their default value used throughout the tutorial.
 
 ## Step 0: download data
 
