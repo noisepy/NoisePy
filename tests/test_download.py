@@ -19,8 +19,9 @@ from noisepy.seis.io.datatypes import ConfigParameters
 @patch.object(Client, "get_stations_bulk")
 def test_download(get_stations_bulk_mock, download_stream_mock, tmp_path: pathlib.Path):
     cfg = ConfigParameters()
-    cfg.net_list = ["CI"]
+    cfg.networks = ["CI"]
     cfg.stations = ["BAK"]
+    cfg.channels = ["BHE", "BHN", "BHZ"]
     cfg.start_date = isoparse("2021-01-01T00:00:00Z")
     cfg.end_date = isoparse("2021-01-01T00:01:00Z")
 

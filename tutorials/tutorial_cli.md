@@ -1,11 +1,8 @@
-# NoisePy CLI Tutorial
+# CLI Tutorial
 
-NoisePy provides a CLI (command line interface) for running processing jobs. This tutorial works through the same tasks as the **Noisepy Colab Tutorial** from the [get_started.ipynb](get_started.ipynb) Jupyter Notebook.
-
-NOTE: The `tutorials/cli/config.yml` file contains the parameters being used throughout the tutorial. All commands are meant to be run from the `tutorials/cli` directory.
+NoisePy provides a CLI (command line interface) for running processing jobs. This tutorial works through the same tasks as the **Noisepy Colab Tutorial** from the [get_started.ipynb](./get_started.ipynb) Jupyter Notebook. The [config.yml](./config.yml) file contains all parameters and their default value used throughout the tutorial.
 
 ## Step 0: download data
-
 
 This step will download data using obspy and save them into ASDF files locally. The data will be stored for each time chunk defined in hours by inc_hours.
 

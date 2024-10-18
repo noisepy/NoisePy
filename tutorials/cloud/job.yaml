@@ -8,8 +8,9 @@ containerOverrides: # An object with various properties that override the defaul
   - --raw_data_path=s3://scedc-pds/continuous_waveforms/
   - --xml_path=s3://scedc-pds/FDSNstationXML/CI/
   - --ccf_path=s3://<S3_BUCKET>/<PATH>/<CC_PATH>
-  - --net_list=CI
+  - --networks=CI
   - --stations=*
+  - --channels=BHE,BHN,BHZ
   - --start=2022-02-02
   - --end=2022-02-03
   - --loglevel=debug

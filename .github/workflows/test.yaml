@@ -69,13 +69,14 @@ jobs:
     - name: Test Cross-Correlation (S1)
       run: |
         noisepy cross_correlate \
-        --config configs/s3_anon.yaml \
+        --config tutorials/s3_anon.yml \
         --raw_data_path s3://scedc-pds/continuous_waveforms/ \
         --ccf_path $RUNNER_TEMP/CCF \
-        --net_list=CI \
+        --networks=CI \
         --start=2023-01-01 \
         --end=2023-01-03 \
         --stations=ARV,BAK \
+        --channels=BHE,BHN,BHZ \
         --xml_path=s3://scedc-pds/FDSNstationXML/CI/ \
         --freq_norm ${{matrix.freq_norm}} \
         --stop_on_error \
@@ -107,14 +108,15 @@ jobs:
     - name: Test Cross-Correlation (S1)
       run: |
         mpiexec -n 2 noisepy cross_correlate \
-        --config configs/s3_anon.yaml \
+        --config tutorials/s3_anon.yml \
         --mpi \
         --raw_data_path s3://scedc-pds/continuous_waveforms/ \
         --ccf_path $RUNNER_TEMP/CCF \
-        --net_list=CI \
+        --networks=CI \
         --start=2023-01-01 \
         --end=2023-01-03 \
         --stations=ARV,BAK \
+        --channels=BHE,BHN,BHZ \
         --xml_path=s3://scedc-pds/FDSNstationXML/CI/  \
         --freq_norm ${{matrix.freq_norm}} \
         --stop_on_error \
@@ -148,4 +150,4 @@ jobs:
         --xml_path s3://scedc-pds/FDSNstationXML/CI/ \
         --stations "SBC,RIO" --start_date 2022-02-02 --end_date 2022-02-04 \
         --stop_on_error \
-        --config configs/s3_anon.yaml
+        --config tutorials/s3_anon.yml

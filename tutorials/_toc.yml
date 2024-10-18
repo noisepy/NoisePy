@@ -1,13 +1,29 @@
 # Table of contents
 # Learn more at https://jupyterbook.org/customize/toc.html
 
+root: README.md
 format: jb-book
-root: noisepy_configuration.md
-chapters:
-- file: get_started.ipynb
-- file: noisepy_datastore.ipynb
-- file: noisepy_scedc_tutorial.ipynb
-- file: noisepy_ncedc_tutorial.ipynb
-- file: noisepy_compositestore_tutorial.ipynb
-- file: CLI.md
-- file: cloud/noisepy_aws_batch.ipynb
+parts:
+- caption: Usages
+  chapters:
+  - file: get_started.ipynb
+  - file: tutorial_cli.md
+  - file: tutorial_datastore.ipynb
+  - file: tutorial_scedc.ipynb
+  - file: tutorial_plot_stacks.ipynb
+
+- caption: More Examples
+  chapters:
+  - file: tutorial_ncedc.ipynb
+  - file: tutorial_compositestore.ipynb
+  - file: tutorial_cli_mpi.ipynb
+  - file: tutorial_pnwstore.ipynb
+
+- caption: Application
+  chapters:
+  - file: monitoring/monitoring_demo.ipynb
+
+- caption: Cloud Computing
+  chapters:
+  - file: cloud/tutorial_cloud.md
+  - file: cloud/tutorial_aws_batch.ipynb

@@ -1,16 +1,22 @@
 # Book settings
 # Learn more at https://jupyterbook.org/customize/config.html
 
-title: Noisepy Tutorials
-author: Noisepy Community
+title: NoisePy Tutorials
+author: NoisePy Community
 logo: ../docs_old/figures/logo.png
+copyright: "2024"
 
 # Force re-execution of notebooks on each build.
 # See https://jupyterbook.org/content/execute.html
 execute:
   execute_notebooks: force
   exclude_patterns:
-    - noisepy_aws_batch.ipynb
+    - tutorial_aws_batch.ipynb
+    - tutorial_pnwstore.ipynb
+    - tutorial_plot_stacks.ipynb
+    - tutorial_cli_mpi.ipynb
+    - monitoring_demo.ipynb
+
   timeout: 360
 
 only_build_toc_files: true
@@ -26,6 +32,7 @@ only_build_toc_files: true
 # Information about where the book exists on the web
 repository:
   url: https://github.com/noisepy/NoisePy  # Online location of your book
+  provider: github
   path_to_book: tutorials  # Optional path to your book, relative to the repository root
   branch: main # Which branch of the repository should be used when creating links (optional)
 
@@ -34,10 +41,15 @@ repository:
 html:
   use_issues_button: true
   use_repository_button: true
+  use_edit_page_button: true
+
+launch_buttons:
+  notebook_interface: classic
+  colab_url: "https://colab.research.google.com"
 
 # Set navigation_with_keys: false to prevent pydata-sphinx-theme validation warning/error
 # See https://github.com/pydata/pydata-sphinx-theme/issues/1492
-sphinx:
-  config:
-    html_theme_options:
-      navigation_with_keys: false
+# sphinx: # for some reasons, this suppresses the github button.
+#   config:
+#     html_theme_options:
+#       navigation_with_keys: false

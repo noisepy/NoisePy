@@ -104,7 +104,7 @@ def whiten_original(data, fft_para: ConfigParameters):
 def whiten1d(freq_norm: FreqNorm):
     # 1 D case
     fft_para = ConfigParameters()
-    fft_para.samp_freq = 1.0
+    fft_para.sampling_rate = 1.0
     fft_para.freqmin = 0.01
     fft_para.freqmax = 0.2
     fft_para.smoothspect_N = 1
@@ -123,7 +123,7 @@ def whiten1d(freq_norm: FreqNorm):
 def whiten2d(freq_norm: FreqNorm):
     # 2 D case
     fft_para = ConfigParameters()
-    fft_para.samp_freq = 1.0
+    fft_para.sampling_rate = 1.0
     fft_para.freqmin = 0.01
     fft_para.freqmax = 0.2
     fft_para.smoothspect_N = 1

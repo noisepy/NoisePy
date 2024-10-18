@@ -24,7 +24,7 @@ from noisepy.seis.io.s3store import SCEDCS3DataStore
 
 def test_read_channels():
     CLOSEST_FREQ = 60
-    samp_freq = 40
+    sampling_rate = 40
     freqs = [10, 39, CLOSEST_FREQ, 100]
     ch_data = []
     for f in freqs:
@@ -35,14 +35,14 @@ def test_read_channels():
     tuples = [(Channel("foo", Station("CI", "bar")), cd) for cd in ch_data] * N
 
     # we should pick the closest frequency that is >= to the target freq, 60 in this case
-    filtered = _filter_channel_data(tuples, samp_freq, single_freq=True)
+    filtered = _filter_channel_data(tuples, sampling_rate, single_freq=True)
     assert N == len(filtered)
     assert [t[1].sampling_rate for t in filtered] == [CLOSEST_FREQ] * N
 
     # we should get all data at >= 40 Hz (60 and 100)
-    filtered = _filter_channel_data(tuples, samp_freq, single_freq=False)
+    filtered = _filter_channel_data(tuples, sampling_rate, single_freq=False)
     assert N * 2 == len(filtered)
-    assert all([t[1].sampling_rate >= samp_freq for t in filtered])
+    assert all([t[1].sampling_rate >= sampling_rate for t in filtered])
 
 
 def test_safe_read_channels():
@@ -86,7 +86,7 @@ def test_cross_correlation(
     rm_resp: RmResp, cc_method: CCMethod, substack: bool, substack_len: int, inc_hours: int, dpath: str
 ):
     config = ConfigParameters()
-    config.samp_freq = 1.0
+    config.sampling_rate = 1.0
     config.rm_resp = rm_resp
     config.cc_method = cc_method
     config.inc_hours = inc_hours

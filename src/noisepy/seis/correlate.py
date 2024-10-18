@@ -124,7 +124,7 @@ def cc_timespan(
     """
     LOADING NOISE DATA AND DO FFT
     """
-    nnfft = int(next_fast_len(int(fft_params.cc_len * fft_params.samp_freq)))  # samp_freq should be sampling_rate
+    nnfft = int(next_fast_len(int(fft_params.cc_len * fft_params.sampling_rate)))
 
     t_chunk = tlog.reset()  # for tracking overall chunk processing time
     all_channels = raw_store.get_channels(ts)
@@ -165,7 +165,7 @@ def cc_timespan(
         return []
 
     ch_data_tuples = _read_channels(
-        executor, ts, raw_store, missing_channels, fft_params.samp_freq, fft_params.single_freq
+        executor, ts, raw_store, missing_channels, fft_params.sampling_rate, fft_params.single_freq
     )
     # only the channels we are using
 
@@ -475,14 +475,14 @@ def _read_channels(
     ts: DateTimeRange,
     store: RawDataStore,
     channels: List[Channel],
-    samp_freq: int,
+    sampling_rate: int,
     single_freq: bool = True,
 ) -> List[Tuple[Channel, ChannelData]]:
     ch_data_refs = [executor.submit(_safe_read_data, store, ts, ch) for ch in channels]
     ch_data = get_results(ch_data_refs, "Read channel data")
     tuples = list(filter(lambda tup: tup[1].data.size > 0, zip(channels, ch_data)))
 
-    return _filter_channel_data(tuples, samp_freq, single_freq)
+    return _filter_channel_data(tuples, sampling_rate, single_freq)
 
 
 def _safe_read_data(store: RawDataStore, ts: DateTimeRange, ch: Channel) -> ChannelData:
@@ -494,24 +494,24 @@ def _safe_read_data(store: RawDataStore, ts: DateTimeRange, ch: Channel) -> Chan
 
 
 def _filter_channel_data(
-    tuples: List[Tuple[Channel, ChannelData]], samp_freq: int, single_freq: bool = True
+    tuples: List[Tuple[Channel, ChannelData]], sampling_rate: int, single_freq: bool = True
 ) -> List[Tuple[Channel, ChannelData]]:
     frequencies = set(t[1].sampling_rate for t in tuples)
-    frequencies = list(filter(lambda f: f >= samp_freq, frequencies))
+    frequencies = list(filter(lambda f: f >= sampling_rate, frequencies))
     if len(frequencies) == 0:
-        logging.warning(f"No data available with sampling frequency >= {samp_freq}")
+        logging.warning(f"No data available with sampling rate >= {sampling_rate}")
         return []
     if single_freq:
         closest_freq = min(
             frequencies,
-            key=lambda f: max(f - samp_freq, 0),
+            key=lambda f: max(f - sampling_rate, 0),
         )
-        logger.info(f"Picked {closest_freq} as the closest sampling frequence to {samp_freq}. ")
+        logger.info(f"Picked {closest_freq} as the closest sampling rate to {sampling_rate}. ")
         filtered_tuples = list(filter(lambda tup: tup[1].sampling_rate == closest_freq, tuples))
         logger.info(f"Filtered to {len(filtered_tuples)}/{len(tuples)} channels with sampling rate == {closest_freq}")
     else:
-        filtered_tuples = list(filter(lambda tup: tup[1].sampling_rate >= samp_freq, tuples))
-        logger.info(f"Filtered to {len(filtered_tuples)}/{len(tuples)} channels with sampling rate >= {samp_freq}")
+        filtered_tuples = list(filter(lambda tup: tup[1].sampling_rate >= sampling_rate, tuples))
+        logger.info(f"Filtered to {len(filtered_tuples)}/{len(tuples)} channels with sampling rate >= {sampling_rate}")
 
     return filtered_tuples
 
@@ -523,7 +523,7 @@ def check_memory(params: ConfigParameters, nsta: int) -> int:
     # crude estimation on memory needs (assume float32)
     nsec_chunk = params.inc_hours / 24 * 86400
     nseg_chunk = int(np.floor((nsec_chunk - params.cc_len) / params.step))
-    npts_chunk = int(nseg_chunk * params.cc_len * params.samp_freq)
+    npts_chunk = int(nseg_chunk * params.cc_len * params.sampling_rate)
     memory_size = nsta * npts_chunk * 4 / 1024**3
     if memory_size > MAX_MEM:
         raise ValueError(

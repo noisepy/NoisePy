@@ -40,7 +40,7 @@ noisepy cross_correlate  \
 --ccf_path=$CCF \
 --stations=$STATIONS \
 --channels=$CHANNELS \
---net_list=$NETWORKS \
+--networks=$NETWORKS \
 --start=$START \
 --end=$END \
 --loglevel=${LOG_LEVEL} \

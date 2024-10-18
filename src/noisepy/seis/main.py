@@ -151,7 +151,7 @@ def create_raw_store(args, params: ConfigParameters):
         store = SCEDCS3DataStore(
             raw_dir,
             catalog,
-            channel_filter(params.net_list, params.stations, params.channels),
+            channel_filter(params.networks, params.stations, params.channels),
             DateTimeRange(params.start_date, params.end_date),
             params.storage_options,
         )

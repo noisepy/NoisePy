@@ -56,7 +56,7 @@ def stack_cross_correlations(
     t_tot = tlog.reset()
 
     stations = set(fft_params.stations)
-    networks = set(fft_params.net_list)
+    networks = set(fft_params.networks)
 
     def sta_filter(sta: Station) -> bool:
         return (WILD_CARD in stations or sta.name in stations) and (WILD_CARD in networks or sta.network in networks)
@@ -71,7 +71,7 @@ def stack_cross_correlations(
         if len(pairs_filt) == 0:
             detail = (
                 f"{len(pairs)} total pairs found in the store. These filtered down to 0 pairs "
-                f"according to the config: stations={fft_params.stations}, net_list={fft_params.net_list}"
+                f"according to the config: stations={fft_params.stations}, networks={fft_params.networks}"
             )
             raise IOError(NO_CCF_DATA_MSG + "\n" + detail)
 
@@ -339,7 +339,7 @@ def calc_segments(fft_params: ConfigParameters, num_chunk: int) -> Tuple[int, in
             num_segmts = int(np.floor((fft_params.inc_hours * 3600 - fft_params.cc_len) / fft_params.step))
         else:
             num_segmts = int(fft_params.inc_hours / (fft_params.substack_len / 3600))
-    npts_segmt = int(2 * fft_params.maxlag * fft_params.samp_freq) + 1
+    npts_segmt = int(2 * fft_params.maxlag * fft_params.sampling_rate) + 1
     memory_size = num_chunk * num_segmts * npts_segmt * 4 / 1024**3
 
     logger.debug("Good on memory (need %5.2f G )!" % (memory_size))

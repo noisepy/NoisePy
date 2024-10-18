@@ -11,12 +11,12 @@ NoisePy is a Python package designed for fast and easy computation of ambient no
 ## Major updates coming
 NoisePy is going through a major refactoring to make this package easier to develop and deploy. Submit an issue, fork the repository and create pull requests to [contribute](CONTRIBUTING.md).
 
-# Installation
+## Installation
 The nature of NoisePy being composed of python scripts allows flexible package installation, which is essentially to build dependent libraries the scripts and related functions live upon. We recommend using [conda](https://docs.conda.io/en/latest/) or [pip](https://pypi.org/project/pip/) to install.
 
 **Note the order of the command lines below matters**
 
-## With Conda and pip
+### With Conda and pip
 ```bash
 conda create -n noisepy -y python=3.10 pip
 conda activate noisepy
@@ -29,21 +29,21 @@ pip install ipykernel notebook
 python -m ipykernel install --user --name noisepy
 ```
 
-## With Conda and pip and MPI support
+### With Conda and pip and MPI support
 ```bash
 conda create -n noisepy -y python=3.10 pip mpi4py
 conda activate noisepy
 pip install noisepy-seis[mpi]
 ```
 
-## With virtual environment
+### With virtual environment
 ```bash
 python -m venv noisepy
 source noisepy/bin/activate
 pip install noisepy-seis
 ```
 
-## With virtual environment and MPI support
+### With virtual environment and MPI support
 An MPI installation is required. E.g. for macOS using [brew](https://brew.sh/) :
 ```bash
 brew install open-mpi
@@ -55,7 +55,7 @@ source noisepy/bin/activate
 pip install noisepy-seis[mpi]
 ```
 
-# Functionality
+## Functionality
 Here is a list of features of the package:
 * download continous noise data based:
    + on webservices using obspy's core functions of [get_station](https://docs.obspy.org/packages/autogen/obspy.clients.fdsn.client.Client.get_stations.html) and [get_waveforms](https://docs.obspy.org/packages/autogen/obspy.clients.fdsn.client.Client.get_waveforms.html)
@@ -67,28 +67,25 @@ Here is a list of features of the package:
    + *Ambient noise monitoring*: measure dv/v using a wide variety of techniques in time, fourier, and wavelet domain (Yuan et al., 2021)
    + *Surface wave dispersion*: construct dispersion images using conventional techniques.
 
-# Usage
+## Usage
 
 To run the code on a single core, open the terminal and activate the noisepy environment before run following commands. To run on institutional clusters, see installation notes for individual packages on the module list of the cluster.
 
-## Deploy using Docker
+### Deploy using Docker
 We use I/O on disk, so users need root access to the file system. To install rootless docker, see instructions [here](https://docs.docker.com/engine/security/rootless/#install).
 ```bash
 docker pull  ghcr.io/noisepy/noisepy:latest
 docker run -v ~/tmp:/tmp ghcr.io/noisepy/noisepy:latest cross_correlate --path /tmp
 ```
 
-# Tutorials
-A short tutorial on how to use NoisePy can be is available as a [web page](https://noisepy.github.io/NoisePy/noisepy_scedc_tutorial.html) or [Jupyter notebook](https://github.com/noisepy/NoisePy/blob/main/tutorials/noisepy_scedc_tutorial.ipynb) and can be
-[run directly in Colab](https://colab.research.google.com/github/noisepy/NoisePy/blob/main/tutorials/noisepy_scedc_tutorial.ipynb).
-
-This tutorial presents one simple example of how NoisePy might work. We strongly encourage you to download the NoisePy package and play it on your own! If you have any comments and/or suggestions during running the codes, please do not hesitate to contact us through email or open an issue in this github page!
+## Tutorials
+Short tutorials on how to use NoisePy can be is available [here](https://noisepy.github.io/NoisePy/) and can be run directly in Colab. These tutorials present simple examples of how NoisePy might work. We strongly encourage you to download the NoisePy package and play it on your own! If you have any comments and/or suggestions during running the codes, please do not hesitate to contact us through email or open an issue in this github page!
 
 Chengxin Jiang (chengxinjiang@gmail.com)
 Marine Denolle (mdenolle@uw.edu)
 Yiyu Ni (niyiyu@uw.edu)
 
-## Taxonomy
+### Taxonomy
 Taxonomy of the NoisePy variables.
 
 * ``station`` refers to the site that has the seismic instruments that records ground shaking.
@@ -101,12 +98,12 @@ Taxonomy of the NoisePy variables.
 * ``substack,substack_len`` boolean, window length over which to substack the correlation (to save storage or do monitoring), it has to be a multiple of ``cc_len``.
 * ``time_chunk, nchunk`` refers to the time unit that defined a single job. for instace, ``cc_len`` is the correlation length (e.g., 1 hour, 30 min), the overall duration of the experiment is the total length (1 month, 1 year, ...). The time chunk could be 1 day: the code would loop through each cc_len window in a for loop. But each day will be sent as a thread.
 
-# Acknowledgements
+## Acknowledgements
 Thanks to our contributors so far!
 
 [![Contributors](https://contrib.rocks/image?repo=noisepy/NoisePy)](https://github.com/noisepy/NoisePy/graphs/contributors)
 
-## Use this reference when publishing on your work with noisepy
+### Use this reference when publishing on your work with noisepy
 
 Main code:
 

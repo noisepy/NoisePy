@@ -109,14 +109,14 @@ def preprocess_raw(
     respdir = prepro_para["respdir"]
     freqmin = prepro_para["freqmin"]
     freqmax = prepro_para["freqmax"]
-    samp_freq = prepro_para["samp_freq"]
+    sampling_rate = prepro_para["sampling_rate"]
 
     # parameters for butterworth filter
     f1 = 0.9 * freqmin
     f2 = freqmin
-    if 1.1 * freqmax > 0.45 * samp_freq:
-        f3 = 0.4 * samp_freq
-        f4 = 0.45 * samp_freq
+    if 1.1 * freqmax > 0.45 * sampling_rate:
+        f3 = 0.4 * sampling_rate
+        f4 = 0.45 * sampling_rate
     else:
         f3 = freqmax
         f4 = 1.1 * freqmax
@@ -152,10 +152,10 @@ def preprocess_raw(
     st[0].data = np.float32(bandpass(st[0].data, pre_filt[0], pre_filt[-1], df=sps, corners=4, zerophase=True))
 
     # make downsampling if needed
-    if abs(samp_freq - sps) > 1e-4:
+    if abs(sampling_rate - sps) > 1e-4:
         # downsampling here
-        # st.interpolate(samp_freq, method="weighted_average_slopes")
-        st.resample(samp_freq)
+        # st.interpolate(sampling_rate, method="weighted_average_slopes")
+        st.resample(sampling_rate)
         delta = st[0].stats.delta
 
         # when starttimes are between sampling points
@@ -192,7 +192,7 @@ def preprocess_raw(
             specfile = glob.glob(os.path.join(respdir, "*" + station + "*"))
             if len(specfile) == 0:
                 raise ValueError("no response sepctrum found for %s" % station)
-            st = resp_spectrum(st, specfile[0], samp_freq, pre_filt)
+            st = resp_spectrum(st, specfile[0], sampling_rate, pre_filt)
 
         elif rm_resp == RmResp.RESP:  # TODO: to be implement
             logger.info("remove response using RESP files")
@@ -589,7 +589,7 @@ def stacking(cc_array, cc_time, cc_ngood, stack_para):
     nstacks:    number of overall segments for the final stacks
     """
     # load useful parameters from dict
-    samp_freq = stack_para["samp_freq"]
+    sampling_rate = stack_para["sampling_rate"]
     smethod = stack_para["stack_method"]
     npts = cc_array.shape[1]
 
@@ -619,7 +619,7 @@ def stacking(cc_array, cc_time, cc_ngood, stack_para):
         if smethod == StackMethod.LINEAR:
             allstacks1 = np.mean(cc_array, axis=0)
         elif smethod == StackMethod.PWS:
-            allstacks1 = pws(cc_array, samp_freq)
+            allstacks1 = pws(cc_array, sampling_rate)
         elif smethod == StackMethod.ROBUST:
             allstacks1, w, nstep = robust_stack(cc_array, 0.001)
         elif smethod == StackMethod.AUTO_COVARIANCE:
@@ -628,7 +628,7 @@ def stacking(cc_array, cc_time, cc_ngood, stack_para):
             allstacks1 = nroot_stack(cc_array, 2)
         elif smethod == StackMethod.ALL:
             allstacks1 = np.mean(cc_array, axis=0)
-            allstacks2 = pws(cc_array, samp_freq)
+            allstacks2 = pws(cc_array, sampling_rate)
             allstacks3, w, nstep = robust_stack(cc_array, 0.001)
         nstacks = np.sum(cc_ngood)
 

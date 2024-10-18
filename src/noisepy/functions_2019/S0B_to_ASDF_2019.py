@@ -57,7 +57,7 @@ locations = os.path.join(
 
 # useful parameters for cleaning the data
 input_fmt = "sac"  # input file format between 'sac' and 'mseed'
-samp_freq = 10  # targeted sampling rate
+sampling_rate = 10  # targeted sampling rate
 stationxml = False  # station.XML file exists or not
 rm_resp = RmResp.NO  # select 'no' to not remove response and
 # use 'inv','spectrum','RESP', or 'polozeros' to remove response
@@ -101,7 +101,7 @@ prepro_para = {
     "respdir": respdir,
     "freqmin": freqmin,
     "freqmax": freqmax,
-    "samp_freq": samp_freq,
+    "sampling_rate": sampling_rate,
     "inc_hours": inc_hours,
     "start_date": start_date,
     "end_date": end_date,
@@ -155,7 +155,7 @@ if rank == 0:
     # rough estimation on memory needs needed in S1 (assume float32 dtype)
     nsec_chunk = inc_hours / 24 * 86400
     nseg_chunk = int(np.floor((nsec_chunk - cc_len) / step)) + 1
-    npts_chunk = int(nseg_chunk * cc_len * samp_freq)
+    npts_chunk = int(nseg_chunk * cc_len * sampling_rate)
     memory_size = nsta * npts_chunk * 4 / 1024**3
     if memory_size > MAX_MEM:
         raise ValueError(

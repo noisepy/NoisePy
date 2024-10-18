@@ -80,8 +80,6 @@ def download(direc: str, prepro_para: ConfigParameters) -> None:
 
     # client/data center. see https://docs.obspy.org/packages/obspy.clients.fdsn.html for a list
     client = Client(prepro_para.client_url_key)
-    chan_list = prepro_para.channels
-    sta_list = prepro_para.stations
     executor = ThreadPoolExecutor()
 
     tlog = TimeLogger(logger, logging.INFO)
@@ -101,11 +99,12 @@ def download(direc: str, prepro_para: ConfigParameters) -> None:
         f"""Download
         From: {starttime}
         To: {endtime}
-        Stations: {sta_list}
-        Channels: {chan_list}
+        Networks: {prepro_para.networks}
+        Stations: {prepro_para.stations}
+        Channels: {prepro_para.channels}
         """
     )
-    ncomp = len(chan_list)
+    ncomp = len(prepro_para.channels)
 
     # prepare station info (existing station list vs. fetching from client)
     if prepro_para.down_list:
@@ -119,9 +118,9 @@ def download(direc: str, prepro_para: ConfigParameters) -> None:
         # calculate the total number of channels to download
         # loop through specified network, station and channel lists
         bulk_req = []
-        for inet in prepro_para.net_list:
-            for ista in sta_list:
-                for ichan in chan_list:
+        for inet in prepro_para.networks:
+            for ista in prepro_para.stations:
+                for ichan in prepro_para.channels:
                     bulk_req.append((inet, ista, "*", ichan, starttime, endtime))
 
         # gather station info
@@ -163,7 +162,7 @@ def download(direc: str, prepro_para: ConfigParameters) -> None:
     # rough estimation on memory needs (assume float32 dtype)
     nsec_chunk = prepro_para.inc_hours / 24 * 86400
     nseg_chunk = int(np.floor((nsec_chunk - prepro_para.cc_len) / prepro_para.step)) + 1
-    npts_chunk = int(nseg_chunk * prepro_para.cc_len * prepro_para.samp_freq)
+    npts_chunk = int(nseg_chunk * prepro_para.cc_len * prepro_para.sampling_rate)
     memory_size = nsta * npts_chunk * 4 / 1024**3
     if memory_size > MAX_MEM:
         raise ValueError(
