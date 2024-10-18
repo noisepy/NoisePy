@@ -11,10 +11,11 @@ copyright: "2024"
 execute:
   execute_notebooks: force
   exclude_patterns:
-    - noisepy_aws_batch_tutorial.ipynb
-    - noisepy_pnwstore_tutorial.ipynb
-    - monitoring_demo.ipynb
+    - tutorial_aws_batch.ipynb
+    - tutorial_pnwstore.ipynb
     - tutorial_plot_stacks.ipynb
+    - monitoring_demo.ipynb
+
   timeout: 360
 
 only_build_toc_files: true
