@@ -9,6 +9,7 @@ parts:
   - file: get_started.ipynb
   - file: tutorial_cli.md
   - file: tutorial_datastore.ipynb
+  - file: tutorial_plot_stacks.ipynb
 
 - caption: Examples
   chapters:  

@@ -14,6 +14,7 @@ execute:
     - noisepy_aws_batch_tutorial.ipynb
     - noisepy_pnwstore_tutorial.ipynb
     - monitoring_demo.ipynb
+    - tutorial_plot_stacks.ipynb
   timeout: 360
 
 only_build_toc_files: true
