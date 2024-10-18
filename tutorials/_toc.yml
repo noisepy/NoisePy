@@ -12,7 +12,7 @@ parts:
   - file: tutorial_plot_stacks.ipynb
 
 - caption: Examples
-  chapters:  
+  chapters:
   - file: tutorial_scedc.ipynb
   - file: tutorial_ncedc.ipynb
   - file: tutorial_compositestore.ipynb

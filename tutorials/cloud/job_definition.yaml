@@ -1,7 +1,7 @@
 jobDefinitionName: ''  # [REQUIRED] Specify a name for the job definition to register.
 type: container
 platformCapabilities: # Options: EC2, EC2_SPOT, FARGATE, FARGATE_SPOT (need test)
-- FARGATE 
+- FARGATE
 containerProperties:
   image: 'ghcr.io/noisepy/noisepy'
   command:
