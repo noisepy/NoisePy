@@ -108,7 +108,7 @@ jobs:
     - name: Test Cross-Correlation (S1)
       run: |
         mpiexec -n 2 noisepy cross_correlate \
-        --config tutorials/s3_anon.yaml \
+        --config tutorials/s3_anon.yml \
         --mpi \
         --raw_data_path s3://scedc-pds/continuous_waveforms/ \
         --ccf_path $RUNNER_TEMP/CCF \
@@ -150,4 +150,4 @@ jobs:
         --xml_path s3://scedc-pds/FDSNstationXML/CI/ \
         --stations "SBC,RIO" --start_date 2022-02-02 --end_date 2022-02-04 \
         --stop_on_error \
-        --config tutorials/s3_anon.yaml
+        --config tutorials/s3_anon.yml
