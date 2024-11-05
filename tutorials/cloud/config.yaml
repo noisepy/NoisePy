@@ -35,6 +35,6 @@ stationxml: false
 step: 450.0
 storage_options: {}
 substack: false
-substack_len: 1800
+substack_windows: 1
 time_norm: no
 xcorr_only: true
