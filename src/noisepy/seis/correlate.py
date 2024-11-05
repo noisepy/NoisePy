@@ -502,18 +502,33 @@ def _filter_channel_data(
         logging.warning(f"No data available with sampling rate >= {sampling_rate}")
         return []
     if single_freq:
-        closest_freq = min(
-            frequencies,
-            key=lambda f: max(f - sampling_rate, 0),
-        )
-        logger.info(f"Picked {closest_freq} as the closest sampling rate to {sampling_rate}. ")
+        closest_freq = _get_closest_freq(frequencies, sampling_rate)
+        logger.info(f"Picked {closest_freq} as the closest sampling_rate to {sampling_rate}. ")
         filtered_tuples = list(filter(lambda tup: tup[1].sampling_rate == closest_freq, tuples))
         logger.info(f"Filtered to {len(filtered_tuples)}/{len(tuples)} channels with sampling rate == {closest_freq}")
     else:
         filtered_tuples = list(filter(lambda tup: tup[1].sampling_rate >= sampling_rate, tuples))
+        # for each station, pick the closest >= to sampling_rate
+        tmp = list(
+            map(
+                lambda s: [t for t in filtered_tuples if t[0].station == s],
+                set([t[0].station for t in filtered_tuples]),
+            )
+        )
+        filtered_tuples = sum(list(map(lambda t: _filt_single_station(t, sampling_rate), tmp)), [])
         logger.info(f"Filtered to {len(filtered_tuples)}/{len(tuples)} channels with sampling rate >= {sampling_rate}")
 
     return filtered_tuples
+
+
+def _get_closest_freq(frequencies, sampling_rate: int):
+    return min(frequencies, key=lambda f: max(f - sampling_rate, 0))
+
+
+def _filt_single_station(tuples: List[Tuple[Channel, ChannelData]], sampling_rate: int):
+    frequencies = set(t[1].sampling_rate for t in tuples)
+    closest_freq = _get_closest_freq(frequencies, sampling_rate)
+    return [t for t in tuples if t[1].sampling_rate == closest_freq]
 
 
 def check_memory(params: ConfigParameters, nsta: int) -> int:
