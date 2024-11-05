@@ -25,21 +25,32 @@ from noisepy.seis.io.s3store import SCEDCS3DataStore
 def test_read_channels():
     CLOSEST_FREQ = 60
     sampling_rate = 40
-    freqs = [10, 39, CLOSEST_FREQ, 100]
-    ch_data = []
-    for f in freqs:
+    ch_data1 = []
+    N = 5
+    for f in [10, 39, CLOSEST_FREQ, 100]:
         cd = ChannelData.empty()
         cd.sampling_rate = f
-        ch_data.append(cd)
-    N = 5
-    tuples = [(Channel("foo", Station("CI", "bar")), cd) for cd in ch_data] * N
+        ch_data1.append(cd)
 
-    # we should pick the closest frequency that is >= to the target freq, 60 in this case
+    cd = ChannelData.empty()
+    cd.sampling_rate = 100
+    ch_data2 = [cd]
+
+    tuples = [(Channel("foo", Station("CI", "FOO")), cd) for cd in ch_data1] * N
+    tuples += [(Channel("bar", Station("CI", "BAR")), cd) for cd in ch_data2] * N
+
+    # we should pick the closest frequency that is >= to the target sampling_rate
+    # 60 Hz in this case, for both stations
+    # CI.FOO returns 60 Hz
+    # CI.BAR returns nothing
     filtered = _filter_channel_data(tuples, sampling_rate, single_freq=True)
     assert N == len(filtered)
     assert [t[1].sampling_rate for t in filtered] == [CLOSEST_FREQ] * N
 
-    # we should get all data at >= 40 Hz (60 and 100)
+    # we should pick the closest frequency that is >= to the target sampling_rate
+    # but might be different for each station
+    # CI.FOO returns 60 Hz
+    # CI.BAR returns 100 Hz
     filtered = _filter_channel_data(tuples, sampling_rate, single_freq=False)
     assert N * 2 == len(filtered)
     assert all([t[1].sampling_rate >= sampling_rate for t in filtered])
