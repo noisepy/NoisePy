@@ -25,21 +25,32 @@ from noisepy.seis.io.s3store import SCEDCS3DataStore
 def test_read_channels():
     CLOSEST_FREQ = 60
     sampling_rate = 40
-    freqs = [10, 39, CLOSEST_FREQ, 100]
-    ch_data = []
-    for f in freqs:
+    ch_data1 = []
+    N = 5
+    for f in [10, 39, CLOSEST_FREQ, 100]:
         cd = ChannelData.empty()
         cd.sampling_rate = f
-        ch_data.append(cd)
-    N = 5
-    tuples = [(Channel("foo", Station("CI", "bar")), cd) for cd in ch_data] * N
+        ch_data1.append(cd)
 
-    # we should pick the closest frequency that is >= to the target freq, 60 in this case
+    cd = ChannelData.empty()
+    cd.sampling_rate = 100
+    ch_data2 = [cd]
+
+    tuples = [(Channel("foo", Station("CI", "FOO")), cd) for cd in ch_data1] * N
+    tuples += [(Channel("bar", Station("CI", "BAR")), cd) for cd in ch_data2] * N
+
+    # we should pick the closest frequency that is >= to the target sampling_rate
+    # 60 Hz in this case, for both stations
+    # CI.FOO returns 60 Hz
+    # CI.BAR returns nothing
     filtered = _filter_channel_data(tuples, sampling_rate, single_freq=True)
     assert N == len(filtered)
     assert [t[1].sampling_rate for t in filtered] == [CLOSEST_FREQ] * N
 
-    # we should get all data at >= 40 Hz (60 and 100)
+    # we should pick the closest frequency that is >= to the target sampling_rate
+    # but might be different for each station
+    # CI.FOO returns 60 Hz
+    # CI.BAR returns 100 Hz
     filtered = _filter_channel_data(tuples, sampling_rate, single_freq=False)
     assert N * 2 == len(filtered)
     assert all([t[1].sampling_rate >= sampling_rate for t in filtered])
@@ -79,11 +90,11 @@ class MockCatalogMock:
 @pytest.mark.parametrize("rm_resp", [RmResp.NO, RmResp.INV])  # add tests for SPECTRUM, RESP and POLES_ZEROS
 @pytest.mark.parametrize("cc_method", [CCMethod.XCORR, CCMethod.COHERENCY, CCMethod.DECONV])
 @pytest.mark.parametrize("substack", [True, False])
-@pytest.mark.parametrize("substack_len", [1, 2])
+@pytest.mark.parametrize("substack_windows", [1, 2])
 @pytest.mark.parametrize("inc_hours", [0, 24])
 @pytest.mark.parametrize("dpath", ["./data/cc", "./data/acc"])
 def test_cross_correlation(
-    rm_resp: RmResp, cc_method: CCMethod, substack: bool, substack_len: int, inc_hours: int, dpath: str
+    rm_resp: RmResp, cc_method: CCMethod, substack: bool, substack_windows: int, inc_hours: int, dpath: str
 ):
     config = ConfigParameters()
     config.sampling_rate = 1.0
@@ -92,7 +103,7 @@ def test_cross_correlation(
     config.inc_hours = inc_hours
     if substack:
         config.substack = substack
-        config.substack_len = substack_len * config.cc_len
+        config.substack_windows = substack_windows
     path = os.path.join(os.path.dirname(__file__), dpath)
 
     raw_store = SCEDCS3DataStore(path, MockCatalogMock())

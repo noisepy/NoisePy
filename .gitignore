@@ -180,6 +180,9 @@ tutorials/ncedc_data/
 tutorials/cli/tmpdata
 tutorials/pnw_data
 tutorials/composite_data
+tutorials/monitoring/CCF_ASDF/
+tutorials/monitoring/Monitoring_output.csv
+tutorials/monitoring/monito_config.yml
 
 # Jupyterbook
 _build/
