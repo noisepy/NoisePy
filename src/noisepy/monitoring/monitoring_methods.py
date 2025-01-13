@@ -446,7 +446,7 @@ def mwcs_dvv(ref, cur, moving_window_length, slide_step, para, smoothing_half_wi
     delta_maxdt = 0.1
     indx1 = np.where(delta_mcoh > delta_mincho)
     indx2 = np.where(delta_err < delta_maxerr)
-    indx3 = np.where(delta_t < delta_maxdt)
+    indx3 = np.where(np.abs(delta_t) < delta_maxdt)
 
     # -----find good dt measurements-----
     indx = np.intersect1d(indx1, indx2)
