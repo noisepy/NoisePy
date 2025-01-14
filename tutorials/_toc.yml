@@ -10,6 +10,7 @@ parts:
   - file: tutorial_cli.md
   - file: tutorial_datastore.ipynb
   - file: tutorial_scedc.ipynb
+  - file: tutorial_local_mseed.ipynb
   - file: tutorial_plot_stacks.ipynb
 
 - caption: More Examples

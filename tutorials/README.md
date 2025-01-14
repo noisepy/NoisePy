@@ -27,7 +27,7 @@ The data processing workflow in NoisePy consists of three steps:
 
 NoisePy accesses data through three "DataStore" abstract classes: `DataStore`, `CrossCorrelationDataStore` and `StackStore`. Concrete implementations are provided for ASDF (H5), miniSEED, Zarr, TileDB, npy formats. This part is implemented in a separate IO package [noisepy-io](https://github.com/noisepy/noisepy-io).
 
-0. [optional] data download: for users who want to work entirely locally. This step prepares and organize the data in a ``RawDataStore``.
+0. [optional] data download: for users who want to work entirely locally. This step prepares and organize the data in a ``RawDataStore`` or ``MiniSeeDDataStore``
 1. Cross correlations: data may be streamed from the DataStore, which can be hosted on the Cloud, pre-processing and cross correlations are done for each time chunk (e.g., one day for broadband data). Cross-correlations are saved for each time chunck in ``CrossCorrelationDataStore``.
 2. Stacking: Data is aggregated and stacked over all time periods. Stacked data will be stored in ``StackStore``.
 

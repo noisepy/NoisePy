@@ -13,6 +13,7 @@ execute:
   exclude_patterns:
     - tutorial_aws_batch.ipynb
     - tutorial_pnwstore.ipynb
+    - tutorial_local_mseed.ipynb
     - tutorial_plot_stacks.ipynb
     - tutorial_cli_mpi.ipynb
     - monitoring_demo.ipynb
