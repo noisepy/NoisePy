@@ -378,30 +378,6 @@ def stacking_rma(cc_array, cc_time, cc_ngood, stack_para):
     )
 
 
-def selective_stack(cc_array, epsilon):
-    """
-    this is a selective stacking algorithm developed by Jared Bryan.
-
-    PARAMETERS:
-    ----------------------
-    cc_array: numpy.ndarray contains the 2D cross correlation matrix
-    epsilon: residual threhold to quit the iteration
-    RETURNS:
-    ----------------------
-    newstack: numpy vector contains the stacked cross correlation
-
-    Written by Marine Denolle
-    """
-    cc = np.ones(cc_array.shape[0])
-    newstack = np.mean(cc_array, axis=0)
-    for i in range(cc_array.shape[0]):
-        cc[i] = np.sum(np.multiply(newstack, cc_array[i, :].T))
-    ik = np.where(cc >= epsilon)[0]
-    newstack = np.mean(cc_array[ik, :], axis=0)
-
-    return newstack, cc
-
-
 def selective_stack(cc_array, epsilon, cc_th):  # noqa: F811
     """
     this is a selective stacking algorithm developed by Jared Bryan/Kurama Okubo.

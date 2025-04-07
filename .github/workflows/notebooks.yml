@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup NoisePy
         uses: ./.github/actions/setup
         with:
@@ -45,23 +45,23 @@ jobs:
           jb build . -W
           cd ..
       - name: Publish as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: github.event_name == 'pull_request' || steps.build.outcome == 'failure'
         with:
           path: './tutorials/_build/html'
       - name: Setup Pages
         if: github.event_name == 'push' && steps.build.outcome == 'success'
-        uses: actions/configure-pages@v3
+        uses: actions/configure-pages@v4
       - name: Upload pages artifact
         if: github.event_name == 'push' && steps.build.outcome == 'success'
-        uses: actions/upload-pages-artifact@v1
+        uses: actions/upload-pages-artifact@v3
         with:
           # Upload html output
           path: './tutorials/_build/html'
       - name: Deploy to GitHub Pages
         if: github.event_name == 'push' && steps.build.outcome == 'success'
         id: deployment
-        uses: actions/deploy-pages@v2
+        uses: actions/deploy-pages@v4
       - name: Job failed
         if: steps.build.outcome != 'success'
         run: |

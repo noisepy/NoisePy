@@ -2,7 +2,13 @@ import time
 
 import numpy as np
 
-from noisepy.seis.noise_module import nroot_stack, pws, robust_stack
+from noisepy.seis.noise_module import (
+    adaptive_filter,
+    nroot_stack,
+    pws,
+    robust_stack,
+    selective_stack,
+)
 
 """
 check the performance of all different stacking method for noise cross-correlations.
@@ -45,10 +51,21 @@ def test_nroot_stack():
     # assert len(stack) == ndata.shape[0]
 
 
-# srobust, ww, nstep = noise_module.robust_stack(ndata, 0.001)
-# sACF = noise_module.adaptive_filter(ndata, 1)
-# nroot = noise_module.nroot_stack(ndata, 2)
-# sstack, nstep = noise_module.selective_stack(ndata, 0.001, 0.01)
+def test_selective_stack():
+    np.random.seed(12)
+    ndata = np.ones((3, 3))
+
+    stack, cc = selective_stack(ndata, 1)
+    assert np.all(stack == np.mean(ndata, axis=-1))
+
+
+def test_auto_covariance_stack():
+    np.random.seed(12)
+    ndata = np.random.rand(10, 3)
+
+    stack = adaptive_filter(ndata, 1)
+    assert stack.shape == (3,)
+
 
 if __name__ == "__main__":
     print("Running stretching...")
@@ -67,4 +84,16 @@ if __name__ == "__main__":
     t = time.time()
     for i in range(100):
         test_nroot_stack()
+    print("Done stretching, no errors, %4.2fs." % (time.time() - t))
+
+    print("Running selective stacking...")
+    t = time.time()
+    for i in range(100):
+        test_selective_stack()
+    print("Done stretching, no errors, %4.2fs." % (time.time() - t))
+
+    print("Running selective stacking...")
+    t = time.time()
+    for i in range(100):
+        test_selective_stack()
     print("Done stretching, no errors, %4.2fs." % (time.time() - t))
