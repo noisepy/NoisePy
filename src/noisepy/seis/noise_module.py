@@ -726,13 +726,11 @@ def check_sample_gaps(stream: obspy.Stream, starttime: obspy.UTCDateTime, endtim
     """
     # remove empty/big traces
     if len(stream) == 0 or len(stream) > 100:
-        stream = []
-        return stream
+        return obspy.Stream()
 
     # remove traces with big gaps
     if portion_gaps(stream, starttime, endtime) > 0.3:
-        stream = []
-        return stream
+        return obspy.Stream()
 
     freqs = []
     for tr in stream:
