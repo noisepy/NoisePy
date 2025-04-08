@@ -1,8 +1,10 @@
 import numpy as np
 import pytest
+from obspy import Stream, Trace, UTCDateTime
 
 from noisepy.seis.io.datatypes import CCMethod, ConfigParameters, FreqNorm, TimeNorm
 from noisepy.seis.noise_module import (
+    check_sample_gaps,
     demean,
     detrend,
     mad,
@@ -79,3 +81,26 @@ def test_smooth_source_spect(cc_method: CCMethod):
     config.cc_method = cc_method
     fft1 = np.random.random(500)
     smooth_source_spect(config, fft1)
+
+
+def test_check_sample_gaps():
+    start_date_st1 = UTCDateTime("2021-01-01T00:00:00.0Z")
+    start_date_st2 = UTCDateTime("2021-01-01T00:00:00.5Z")
+    end_date_st = UTCDateTime("2021-01-01T00:02:00.0Z")
+
+    st = Stream()
+    st_checked = check_sample_gaps(st.copy(), start_date_st1, end_date_st)
+    assert len(st_checked) == 0  # empty stream
+
+    st = Stream([Trace(np.zeros(5), header={"starttime": start_date_st1, "sampling_rate": 10})])
+    st_checked = check_sample_gaps(st.copy(), start_date_st1, end_date_st)
+    assert len(st_checked) == 0  # too short
+
+    st += Trace(np.zeros(600), header={"starttime": start_date_st2, "sampling_rate": 10.0001})
+    st_checked = check_sample_gaps(st.copy(), start_date_st1, end_date_st)
+    assert [t.stats.sampling_rate for t in st_checked] == [10.0]
+
+    st[1].stats.starttime += 1000
+    end_date_st += 1000
+    st_checked = check_sample_gaps(st.copy(), start_date_st1, end_date_st)
+    assert len(st_checked) == 0  # gap too big

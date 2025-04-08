@@ -104,12 +104,17 @@ def test_stack_pair(stackmethod, substack: bool, rotation: bool):
     pairs = [(ch[0], ch[0]), (ch[0], ch[1]), (ch[0], ch[2]), (ch[1], ch[1]), (ch[1], ch[2]), (ch[2], ch[2])]
 
     ccs = [CrossCorrelation(p[0], p[1], params, data) for p in pairs]
-
     cc_store.read.return_value = ccs
     stacks = stack_pair(sta, sta, [ts, ts], cc_store, config)
     assert len(stacks) > 0
     ts2 = date_range(1, 20, 22)
     stacks = stack_pair(sta, sta, [ts2], cc_store, config)
+    assert len(stacks) == 0
+
+    data *= -1
+    ccs = [CrossCorrelation(p[0], p[1], params, data) for p in pairs]
+    cc_store.read.return_value = ccs
+    stacks = stack_pair(sta, sta, [ts, ts], cc_store, config)
     assert len(stacks) == 0
 
 
