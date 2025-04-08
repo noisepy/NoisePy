@@ -739,8 +739,10 @@ def check_sample_gaps(stream: obspy.Stream, starttime: obspy.UTCDateTime, endtim
         freqs.append(int(tr.stats.sampling_rate))
     freq = max(freqs)
     for tr in stream:
-        if int(tr.stats.sampling_rate) != freq:
+        if tr.stats.sampling_rate != freq:
             stream.remove(tr)
+        else:
+            tr.resample(freq)
         if tr.stats.npts < 10:
             stream.remove(tr)
 
