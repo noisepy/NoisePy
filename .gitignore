@@ -187,3 +187,5 @@ tutorials/monitoring/monito_config.yml
 # Jupyterbook
 _build/
 log.txt
+
+.vscode
