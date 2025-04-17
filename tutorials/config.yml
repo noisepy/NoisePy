@@ -1,5 +1,5 @@
-start_date: '2019-02-01T00:00:00'
-end_date: '2019-02-02T00:00:00'
+start_date: '2019-02-01T00:00:00Z'
+end_date: '2019-02-02T00:00:00Z'
 sampling_rate: 20
 cc_len: 3600
 lamin: 31
