@@ -117,4 +117,6 @@ Algorithms used:
 
 * (optimal stacking) Yang X, Bryan J, Okubo K, Jiang C, Clements T, Denolle MA. [Optimal stacking of noise cross-correlation functions/](https://doi.org/10.1093/gji/ggac410) _Geophysical Journal International_. 2023 Mar;232(3):1600-18. https://doi.org/10.1093/gji/ggac410
 
+* (cloud-native support) Ni, Y., Denolle, M. A., Münchmeyer, J., Wang, Y., Feng, K. F., Garcia Jurado Suarez, C., ... & Mencin, D. (2025). A review of cloud computing and storage in seismology. Geophysical Journal International, 243(1), ggaf322. https://doi.org/10.1093/gji/ggaf322
+
 This research received software engineering support from the University of Washington’s Scientific Software Engineering Center ([SSEC](https://escience.washington.edu/software-engineering/ssec/)) supported by Schmidt Futures, as part of the Virtual Institute for Scientific Software (VISS). We would like to acknowledge [Carlos Garcia Jurado Suarez](https://github.com/carlosgjs) and [Nicholas Rich](https://github.com/nrich20) for their collaboration and contributions to the software.
