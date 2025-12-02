@@ -81,8 +81,8 @@ def preprocess_raw(
 ):
     """
     this function pre-processes the raw data stream by:
-        1) check samping rate and gaps in the data;
-        2) remove sigularity, trend and mean of each trace
+        1) check sampling rate and gaps in the data;
+        2) remove singularity, trend and mean of each trace
         3) filter and correct the time if integer time are between sampling points
         4) remove instrument responses with selected methods including:
             "inv"   -> using inventory information to remove_response;
@@ -103,7 +103,7 @@ def preprocess_raw(
     -----------------------
     ntr: obspy stream object of cleaned, merged and filtered noise data
     """
-    # load paramters from fft dict
+    # load parameters from fft dict
     rm_resp = prepro_para["rm_resp"]
     rm_resp_out = prepro_para["rm_resp_out"]
     respdir = prepro_para["respdir"]
@@ -217,7 +217,7 @@ def preprocess_raw(
             raise ValueError("no such option for rm_resp! please double check!")
 
     ntr = obspy.Stream()
-    # trim a continous segment into user-defined sequences
+    # trim a continuous segment into user-defined sequences
     st[0].trim(
         starttime=starttime,
         endtime=endtime,
@@ -231,7 +231,7 @@ def preprocess_raw(
 
 def cut_trace_make_stat(fc_para: ConfigParameters, ch_data: ChannelData):
     """
-    this function cuts continous noise data into user-defined segments, estimate the statistics of
+    this function cuts continuous noise data into user-defined segments, estimate the statistics of
     each segment and keep timestamp of each segment for later use. (used in S1)
     PARAMETERS:
     ----------------------
@@ -260,7 +260,7 @@ def cut_trace_make_stat(fc_para: ConfigParameters, ch_data: ChannelData):
         # useful parameters for trace sliding
         nseg = int(np.floor((fc_para.inc_hours / 24 * 86400 - fc_para.cc_len) / fc_para.step))
 
-    # if the data is shorter than the tim chunck, return zero values
+    # if the data is shorter than the time chunk, return zero values
     if data.size < sps * fc_para.inc_hours * 3600:
         logger.warning(
             f"The data ({data.size}) is shorter than the time chunk ({sps*fc_para.inc_hours*3600})"
@@ -304,7 +304,7 @@ def noise_processing(fft_para: ConfigParameters, dataS):
     this function performs time domain and frequency domain normalization if needed. in real case, we prefer use include
     the normalization in the cross-correaltion steps by selecting coherency or decon
     (Prieto et al, 2008, 2009; Denolle et al, 2013)
-    PARMAETERS:
+    PARAMETERS:
     ------------------------
     fft_para: ConfigParameters class containing all useful variables used for fft and cc
     dataS: 2D matrix of all segmented noise data
@@ -775,7 +775,7 @@ def portion_gaps(stream, starttime: obspy.UTCDateTime, endtime: obspy.UTCDateTim
 @jit("float32[:](float32[:],float32)", nopython=True)
 def segment_interpolate(sig1, nfric):
     """
-    this function interpolates the data to ensure all points located on interger times of the
+    this function interpolates the data to ensure all points located on integer times of the
     sampling rate (e.g., starttime = 00:00:00.015, delta = 0.05.)
     PARAMETERS:
     ----------------------
@@ -875,7 +875,7 @@ def mad(arr):
 
 def detrend(data: np.ndarray) -> np.ndarray:
     """
-    this function removes the signal trend based on QR decomposion
+    this function removes the signal trend based on QR decomposition
     NOTE: QR is a lot faster than the least square inversion used by
     scipy (also in obspy).
     PARAMETERS:
@@ -1045,7 +1045,7 @@ def robust_stack(cc_array, epsilon):
     PARAMETERS:
     ----------------------
     cc_array: numpy.ndarray contains the 2D cross correlation matrix
-    epsilon: residual threhold to quit the iteration
+    epsilon: residual threshold to quit the iteration
     RETURNS:
     ----------------------
     newstack: numpy vector contains the stacked cross correlation
@@ -1345,7 +1345,7 @@ def selective_stack(cc_array, epsilon):
     PARAMETERS:
     ----------------------
     cc_array: numpy.ndarray contains the 2D cross correlation matrix
-    epsilon: residual threhold to quit the iteration
+    epsilon: residual threshold to quit the iteration
     RETURNS:
     ----------------------
     newstack: numpy vector contains the stacked cross correlation

@@ -44,7 +44,7 @@ tests/test_cli.sh numpy
 tests/test_cli.sh asdf
 ```
 
-NOTE: The CLI tests download a small amount of data from SCEDC to test the download funcionality. Occassionally, the service
+NOTE: The CLI tests download a small amount of data from SCEDC to test the download functionality. Occasionally, the service
 is unavailable and the test will fail. This is usually resolved in a few minutes.
 
 ## Pull Requests

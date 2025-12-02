@@ -17,11 +17,11 @@ Authors: Chengxin Jiang (chengxin_jiang@fas.harvard.edu)
 
 NOTE:
     According to Bensen et al., (2007), the central frequency of
-    each narrowband filters (equivalent to wavelet tranformed signal
+    each narrowband filters (equivalent to wavelet transformed signal
     at each scale) would be different from the instaneous frequency calculated
     using instaneous phase due to spectral linkage. We do not
     correct this effect in this script. Phase velocity is not calculated here,
-    but could be expaneded using the phase info of wavelet transformed signal.
+    but could be expanded using the phase info of wavelet transformed signal.
 """
 
 ############################################

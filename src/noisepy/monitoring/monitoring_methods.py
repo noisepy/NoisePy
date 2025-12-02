@@ -36,14 +36,14 @@ quick index of dv/v methods:
 3) dtw_dvv (Dynamic Time Warping; Mikesell et al. 2015)
 4) mwcs_dvv (Moving Window Cross Spectrum; Clark et al., 2011)
 5) wxs_dvv (Wavelet Xross Spectrum; Mao et al., 2019)
-6) wts_dvv (Wavelet Streching; Yuan et al., in prep)
+6) wts_dvv (Wavelet Stretching; Yuan et al., in prep)
 7) wdw_dvv (Wavelet Dynamic Warping; Yuan et al., in prep)
 """
 
 
 def wcc_dvv(ref, cur, moving_window_length, slide_step, para):
     """
-    Windowed cross correlation (WCC) for dt or dv/v mesurement (Snieder et al. 2012)
+    Windowed cross correlation (WCC) for dt or dv/v measurement (Snieder et al. 2012)
 
     Parameters:
     -----------
@@ -151,7 +151,7 @@ def stretching(ref, cur, dv_range, nbtrial, para):
     dv_range: absolute bound for the velocity variation; example: dv=0.03 for [-3,3]% of
                 relative velocity change ('float')
     nbtrial: number of stretching coefficient between dvmin and dvmax, no need to be higher than 100  ('float')
-    para: vector of the indices of the cur and ref windows on wich you want to do the measurements
+    para: vector of the indices of the cur and ref windows on which you want to do the measurements
             (np.ndarray, size tmin*delta:tmax*delta)
     For error computation, we need parameters:
         fmin: minimum frequency of the data
@@ -472,13 +472,13 @@ def mwcs_dvv(ref, cur, moving_window_length, slide_step, para, smoothing_half_wi
 def wxs_dvv(ref, cur, allfreq, para, dj=1 / 12, s0=-1, J=-1, sig=False, wvn="morlet", unwrapflag=False):
     """
     Compute dt or dv/v in time and frequency domain from wavelet cross spectrum (wxs).
-    for all frequecies in an interest range
+    for all frequencies in an interest range
 
     Parameters
     --------------
     ref: The "Reference" timeseries (numpy.ndarray)
     cur: The "Current" timeseries (numpy.ndarray)
-    allfreq: a boolen variable to make measurements on all frequency range or not
+    allfreq: a boolean variable to make measurements on all frequency range or not
     para: a dict containing freq/time info of the data matrix
     dj, s0, J, sig, wvn: common parameters used in 'wavelet.wct'
     unwrapflag: True - unwrap phase delays. Default is False
@@ -491,7 +491,7 @@ def wxs_dvv(ref, cur, allfreq, para, dj=1 / 12, s0=-1, J=-1, sig=False, wvn="mor
     Originally written by Tim Clements (1 March, 2019)
     Modified by Congcong Yuan (30 June, 2019) based on (Mao et al. 2019).
     Updated by Chengxin Jiang (10 Oct, 2019) to merge the functionality
-        for mesurements across all frequency and one freq range
+        for measurements across all frequency and one freq range
     """
     # common variables
     t = para["t"]
@@ -577,13 +577,13 @@ def wxs_dvv(ref, cur, allfreq, para, dj=1 / 12, s0=-1, J=-1, sig=False, wvn="mor
 def wts_dvv(ref, cur, allfreq, para, dv_range, nbtrial, dj=1 / 12, s0=-1, J=-1, wvn="morlet", normalize=True):
     """
     Apply stretching method to continuous wavelet transformation (CWT) of signals
-    for all frequecies in an interest range
+    for all frequencies in an interest range
 
     Parameters
     --------------
     ref: The complete "Reference" time series (numpy.ndarray)
     cur: The complete "Current" time series (numpy.ndarray)
-    allfreq: a boolen variable to make measurements on all frequency range or not
+    allfreq: a boolean variable to make measurements on all frequency range or not
     para: a dict containing freq/time info of the data matrix
     dv_range: absolute bound for the velocity variation; example: dv=0.03 for [-3,3]%
                 of relative velocity change (float)
@@ -678,13 +678,13 @@ def wts_dvv(ref, cur, allfreq, para, dv_range, nbtrial, dj=1 / 12, s0=-1, J=-1, 
 def wtdtw_dvv(ref, cur, allfreq, para, maxLag, b, direction, dj=1 / 12, s0=-1, J=-1, wvn="morlet", normalize=True):
     """
     Apply dynamic time warping method to continuous wavelet transformation (CWT) of signals
-    for all frequecies in an interest range
+    for all frequencies in an interest range
 
     Parameters
     --------------
     ref: The "Reference" timeseries (numpy.ndarray)
     cur: The "Current" timeseries (numpy.ndarray)
-    allfreq: a boolen variable to make measurements on all frequency range or not
+    allfreq: a boolean variable to make measurements on all frequency range or not
     maxLag: max number of points to search forward and backward.
     b: b-value to limit strain, which is to limit the maximum velocity perturbation.
         See equation 11 in (Mikesell et al. 2015)
@@ -850,7 +850,7 @@ def computeErrorFunction(u1, u0, nSample, lag, norm="L2"):
     --------------
     u1:  trace that we want to warp; size = (nsamp,1)
     u0:  reference trace to compare with: size = (nsamp,1)
-    nSample: numer of points to compare in the traces
+    nSample: number of points to compare in the traces
     lag: maximum lag in sample number to search
     norm: 'L2' or 'L1' (default is 'L2')
 
@@ -908,7 +908,7 @@ def accumulateErrorFunction(dir, err, nSample, lag, b):
     --------------
     dir: accumulation direction ( dir > 0 = forward in time, dir <= 0 = backward in time)
     err: the 2D error function; size = (nsamp,2*lag+1)
-    nSample: numer of points to compare in the traces
+    nSample: number of points to compare in the traces
     lag: maximum lag in sample number to search
     b: strain limit (integer value >= 1)
 

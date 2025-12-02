@@ -25,7 +25,7 @@ from .datatypes import StackMethod
 def make_timestamps(prepro_para):
     """
     this function prepares the timestamps of both the starting and ending time of each mseed/sac file that
-    is stored on local machine. this time info is used to search all stations in specific time chunck
+    is stored on local machine. this time info is used to search all stations in specific time chunk
     when preparing noise data in ASDF format. it creates a csv file containing all timestamp info if the
     file does not exist (used in S0B)f
     PARAMETERS:
@@ -33,7 +33,7 @@ def make_timestamps(prepro_para):
     prepro_para: a dic containing all pre-processing parameters used in S0B
     RETURNS:
     -----------------------
-    all_stimes: numpy float array containing startting and ending time for all SAC/mseed files
+    all_stimes: numpy float array containing starting and ending time for all SAC/mseed files
     """
     # load parameters from para dic
     wiki_file = prepro_para["wiki_file"]
@@ -101,7 +101,7 @@ def stats2inv(stats, prepro_para, locs=None):
     stats: obspy trace stats object containing all station header info
     prepro_para: dict containing fft parameters, such as frequency bands and selection for instrument
     response removal etc.
-    locs:  panda data frame of the station list. it is needed for convering miniseed files into ASDF
+    locs:  panda data frame of the station list. it is needed for converting miniseed files into ASDF
     RETURNS:
     ------------------------
     inv: obspy inventory object of all station info to be used later
@@ -385,7 +385,7 @@ def selective_stack(cc_array, epsilon, cc_th):  # noqa: F811
     PARAMETERS:
     ----------------------
     cc_array: numpy.ndarray contains the 2D cross correlation matrix
-    epsilon: residual threhold to quit the iteration
+    epsilon: residual threshold to quit the iteration
     cc_th: numpy.float, threshold of correlation coefficient to be selected
 
     RETURNS:
@@ -437,8 +437,8 @@ def get_cc(s1, s_ref):
 # function to extract the dispersion from the image
 def extract_dispersion(amp, per, vel):
     """
-    this function takes the dispersion image from CWT as input, tracks the global maxinum on
-    the wavelet spectrum amplitude and extract the sections with continous and high quality data
+    this function takes the dispersion image from CWT as input, tracks the global maximum on
+    the wavelet spectrum amplitude and extract the sections with continuous and high quality data
 
     PARAMETERS:
     ----------------
@@ -464,7 +464,7 @@ def extract_dispersion(amp, per, vel):
 
     # check the continuous of the dispersion
     for ii in range(1, nper - 15):
-        # 15 is the minumum length needed for output
+        # 15 is the minimum length needed for output
         for jj in range(15):
             if np.abs(gv[ii + jj] - gv[ii + 1 + jj]) > maxgap * dvel:
                 gv[ii] = 0
