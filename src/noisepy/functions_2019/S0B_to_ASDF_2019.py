@@ -31,11 +31,11 @@ NOTE:
     1. In this script, the station of the same name but of different
     channels are treated as different stations.
     2. The bandpass function from obspy will output data in float64 format in default.
-    3. For flexibilty to handle data of messy structures, the code loops
+    3. For flexibility to handle data of messy structures, the code loops
     through all sub-directory in RAWDATA and collects the
     starttime and endtime info. this enables us to find all data pieces
     located in each targeted time window. However, this process
-    significaly slows down the code, particuarly for data of a big station
+    significaly slows down the code, particularly for data of a big station
     list. we recommend to prepare a csv file (L48) that contains
     all sac/mseed file names with full path and their associated
     starttime/endtime info if possible. based on tests, this improves the
@@ -80,7 +80,7 @@ ncomp = 1
 # targeted time range
 start_date = ["2010_12_10_0_0_0"]  # start date of local data
 end_date = ["2010_12_16_0_0_0"]  # end date of local data
-inc_hours = 8  # sac/mseed file length for a continous recording
+inc_hours = 8  # sac/mseed file length for a continuous recording
 
 # get rough estimate of memory needs to ensure it now below up in S1
 cc_len = 1800  # basic unit of data length for fft (s)
