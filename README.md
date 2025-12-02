@@ -57,10 +57,10 @@ pip install noisepy-seis[mpi]
 
 ## Functionality
 Here is a list of features of the package:
-* download continous noise data based:
+* download continuous noise data based:
    + on webservices using obspy's core functions of [get_station](https://docs.obspy.org/packages/autogen/obspy.clients.fdsn.client.Client.get_stations.html) and [get_waveforms](https://docs.obspy.org/packages/autogen/obspy.clients.fdsn.client.Client.get_waveforms.html)
    + on AWS S3 bucket calls, with a test on the SCEDC AWS Open Dataset.
-* save seismic data in [ASDF](https://asdf-definition.readthedocs.io/en/latest/) format, which convinently assembles meta, wavefrom and auxililary data into one single file ([Tutorials](https://github.com/SeismicData/pyasdf/blob/master/doc/tutorial.rst) on reading/writing ASDF files)
+* save seismic data in [ASDF](https://asdf-definition.readthedocs.io/en/latest/) format, which conveniently assembles meta, wavefrom and auxililary data into one single file ([Tutorials](https://github.com/SeismicData/pyasdf/blob/master/doc/tutorial.rst) on reading/writing ASDF files)
 * offers scripts to precondition data sets before cross correlations. This involves working with gappy data from various formats (SAC/miniSEED) and storing it on local in ASDF.
 * performs fast and easy cross-correlation with functionality to run in parallel through [MPI](https://en.wikipedia.org/wiki/Message_Passing_Interface)
 * **Applications module**:
@@ -96,7 +96,7 @@ Taxonomy of the NoisePy variables.
 * ``smooth_N`` number of points for smoothing the  time or frequency domain discrete arrays.
 * ``maxlag`` maximum length in seconds saved in files in each side of the correlation (save on storage)
 * ``substack, substack_windows`` boolean, number of window over which to substack the correlation (to save storage or do monitoring).
-* ``time_chunk, nchunk`` refers to the time unit that defined a single job. for instace, ``cc_len`` is the correlation length (e.g., 1 hour, 30 min), the overall duration of the experiment is the total length (1 month, 1 year, ...). The time chunk could be 1 day: the code would loop through each cc_len window in a for loop. But each day will be sent as a thread.
+* ``time_chunk, nchunk`` refers to the time unit that defined a single job. for instance, ``cc_len`` is the correlation length (e.g., 1 hour, 30 min), the overall duration of the experiment is the total length (1 month, 1 year, ...). The time chunk could be 1 day: the code would loop through each cc_len window in a for loop. But each day will be sent as a thread.
 
 ## Acknowledgements
 Thanks to our contributors so far!
