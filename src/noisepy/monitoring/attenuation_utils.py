@@ -470,7 +470,7 @@ def get_symmetric(msv: np.ndarray, indx: int) -> np.ndarray:
     Calculating symmetric waveforms and returning positive side only
     ----------------------------------------------
     Input:
-        msv:    The original time seires
+        msv:    The original time series
         indx:   The half-side point number
     ----------------------------------------------
     Return:
@@ -486,11 +486,11 @@ def get_smooth(data: np.ndarray, para) -> np.ndarray:
     """
     ----------------------------------------------
     Input:
-        data:    The original time seires
+        data:    The original time series
 
     Parameter:
         winlen: The smoothing window length
-        dt:     Samping interval of the data
+        dt:     Sampling interval of the data
         npts:   Data length
     ----------------------------------------------
     Return:
