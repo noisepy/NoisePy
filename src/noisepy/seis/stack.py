@@ -178,7 +178,7 @@ def stack_pair(
         cross_correlations = cc_store.read(ts, src_sta, rec_sta)
 
         logger.debug(f"path_list for {src_sta}-{rec_sta}: {cross_correlations}")
-        # seperate auto and cross-correlation
+        # separate auto and cross-correlation
         if not validate_pairs(fft_params.ncomp, str((src_sta, rec_sta)), fauto, ts, len(cross_correlations)):
             continue
 

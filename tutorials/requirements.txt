@@ -1,2 +1,2 @@
-jupyter-book>=1.0
+jupyter-book<2.0
 ipywidgets>=8.0.7

@@ -1139,7 +1139,7 @@ def plot_multi_freq_stack(sfile, freqmin, freqmax, nfreq, ccomp, tags=None):
 
 def plot_SNR_stackday(sfile1, sfile2, sfile3, sfile4, sfile5, ccomp, lag):
     """
-    extract the paramters of SNR for each stacked trace to get a statistical sense of
+    extract the parameters of SNR for each stacked trace to get a statistical sense of
     how SNR varies with stacking days for one station-pair
 
     example: plot_SNR_distance('stack_1day/E.AYHM/E.AYHM_E.ENZM.h5','stack_2day/E.AYHM/E.AYHM_E.ENZM.h5',\
@@ -1267,7 +1267,7 @@ def compare_c2_c3_waveforms(c2file, c3file, maxlag, c2_maxlag, dt):
     c2file: HDF5 file for normal cross-correlation function
     c3file: HDF5 file for C3 function
     maxlag: maximum time lag for C3
-    c2_maxlag: maxinum time lag for C1
+    c2_maxlag: maximum time lag for C1
     dt: time increment
     """
 

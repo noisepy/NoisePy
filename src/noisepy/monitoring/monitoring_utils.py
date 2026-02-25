@@ -34,11 +34,11 @@ class ConfigParameters_monitoring(BaseModel):
     )
     onelag: bool = Field(default=False, description="make measurement one one lag or two")
     norm_flag: bool = Field(default=True, description="whether to normalize the cross-correlation waveforms")
-    do_stretch: bool = Field(default=True, description="use strecthing method or not")
+    do_stretch: bool = Field(default=True, description="use stretching method or not")
 
     # parameters for stretching method
     epsilon: float = Field(default=0.02, description="limit for dv/v (in decimal)")
-    nbtrial: int = Field(default=50, description="number of increment of dt [-epsilon,epsilon] for the streching")
+    nbtrial: int = Field(default=50, description="number of increment of dt [-epsilon,epsilon] for the stretching")
 
     # parameters of coda window
     coda_tbeg: float = Field(
@@ -49,12 +49,12 @@ class ConfigParameters_monitoring(BaseModel):
     )
     ratio: float = Field(default=3.0, description="ratio for determining noise level by Mean absolute deviation (MAD)")
 
-    # --- paramters for measuring attenuation
-    single_station: bool = Field(default=True, description="make measurement on single statoin or multiple stations")
+    # --- parameters for measuring attenuation
+    single_station: bool = Field(default=True, description="make measurement on single station or multiple stations")
     smooth_winlen: float = Field(
         default=5.0, description="smoothing window length of the envelope waveforms for measuring attenuation"
     )
-    cvel: float = Field(default=2.6, description="Rayleigh wave velocities over the freqency bands")
+    cvel: float = Field(default=2.6, description="Rayleigh wave velocities over the frequency bands")
     atten_tbeg: float = Field(default=2.0, description="begin time (sec) of the coda window for measuring attenuation")
     atten_tend: float = Field(default=8.0, description="end time (sec) of the coda window for measuring attenuation")
     intb_interval_base: float = Field(
@@ -93,7 +93,7 @@ def _chk_model(model: Any) -> BaseModel:
     """Ensure the model passed is a Pydantic model."""
     if isinstance(model, BaseModel):
         return model
-    raise TypeError(f"We can currently only write `pydantic.BaseModel`, but recieved: {model!r}")
+    raise TypeError(f"We can currently only write `pydantic.BaseModel`, but received: {model!r}")
 
 
 def _write_yaml_model(stream: IOBase, model: BaseModel, **kwargs) -> None:

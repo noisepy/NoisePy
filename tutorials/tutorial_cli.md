@@ -19,7 +19,7 @@ Verify the data is there:
 ls -la ./tmpdata/RAW_DATA
 ```
 
-Notice that this directory contains a `config.yml` file. This file will contain any parameters used during the `download` step. It could be different from the original `config.yml` since all the paramters can be overriden through CLI arguments. See `noisepy download --help.`
+Notice that this directory contains a `config.yml` file. This file will contain any parameters used during the `download` step. It could be different from the original `config.yml` since all the parameters can be overridden through CLI arguments. See `noisepy download --help.`
 
 ## Step 1: Cross-correlation
 
