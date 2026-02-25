@@ -179,7 +179,7 @@ def preprocess_raw(
                 raise ValueError("The response found in the inventory is empty (no stages)! abort!  %s" % st[0])
             else:
                 try:
-                    logger.info("removing response for %s using inv" % st[0])
+                    logger.debug("removing response for %s using inv" % st[0])
                     st[0].attach_response(inv)
                     st[0].remove_response(output=rm_resp_out, pre_filt=pre_filt, water_level=60)
                 except Exception as e:
@@ -188,14 +188,14 @@ def preprocess_raw(
                     return st
 
         elif rm_resp == RmResp.SPECTRUM:  # TODO: to be implement
-            logger.info("remove response using spectrum")
+            logger.debug("remove response using spectrum")
             specfile = glob.glob(os.path.join(respdir, "*" + station + "*"))
             if len(specfile) == 0:
                 raise ValueError("no response sepctrum found for %s" % station)
             st = resp_spectrum(st, specfile[0], sampling_rate, pre_filt)
 
         elif rm_resp == RmResp.RESP:  # TODO: to be implement
-            logger.info("remove response using RESP files")
+            logger.debug("remove response using RESP files")
             resp = glob.glob(os.path.join(respdir, "RESP." + station + "*"))
             if len(resp) == 0:
                 raise ValueError("no RESP files found for %s" % station)

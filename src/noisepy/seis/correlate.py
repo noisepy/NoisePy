@@ -84,9 +84,9 @@ def cross_correlate(
     # Force config validation
     fft_params = ConfigParameters.model_validate(dict(fft_params), strict=True)
 
-    tlog = TimeLogger(logger, logging.INFO, prefix="CC Main")
+    tlog = TimeLogger(logger, logging.DEBUG, prefix="CC Main")
     t_s1_total = tlog.reset()
-    logger.info(f"Starting Cross-Correlation with {os.cpu_count()} cores")
+    logger.info(f"Starting cross-correlation with {os.cpu_count()} cores")
 
     def init() -> List:
         # set variables to broadcast
@@ -120,7 +120,7 @@ def cc_timespan(
     pair_filter: Callable[[Channel, Channel], bool] = lambda src, rec: True,
 ) -> List[Tuple[Station, Station]]:
     executor = ThreadPoolExecutor()
-    tlog = TimeLogger(logger, logging.INFO, prefix="CC Main")
+    tlog = TimeLogger(logger, logging.DEBUG, prefix="CC Main")
     """
     LOADING NOISE DATA AND DO FFT
     """
@@ -503,9 +503,9 @@ def _filter_channel_data(
         return []
     if single_freq:
         closest_freq = _get_closest_freq(frequencies, sampling_rate)
-        logger.info(f"Picked {closest_freq} as the closest sampling_rate to {sampling_rate}. ")
+        logger.debug(f"Picked {closest_freq} as the closest sampling_rate to {sampling_rate}. ")
         filtered_tuples = list(filter(lambda tup: tup[1].sampling_rate == closest_freq, tuples))
-        logger.info(f"Filtered to {len(filtered_tuples)}/{len(tuples)} channels with sampling rate == {closest_freq}")
+        logger.debug(f"Filtered to {len(filtered_tuples)}/{len(tuples)} channels with sampling rate == {closest_freq}")
     else:
         filtered_tuples = list(filter(lambda tup: tup[1].sampling_rate >= sampling_rate, tuples))
         # for each station, pick the closest >= to sampling_rate
@@ -545,5 +545,5 @@ def check_memory(params: ConfigParameters, nsta: int) -> int:
             "Require %5.3fG memory but only %5.3fG provided)! Reduce inc_hours to avoid this issue!"
             % (memory_size, MAX_MEM)
         )
-    logger.info(f"Require {memory_size:5.2f}gb memory for cross correlations")
+    logger.info(f"Require {memory_size:5.2f}GB memory for correlations")
     return nseg_chunk

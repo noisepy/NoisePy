@@ -52,7 +52,7 @@ def stack_cross_correlations(
 
     # Use 'spawn' to avoid issues with multiprocessing on linux and 'fork'
     executor = ProcessPoolExecutor(mp_context=get_context("spawn"))
-    tlog = TimeLogger(logger=logger, level=logging.INFO)
+    tlog = TimeLogger(logger=logger, level=logging.DEBUG)
     t_tot = tlog.reset()
 
     stations = set(fft_params.stations)
@@ -116,7 +116,7 @@ def stack_store_pair(
         if len(stacks) == 0:
             logger.warning(f"No stacks for {src_sta}_{rec_sta}")
             return False
-        tlog = TimeLogger(logger=logger, level=logging.INFO)
+        tlog = TimeLogger(logger=logger, level=logging.DEBUG)
         stack_store.append(ts, src_sta, rec_sta, stacks)
         tlog.log(f"writing stack pair {(src_sta, rec_sta)}")
         return True
@@ -132,7 +132,7 @@ def stack_pair(
     cc_store: CrossCorrelationDataStore,
     fft_params: ConfigParameters,
 ) -> List[Stack]:
-    tlog = TimeLogger(logger=logger, level=logging.INFO)
+    tlog = TimeLogger(logger=logger, level=logging.DEBUG)
     # check if it is auto-correlation
     if src_sta == rec_sta:
         fauto = 1
@@ -169,7 +169,7 @@ def stack_pair(
     iseg = 0
     for ts in timespans:
         if ts.end_datetime > fft_params.end_date or ts.start_datetime < fft_params.start_date:
-            logger.warning(
+            logger.debug(
                 f"Skipping {ts} for {src_sta}-{rec_sta} because it is outside the requested time range "
                 f"({fft_params.start_date} - {fft_params.end_date})"
             )
