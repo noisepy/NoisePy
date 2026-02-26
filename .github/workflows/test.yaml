@@ -34,8 +34,8 @@ jobs:
       uses: ./.github/actions/setup
       with:
         python-version: ${{env.python_version}}
-        mpi : 'true'
-    - name: pytest
+        mpi: 'true'
+    - name: Run pytest
       run: |
         set PYTHONPATH=src
         pytest tests/. integration_tests/.

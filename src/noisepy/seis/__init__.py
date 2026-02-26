@@ -26,7 +26,5 @@ The main functions exported by the package are:
 - noise_module:     Collection of functions used in the cross_correlate and stacking steps
 """
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s | %(levelname)s | %(module)s.%(funcName)s() | %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(module)s.%(funcName)s() | %(message)s")
 logger = logging.getLogger(__name__)
