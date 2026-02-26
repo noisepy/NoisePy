@@ -24,7 +24,7 @@ runs:
       if: ${{ inputs.mpi == 'true' }}
       uses: mpi4py/setup-mpi@v1
       with:
-        mpi: openmpi
+        mpi: "openmpi"
     - name: Install project no MPI
       if: ${{ inputs.mpi == 'false' }}
       shell: sh
