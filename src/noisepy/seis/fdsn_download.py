@@ -82,7 +82,7 @@ def download(direc: str, prepro_para: ConfigParameters) -> None:
     client = Client(prepro_para.client_url_key)
     executor = ThreadPoolExecutor()
 
-    tlog = TimeLogger(logger, logging.DEBUG)
+    tlog = TimeLogger(logger=logger, level=logging.DEBUG, prefix="Download")
     t_tot = tlog.reset()
     dlist = os.path.join(direc, "station.csv")  # CSV file for station location info
     prepro_para.respdir = os.path.join(
@@ -158,7 +158,7 @@ def download(direc: str, prepro_para: ConfigParameters) -> None:
                 else:
                     location.append("*")
                 nsta += 1
-    tlog.log("Getting inventory")
+    tlog.log("getting inventory")
     # rough estimation on memory needs (assume float32 dtype)
     nsec_chunk = prepro_para.inc_hours / 24 * 86400
     nseg_chunk = int(np.floor((nsec_chunk - prepro_para.cc_len) / prepro_para.step))

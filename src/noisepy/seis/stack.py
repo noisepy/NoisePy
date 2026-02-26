@@ -52,7 +52,7 @@ def stack_cross_correlations(
 
     # Use 'spawn' to avoid issues with multiprocessing on linux and 'fork'
     executor = ProcessPoolExecutor(mp_context=get_context("spawn"))
-    tlog = TimeLogger(logger=logger, level=logging.DEBUG)
+    tlog = TimeLogger(logger=logger, level=logging.DEBUG, prefix="STACK MAIN")
     t_tot = tlog.reset()
 
     stations = set(fft_params.stations)
@@ -88,7 +88,7 @@ def stack_cross_correlations(
     results = get_results(tasks, "Stacking Pairs")
     executor.shutdown()
     scheduler.synchronize()
-    tlog.log("step 2 in total", t_tot)
+    tlog.log("Step 2 in total", t_tot)
     if not all(results):
         failed = [p for p, r in zip(pairs_node, results) if not r]
         failed_str = "\n".join(map(str, failed))
@@ -116,7 +116,7 @@ def stack_store_pair(
         if len(stacks) == 0:
             logger.warning(f"No stacks for {src_sta}_{rec_sta}")
             return False
-        tlog = TimeLogger(logger=logger, level=logging.DEBUG)
+        tlog = TimeLogger(logger=logger, level=logging.DEBUG, prefix="STACK PAIR")
         stack_store.append(ts, src_sta, rec_sta, stacks)
         tlog.log(f"writing stack pair {(src_sta, rec_sta)}")
         return True
@@ -132,7 +132,7 @@ def stack_pair(
     cc_store: CrossCorrelationDataStore,
     fft_params: ConfigParameters,
 ) -> List[Stack]:
-    tlog = TimeLogger(logger=logger, level=logging.DEBUG)
+    tlog = TimeLogger(logger=logger, level=logging.DEBUG, prefix="STACK PAIR")
     # check if it is auto-correlation
     if src_sta == rec_sta:
         fauto = 1
@@ -307,7 +307,7 @@ def stack_pair(
                     (StackMethod.ROBUST, bigstack_rotated2[icomp]),
                 ]
                 append_stacks(comp, tparameters, stacks)
-    tlog.log(f"stack/rotate all station pairs {(src_sta,rec_sta)}", t_load)
+    tlog.log(f"stacking/rotating all station pairs {(src_sta,rec_sta)}", t_load)
     return stack_results
 
 
