@@ -22,7 +22,7 @@ runs:
         python3 -m pip install --upgrade pip
     - name: Setup MPI
       if: ${{ inputs.mpi == 'true' }}
-      uses: mpi4py/setup-mpi@v1.4.2
+      uses: mpi4py/setup-mpi@v1
       with:
         mpi: openmpi
     - name: Install project no MPI
