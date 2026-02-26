@@ -30,4 +30,6 @@ runs:
     - name: Install project MPI
       if: ${{ inputs.mpi == 'true' }}
       shell: sh
-      run: pip install ".[dev,mpi,aws]"
+      run: |
+        pip list | grep setuptools
+        pip install ".[dev,mpi,aws]"
