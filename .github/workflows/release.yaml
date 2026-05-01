@@ -62,6 +62,8 @@ jobs:
         skip-existing: true
     - name: Setup MPI pre-requisite
       uses: mpi4py/setup-mpi@v1
+      with:
+        mpi: openmpi
     - name: Check pypi packages
       id: check_pkg
       run: |
