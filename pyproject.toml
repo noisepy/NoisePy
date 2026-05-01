@@ -77,7 +77,7 @@ packages = ["src/noisepy"]
 
 [project.optional-dependencies]
 dev = [
-    "pytest==7.2.2",
+    "pytest==9.0.3",
     "pytest-cov==4.1.0",
     "memory-profiler==0.61",
     "pre-commit==3.3.3",
