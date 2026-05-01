@@ -85,7 +85,7 @@ def stack_cross_correlations(
     pairs_node = [pairs_all[i] for i in scheduler.get_indices(pairs_all)]
 
     tasks = [executor.submit(stack_store_pair, p[0], p[1], cc_store, stack_store, fft_params) for p in pairs_node]
-    results = get_results(tasks, "Stacking Pairs")
+    results = get_results(tasks, "Stacking pairs")
     executor.shutdown()
     scheduler.synchronize()
     tlog.log("Step 2 in total", t_tot)
@@ -108,9 +108,9 @@ def stack_store_pair(
     try:
         ts = DateTimeRange(fft_params.start_date, fft_params.end_date)
         if stack_store.contains(src_sta, rec_sta, ts):
-            logger.info(f"Stack already exists for {src_sta}-{rec_sta}/{ts}")
+            logger.debug(f"Stack already exists for {src_sta}-{rec_sta}/{ts}")
             return True
-        logger.info(f"Stacking {src_sta}_{rec_sta}/{ts}")
+        logger.debug(f"Stacking {src_sta}_{rec_sta}/{ts}")
         timespans = cc_store.get_timespans(src_sta, rec_sta)
         stacks = stack_pair(src_sta, rec_sta, timespans, cc_store, fft_params)
         if len(stacks) == 0:

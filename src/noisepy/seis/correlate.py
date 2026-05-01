@@ -160,7 +160,7 @@ def cc_timespan(
         f"for {ts}"
     )
     if len(missing_channels) == 0:
-        logger.warning(f"{ts} already completed")
+        logger.info(f"{ts} already completed")
         return []
 
     ch_data_tuples = _read_channels(
@@ -478,7 +478,7 @@ def _read_channels(
     single_freq: bool = True,
 ) -> List[Tuple[Channel, ChannelData]]:
     ch_data_refs = [executor.submit(_safe_read_data, store, ts, ch) for ch in channels]
-    ch_data = get_results(ch_data_refs, "Reading channel data")
+    ch_data = get_results(ch_data_refs, "Reading data")
     tuples = list(filter(lambda tup: tup[1].data.size > 0, zip(channels, ch_data)))
 
     return _filter_channel_data(tuples, sampling_rate, single_freq)
@@ -544,5 +544,5 @@ def check_memory(params: ConfigParameters, nsta: int) -> int:
             "Require %5.3fG memory but only %5.3fG provided)! Reduce inc_hours to avoid this issue!"
             % (memory_size, MAX_MEM)
         )
-    logger.info(f"Require {memory_size:5.2f}GB memory for correlations")
+    logger.debug(f"Require {memory_size:5.2f}GB memory for correlations")
     return nseg_chunk
