@@ -12,7 +12,7 @@ env:
 jobs:
   build-artifact:
     name: Build noisepy-seis package
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     if: github.repository == 'noisepy/NoisePy'
     steps:
     - name: Checkout
@@ -39,7 +39,7 @@ jobs:
   test-built-dist:
     name: Test noisepy-seis package
     needs: build-artifact
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/setup-python@v5
       name: Install Python
