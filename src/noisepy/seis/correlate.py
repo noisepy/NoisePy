@@ -84,9 +84,9 @@ def cross_correlate(
     # Force config validation
     fft_params = ConfigParameters.model_validate(dict(fft_params), strict=True)
 
-    tlog = TimeLogger(logger, logging.INFO, prefix="CC Main")
+    tlog = TimeLogger(logger=logger, level=logging.DEBUG, prefix="CC MAIN")
     t_s1_total = tlog.reset()
-    logger.info(f"Starting Cross-Correlation with {os.cpu_count()} cores")
+    logger.info(f"Starting cross-correlation with {os.cpu_count()} cores")
 
     def init() -> List:
         # set variables to broadcast
@@ -120,7 +120,7 @@ def cc_timespan(
     pair_filter: Callable[[Channel, Channel], bool] = lambda src, rec: True,
 ) -> List[Tuple[Station, Station]]:
     executor = ThreadPoolExecutor()
-    tlog = TimeLogger(logger, logging.INFO, prefix="CC Main")
+    tlog = TimeLogger(logger=logger, level=logging.DEBUG, prefix="CC MAIN")
     """
     LOADING NOISE DATA AND DO FFT
     """
@@ -129,7 +129,7 @@ def cc_timespan(
     t_chunk = tlog.reset()  # for tracking overall chunk processing time
     all_channels = raw_store.get_channels(ts)
     all_channel_count = len(all_channels)
-    tlog.log(f"get {all_channel_count} channels")
+    tlog.log(f"getting {all_channel_count} channels")
     all_channels = list(filter(lambda c: c.station.valid(), all_channels))
     all_stations = set([c.station for c in all_channels])
     if all_channel_count > len(all_channels):
@@ -144,7 +144,6 @@ def cc_timespan(
 
     stations = set([station for pair in station_pairs for station in pair])
     _ = list(executor.map(lambda s: cc_store.contains(s, s, ts), stations))
-    tlog.log(f"check for {len(stations)} stations already done (warm up cache)")
     station_pair_dones = list(executor.map(lambda p: cc_store.contains(p[0], p[1], ts), station_pairs))
 
     missing_pairs = [pair for pair, done in zip(station_pairs, station_pair_dones) if not done]
@@ -152,7 +151,7 @@ def cc_timespan(
     missing_stations = set([station for pair in missing_pairs for station in pair])
     # Filter the channels to only the missing stations
     missing_channels = list(filter(lambda c: c.station in missing_stations, all_channels))
-    tlog.log("check for stations already done")
+    tlog.log("checking for stations already done")
 
     logger.info(
         f"Still need to process: {len(missing_stations)}/{len(all_stations)} stations, "
@@ -161,7 +160,7 @@ def cc_timespan(
         f"for {ts}"
     )
     if len(missing_channels) == 0:
-        logger.warning(f"{ts} already completed")
+        logger.info(f"{ts} already completed")
         return []
 
     ch_data_tuples = _read_channels(
@@ -173,10 +172,10 @@ def cc_timespan(
         logger.warning(f"No data available for {ts}")
         return missing_pairs
 
-    tlog.log(f"Read channel data: {len(ch_data_tuples)} channels")
+    tlog.log(f"reading {len(ch_data_tuples)} channels")
     ch_data_tuples_pre = preprocess_all(executor, ch_data_tuples, raw_store, fft_params, ts)
     del ch_data_tuples
-    tlog.log(f"Preprocess: {len(ch_data_tuples_pre)} channels")
+    tlog.log(f"preprocessing {len(ch_data_tuples_pre)} channels")
     if len(ch_data_tuples_pre) == 0:
         logger.warning(f"No data available for {ts} after preprocessing")
         return missing_pairs
@@ -198,7 +197,7 @@ def cc_timespan(
     ch_data_tuples_pre.clear()
     del ch_data_tuples_pre
     gc.collect()
-    fft_datas = get_results(fft_refs, "Compute ffts")
+    fft_datas = get_results(fft_refs, "Computing ffts")
     for ix_ch, fft_data in enumerate(fft_datas):
         if fft_data.fft.size > 0:
             ffts[ix_ch] = fft_data
@@ -237,10 +236,10 @@ def cc_timespan(
             save_exec,
         )
         tasks.append(t)
-    compute_results = get_results(tasks, "Cross correlation")
+    compute_results = get_results(tasks, "Cross-correlating")
     _, save_tasks = zip(*compute_results)
     save_tasks = [t for t in save_tasks if t]
-    _ = get_results(save_tasks, "Save correlations")
+    _ = get_results(save_tasks, "Saving correlations")
     failed_pairs = [
         pair[0]
         for pair, (comp_res, save_task) in zip(work_items, compute_results)
@@ -298,7 +297,7 @@ def stations_cross_correlation(
     cc_store: CrossCorrelationDataStore,
     executor: Executor,
 ) -> Tuple[bool, Future]:
-    tlog = TimeLogger(logger, logging.DEBUG)
+    tlog = TimeLogger(logger=logger, level=logging.DEBUG, prefix="CC STATION")
     datas = []
     try:
         if cc_store.contains(src, rec, ts):
@@ -378,7 +377,7 @@ def preprocess_all(
     channels = list(zip(*ch_data))[0]
     stream_refs = [executor.submit(preprocess, raw_store, t[0], t[1], fft_params, ts) for t in ch_data]
     del ch_data
-    new_streams = get_results(stream_refs, "Pre-process")
+    new_streams = get_results(stream_refs, "Pre-processing")
     # Log if any streams were removed during pre-processing
     for ch, st in zip(channels, new_streams):
         if len(st) == 0:
@@ -479,7 +478,7 @@ def _read_channels(
     single_freq: bool = True,
 ) -> List[Tuple[Channel, ChannelData]]:
     ch_data_refs = [executor.submit(_safe_read_data, store, ts, ch) for ch in channels]
-    ch_data = get_results(ch_data_refs, "Read channel data")
+    ch_data = get_results(ch_data_refs, "Reading data")
     tuples = list(filter(lambda tup: tup[1].data.size > 0, zip(channels, ch_data)))
 
     return _filter_channel_data(tuples, sampling_rate, single_freq)
@@ -503,9 +502,9 @@ def _filter_channel_data(
         return []
     if single_freq:
         closest_freq = _get_closest_freq(frequencies, sampling_rate)
-        logger.info(f"Picked {closest_freq} as the closest sampling_rate to {sampling_rate}. ")
+        logger.debug(f"Picked {closest_freq} as the closest sampling_rate to {sampling_rate}. ")
         filtered_tuples = list(filter(lambda tup: tup[1].sampling_rate == closest_freq, tuples))
-        logger.info(f"Filtered to {len(filtered_tuples)}/{len(tuples)} channels with sampling rate == {closest_freq}")
+        logger.debug(f"Filtered to {len(filtered_tuples)}/{len(tuples)} channels with sampling rate == {closest_freq}")
     else:
         filtered_tuples = list(filter(lambda tup: tup[1].sampling_rate >= sampling_rate, tuples))
         # for each station, pick the closest >= to sampling_rate
@@ -545,5 +544,5 @@ def check_memory(params: ConfigParameters, nsta: int) -> int:
             "Require %5.3fG memory but only %5.3fG provided)! Reduce inc_hours to avoid this issue!"
             % (memory_size, MAX_MEM)
         )
-    logger.info(f"Require {memory_size:5.2f}gb memory for cross correlations")
+    logger.debug(f"Require {memory_size:5.2f}GB memory for correlations")
     return nseg_chunk

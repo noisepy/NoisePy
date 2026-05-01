@@ -19,26 +19,12 @@ jobs:
       with:
         python-version: ${{env.python_version}}
         mpi: 'true'
-    - name: pytest
+    - name: Run pytest
       run: pytest tests/. integration_tests/. --cov=noisepy.seis --cov=noisepy.monitoring
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-  unit_tests_win:
-    runs-on: windows-latest
-    steps:
-    - name: Checkout Repo
-      uses: actions/checkout@v4
-    - name: Setup NoisePy
-      uses: ./.github/actions/setup
-      with:
-        python-version: ${{env.python_version}}
-        mpi : 'true'
-    - name: pytest
-      run: |
-        set PYTHONPATH=src
-        pytest tests/. integration_tests/.
   s1_s2:
     strategy:
       fail-fast: true

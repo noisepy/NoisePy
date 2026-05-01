@@ -52,7 +52,7 @@ def stack_cross_correlations(
 
     # Use 'spawn' to avoid issues with multiprocessing on linux and 'fork'
     executor = ProcessPoolExecutor(mp_context=get_context("spawn"))
-    tlog = TimeLogger(logger=logger, level=logging.INFO)
+    tlog = TimeLogger(logger=logger, level=logging.DEBUG, prefix="STACK MAIN")
     t_tot = tlog.reset()
 
     stations = set(fft_params.stations)
@@ -85,10 +85,10 @@ def stack_cross_correlations(
     pairs_node = [pairs_all[i] for i in scheduler.get_indices(pairs_all)]
 
     tasks = [executor.submit(stack_store_pair, p[0], p[1], cc_store, stack_store, fft_params) for p in pairs_node]
-    results = get_results(tasks, "Stacking Pairs")
+    results = get_results(tasks, "Stacking pairs")
     executor.shutdown()
     scheduler.synchronize()
-    tlog.log("step 2 in total", t_tot)
+    tlog.log("Step 2 in total", t_tot)
     if not all(results):
         failed = [p for p, r in zip(pairs_node, results) if not r]
         failed_str = "\n".join(map(str, failed))
@@ -108,15 +108,15 @@ def stack_store_pair(
     try:
         ts = DateTimeRange(fft_params.start_date, fft_params.end_date)
         if stack_store.contains(src_sta, rec_sta, ts):
-            logger.info(f"Stack already exists for {src_sta}-{rec_sta}/{ts}")
+            logger.debug(f"Stack already exists for {src_sta}-{rec_sta}/{ts}")
             return True
-        logger.info(f"Stacking {src_sta}_{rec_sta}/{ts}")
+        logger.debug(f"Stacking {src_sta}_{rec_sta}/{ts}")
         timespans = cc_store.get_timespans(src_sta, rec_sta)
         stacks = stack_pair(src_sta, rec_sta, timespans, cc_store, fft_params)
         if len(stacks) == 0:
             logger.warning(f"No stacks for {src_sta}_{rec_sta}")
             return False
-        tlog = TimeLogger(logger=logger, level=logging.INFO)
+        tlog = TimeLogger(logger=logger, level=logging.DEBUG, prefix="STACK PAIR")
         stack_store.append(ts, src_sta, rec_sta, stacks)
         tlog.log(f"writing stack pair {(src_sta, rec_sta)}")
         return True
@@ -132,7 +132,7 @@ def stack_pair(
     cc_store: CrossCorrelationDataStore,
     fft_params: ConfigParameters,
 ) -> List[Stack]:
-    tlog = TimeLogger(logger=logger, level=logging.INFO)
+    tlog = TimeLogger(logger=logger, level=logging.DEBUG, prefix="STACK PAIR")
     # check if it is auto-correlation
     if src_sta == rec_sta:
         fauto = 1
@@ -169,7 +169,7 @@ def stack_pair(
     iseg = 0
     for ts in timespans:
         if ts.end_datetime > fft_params.end_date or ts.start_datetime < fft_params.start_date:
-            logger.warning(
+            logger.debug(
                 f"Skipping {ts} for {src_sta}-{rec_sta} because it is outside the requested time range "
                 f"({fft_params.start_date} - {fft_params.end_date})"
             )
@@ -307,7 +307,7 @@ def stack_pair(
                     (StackMethod.ROBUST, bigstack_rotated2[icomp]),
                 ]
                 append_stacks(comp, tparameters, stacks)
-    tlog.log(f"stack/rotate all station pairs {(src_sta,rec_sta)}", t_load)
+    tlog.log(f"stacking/rotating all station pairs {(src_sta,rec_sta)}", t_load)
     return stack_results
 
 

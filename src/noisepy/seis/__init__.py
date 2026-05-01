@@ -27,6 +27,8 @@ The main functions exported by the package are:
 """
 
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s %(thread)d %(levelname)s %(module)s.%(funcName)s(): %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(module)s.%(funcName)s() | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
