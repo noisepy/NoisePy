@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 
-def _load_scheduler_symbols():
+def load_scheduler_symbols():
     try:
         from noisepy.seis.constants import AWS_BATCH_JOB_ARRAY_INDEX, AWS_BATCH_JOB_ID
         from noisepy.seis.scheduler import AWSBatchArrayScheduler, MPIScheduler
@@ -47,7 +47,7 @@ def _load_scheduler_symbols():
         )
 
 
-AWS_BATCH_JOB_ARRAY_INDEX, AWS_BATCH_JOB_ID, AWSBatchArrayScheduler, MPIScheduler = _load_scheduler_symbols()
+AWS_BATCH_JOB_ARRAY_INDEX, AWS_BATCH_JOB_ID, AWSBatchArrayScheduler, MPIScheduler = load_scheduler_symbols()
 
 
 @patch("boto3.client")
