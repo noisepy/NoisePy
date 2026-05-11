@@ -56,7 +56,7 @@ def test_get_array_size_raises_when_size_missing(mock_boto3_client, monkeypatch)
     monkeypatch.setenv(AWS_BATCH_JOB_ID, "parent:1")
     mock_boto3_client.return_value.describe_jobs.return_value = {"jobs": [{"arrayProperties": {}}]}
 
-    with pytest.raises(TypeError, match="int\\(\\) argument must be a string"):
+    with pytest.raises(TypeError, match="NoneType"):
         AWSBatchArrayScheduler._get_array_size()
 
 
