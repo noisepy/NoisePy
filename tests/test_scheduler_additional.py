@@ -56,7 +56,7 @@ def test_get_array_size_raises_when_size_missing(mock_boto3_client, monkeypatch)
     monkeypatch.setenv(AWS_BATCH_JOB_ID, "parent:1")
     mock_boto3_client.return_value.describe_jobs.return_value = {"jobs": [{"arrayProperties": {}}]}
 
-    with pytest.raises(TypeError, match="int\\(\\) argument must be"):
+    with pytest.raises(TypeError, match="int\\(\\) argument must be a string"):
         AWSBatchArrayScheduler._get_array_size()
 
 
@@ -64,7 +64,7 @@ def test_get_indices_non_integer_array_index_raises(monkeypatch):
     monkeypatch.setenv(AWS_BATCH_JOB_ARRAY_INDEX, "not-an-int")
     monkeypatch.setattr(AWSBatchArrayScheduler, "_get_array_size", staticmethod(lambda: 3))
 
-    with pytest.raises(ValueError, match="invalid literal"):
+    with pytest.raises(ValueError, match="invalid literal for int\\(\\)"):
         AWSBatchArrayScheduler().get_indices([1, 2, 3, 4])
 
 
