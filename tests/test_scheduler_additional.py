@@ -8,6 +8,7 @@ import pytest
 
 
 def load_scheduler_symbols():
+    """Load scheduler symbols, with a local source-file fallback for dev environments."""
     try:
         from noisepy.seis.constants import AWS_BATCH_JOB_ARRAY_INDEX, AWS_BATCH_JOB_ID
         from noisepy.seis.scheduler import AWSBatchArrayScheduler, MPIScheduler
@@ -68,6 +69,7 @@ def test_get_indices_non_integer_array_index_raises(monkeypatch):
 
 
 def test_mpi_initialize_raises_when_shared_vars_mismatch():
+    """Root rank must fail when initializer return count differs from shared_vars."""
     scheduler = MPIScheduler.__new__(MPIScheduler)
     scheduler.root = 0
     scheduler.comm = MagicMock()
@@ -78,6 +80,7 @@ def test_mpi_initialize_raises_when_shared_vars_mismatch():
 
 
 def test_mpi_get_indices_empty_when_rank_has_no_work():
+    """Ranks beyond the item range should receive no indices to process."""
     scheduler = MPIScheduler.__new__(MPIScheduler)
     scheduler.root = 0
     scheduler.comm = MagicMock()
