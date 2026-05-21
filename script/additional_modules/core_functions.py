@@ -64,7 +64,7 @@ def load_waveforms(sfile, para):
 
         # prepare data matrix for later loading
         data = np.zeros((nstacks, npts), dtype=np.float32)
-        stamp = np.zeros(nstacks, dtype=np.float32)
+        stamp = np.zeros(nstacks, dtype=np.float64)
         flag = np.zeros(nstacks, dtype=np.int16)
 
         # loop through each stacked segment
