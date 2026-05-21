@@ -11,7 +11,7 @@ The script of *download.py* (located in *src* directory) and its existing parame
 and operated during 1/Jul/2016-2/Jul/2016 through the SCEC data center.
 In the script, short summary is provided for all input parameters that can be changed according to the user's needs. In the current form of the script, we set *inc_hours=24* to download
 day-long continous noise data as well as the meta info and store them into a single ASDF file. To increase the signal-to-noise (SNR) of the final cross-correlation functions
-(see Seats et al.,2012 for more details), we break the day-long sequence into smaller segments, each of *cc_len* (s) long with some overlapping defined by *step*. You may wanto to
+(see Seats et al., 2012 for more details), we break the day-long sequence into smaller segments, each of *cc_len* (s) long with some stepping size defined by *step*. You may want to
 set *flag* to be *True* if intermediate outputs/operational time is preferred during the downloading process. To run the code on a single core, open the terminal and activate the noisepy
 environment before run following command. (NOTE that things may go completely different if you want to run NoisePy on a cluster. Better check it out first!!)
 

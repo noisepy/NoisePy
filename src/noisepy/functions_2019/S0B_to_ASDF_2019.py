@@ -84,7 +84,7 @@ inc_hours = 8  # sac/mseed file length for a continuous recording
 
 # get rough estimate of memory needs to ensure it now below up in S1
 cc_len = 1800  # basic unit of data length for fft (s)
-step = 450  # overlapping between each cc_len (s)
+step = 450  # stepping size between each cc_len (s)
 MAX_MEM = 4.0  # maximum memory allowed per core in GB
 
 ##################################################

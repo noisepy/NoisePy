@@ -44,7 +44,7 @@ def make_timestamps(prepro_para):
     if os.path.isfile(wiki_file):
         tmp = pd.read_csv(wiki_file)
         allfiles = tmp["names"]
-        all_stimes = np.zeros(shape=(len(allfiles), 2), dtype=np.float)
+        all_stimes = np.zeros(shape=(len(allfiles), 2), dtype=np.float64)
         all_stimes[:, 0] = tmp["starttime"]
         all_stimes[:, 1] = tmp["endtime"]
 
@@ -54,7 +54,7 @@ def make_timestamps(prepro_para):
         nfiles = len(allfiles)
         if not nfiles:
             raise ValueError("Abort! no data found in subdirectory of %s" % RAWDATA)
-        all_stimes = np.zeros(shape=(nfiles, 2), dtype=np.float)
+        all_stimes = np.zeros(shape=(nfiles, 2), dtype=np.float64)
 
         if messydata:
             # get VERY precise trace-time from the header
@@ -211,7 +211,7 @@ def correlate_nonlinear_stack(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
             ampmax = np.zeros(nstack, dtype=np.float32)
             s_corr = np.zeros(shape=(nstack, Nfft), dtype=np.float32)
             n_corr = np.zeros(nstack, dtype=np.int)
-            t_corr = np.zeros(nstack, dtype=np.float)
+            t_corr = np.zeros(nstack, dtype=np.float64)
             crap = np.zeros(Nfft, dtype=np.complex64)
 
             for istack in range(nstack):
@@ -315,7 +315,7 @@ def stacking_rma(cc_array, cc_time, cc_ngood, stack_para):
             ttime = tstart
             nstack = int(np.round((tend - tstart) / (rma_step * 3600)))
             ncc_array = np.zeros(shape=(nstack, npts), dtype=np.float32)
-            ncc_time = np.zeros(nstack, dtype=np.float)
+            ncc_time = np.zeros(nstack, dtype=np.float64)
             ncc_ngood = np.zeros(nstack, dtype=np.int)
 
             # loop through each time

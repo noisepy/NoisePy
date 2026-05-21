@@ -279,8 +279,8 @@ def cut_trace_make_stat(fc_para: ConfigParameters, ch_data: ChannelData):
     npts = int(fc_para.cc_len * sps)
     # trace_madS = np.zeros(nseg,dtype=np.float32)
     trace_stdS = np.zeros(nseg, dtype=np.float32)
-    dataS = np.zeros(shape=(int(nseg), int(npts)), dtype=np.float32)
-    dataS_t = np.zeros(nseg, dtype=np.float32)
+    dataS = np.zeros(shape=(int(nseg), int(npts)), dtype=np.float64)
+    dataS_t = np.zeros(nseg, dtype=np.float64)
 
     indx1 = 0
     for iseg in range(nseg):

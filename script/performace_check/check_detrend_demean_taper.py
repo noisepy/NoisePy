@@ -171,7 +171,7 @@ def test_2d(sacfile):
     nseg = int(np.floor((86400 - cc_len) / step))
     sps = int(tr[0].stats.sampling_rate)
     npts = cc_len * sps
-    dataS = np.zeros(shape=(nseg, npts), dtype=np.float32)
+    dataS = np.zeros(shape=(nseg, npts), dtype=np.float64)
 
     indx1 = 0
     for iseg in range(nseg):

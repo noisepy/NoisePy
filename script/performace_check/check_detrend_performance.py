@@ -64,8 +64,8 @@ def cut_trace_make_statis(cc_len, step, source, flag):
 
     Nseg = len(source_slice)  # number of segments in the original window
     Npts = np.max(nptsS)  # number of points in the segments
-    dataS_t = np.zeros(shape=(Nseg, 2), dtype=np.float)  # initialize
-    dataS = np.zeros(shape=(Nseg, Npts), dtype=np.float32)  # initialize
+    dataS_t = np.zeros(shape=(Nseg, 2), dtype=np.float64)  # initialize
+    dataS = np.zeros(shape=(Nseg, Npts), dtype=np.float64)  # initialize
     # create array of starttime and endtimes.
     for ii, trace in enumerate(source_slice):
         dataS_t[ii, 0] = source_slice[ii].stats.starttime - obspy.UTCDateTime(1970, 1, 1)  # convert to dataframe
@@ -107,8 +107,8 @@ def cut_trace_make_statis1(cc_len, step, inc_hours, source, flag):
     npts = cc_len * sps
     trace_madS = np.zeros(nseg, dtype=np.float32)
     trace_stdS = np.zeros(nseg, dtype=np.float32)
-    dataS = np.zeros(shape=(nseg, npts), dtype=np.float32)
-    dataS_t = np.zeros(shape=(nseg, 2), dtype=np.float)
+    dataS = np.zeros(shape=(nseg, npts), dtype=np.float64)
+    dataS_t = np.zeros(shape=(nseg, 2), dtype=np.float64)
 
     indx1 = 0
     for iseg in range(nseg):

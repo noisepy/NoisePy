@@ -311,8 +311,8 @@ def mwcs_dvv(ref, cur, moving_window_length, slide_step, para, smoothing_half_wi
     ----------------
     ref: Reference waveform (np.ndarray, size N)
     cur: Current waveform (np.ndarray, size N)
-    moving_window_length: moving window length to calculate cross-spectrum (np.float, in sec)
-    slide_step: steps in time to shift the moving window (np.float, in seconds)
+    moving_window_length: moving window length to calculate cross-spectrum (np.float64, in seconds)
+    slide_step: steps in time to shift the moving window (np.float64, in seconds)
     para: a dict containing parameters about input data window and frequency info, including
         delta->The sampling rate of the input timeseries (in Hz)
         window-> The target window for measuring dt/t
