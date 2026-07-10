@@ -9,7 +9,7 @@ NoisePy is a Python package designed for fast and easy computation of ambient no
 <img src="https://raw.githubusercontent.com/noisepy/NoisePy/main/docs_old/figures/logo.png" width="800" height="400">
 
 ## Major updates coming
-NoisePy is going through a major refactoring to make this package easier to develop and deploy. Submit an issue, fork the repository and create pull requests to [contribute](CONTRIBUTING.md).
+NoisePy was going through a major refactoring to make this package easier to develop and deploy. Submit an issue, fork the repository and create pull requests to [contribute](CONTRIBUTING.md).
 
 ## Installation
 The nature of NoisePy being composed of python scripts allows flexible package installation, which is essentially to build dependent libraries the scripts and related functions live upon. We recommend using [conda](https://docs.conda.io/en/latest/) or [pip](https://pypi.org/project/pip/) to install.
