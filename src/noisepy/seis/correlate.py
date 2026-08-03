@@ -363,7 +363,9 @@ def cross_correlation(
     # note here that sfft1 and ffts have gone through noise_processing already:
     # if FreqNorm is not None, then they have been whitened already.
 
-    result = cross_corr(fft_params, src_chan, rec_chan, sfft1, sou_ind, ffts[iiR], Nfft)
+    # iiS == iiR means source and receiver are the same channel (autocorrelation);
+    # passing the flag down avoids an expensive spectra comparison in correlate()
+    result = cross_corr(fft_params, src_chan, rec_chan, sfft1, sou_ind, ffts[iiR], Nfft, is_autocorr=(iiS == iiR))
     return result
 
 
@@ -396,6 +398,7 @@ def cross_corr(
     sou_ind: np.ndarray,
     rec_fft: NoiseFFT,
     Nfft: int,
+    is_autocorr: bool = False,
 ) -> Tuple[Channel, Channel, dict, np.ndarray]:
     # read the receiver data
     sfft2 = rec_fft.fft.reshape(rec_fft.window_count, rec_fft.length // 2)
@@ -408,7 +411,9 @@ def cross_corr(
         return
 
     # ----------- GAME TIME: cross correlation step ---------------
-    corr, tcorr, ncorr = noise_module.correlate(sfft1[bb, :], sfft2[bb, :], fft_params, Nfft, rec_fft.fft_time[bb])
+    corr, tcorr, ncorr = noise_module.correlate(
+        sfft1[bb, :], sfft2[bb, :], fft_params, Nfft, rec_fft.fft_time[bb], is_autocorr=is_autocorr
+    )
 
     del sfft2
     # ---------- OUTPUT: store metadata and data into file ------------

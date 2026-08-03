@@ -2,9 +2,16 @@ import numpy as np
 import pytest
 from obspy import Stream, Trace, UTCDateTime
 
-from noisepy.seis.io.datatypes import CCMethod, ConfigParameters, FreqNorm, TimeNorm
+from noisepy.seis.io.datatypes import (
+    CCMethod,
+    ChannelData,
+    ConfigParameters,
+    FreqNorm,
+    TimeNorm,
+)
 from noisepy.seis.noise_module import (
     check_sample_gaps,
+    cut_trace_make_stat,
     demean,
     detrend,
     mad,
@@ -104,3 +111,33 @@ def test_check_sample_gaps():
     end_date_st += 1000
     st_checked = check_sample_gaps(st.copy(), start_date_st1, end_date_st)
     assert len(st_checked) == 0  # gap too big
+
+
+def test_cut_trace_make_stat_timestamps_are_regular():
+    """
+    Regression test for issue #352 (fixed in PR #353): the window timestamps
+    dataS_t must be float64. A float32 unix epoch at current dates (~1.7e9 s)
+    only has ~256 s of resolution, so with step=300 the timestamp increments
+    came out as 256/384 s instead of exactly 300 s.
+    """
+    config = ConfigParameters()
+    config.sampling_rate = 20.0
+    config.cc_len = 1800
+    config.step = 300.0
+    config.inc_hours = 1
+
+    fs = int(config.sampling_rate)
+    start = UTCDateTime("2025-06-01T00:00:00.0Z")
+    data = np.random.default_rng(41).standard_normal(fs * 3600).astype(np.float32)
+    tr = Trace(data, header={"sampling_rate": config.sampling_rate, "starttime": start})
+    trace_stdS, dataS_t, dataS = cut_trace_make_stat(config, ChannelData(Stream([tr])))
+
+    assert len(dataS_t) > 1
+    # timestamps must stay float64 (issue #352) while waveform windows are float32
+    assert dataS_t.dtype == np.float64
+    assert dataS.dtype == np.float32
+    assert dataS_t[0] == start.timestamp
+    # the steps must be exactly regular
+    assert np.all(np.diff(dataS_t) == config.step)
+    # sanity check of the failure mode: in float32 the same timestamps are NOT regular
+    assert not np.all(np.diff(dataS_t.astype(np.float32).astype(np.float64)) == config.step)
