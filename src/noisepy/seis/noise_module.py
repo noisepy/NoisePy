@@ -273,7 +273,8 @@ def cut_trace_make_stat(fc_para: ConfigParameters, ch_data: ChannelData):
     # statistic to detect segments that may be associated with earthquakes
     all_stdS = np.std(data)  # standard deviation over all noise window
     if all_stdS == 0 or np.isnan(all_stdS):
-        logger.debug("continue! stdS equals to 0 for %s")
+        trace_id = ch_data.stream[0].id if len(ch_data.stream) > 0 else "unknown trace"
+        logger.debug("continue! stdS equals to 0 for %s", trace_id)
         return source_params, dataS_t, dataS
 
     # initialize variables

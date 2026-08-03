@@ -398,7 +398,7 @@ def cross_corr(
     sou_ind: np.ndarray,
     rec_fft: NoiseFFT,
     Nfft: int,
-    is_autocorr: bool = False,
+    is_autocorr: Optional[bool] = None,
 ) -> Tuple[Channel, Channel, dict, np.ndarray]:
     # read the receiver data
     sfft2 = rec_fft.fft.reshape(rec_fft.window_count, rec_fft.length // 2)
