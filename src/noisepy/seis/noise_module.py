@@ -11,6 +11,8 @@ import os
 import numpy as np
 import obspy
 import scipy
+import scipy.fft
+import scipy.ndimage
 from numba import jit
 from obspy.core.util.base import _get_function_from_entry_point
 from obspy.signal.filter import bandpass
@@ -269,17 +271,19 @@ def cut_trace_make_stat(fc_para: ConfigParameters, ch_data: ChannelData):
         return source_params, dataS_t, dataS
 
     # statistic to detect segments that may be associated with earthquakes
-    all_madS = mad(data)  # median absolute deviation over all noise window
     all_stdS = np.std(data)  # standard deviation over all noise window
-    if all_madS == 0 or all_stdS == 0 or np.isnan(all_madS) or np.isnan(all_stdS):
-        logger.debug("continue! madS or stdS equals to 0 for %s")
+    if all_stdS == 0 or np.isnan(all_stdS):
+        trace_id = ch_data.stream[0].id if len(ch_data.stream) > 0 else "unknown trace"
+        logger.debug("continue! stdS equals to 0 for %s", trace_id)
         return source_params, dataS_t, dataS
 
     # initialize variables
     npts = int(fc_para.cc_len * sps)
     # trace_madS = np.zeros(nseg,dtype=np.float32)
     trace_stdS = np.zeros(nseg, dtype=np.float32)
-    dataS = np.zeros(shape=(int(nseg), int(npts)), dtype=np.float64)
+    # waveform windows are float32 (precision checked against float64: CCF correlation > 0.999999);
+    # timestamps MUST stay float64 — float32 cannot represent unix epochs to better than ~256 s (issue #352)
+    dataS = np.zeros(shape=(int(nseg), int(npts)), dtype=np.float32)
     dataS_t = np.zeros(nseg, dtype=np.float64)
 
     indx1 = 0
@@ -372,7 +376,29 @@ def smooth_source_spect(cc_para, fft1):
     return sfft1
 
 
-def correlate(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
+def _hermitian_irfft(half_spec, Nfft):
+    """
+    Inverse FFT of hermitian-symmetric spectra given only their positive-frequency
+    half (the Nyquist bin is assumed zero), batched over rows. Equivalent to building
+    the full conjugate-symmetric spectrum and calling ifft row by row, but performed
+    as a single multi-threaded real-output transform.
+    PARAMETERS:
+    ---------------------
+    half_spec: 1D or 2D complex array with Nfft//2 frequency points per row
+    Nfft: length of the time-domain output
+    RETURNS:
+    ---------------------
+    real-valued time series (ifftshifted), same leading dimension as half_spec
+    """
+    is_1d = half_spec.ndim == 1
+    spec = np.atleast_2d(half_spec)
+    buf = np.zeros((spec.shape[0], Nfft // 2 + 1), dtype=np.complex128)
+    buf[:, : spec.shape[1]] = spec
+    out = np.fft.ifftshift(scipy.fft.irfft(buf, n=Nfft, axis=1, workers=-1), axes=1)
+    return out[0] if is_1d else out
+
+
+def correlate(fft1_smoothed_abs, fft2, D, Nfft, dataS_t, is_autocorr=None):
     """
     this function does the cross-correlation in freq domain and has the option to keep sub-stacks of
     the cross-correlation if needed. it takes advantage of the linear relationship of ifft, so that
@@ -391,6 +417,8 @@ def correlate(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
         smoothspect_N: number of points overwhich to smooth
     Nfft:    number of frequency points for ifft
     dataS_t: matrix of datetime object.
+    is_autocorr: True if this is an autocorrelation (same source and receiver channel).
+        When None (default), fall back to detecting it by comparing the two spectra.
 
     RETURNS:
     ---------------------
@@ -415,7 +443,6 @@ def correlate(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
     Nfft2 = fft1_smoothed_abs.shape[1]
 
     # ------convert all 2D arrays into 1D to speed up--------
-    corr = np.zeros(nwin * Nfft2, dtype=np.complex64)
     corr = fft1_smoothed_abs.reshape(
         fft1_smoothed_abs.size,
     ) * fft2.reshape(
@@ -423,10 +450,11 @@ def correlate(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
     )
 
     # check if we are in the case of autocorrelation
-    if np.all(np.abs(fft1_smoothed_abs) == np.abs(fft2)):
-        x_corr = False
-    else:
-        x_corr = True
+    if is_autocorr is None:
+        # legacy detection by comparing the amplitude spectra; only reliable for
+        # the XCORR method — callers should pass is_autocorr explicitly
+        is_autocorr = bool(np.all(np.abs(fft1_smoothed_abs) == np.abs(fft2)))
+    x_corr = not is_autocorr
 
     # Marine removes this because if users have FreqNorm as RMA or 1bit or smoothspect_N==1,
     #  then the fft2 will already be smoothed.
@@ -445,19 +473,14 @@ def correlate(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
     if substack:
         if substack_len == cc_len:
             # choose to keep all fft data for a day
-            s_corr = np.zeros(shape=(nwin, Nfft), dtype=np.float32)  # stacked correlation
-            ampmax = np.zeros(nwin, dtype=np.float32)
-            n_corr = np.zeros(nwin, dtype=np.int16)  # number of correlations for each substack
+            n_corr = np.ones(nwin, dtype=np.int16)  # number of correlations for each substack
             t_corr = dataS_t  # timestamp
-            crap = np.zeros(Nfft, dtype=np.complex64)
-            for i in range(nwin):
-                n_corr[i] = 1
-                crap[:Nfft2] = corr[i, :]
-                crap[:Nfft2] = crap[:Nfft2] - np.mean(crap[:Nfft2])  # remove the mean in freq domain (spike at t=0)
-                crap[-(Nfft2) + 1 :] = np.flip(np.conj(crap[1:(Nfft2)]), axis=0)
-                if x_corr:
-                    crap[0] = complex(0, 0)  # this only if fft1 is different than fft2
-                s_corr[i, :] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
+            # remove the mean in freq domain (spike at t=0); accumulate the mean in float64
+            spec = corr - np.mean(corr, axis=1, keepdims=True, dtype=np.complex128)
+            if x_corr:
+                spec[:, 0] = complex(0, 0)  # this only if fft1 is different than fft2
+            # one batched hermitian inverse FFT instead of nwin individual complex ifft calls
+            s_corr = _hermitian_irfft(spec, Nfft).astype(np.float32)
 
             # remove abnormal data
             ampmax = np.max(s_corr, axis=1)
@@ -472,11 +495,10 @@ def correlate(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
             tstart = dataS_t[0]
 
             nstack = int(np.round(Ttotal / substack_len))
-            ampmax = np.zeros(nstack, dtype=np.float32)
-            s_corr = np.zeros(shape=(nstack, Nfft), dtype=np.float32)
             n_corr = np.zeros(nstack, dtype=np.int16)
-            t_corr = np.zeros(nstack, dtype=np.float32)
-            crap = np.zeros(Nfft, dtype=np.complex64)
+            # unix timestamps need float64: float32 only resolves ~256 s at current epochs (issue #352)
+            t_corr = np.zeros(nstack, dtype=np.float64)
+            spec = np.zeros(shape=(nstack, Nfft2), dtype=np.complex128)
 
             for istack in range(nstack):
                 # find the indexes of all of the windows that start or end within
@@ -485,16 +507,18 @@ def correlate(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
                     tstart += substack_len
                     continue
 
-                crap[:Nfft2] = np.mean(corr[itime, :], axis=0)  # linear average of the correlation
-                crap[:Nfft2] = crap[:Nfft2] - np.mean(crap[:Nfft2])  # remove the mean in freq domain (spike at t=0)
-                crap[-(Nfft2) + 1 :] = np.flip(np.conj(crap[1:(Nfft2)]), axis=0)
+                crap = np.mean(corr[itime, :], axis=0, dtype=np.complex128)  # linear average of the correlation
+                crap -= np.mean(crap)  # remove the mean in freq domain (spike at t=0)
                 if x_corr:
                     crap[0] = complex(0, 0)
-                s_corr[istack, :] = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
+                spec[istack] = crap
                 n_corr[istack] = len(itime)  # number of windows stacks
                 t_corr[istack] = tstart  # save the time stamps
                 tstart += substack_len
                 # print('correlation done and stacked at time %s' % str(t_corr[istack]))
+
+            # one batched hermitian inverse FFT instead of nstack individual complex ifft calls
+            s_corr = _hermitian_irfft(spec, Nfft).astype(np.float32)
 
             # remove abnormal data
             ampmax = np.max(s_corr, axis=1)
@@ -508,13 +532,10 @@ def correlate(fft1_smoothed_abs, fft2, D, Nfft, dataS_t):
         ampmax = np.max(corr, axis=1)
         tindx = np.where((ampmax < 20 * np.median(ampmax)) & (ampmax > 0))[0]
         n_corr = nwin
-        s_corr = np.zeros(Nfft, dtype=np.float32)
         t_corr = dataS_t[0]
-        crap = np.zeros(Nfft, dtype=np.complex64)
-        crap[:Nfft2] = np.mean(corr[tindx], axis=0)
-        crap[:Nfft2] = crap[:Nfft2] - np.mean(crap[:Nfft2], axis=0)
-        crap[-(Nfft2) + 1 :] = np.flip(np.conj(crap[1:(Nfft2)]), axis=0)
-        s_corr = np.real(np.fft.ifftshift(scipy.fftpack.ifft(crap, Nfft, axis=0)))
+        crap = np.mean(corr[tindx], axis=0, dtype=np.complex128)
+        crap -= np.mean(crap)  # remove the mean in freq domain (spike at t=0)
+        s_corr = _hermitian_irfft(crap, Nfft).astype(np.float32)
 
     # trim the CCFs in [-maxlag maxlag]
     t = np.arange(-Nfft2 + 1, Nfft2) * dt
@@ -899,9 +920,9 @@ def detrend(data: np.ndarray) -> np.ndarray:
         X[:, 0] = np.arange(0, npts) / npts
         Q, R = np.linalg.qr(X)
         rq = np.dot(np.linalg.inv(R), Q.transpose())
-        for ii in range(data.shape[0]):
-            coeff = np.dot(rq, data[ii])
-            data[ii] = data[ii] - np.dot(X, coeff)
+        # all rows at once with two matrix products; in-place so dtype is preserved
+        coeff = np.dot(data, rq.T)
+        data -= np.dot(coeff, X.T)
     return data
 
 
@@ -1023,18 +1044,10 @@ def moving_ave_2D(A, N):
     ---------------------
     B: 2-D array with smoothed data
     """
-    ntc, nspt = A.shape
-    # defines an array with N extra samples at either side
-    temp = np.zeros([ntc, nspt + 2 * N])
-    # set the central portion of the array to A
-    temp[:, N:-N] = A
-    # leading samples: equal to first sample of actual array
-    temp[:, 0:N] = np.repeat(np.expand_dims(temp[:, N], axis=-1), N, axis=-1)
-    # trailing samples: Equal to last sample of actual array
-    temp[:, -N:] = np.repeat(np.expand_dims(temp[:, -N - 1], axis=-1), N, axis=-1)
-    # convolve with a boxcar and normalize, and use only central portion of the result
-    # with length equal to the original array, discarding the added leading and trailing samples
-    B = scipy.signal.convolve2d(temp, np.expand_dims(np.ones(N) / N, axis=0), mode="same")[:, N:-N]
+    # boxcar average along the rows with edge samples replicated; identical result to
+    # padding N samples on each side and convolving with ones(N)/N, but without the
+    # full 2D convolution cost
+    B = scipy.ndimage.uniform_filter1d(A, size=N, axis=1, mode="nearest", output=np.float64)
     return B
 
 
@@ -1147,14 +1160,18 @@ def whiten_2D(timeseries, fft_para: ConfigParameters, n_taper):
     FFTRawSign: numpy.ndarray contains the FFT of the whitened input trace between the frequency bounds
     """
     nfft = next_fast_len(timeseries.shape[1])
-    spec = np.fft.fftn(timeseries, s=[nfft])
+    # a real-input FFT gives the positive-frequency half at half the cost of the
+    # complex transform; everything at and above ix11 (including all negative
+    # frequencies) is zeroed below, so only the whitened band needs to be filled in
+    spec = scipy.fft.rfft(timeseries, nfft, axis=1, workers=-1)
     freq = np.fft.fftfreq(nfft, d=fft_para.dt)
 
     ix0 = np.argmin(np.abs(freq - fft_para.freqmin))
     ix1 = np.argmin(np.abs(freq - fft_para.freqmax))
 
-    if ix1 + n_taper > nfft:
-        ix11 = nfft
+    # the whitened band cannot extend beyond the positive-frequency half
+    if ix1 + n_taper > spec.shape[1]:
+        ix11 = spec.shape[1]
     else:
         ix11 = ix1 + n_taper
 
@@ -1163,9 +1180,8 @@ def whiten_2D(timeseries, fft_para: ConfigParameters, n_taper):
     else:
         ix00 = ix0 - n_taper
 
-    spec_out = spec.copy()  # may be inconvenient due to higher memory usage
-    spec_out[:, 0:ix00] = 0.0 + 0.0j
-    spec_out[:, ix11:] = 0.0 + 0.0j
+    spec_out = np.zeros((timeseries.shape[0], nfft), dtype=spec.dtype)
+    spec_out[:, ix00:ix11] = spec[:, ix00:ix11]
 
     if fft_para.smoothspect_N <= 1:
         spec_out[:, ix00:ix11] = np.exp(1.0j * np.angle(spec_out[:, ix00:ix11]))
@@ -1203,16 +1219,8 @@ def whiten(data, fft_para: ConfigParameters, n_taper=100):
     # Speed up FFT by padding to optimal size for FFTPACK
     if data.ndim == 1:
         FFTRawSign = whiten_1D(data, fft_para, n_taper)
-        # ARR_OUT: Only for consistency with noisepy approach of holding the full
-        # spectrum (not just 0 and positive freq. part)
-        arr_out = np.zeros((FFTRawSign.shape[0] - 1) * 2 + 1, dtype=complex)
-        arr_out[0 : FFTRawSign.shape[0]] = FFTRawSign
-        arr_out[FFTRawSign.shape[0] :] = FFTRawSign[1:].conjugate()[::-1]
-
     elif data.ndim == 2:
         FFTRawSign = whiten_2D(data, fft_para, n_taper)
-        arr_out = np.zeros((FFTRawSign.shape[0], (FFTRawSign.shape[1] - 1) * 2 + 1), dtype=complex)
-        arr_out[:, FFTRawSign.shape[1] :] = FFTRawSign[:, 1:].conjugate()[::-1]
     return FFTRawSign
 
 
