@@ -23,6 +23,24 @@ conda activate noisepy
 pip install noisepy-seis
 ```
 
+#### Optional extras: obspy and ASDF
+
+The default install reads miniSEED and computes cross-correlations without
+obspy — data access, gap handling and pre-processing go through
+[seisfetch](https://github.com/Denolle-Lab/seisfetch) (numpy + pymseed), which
+cuts ~145 MB of dependencies and installs from wheels on arm64.
+
+Install the extras if you need:
+
+| Extra | Install | Needed for |
+|---|---|---|
+| `obspy` | `pip install noisepy-seis[obspy]` | instrument response removal (`rm_resp` other than `no`), the `noisepy download` FDSN downloader, StationXML/FDSN channel catalogs, the obspy-backed stores |
+| `asdf` | `pip install noisepy-seis[asdf]` | reading or writing ASDF files |
+| `all` | `pip install noisepy-seis[all]` | both of the above |
+
+The obspy-free path is exact, not approximate: its output is bit-identical to
+the obspy chain, asserted in `tests/test_preprocess_equivalence.py`.
+
 To add jupyter dependencies, install them
 ```
 pip install ipykernel notebook

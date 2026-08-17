@@ -39,7 +39,6 @@ dependencies = [
     "h5py>=3.8.0,<4.0.0",
     "pandas>=1.5.3,<2.0.0",
     "numba>=0.57.0,<1.0.0",
-    "pyasdf>=0.7.5,<1.0.0",
     "pycwt>=0.3.0a22,<1.0.0",
     "diskcache>=5.6.1,<6.0.0",
     "fsspec>=2023.4.0,<2024.0.0",
@@ -51,7 +50,12 @@ dependencies = [
     "pydantic-yaml==1.0",
     "psutil>=5.9.5,<6.0.0",
     "noisepy-seis-io==0.3.5",
-    "scipy==1.12.0"
+    "scipy==1.12.0",
+    # miniSEED decoding, archive routing and the exact numpy ports of the
+    # obspy operations the rm_resp=NO pre-processing chain used to call
+    # (seisfetch.contrib). 0.4.1 is the first release whose boto3 floor
+    # (>=1.26) co-exists with the aiobotocore==2.5.2 pin above.
+    "seisfetch[noisepy]==0.4.1",
 ]
 
 
@@ -76,11 +80,30 @@ include = [
 packages = ["src/noisepy"]
 
 [project.optional-dependencies]
+# obspy is no longer needed to read data or compute cross-correlations. It is
+# required only for:
+#   - instrument response removal (rm_resp != NO)
+#   - the FDSN downloader (noisepy download)
+#   - StationXML/FDSN channel catalogs and the obspy-backed stores
+obspy = [
+    "obspy>=1.4",
+]
+# ASDF input/output (pyasdf pulls obspy in transitively)
+asdf = [
+    "pyasdf>=0.7.5,<1.0.0",
+]
+# everything, for users who don't want to think about extras
+all = [
+    "obspy>=1.4",
+    "pyasdf>=0.7.5,<1.0.0",
+]
 dev = [
     "pytest==7.2.2",
     "pytest-cov==4.1.0",
     "memory-profiler==0.61",
     "pre-commit==3.3.3",
+    "obspy>=1.4", # the obspy path and the equivalence tests are still tested
+    "pyasdf>=0.7.5,<1.0.0", # ASDF store tests
 ]
 sql = [
     "SQLite3-0611",
