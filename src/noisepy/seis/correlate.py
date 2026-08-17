@@ -7,7 +7,6 @@ from concurrent.futures import Executor, Future, ThreadPoolExecutor
 from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
-import obspy
 from datetimerange import DateTimeRange
 from scipy.fftpack.helper import next_fast_len
 
@@ -18,6 +17,7 @@ from noisepy.seis.io.datatypes import (
     ConfigParameters,
     CrossCorrelation,
     NoiseFFT,
+    RmResp,
     Station,
 )
 from noisepy.seis.io.stores import CrossCorrelationDataStore, RawDataStore
@@ -377,17 +377,15 @@ def preprocess_all(
     ts: DateTimeRange,
 ) -> List[Tuple[Channel, ChannelData]]:
     channels = list(zip(*ch_data))[0]
-    stream_refs = [executor.submit(preprocess, raw_store, t[0], t[1], fft_params, ts) for t in ch_data]
+    data_refs = [executor.submit(preprocess, raw_store, t[0], t[1], fft_params, ts) for t in ch_data]
     del ch_data
-    new_streams = get_results(stream_refs, "Pre-processing")
-    # Log if any streams were removed during pre-processing
-    for ch, st in zip(channels, new_streams):
-        if len(st) == 0:
+    new_data = get_results(data_refs, "Pre-processing")
+    # Log if any channels were emptied during pre-processing
+    for ch, d in zip(channels, new_data):
+        if d.data.size == 0:
             logging.warning(f"Empty stream for {ts}/{ch} after pre-processing. ")
 
-    # Filter to only non-empty streams
-    non_empty = filter(lambda tup: len(tup[1]) > 0, zip(channels, new_streams))
-    return [(ch, ChannelData(st)) for ch, st in non_empty]
+    return [(ch, d) for ch, d in zip(channels, new_data) if d.data.size > 0]
 
 
 def cross_corr(
@@ -430,7 +428,31 @@ def cross_corr(
 
 def preprocess(
     raw_store: RawDataStore, ch: Channel, ch_data: ChannelData, fft_params: ConfigParameters, ts: DateTimeRange
-) -> obspy.Stream:
+) -> ChannelData:
+    """
+    Pre-process one channel-day.
+
+    At ``rm_resp=NO`` the whole chain is numpy (see
+    ``noise_module.preprocess_raw_np``) and neither obspy nor the inventory is
+    touched: response removal is the only step that needs either. Any other
+    ``rm_resp`` setting, or a window that is not aligned to the data's sample
+    grid, falls back to the obspy chain.
+    """
+    if fft_params.rm_resp == RmResp.NO:
+        try:
+            return noise_module.preprocess_raw_np(
+                ch_data,
+                fft_params,
+                ts.start_datetime.timestamp(),
+                ts.end_datetime.timestamp(),
+            )
+        except ImportError as e:
+            logger.warning(f"seisfetch not available, falling back to the obspy pre-processing path: {e}")
+        except ValueError as e:
+            logger.warning(f"Numpy pre-processing declined {ch} for {ts}, using the obspy path: {e}")
+
+    import obspy
+
     inv = raw_store.get_inventory(ts, ch.station)
     ch_inv = inv.select(channel=ch.type.name, time=ts.start_datetime)
     # if we don't find an inventory when filtering by time, back off and try
@@ -438,13 +460,14 @@ def preprocess(
     if len(ch_inv) < 1:
         ch_inv = inv.select(channel=ch.type.name)
 
-    return noise_module.preprocess_raw(
+    stream = noise_module.preprocess_raw(
         ch_data.stream.copy(),  # If we don't copy it's not writeable
         ch_inv,
         fft_params,
         obspy.UTCDateTime(ts.start_datetime),
         obspy.UTCDateTime(ts.end_datetime),
     )
+    return ChannelData(stream) if len(stream) > 0 else ChannelData.empty()
 
 
 def compute_fft(fft_params: ConfigParameters, ch_data: ChannelData) -> NoiseFFT:

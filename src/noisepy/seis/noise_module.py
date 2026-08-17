@@ -3,22 +3,22 @@
 # the same name but different inputs
 # noqa: F811
 
+from __future__ import annotations
+
 import datetime
 import glob
 import logging
 import os
+from typing import TYPE_CHECKING
 
 import numpy as np
-import obspy
 import scipy
 import scipy.fft
 import scipy.ndimage
 from numba import jit
-from obspy.core.util.base import _get_function_from_entry_point
-from obspy.signal.filter import bandpass
-from obspy.signal.util import _npts2nfft
 from scipy.fftpack import next_fast_len
 from scipy.signal import hilbert
+from scipy.signal.windows import hann
 
 from noisepy.seis.io.datatypes import (
     CCMethod,
@@ -29,6 +29,9 @@ from noisepy.seis.io.datatypes import (
     StackMethod,
     TimeNorm,
 )
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    import obspy
 
 logger = logging.getLogger(__name__)
 """
@@ -105,6 +108,9 @@ def preprocess_raw(
     -----------------------
     ntr: obspy stream object of cleaned, merged and filtered noise data
     """
+    import obspy
+    from obspy.signal.filter import bandpass
+
     # load parameters from fft dict
     rm_resp = prepro_para["rm_resp"]
     rm_resp_out = prepro_para["rm_resp_out"]
@@ -231,6 +237,70 @@ def preprocess_raw(
     return ntr
 
 
+def preprocess_raw_np(
+    ch_data: ChannelData,
+    prepro_para: ConfigParameters,
+    start_timestamp: float,
+    end_timestamp: float,
+) -> ChannelData:
+    """
+    obspy-free equivalent of :func:`preprocess_raw` for ``rm_resp=NO``.
+
+    Same chain, same order, same dtypes — gap check, per-segment nan/inf
+    zeroing + float32 cast + demean + detrend + 5% taper, merge with zero fill,
+    5%/50 s taper, bandpass pre-filter, Fourier resample with the sub-sample
+    start alignment, trim/pad — implemented in numpy/scipy. The operations are
+    ObsPy translations that live in seisfetch (``seisfetch.contrib``); they are
+    imported rather than copied so this MIT-licensed file stays free of the
+    LGPL-licensed ports, and so both projects test one implementation.
+
+    Their equivalence to the obspy chain is asserted exactly (not
+    approximately) in seisfetch's ``tests/precision/``, and end-to-end here in
+    ``tests/test_preprocess_equivalence.py``.
+
+    Raises ValueError if the requested window is not aligned to the sample
+    grid, where the two chains would legitimately disagree; the caller falls
+    back to the obspy path in that case.
+    """
+    from seisfetch.contrib.noisepy_adapter import (
+        preprocess_raw_np as _sf_preprocess_raw_np,
+    )
+    from seisfetch.convert import TraceArray
+
+    if not ch_data.segments:
+        return ChannelData.empty()
+
+    net, sta, loc, cha = (ch_data.id.split(".") + ["", "", "", ""])[:4]
+    segments = [
+        TraceArray(
+            network=net,
+            station=sta,
+            location=loc,
+            channel=cha,
+            starttime_ns=int(round(s.start_timestamp * 1e9)),
+            sampling_rate=float(s.sampling_rate),
+            data=s.data,
+        )
+        for s in ch_data.segments
+    ]
+
+    out = _sf_preprocess_raw_np(
+        segments,
+        int(round(start_timestamp * 1e9)),
+        int(round(end_timestamp * 1e9)),
+        freqmin=prepro_para["freqmin"],
+        freqmax=prepro_para["freqmax"],
+        sampling_rate=prepro_para["sampling_rate"],
+        # whole segments, exactly what obspy.read hands the obspy path: the
+        # only trim is the nearest-sample one at the end of the chain, so
+        # windows that are off the sample grid are handled identically
+        pretrimmed=False,
+    )
+    if out.data.size == 0:
+        return ChannelData.empty()
+    return ChannelData.from_array(out.data, out.sampling_rate, out.start_timestamp, id=ch_data.id)
+
+
 def cut_trace_make_stat(fc_para: ConfigParameters, ch_data: ChannelData):
     """
     this function cuts continuous noise data into user-defined segments, estimate the statistics of
@@ -273,7 +343,9 @@ def cut_trace_make_stat(fc_para: ConfigParameters, ch_data: ChannelData):
     # statistic to detect segments that may be associated with earthquakes
     all_stdS = np.std(data)  # standard deviation over all noise window
     if all_stdS == 0 or np.isnan(all_stdS):
-        trace_id = ch_data.stream[0].id if len(ch_data.stream) > 0 else "unknown trace"
+        # ch_data.id, not ch_data.stream[0].id: reading the id must not force
+        # the lazy obspy Stream to be built on the obspy-free path
+        trace_id = ch_data.id or "unknown trace"
         logger.debug("continue! stdS equals to 0 for %s", trace_id)
         return source_params, dataS_t, dataS
 
@@ -572,7 +644,12 @@ def cc_parameters(cc_para, coor, tcorr, ncorr, comp):
     substack = cc_para["substack"]
     cc_method = cc_para["cc_method"]
 
-    dist, azi, baz = obspy.geodetics.base.gps2dist_azimuth(latS, lonS, latR, lonR)
+    # bit-identical port of obspy.geodetics.base.gps2dist_azimuth, so this
+    # runs without obspy on the rm_resp=NO path (equality asserted in
+    # seisfetch tests/precision/test_preprocess_equivalence.py)
+    from seisfetch.contrib.obspy_ports import gps2dist_azimuth_np
+
+    dist, azi, baz = gps2dist_azimuth_np(latS, lonS, latR, lonR)
     parameters = {
         "dt": dt,
         "maxlag": int(maxlag),
@@ -733,7 +810,7 @@ def rotation(bigstack, parameters, locs):
 ####################################################
 
 
-def check_sample_gaps(stream: obspy.Stream, starttime: obspy.UTCDateTime, endtime: obspy.UTCDateTime):
+def check_sample_gaps(stream: "obspy.Stream", starttime: "obspy.UTCDateTime", endtime: "obspy.UTCDateTime"):
     """
     this function checks sampling rate and find gaps of all traces in stream.
     PARAMETERS:
@@ -745,6 +822,8 @@ def check_sample_gaps(stream: obspy.Stream, starttime: obspy.UTCDateTime, endtim
     -----------------
     stream: List of good traces in the stream
     """
+    import obspy
+
     # remove empty/big traces
     if len(stream) == 0 or len(stream) > 100:
         return obspy.Stream()
@@ -837,6 +916,9 @@ def resp_spectrum(source, resp_file, downsamp_freq, pre_filt=None):
     ----------------------
     source: obspy stream object of noise data with instrument response removed
     """
+    from obspy.signal.filter import bandpass
+    from obspy.signal.util import _npts2nfft
+
     # --------resp_file is the inverted spectrum response---------
     respz = np.load(resp_file)
     nrespz = respz[1][:]
@@ -963,7 +1045,9 @@ def taper(data: np.ndarray) -> np.ndarray:
         else:
             wlen = int(npts * 0.05)
         # taper values
-        func = _get_function_from_entry_point("taper", "hann")
+        # obspy's ("taper", "hann") entry point resolves to this exact
+        # scipy window (asserted equal in tests/test_noise_module.py)
+        func = hann
         if 2 * wlen == npts:
             taper_sides = func(2 * wlen)
         else:
@@ -985,7 +1069,9 @@ def taper(data: np.ndarray) -> np.ndarray:
         else:
             wlen = int(npts * 0.05)
         # taper values
-        func = _get_function_from_entry_point("taper", "hann")
+        # obspy's ("taper", "hann") entry point resolves to this exact
+        # scipy window (asserted equal in tests/test_noise_module.py)
+        func = hann
         if 2 * wlen == npts:
             taper_sides = func(2 * wlen)
         else:

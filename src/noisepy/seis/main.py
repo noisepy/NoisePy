@@ -26,7 +26,6 @@ from noisepy.seis.io.zarrstore import ZarrCCStore, ZarrStackStore
 from . import __version__
 from .constants import CONFIG_FILE, STATION_FILE
 from .correlate import cross_correlate
-from .fdsn_download import download
 from .scheduler import (
     AWSBatchArrayScheduler,
     MPIScheduler,
@@ -242,6 +241,10 @@ def main(args: typing.Any):
             save_log(tgt_dir, args.logfile, storage_options)
 
     def run_download(params: ConfigParameters):
+        # imported here, not at module scope: the FDSN downloader needs the
+        # obspy extra, and `noisepy cross_correlate` must run without it
+        from .fdsn_download import download
+
         download(args.raw_data_path, params)
 
     def run_cross_correlation(params: ConfigParameters):

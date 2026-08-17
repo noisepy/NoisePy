@@ -6,9 +6,25 @@ import logging
 
 from ._version import __version__  # noqa: F401
 
-from .fdsn_download import download  # noqa: F401
 from .correlate import cross_correlate  # noqa: F401
 from .stack import stack_cross_correlations  # noqa: F401
+
+
+def __getattr__(name):
+    """
+    Lazily expose ``download``.
+
+    ``fdsn_download`` is built on obspy's FDSN client, which is now an optional
+    extra: importing it eagerly here would make ``import noisepy.seis`` require
+    obspy even for a cross-correlation run that never downloads anything.
+    ``from noisepy.seis import download`` still works and imports it on demand.
+    """
+    if name == "download":
+        from .fdsn_download import download
+
+        return download
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 """
 NoisePy is a Python package designed for fast and easy computation of ambient noise cross-correlation functions.
