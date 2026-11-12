@@ -81,15 +81,16 @@ def test_get_array_size(mock_boto3_client):
 
 
 # get_indices method test
-def test_get_indices_valid_index():
+def test_get_indices_valid_index(monkeypatch):
     os.environ[AWS_BATCH_JOB_ID] = VALID_JOB_ID
     os.environ[AWS_BATCH_JOB_ARRAY_INDEX] = "2"
     scheduler = AWSBatchArrayScheduler()
     # Mock the _get_array_size method to return a known value
     get_array_size_mock = MagicMock(return_value=5)
 
-    # Assign the MagicMock to the _get_array_size method of the class
-    AWSBatchArrayScheduler._get_array_size = get_array_size_mock
+    # monkeypatch restores the real method after this test; assigning to the
+    # class directly leaked the mock into later tests (test_scheduler_additional.py)
+    monkeypatch.setattr(AWSBatchArrayScheduler, "_get_array_size", get_array_size_mock)
 
     item = [1, 2, 3, 4, 5]
     indices = scheduler.get_indices(item)
