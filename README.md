@@ -120,3 +120,13 @@ Algorithms used:
 * (cloud-native support) Ni, Y., Denolle, M. A., Münchmeyer, J., Wang, Y., Feng, K. F., Garcia Jurado Suarez, C., ... & Mencin, D. (2025). A review of cloud computing and storage in seismology. Geophysical Journal International, 243(1), ggaf322. https://doi.org/10.1093/gji/ggaf322
 
 This research received software engineering support from the University of Washington’s Scientific Software Engineering Center ([SSEC](https://escience.washington.edu/software-engineering/ssec/)) supported by Schmidt Futures, as part of the Virtual Institute for Scientific Software (VISS). We would like to acknowledge [Carlos Garcia Jurado Suarez](https://github.com/carlosgjs) and [Nicholas Rich](https://github.com/nrich20) for their collaboration and contributions to the software.
+
+NoisePy development was supported in part by the Seismic COmputational Platform
+for Empowering Discovery (SCOPED) project. This material is based upon work
+supported by the U.S. National Science Foundation under Award No. OAC-2103701
+(University of Washington), part of the collaborative SCOPED awards
+OAC-2104052, OAC-2103621, OAC-2103741 and OAC-2103494.
+
+Any opinions, findings, and conclusions or recommendations expressed in this
+material are those of the author(s) and do not necessarily reflect the views
+of the National Science Foundation.
